@@ -126,6 +126,8 @@ $$
 \begin{pmatrix}1&2&7&11\\1&1&5&5\\-2&-3&-12&-16\end{pmatrix}
 \xrightarrow[r_3\to r_3+2r_1]{r_2\to r_2-r_1}
 \begin{pmatrix}1&2&7&11\\0&-1&-2&-6\\0&1&2&6\end{pmatrix}
+$$
+$$
 \xrightarrow[r_2\to -r_2]{r_3\to r_3+r_2}
 \begin{pmatrix}1&2&7&11\\0&1&2&6\\0&0&0&0\end{pmatrix}
 \xrightarrow{r_1\to r_1-2r_2}
@@ -245,8 +247,8 @@ Now compute, with the **same** $\lambda_i$:
 $$
 \begin{aligned}
 \lambda_1\mathbf{s}_1 + \dots + \lambda_{n+1}\mathbf{s}_{n+1}
-&= \lambda_1(a_{11}\mathbf{b}_1 + \dots + a_{1n}\mathbf{b}_n) + \dots + \lambda_{n+1}(a_{n+1,1}\mathbf{b}_1 + \dots + a_{n+1,n}\mathbf{b}_n)\\
-&= (\lambda_1a_{11} + \lambda_2a_{21} + \dots + \lambda_{n+1}a_{n+1,1})\,\mathbf{b}_1 + \dots + (\lambda_1a_{1n} + \dots + \lambda_{n+1}a_{n+1,n})\,\mathbf{b}_n\\
+&= \lambda_1(a_{11}\mathbf{b}_1 + \dots + a_{1n}\mathbf{b}_n) + \dots\\ &\qquad + \lambda_{n+1}(a_{n+1,1}\mathbf{b}_1 + \dots + a_{n+1,n}\mathbf{b}_n)\\
+&= (\lambda_1a_{11} + \lambda_2a_{21} + \dots + \lambda_{n+1}a_{n+1,1})\,\mathbf{b}_1 + \dots\\ &\qquad + (\lambda_1a_{1n} + \dots + \lambda_{n+1}a_{n+1,n})\,\mathbf{b}_n\\
 &= 0\cdot\mathbf{b}_1 + \dots + 0\cdot\mathbf{b}_n = \mathbf{0},
 \end{aligned}
 $$

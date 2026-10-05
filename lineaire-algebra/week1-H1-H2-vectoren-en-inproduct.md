@@ -60,7 +60,7 @@ vectors, written as `{ formula | parameter ranges over ℝ }`. Read `|` as
 ### Lines
 
 | Case | Parametrisation | Names |
-|------|-----------------|-------|
+|--------------------|------------------------------|------------------------|
 | VB1: line $l$ through $\mathbf{0}$ | $l = \{\lambda\mathbf{a} \mid \lambda\in\mathbb{R}\}$ | $\mathbf{a}$ is the **richtingsvector** |
 | VB2: line $m$ *not* through $\mathbf{0}$ | $m = \{\mathbf{p} + \lambda\mathbf{a} \mid \lambda\in\mathbb{R}\}$ | $\mathbf{p}$ is the **steunvector**, $\mathbf{a}\neq\mathbf{0}$ the richtingsvector |
 
@@ -75,7 +75,7 @@ $$
 ### Planes
 
 | Case | Parametrisation |
-|------|-----------------|
+|--------------------|----------------------------------------|
 | VB3: plane $V$ through $\mathbf{0}$ | $V = \{\lambda\mathbf{a} + \mu\mathbf{b} \mid \lambda,\mu\in\mathbb{R}\}$ |
 | VB4: plane $W$ not through $\mathbf{0}$ | $W = \{\mathbf{p} + \lambda\mathbf{a} + \mu\mathbf{b} \mid \lambda,\mu\in\mathbb{R}\}$ |
 

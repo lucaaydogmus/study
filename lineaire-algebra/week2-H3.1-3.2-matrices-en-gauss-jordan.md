@@ -215,6 +215,8 @@ $$
 \left(\begin{array}{ccc|c} 1&1&-1&1\\ 2&4&-1&4\\ -1&5&6&9\end{array}\right)
 \xrightarrow[r_3\to r_3+r_1]{r_2\to r_2-2r_1}
 \left(\begin{array}{ccc|c} 1&1&-1&1\\ 0&2&1&2\\ 0&6&5&10\end{array}\right)
+$$
+$$
 \xrightarrow{r_3\to r_3-3r_2}
 \left(\begin{array}{ccc|c} 1&1&-1&1\\ 0&2&1&2\\ 0&0&2&4\end{array}\right)
 \xrightarrow{r_3\to r_3/2}
@@ -297,6 +299,8 @@ $$
 \left(\begin{array}{ccccc|c} 1&2&0&1&1&1\\ 2&4&1&4&3&1\\ -1&-2&1&1&0&-2\end{array}\right)
 \xrightarrow[r_3\to r_3+r_1]{r_2\to r_2-2r_1}
 \left(\begin{array}{ccccc|c} 1&2&0&1&1&1\\ 0&0&1&2&1&-1\\ 0&0&1&2&1&-1\end{array}\right)
+$$
+$$
 \xrightarrow{r_3\to r_3-r_2}
 \left(\begin{array}{ccccc|c} \boxed{1}&2&0&1&1&1\\ 0&0&\boxed{1}&2&1&-1\\ 0&0&0&0&0&0\end{array}\right)
 $$

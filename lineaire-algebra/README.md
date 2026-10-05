@@ -9,7 +9,7 @@ you can look it up.
 |------|-------------|------------------|------|
 | 1 | Vectors, lines, planes, inner product, plane equation | H1 (1.1–1.4), H2 (2.1–2.3, 2.5) | [week1](week1-H1-H2-vectoren-en-inproduct.md) |
 | 2 | Matrices, matrix product, Gauss–Jordan, pivots | §3.1, §3.2 | [week2](week2-H3.1-3.2-matrices-en-gauss-jordan.md) |
-| 3 | n×n systems, inverse matrix, subspaces, span, S_hom / S_inhom | §3.3, §3.4, §3.5 | [week3](week3-H3.3-3.5-inverse-deelruimten-oplossingsverzameling.md) |
+| 3 | n×n systems, inverse matrix, subspaces, span, $S_{\mathrm{hom}}$ / $S_{\mathrm{inhom}}$ | §3.3, §3.4, §3.5 | [week3](week3-H3.3-3.5-inverse-deelruimten-oplossingsverzameling.md) |
 | 4 | Linear combination, (in)dependence, relations, rank, dimension, basis | §4.1, §4.2 | [week4](week4-H4.1-4.2-afhankelijkheid-rang-basis.md) |
 
 Not covered by the notes (and therefore not taught here): §2.4 worked examples,

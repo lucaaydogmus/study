@@ -1,0 +1,7 @@
+*.tex
+*.log
+*.aux
+*.out
+*.toc
+*.png
+*.pre.md
