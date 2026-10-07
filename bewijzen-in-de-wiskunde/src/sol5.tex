@@ -1,0 +1,50 @@
+\hsection{Chapter 5}
+\sol{5.1.3} For example: ``$x<y$'' on $\R$ (homogeneous); ``$x$ is a parent of $y$'' on the set of all people (homogeneous); ``the line $L$ passes through the point $P$'' from the set of lines in the plane to the set of points (not homogeneous); ``$a$ leaves remainder $r$ on division by $3$'' from $\Z$ to $[3]$ (not homogeneous).
+
+\sol{5.1.35} ($\Rightarrow$) Let $(a,b)\in\mathrm{Gr}(R)$, so $a\mathrel Rb$. By symmetry $b\mathrel Ra$, and then by antisymmetry $a=b$; so $(a,b)=(a,a)\in\Delta_X$. ($\Leftarrow$) Suppose $\mathrm{Gr}(R)\subseteq\Delta_X$. Symmetric: if $a\mathrel Rb$ then $(a,b)\in\Delta_X$, so $a=b$, and $b\mathrel Ra$ is the true statement $a\mathrel Ra$. Antisymmetric: if $a\mathrel Rb$ (and $b\mathrel Ra$) then $(a,b)\in\Delta_X$ gives $a=b$. \emph{Deduction:} if $R$ is also reflexive then $(a,a)\in\mathrm{Gr}(R)$ for all $a$, i.e.\ $\Delta_X\subseteq\mathrm{Gr}(R)$; so $\mathrm{Gr}(R)=\Delta_X=\mathrm{Gr}(=)$ (Exercise 5.1.18), and $R$ is the equality relation by Theorem 5.1.14.
+
+\sol{5.2.5} Reflexive: $\id_U:U\to U$ is a bijection (3.2.19), so $U\cong U$. Symmetric: if $f:U\to V$ is a bijection then $f^{-1}:V\to U$ is a bijection (3.2.45), so $V\cong U$. Transitive: if $f:U\to V$ and $g:V\to W$ are bijections then $g\circ f:U\to W$ is a bijection (3.2.20).
+
+\sol{5.2.10} $a\equiv b\pmod0$ iff $0\mid b-a$ iff $b-a=q\cdot0=0$ for some $q$ iff $a=b$: congruence mod $0$ is equality. $a\equiv b\pmod1$ always, since $b-a=(b-a)\cdot1$ is divisible by $1$: congruence mod $1$ is the discrete relation.
+
+\sol{5.2.14} For $r\in\{0,\dots,9\}$, $[r]_{\approx}=\{n\in\N\mid n\equiv r\pmod{10}\}=\{r,r+10,r+20,\dots\}$, the natural numbers whose last decimal digit is $r$ (Example 5.2.8). Every $n\in\N$ lies in the class of its last digit, so $\N/{\approx}=\{[0],[1],[2],[3],[4],[5],[6],[7],[8],[9]\}$.
+
+\sol{5.2.16} By Example 5.2.15, $[a]_{\sim_f}=f^{-1}[\{f(a)\}]$, which always contains $a$. ($\Rightarrow$) If $f$ is injective and $x\in[a]$ then $f(x)=f(a)$, so $x=a$: $[a]=\{a\}$ has a unique element. ($\Leftarrow$) Suppose every class has a unique element, and let $f(a)=f(b)$. Then $b\in[a]$ and $a\in[a]$, so $a=b$ by uniqueness. Hence $f$ is injective.
+
+\sol{5.2.20} (For $n\ne0$; for $n=0$ the statement fails, since $[0]=\varnothing$ while $\Z/0\Z=\{\{a\}\mid a\in\Z\}$ by 5.2.10.) \emph{Injective:} let $r,s\in[|n|]$ with $[r]_n=[s]_n$. Then $r\equiv s\pmod n$ (Theorem 5.2.17), so $r$ and $s$ have the same remainder on division by $n$ (5.2.9). But $0\le r,s<|n|$, so each is its own remainder ($r=0\cdot n+r$); hence $r=s$. \emph{Surjective:} let $[a]_n\in\Z/n\Z$ and let $r$ be the remainder of $a$, $a=qn+r$ with $r\in[|n|]$. Then $a-r=qn$, so $r\equiv a\pmod n$, and $[r]_n=[a]_n$ by Theorem 5.2.17; hence $[a]_n=i(r)$.
+
+\sol{5.E.1} On $X=\{0,1,2\}$, give the graph. None: $\{(0,1),(1,2)\}$ (no $(0,0)$; no $(1,0)$; no $(0,2)$). Reflexive only: $\Delta_X\cup\{(0,1),(1,2)\}$. Symmetric only: $\{(0,1),(1,0)\}$ (no $(0,0)$; transitivity would need $(0,0)$). Transitive only: $\{(0,1)\}$ (vacuously transitive). Reflexive and symmetric only: $\Delta_X\cup\{(0,1),(1,0),(1,2),(2,1)\}$ (no $(0,2)$). Reflexive and transitive only: $\le$ on $\R$. Symmetric and transitive only: the empty relation on $X$ (vacuous; not reflexive). All three: $=$.
+
+\sol{5.E.2} This is the ($\Rightarrow$) direction of Exercise 5.1.35 together with 5.1.18: $\mathrm{Gr}(R)\subseteq\Delta_X=\mathrm{Gr}(=)$.
+
+\sol{5.E.3} Let $x\in X$. Since $R$ is left-total there is $y\in X$ with $x\mathrel Ry$. By symmetry $y\mathrel Rx$. By transitivity ($x\mathrel Ry$ and $y\mathrel Rx$) $x\mathrel Rx$. So $R$ is reflexive.
+
+\sol{5.E.5} Let $S$ be the transport of $\sim$ along $f$. \emph{Symmetric, always:} if $c\mathrel Sd$ via $a,b$ ($f(a)=c$, $f(b)=d$, $a\sim b$) then $b\sim a$, so $d\mathrel Sc$ via $b,a$. \emph{Reflexive iff $f$ is surjective:} $c\mathrel Sc$ needs some $a$ with $f(a)=c$ (then $a\sim a$ works), so reflexivity on all of $Y$ holds exactly when every $c\in Y$ is a value of $f$. \emph{Transitive: not in general.} Take $X=\{0,1,2,3\}$ with $\sim$ having classes $\{0,1\}$, $\{2,3\}$, and $f(0)=c$, $f(1)=f(2)=d$, $f(3)=e$. Then $c\mathrel Sd$ (via $0\sim1$) and $d\mathrel Se$ (via $2\sim3$), but $c\mathrel Se$ would need $0\sim3$, which is false. Transitivity does hold under the extra condition ``$f(b)=f(b')\Rightarrow b\sim b'$'': if $c\mathrel Sd$ via $a\sim b$ and $d\mathrel Se$ via $b'\sim a'$ with $f(b)=f(b')=d$, then $a\sim b\sim b'\sim a'$ gives $c\mathrel Se$. \emph{Conclusion:} $S$ is an equivalence relation on $Y$ when $f$ is surjective and $f(b)=f(b')\Rightarrow b\sim b'$ (for instance when $f$ is a bijection, or when $f$ is the quotient function $q_\sim$); in general only symmetry is guaranteed.
+
+\sol{5.E.7} Here $a\mathrel Rb$ or $b\mathrel Ra$ means $b=a+n$ or $a=b+n$, i.e.\ $b-a=\pm n$. If $x\sim_Ry$ via a chain $x=a_0,\dots,a_k=y$, then $y-x=\sum_{i\in[k]}(a_{i+1}-a_i)$ is a sum of $k$ terms each equal to $\pm n$, hence a multiple of $n$: $x\equiv y\pmod n$. Conversely if $y-x=mn$, take the chain $x,x+n,x+2n,\dots,x+mn=y$ if $m\ge0$ (each step $a_i\mathrel Ra_{i+1}$) or $x,x-n,\dots,y$ if $m<0$ (each step $a_{i+1}\mathrel Ra_i$); for $m=0$ take $k=0$. So $\sim_R$ and $\equiv\pmod n$ relate the same pairs and are equal.
+
+\sol{5.E.8} Let $U,V\subseteq X$. Then $U\subseteq X$ and $V\subseteq X$, so the chain $U,X,V$ ($k=2$) has $U\mathrel RX$ and $V\mathrel RX$ (the second step in the reverse direction). Hence $U\sim_RV$.
+
+\sol{5.E.9} ($\Leftarrow$) If $x=y$ take the chain of length $0$. If $\{x,y\}=\{a,b\}$, the chain $a,b$ or $b,a$ works since $a\mathrel Rb$. ($\Rightarrow$) Let $x=a_0,\dots,a_k=y$ be a chain. Each step has $a_i\mathrel Ra_{i+1}$ or $a_{i+1}\mathrel Ra_i$, and the only related pair is $(a,b)$, so every step is between $a$ and $b$. If $k=0$ then $x=y$. If $k\ge1$ then $x,y\in\{a,b\}$, so $x=y$ or $\{x,y\}=\{a,b\}$.
+
+\sol{5.E.10} Reflexive: the chain $x$ alone ($k=0$) gives $x\sim_Rx$. Symmetric: reverse the chain ($a_k,\dots,a_0$); each step still satisfies ``$R$ in one direction or the other''. Transitive: concatenate a chain from $x$ to $y$ with a chain from $y$ to $z$.
+
+\sol{5.E.11} If $x\mathrel Ry$ then $x,y$ is a chain with $k=1$, so $x\sim_Ry$.
+
+\sol{5.E.12} Let $\approx$ be an equivalence relation with $x\mathrel Ry\Rightarrow x\approx y$, and let $x\sim_Ry$ via $x=a_0,\dots,a_k=y$. For each $i$, $a_i\mathrel Ra_{i+1}$ gives $a_i\approx a_{i+1}$, and $a_{i+1}\mathrel Ra_i$ gives $a_{i+1}\approx a_i$, hence $a_i\approx a_{i+1}$ by symmetry. By transitivity along the chain (Proposition 5.1.42) $a_0\approx a_k$, i.e.\ $x\approx y$; for $k=0$ use reflexivity.
+
+\sol{5.E.13} By 5.E.11, $x\mathrel Ry\Rightarrow x\sim_Ry$. By 5.E.12 applied with $\approx=R$ (an equivalence relation containing $R$ trivially), $x\sim_Ry\Rightarrow x\mathrel Ry$. Same domain, same pairs: $\sim_R=R$ (Axiom 5.1.4).
+
+\sol{5.E.14} (a) $\sim$ is $\sim_D$ for the function $D:C^1(\R)\to$ (functions $\R\to\R$), $D(F)=F'$, so it is an equivalence relation by Exercise 5.2.4. (b) $G\in[F]_\sim$ iff $G'=F'$ iff $(G-F)'=0$ iff $G-F$ is a constant function $c$ (a function on $\R$ with zero derivative is constant), i.e.\ $G(x)=F(x)+c$ for all $x$. (c) $\int f(x)\,dx$ ``$=F(x)+c$'' is a description of the whole equivalence class $[F]_\sim$ of one antiderivative $F$: the indefinite integral is the $\sim$-class of antiderivatives, and ``$+c$'' is exactly the content of (b).
+
+\sol{5.E.15} False: $\le$ on $\R$ is reflexive but $0\le1$ and $1\not\le0$.
+
+\sol{5.E.16} True: by Exercise 5.1.35 a reflexive, symmetric, antisymmetric relation on $\N$ is the equality relation, so there is exactly one.
+
+\sol{5.E.17} False: on $\{0,1,2\}$ the relation with graph $\{(0,1),(1,0),(1,2)\}$ is not symmetric ($1\mathrel R2$ but not $2\mathrel R1$) and not antisymmetric ($0\mathrel R1$, $1\mathrel R0$, $0\ne1$).
+
+\sol{5.E.19} True: $\varnothing\subseteq\N\times\N$, so by Theorem 5.1.14 it is the graph of a unique relation on $\N$, the empty relation $\varnothing_{\N,\N}$.
+
+\sol{5.E.20} True: $\mathrm{Gr}(f)\subseteq X\times X$, so it is the graph of a relation on $X$ by Theorem 5.1.14 (namely $R_f$, Exercise 5.1.11).
+
+\sol{5.E.21} False: for $X=\{0\}$ the empty relation has graph $\varnothing$, but the graph of a function $\{0\}\to\{0\}$ must contain a pair $(0,y)$ (Theorem 3.1.9). (The discrete relation on $\{0,1\}$ is another counterexample: $(0,0)$ and $(0,1)$ both in the graph.)

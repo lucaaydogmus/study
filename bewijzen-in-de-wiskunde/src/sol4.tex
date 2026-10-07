@@ -1,0 +1,38 @@
+\hsection{Chapter 4}
+\sol{4.1.9} Define $m^0=1$ and $m^{n+1}=m^n\cdot m$ for all $n\in\N$. Then $2^2=2^{1+1}=2^1\cdot2=(2^0\cdot2)\cdot2=(1\cdot2)\cdot2$. Now $1\cdot2=1\cdot(1+1)=(1\cdot1)+1$ and $1\cdot1=1\cdot(0+1)=(1\cdot0)+1=0+1=1$ (using $0+1=0+s(0)=s(0+0)=s(0)=1$), so $1\cdot2=1+1=2$. Hence $2^2=2\cdot2=4$ by Proposition 4.1.8.
+
+\sol{4.1.16} Each entry is the sum of the two above it: $1\ 6\ 15\ 20\ 15\ 6\ 1$ and $1\ 7\ 21\ 35\ 35\ 21\ 7\ 1$.
+
+\sol{4.2.12} Elements of $\prod_{k\in[n+1]}X_k$ are $(n+1)$-tuples $(a_0,\dots,a_n)$ with $a_k\in X_k$; elements of $\big(\prod_{k\in[n]}X_k\big)\times X_n$ are pairs $((a_0,\dots,a_{n-1}),a_n)$ with the same conditions (Definition 2.2.49). Define $\varphi(a_0,\dots,a_n)=((a_0,\dots,a_{n-1}),a_n)$ and $\psi((a_0,\dots,a_{n-1}),a_n)=(a_0,\dots,a_n)$; both are well-defined, and $\psi\circ\varphi$ and $\varphi\circ\psi$ are identities by the equality rule for tuples (Definition 2.2.46), so $\varphi$ is a bijection (Strategy 3.2.41). The book asks for induction on $n$: the base case $n=0$ is $X_0\to\{()\}\times X_0$, $x\mapsto((),x)$, and the induction step is the same re-bracketing one coordinate further; the induction is what makes the ``$\dots$'' in the tuples precise.
+
+\sol{4.2.14} For $n\ge1$; $p(n)$: $\sum_{i=0}^n(-1)^i\binom ni=0$. \emph{Base case:} $\binom10-\binom11=1-1=0$. \emph{Step:} let $n\ge1$ and suppose $p(n)$. Using $\binom{n+1}0=1$ and $\binom{n+1}i=\binom n{i-1}+\binom ni$ for $i\ge1$ (Definition 4.1.15):
+\[
+\sum_{i=0}^{n+1}(-1)^i\binom{n+1}i=1+\sum_{i=1}^{n+1}(-1)^i\binom n{i-1}+\sum_{i=1}^{n+1}(-1)^i\binom ni
+=1-\sum_{j=0}^n(-1)^j\binom nj+\Big(\sum_{i=0}^{n+1}(-1)^i\binom ni-1\Big).
+\]
+The first sum is $0$ by $p(n)$; the last sum is $\sum_{i=0}^n(-1)^i\binom ni+(-1)^{n+1}\binom n{n+1}=0+0$. Total: $1-0+(0-1)=0$. The result follows by induction.
+
+\sol{4.3.22} Suppose $\sqrt n$ is not an integer but is rational, say $\sqrt n=\frac ab$ with $a,b\in\N$, $b\ge1$. Let $m=\lfloor\sqrt n\rfloor$, so $0<\sqrt n-m<1$. Let $X=\{b\in\N\mid b\ge1,\ b\sqrt n\in\Z\}$; $X$ is non-empty since $b\sqrt n=a\in\Z$. Let $b\in X$ and put $b'=b(\sqrt n-m)=b\sqrt n-bm\in\Z$. Then $0<b'<b$, so $b'\in\N$ and $b'\ge1$; and $b'\sqrt n=bn-m\,b\sqrt n\in\Z$. So $b'\in X$ with $b'<b$: $X$ has infinite descent, contradicting the well-ordering principle (Strategy 4.3.19). Hence $\sqrt n$ is irrational. (The hint's expression $\sqrt n=\frac{a(\sqrt n-m)}{b(\sqrt n-m)}=\frac{bn-ma}{b'}$ exhibits the smaller denominator.)
+
+\sol{4.E.1} $1+3=1+s(2)=s(1+2)=s(1+s(1))=s(s(1+1))=s(s(1+s(0)))=s(s(s(1+0)))=s(s(s(1)))=s(s(2))=s(3)=4$.
+
+\sol{4.E.2} $0+5=s(0+4)=s(s(0+3))=s(s(s(0+2)))=s(s(s(s(0+1))))=s(s(s(s(s(0+0)))))=s(s(s(s(s(0)))))=5$, using $0+s(n)=s(0+n)$ five times and $0+0=0$.
+
+\sol{4.E.3} $2\cdot3=2\cdot(2+1)=(2\cdot2)+2=4+2$ (Proposition 4.1.8) $=4+s(1)=s(4+1)=s(4+s(0))=s(s(4+0))=s(s(4))=s(5)=6$.
+
+\sol{4.E.4} $0\cdot5=0\cdot(4+1)=(0\cdot4)+0=0\cdot4$, since $m+0=m$. Repeating, $0\cdot4=0\cdot3=0\cdot2=0\cdot1=(0\cdot0)+0=0\cdot0=0$.
+
+\sol{4.E.5} With $m^{n+1}=m^n\cdot m$: $2^3=2^2\cdot2=4\cdot2$ (Exercise 4.1.9) $=4\cdot(1+1)=(4\cdot1)+4=((4\cdot0)+4)+4=(0+4)+4=4+4$ (as $0+4=4$, computed like 4.E.2) $=4+s(3)=s(4+3)=s(s(4+2))=s(s(s(4+1)))=s(s(s(s(4+0))))=s(s(s(s(4))))=8$.
+
+\sol{4.E.6} $\exists^{=0}x\in X,\ p(x)$ means $\neg\exists x\in X,\ p(x)$. Given $\exists^{=n}$, define $\exists^{=n+1}x\in X,\ p(x)$ to mean $\exists a\in X,\ \big(p(a)\wedge\exists^{=n}x\in X,\ (p(x)\wedge x\ne a)\big)$: some $a$ satisfies $p$, and exactly $n$ elements other than $a$ do.
+
+\sol{4.E.7} $\binom42=\binom31+\binom32$. $\binom31=\binom20+\binom21=1+\big(\binom10+\binom11\big)=1+\big(1+\big(\binom00+\binom01\big)\big)=1+(1+(1+0))=3$. $\binom32=\binom21+\binom22=2+\big(\binom11+\binom12\big)=2+\big(1+\big(\binom01+\binom02\big)\big)=2+(1+0)=3$. So $\binom42=6$.
+
+\sol{4.E.8} The number of trailing zeros in base $b$ is the largest $r$ with $b^r\mid n$. (a) $10^r\mid41!$ iff $2^r\mid41!$ and $5^r\mid41!$. The factor $5$ occurs in $5,10,\dots,40$ (eight multiples) and once more in $25$: exponent $9$. The exponent of $2$ is larger (below), so $41!$ has $9$ trailing decimal zeros. (b) The exponent of $2$ in $41!$: $20$ multiples of $2$, $10$ of $4$, $5$ of $8$, $2$ of $16$, $1$ of $32$: $20+10+5+2+1=38$. So $41!$ has $38$ trailing zeros in binary.
+
+\sol{4.E.9} ($\Rightarrow$) If $(N,z,s)$ satisfies Peano's axioms, apply the recursion theorem (4.1.2) with $h(n,x)=f(x)$: there is a unique $h:N\to X$ with $h(z)=a$ and $h(s(n))=f(h(n))$, i.e.\ $f\circ h=h\circ s$. ($\Leftarrow$) Assume the universal property. \emph{(iii)} Let $A\subseteq N$ with $z\in A$ and $s[A]\subseteq A$. Apply the property to $X=A$, $a=z$, $f=s|_A:A\to A$: get $h:N\to A$ with $h(z)=z$ and $s(h(n))=h(s(n))$. Composing with the inclusion $A\to N$ gives $h':N\to N$ with $h'(z)=z$, $s\circ h'=h'\circ s$; but $\id_N$ has the same properties, so $h'=\id_N$ by uniqueness (property with $X=N$, $a=z$, $f=s$). Hence $n=h(n)\in A$ for all $n$: $N\subseteq A$. \emph{(i)} Apply the property to $X=\{0,1\}$, $a=0$, $f$ the constant function $1$: $h(z)=0$ and $h(s(n))=1$ for all $n$. If $z=s(n)$ then $0=h(z)=h(s(n))=1$, contradiction. \emph{(ii)} Apply the property to $X=N\times N$, $a=(z,z)$, $f(x,y)=(y,s(y))$: get $h$ with $h(z)=(z,z)$, $h(s(n))=f(h(n))$. Writing $h(n)=(g(n),t(n))$: $t(z)=z$ and $t(s(n))=s(t(n))$, so $t=\id_N$ by uniqueness; then $h(s(n))=f(g(n),n)=(n,s(n))$ gives $g(s(n))=n$. So if $s(m)=s(n)$ then $m=g(s(m))=g(s(n))=n$.
+
+\sol{4.E.22} Induction on $n$. \emph{Base:} $(\cos\theta+i\sin\theta)^0=1=\cos0+i\sin0$. \emph{Step:} if the formula holds for $n$ then
+$(\cos\theta+i\sin\theta)^{n+1}=(\cos n\theta+i\sin n\theta)(\cos\theta+i\sin\theta)=(\cos n\theta\cos\theta-\sin n\theta\sin\theta)+i(\sin n\theta\cos\theta+\cos n\theta\sin\theta)=\cos((n+1)\theta)+i\sin((n+1)\theta)$ by the angle addition formulae.
+
+\sol{4.E.23} Write $I_n=\int_0^{\pi/2}\sin^nx\,dx$. (a) Integrate by parts with $u=\sin^{n+1}x$, $dv=\sin x\,dx$: $I_{n+2}=\big[-\sin^{n+1}x\cos x\big]_0^{\pi/2}+(n+1)\int_0^{\pi/2}\sin^nx\cos^2x\,dx=0+(n+1)(I_n-I_{n+2})$, so $(n+2)I_{n+2}=(n+1)I_n$. (b) Induction: $I_0=\frac\pi2=\frac{\pi}{2^1}\binom00$. Step: $I_{2n+2}=\frac{2n+1}{2n+2}I_{2n}=\frac{2n+1}{2(n+1)}\cdot\frac{\pi}{2^{2n+1}}\binom{2n}n$, and $\binom{2n+2}{n+1}=\frac{(2n+2)(2n+1)}{(n+1)^2}\binom{2n}n=\frac{2(2n+1)}{n+1}\binom{2n}n$ (Theorem 4.2.15), so $\frac{\pi}{2^{2n+3}}\binom{2n+2}{n+1}=\frac{\pi(2n+1)}{2^{2n+2}(n+1)}\binom{2n}n=I_{2n+2}$. (c) $I_1=1$ and $I_{2n+3}=\frac{2n+2}{2n+3}I_{2n+1}$; by induction $I_{2n+1}=\dfrac{2^{2n}(n!)^2}{(2n+1)!}$ (base $n=0$: $1$; step: $\frac{2n+2}{2n+3}\cdot\frac{2^{2n}(n!)^2}{(2n+1)!}=\frac{2^{2n+1}(n+1)(n!)^2}{(2n+3)(2n+1)!}=\frac{2^{2n+2}((n+1)!)^2}{(2n+3)!}$, using $(2n+3)!=(2n+3)(2n+2)(2n+1)!$).

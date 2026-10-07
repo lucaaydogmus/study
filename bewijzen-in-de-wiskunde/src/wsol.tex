@@ -1,6 +1,6 @@
 \renewcommand{\chapterprefix}{Appendix}\renewcommand{\thechapter}{S}
 \chapter{Solutions to the NOW YOU exercises}
-\chaptercontents{A & Chapter 0 \\ B & Chapter 1 \\ C & Chapter 2}{Every book exercise in the covered pages that is not worked in the main text is solved here, in the order of the book. Compare line by line: did you introduce every variable, unfold every definition, and name the strategy?}
+\chaptercontents{A & Chapter 0 \\ B & Chapter 1 \\ C & Chapter 2 \\ D & Chapter 3 \\ E & Chapter 4 \\ F & Chapter 5}{Every book exercise in Chapters 0--5 that is not worked in the main text is solved here, in the order of the book. Compare line by line: did you introduce every variable, unfold every definition, and name the strategy?}
 
 \hsection{Chapter 0}
 \sol{0.2} (a) $2+2=4$. (b) $2+2=5$. (c) ``There are infinitely many pairs of primes that differ by $2$'' (the twin prime conjecture; nobody knows its truth value). Any proposition whose truth value is unknown is fine, e.g.\ $\pi^\pi\in\Q$ (Exercise 0.21(f)).
@@ -182,3 +182,8 @@ Repeated division of $7\,159\,047\,702\,620\,056\,984$ by $64$ gives the remaind
 \sol{2.2.42} (a) $A=\R\setminus\Z$. (b) $A=\bigcup_{n\in\Z}(n,n+1)$: a non-integer real $x$ lies in $(\lfloor x\rfloor,\lfloor x\rfloor+1)$, and every element of some $(n,n+1)$ is a real number strictly between consecutive integers, hence not an integer.
 
 \sol{2.2.43} For any $a$: $a\in X\setminus(X\setminus A)\Leftrightarrow a\in X\wedge\neg(a\in X\wedge a\notin A)\Leftrightarrow a\in X\wedge(a\notin X\vee a\in A)$ \reason{de Morgan} $\Leftrightarrow(a\in X\wedge a\notin X)\vee(a\in X\wedge a\in A)$ \reason{distributivity, Example 1.3.3} $\Leftrightarrow a\in X\wedge a\in A$ \reason{the first disjunct is a contradiction} $\Leftrightarrow a\in X\cap A$. \emph{Deduction:} by Proposition 2.2.8 (with $A$ in the role of $X$ and $X$ in the role of $Y$), $A\subseteq X$ iff $A\cap X=A$, i.e.\ iff $X\cap A=A$, i.e.\ iff $X\setminus(X\setminus A)=A$.
+
+\input{sol2b}
+\input{sol3}
+\input{sol4}
+\input{sol5}

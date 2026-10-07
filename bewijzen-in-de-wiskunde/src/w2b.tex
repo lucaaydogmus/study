@@ -1,0 +1,191 @@
+\hsection{Tuples and cartesian products}
+
+\begin{key}[{Definition 2.2.46 \textperiodcentered\ ordered lists (tuples)}]
+A (finite) \term{ordered list} is an expression $(x_0,x_1,\dots,x_{k-1})$ with $k\in\N$; $k$ is its \term{length} and $i\in[k]$ is the \term{position} of $x_i$. Two lists are equal exactly when they have the same length and the same objects in all positions:
+\[
+(x_0,\dots,x_{k-1})=(y_0,\dots,y_{\ell-1})\ \Leftrightarrow\ k=\ell\ \text{and}\ x_i=y_i\ \text{for all } i\in[k].
+\]
+A list of length $k$ is a \term{$k$-tuple}; $()$ is the empty list; the 1-tuple $(x)$ is identified with $x$; 2-, 3-, 4-tuples are \term{ordered pairs, triples, quadruples}. Example 2.2.47: $(1,2,3)\ne(1,2,3,3,3)$ (different lengths) and $(1,2,3)\ne(3,2,1)$ (different objects in position $0$), although $\{1,2,3\}=\{3,2,1\}=\{1,2,3,3,3\}$.
+\end{key}
+
+\begin{bookex}{2.2.48}
+Write down all ordered lists that have all of the elements of $\{1,2,3\}$ as terms and have no repeated terms.
+\solution
+Such a list has length $3$ (three distinct terms, each of $1,2,3$ appearing). Choosing the term in position $0$, then position $1$, leaves the last term forced:
+\[
+(1,2,3),\ (1,3,2),\ (2,1,3),\ (2,3,1),\ (3,1,2),\ (3,2,1).
+\]
+These six lists are pairwise different by the equality rule of Definition 2.2.46 (they differ in some position).\qed
+\end{bookex}
+
+\begin{key}[{Definition 2.2.49 and Notation 2.2.54 \textperiodcentered\ cartesian product, $A^k$}]
+For $k\in\N$ and sets $A_0,\dots,A_{k-1}$,
+\[
+\prod_{i\in[k]}A_i=A_0\times A_1\times\dots\times A_{k-1}=\{(x_0,x_1,\dots,x_{k-1})\mid x_i\in A_i\text{ for all }i\in[k]\}.
+\]
+So $(x,y)\in X\times Y$ means exactly $x\in X$ and $y\in Y$. The \term{$k$-fold product} is $A^k=A\times\dots\times A$ ($k$ times), the set of all $k$-tuples of elements of $A$; $A^0=\{()\}$ and $A^1=A$. Example 2.2.50: $\R\times\R=\{(x,y)\mid x,y\in\R\}$ is the plane, $\R\times\{0\}$ is the $x$-axis, and the graph of $y=x^2$ is $\{(x,x^2)\mid x\in\R\}\subseteq\R\times\R$.
+\end{key}
+
+\begin{bookex}[essential]{2.2.51}
+Write down the elements of the set $\{1,2\}\times\{3,4,5\}$.
+\solution
+By Definition 2.2.49 the elements are the ordered pairs $(x,y)$ with $x\in\{1,2\}$ and $y\in\{3,4,5\}$:
+\[
+\{1,2\}\times\{3,4,5\}=\{(1,3),(1,4),(1,5),(2,3),(2,4),(2,5)\}.
+\]
+(Two choices for the first term, three for the second: $2\cdot3=6$ pairs.)\qed
+\end{bookex}
+
+\begin{bookex}{2.2.52}
+Let $X$ be a set. Prove that $X\times\varnothing=\varnothing$.
+\solution
+By Strategy 2.1.20 we prove that $X\times\varnothing$ has no elements. Suppose $t\in X\times\varnothing$. Then $t=(x,y)$ with $x\in X$ and $y\in\varnothing$ \reason{Definition 2.2.49}. But $\varnothing$ has no elements, so $y\in\varnothing$ is a contradiction. Hence $X\times\varnothing$ is empty, and by Theorem 2.1.25 it equals $\varnothing$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.2.53}
+Let $X$ and $Y$ be sets. Under what conditions is it true that $X\times Y=Y\times X$?
+\solution
+\textbf{Claim.} $X\times Y=Y\times X$ if and only if $X=Y$ or $X=\varnothing$ or $Y=\varnothing$.\\
+($\Leftarrow$) If $X=Y$ the two sets are literally the same. If $X=\varnothing$ then $X\times Y=\varnothing\times Y=\varnothing$ (as in Exercise 2.2.52: a pair in it would have a first term in $\varnothing$) and $Y\times X=Y\times\varnothing=\varnothing$ by Exercise 2.2.52, so both sides equal $\varnothing$. The case $Y=\varnothing$ is the same.\\
+($\Rightarrow$) Suppose $X\times Y=Y\times X$, and suppose moreover that $X\ne\varnothing$ and $Y\ne\varnothing$; we prove $X=Y$ by double containment. Let $x\in X$. Since $Y$ is non-empty, fix some $y\in Y$. Then $(x,y)\in X\times Y=Y\times X$, so $x\in Y$ \reason{first term of an element of $Y\times X$}. Hence $X\subseteq Y$. Symmetrically, let $y\in Y$ and fix $x\in X$; then $(y,x)\in Y\times X=X\times Y$, so $y\in X$. Hence $Y\subseteq X$, and $X=Y$.\qed
+\end{bookex}
+
+\begin{trybox}[{2.2.55 \fO}]
+\textbf{2.2.55} Are $\R^3$, $\R^2\times\R$, $\R\times\R^2$, $\R\times\R\times\R$, $(\R\times\R)\times\R$, $\R\times(\R\times\R)$ all equal? Which pairs are equal, and in what other sense are they all equivalent? \hint{write down a typical element of each: is it a triple, or a pair one of whose terms is a pair?}
+\end{trybox}
+
+\hsection{Chapter 2 exercises}
+
+\hsub{Sets, subsets and power sets (2.E.1--2.E.7)}
+\begin{strategy}[{What the chapter exercises test}]
+Everything in 2.E is done with four moves from \S2.1--\S2.2: \textbf{(1)} unfold membership (``$a\in X\setminus V$ means $a\in X$ and $a\notin V$''); \textbf{(2)} prove $\subseteq$ by ``let $a\in\dots$'' (Strategy 2.1.7) and $=$ by double containment (Strategy 2.1.15); \textbf{(3)} prove a set is empty by assuming it has an element and deriving a contradiction (Strategy 2.1.20); \textbf{(4)} to refute a general claim, give a concrete counterexample, usually built from $\varnothing$, $\{0\}$, $\{1\}$, $\{0,1\}$. Remember $\PS(X)=\{U\mid U\subseteq X\}$, so $U\in\PS(X)\Leftrightarrow U\subseteq X$ (Definition 2.1.29), and $\varnothing\subseteq X$ always (Exercise 2.1.27).
+\end{strategy}
+
+\begin{bookex}[recommended]{2.E.4}
+Let $X$ be a set and let $U,V\subseteq X$. Prove that $U$ and $V$ are disjoint if and only if $U\subseteq X\setminus V$.
+\solution
+($\Rightarrow$) Suppose $U\cap V=\varnothing$. Let $a\in U$. Then $a\in X$ since $U\subseteq X$. If $a\in V$ we would have $a\in U\cap V=\varnothing$, a contradiction; so $a\notin V$. Hence $a\in X\setminus V$ \reason{Definition 2.2.38}, and $U\subseteq X\setminus V$.\\
+($\Leftarrow$) Suppose $U\subseteq X\setminus V$. Suppose towards a contradiction that $a\in U\cap V$. Then $a\in U$, so $a\in X\setminus V$, so $a\notin V$; but also $a\in V$. Contradiction. So $U\cap V$ is empty: $U$ and $V$ are disjoint.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.E.5}
+For each statement, determine whether it is true for all sets $A$ and $X$, and prove your claim.\\
+(a) If $X\setminus A=\varnothing$ then $X=A$.\quad (b) If $X\setminus A=X$ then $A=\varnothing$.\quad (c) If $X\setminus A=A$ then $A=\varnothing$.\quad (d) $X\setminus(X\setminus A)=A$.
+\solution
+\emph{(a) False.} Take $X=\varnothing$ and $A=\{0\}$. Then $X\setminus A=\varnothing$ but $X\ne A$. (In general $X\setminus A=\varnothing$ says only that $X\subseteq A$.)\\
+\emph{(b) False.} Take $X=\varnothing$ and $A=\{0\}$. Then $X\setminus A=\varnothing=X$ but $A\ne\varnothing$. (In general $X\setminus A=X$ says only that $X$ and $A$ are disjoint.)\\
+\emph{(c) True.} Suppose $X\setminus A=A$ and suppose towards a contradiction that $a\in A$. Then $a\in X\setminus A$, so $a\notin A$. Contradiction. Hence $A$ is empty.\\
+\emph{(d) False.} Take $X=\varnothing$ and $A=\{0\}$: $X\setminus(X\setminus A)=\varnothing\setminus\varnothing=\varnothing\ne A$. (By Exercise 2.2.43, $X\setminus(X\setminus A)=X\cap A$, which equals $A$ exactly when $A\subseteq X$.)\qed
+\end{bookex}
+
+\begin{bookex}[essential]{2.E.6}
+For each statement, determine whether it is true for all sets $X,Y$, false for all sets $X,Y$, or true for some and false for others.\\
+(a) $\PS(X\cup Y)=\PS(X)\cup\PS(Y)$\quad (b) $\PS(X\cap Y)=\PS(X)\cap\PS(Y)$\quad (c) $\PS(X\times Y)=\PS(X)\times\PS(Y)$\quad (d) $\PS(X\setminus Y)=\PS(X)\setminus\PS(Y)$
+\solution
+\emph{(a) Sometimes.} True for $X=Y=\varnothing$: both sides are $\PS(\varnothing)=\{\varnothing\}$. False for $X=\{0\}$, $Y=\{1\}$: $\{0,1\}\in\PS(X\cup Y)$, but $\{0,1\}\nsubseteq X$ and $\{0,1\}\nsubseteq Y$, so $\{0,1\}\notin\PS(X)\cup\PS(Y)$. (The inclusion $\supseteq$ always holds: a subset of $X$ or of $Y$ is a subset of $X\cup Y$.)\\
+\emph{(b) Always.} For any $U$: $U\in\PS(X\cap Y)\Leftrightarrow U\subseteq X\cap Y\Leftrightarrow(U\subseteq X\wedge U\subseteq Y)\Leftrightarrow U\in\PS(X)\wedge U\in\PS(Y)\Leftrightarrow U\in\PS(X)\cap\PS(Y)$. The middle step: if $U\subseteq X\cap Y$ then each $a\in U$ lies in $X\cap Y$, hence in $X$ and in $Y$; conversely if $U\subseteq X$ and $U\subseteq Y$ then each $a\in U$ lies in $X$ and in $Y$, hence in $X\cap Y$.\\
+\emph{(c) Never.} The elements of $\PS(X\times Y)$ are \emph{sets} (subsets of $X\times Y$), whereas the elements of $\PS(X)\times\PS(Y)$ are \emph{ordered pairs} $(U,V)$. In particular $\varnothing\in\PS(X\times Y)$ (Exercise 2.1.27), but $\varnothing$ is not an ordered pair, so $\varnothing\notin\PS(X)\times\PS(Y)$. Hence the two sets are never equal.\\
+\emph{(d) Never.} $\varnothing\in\PS(X\setminus Y)$ always. But $\varnothing\in\PS(Y)$, so $\varnothing\notin\PS(X)\setminus\PS(Y)$. Hence the sets are never equal.\qed
+\end{bookex}
+
+\begin{trybox}[{2.E.1, 2.E.2, 2.E.3, 2.E.7 \fO}]
+\textbf{2.E.1} Express: (a) $\{n\in\Z\mid n^2<20\}$ in list notation; (b) $\{4k+3\mid k\in\N\}$ in implied list notation; (c) the odd multiples of six in set-builder notation; (d) $\{1,2,5,10,17,\dots,n^2+1,\dots\}$ in set-builder notation.\quad
+\textbf{2.E.2} Find sets $X_n$ ($n\in\N$) with $X_{n+1}\subsetneq X_n$ for all $n$. Can any $X_n$ be empty?\quad
+\textbf{2.E.3} Express $\PS(\{\varnothing,\{\varnothing,\{\varnothing\}\}\})$ in list notation.\quad
+\textbf{2.E.7} $F$ is a set of sets with $\forall A\in F,\ \forall x\in A,\ x\in F$. Prove $F\subseteq\PS(F)$.
+\end{trybox}
+
+\hsub{Symmetric difference (2.E.8--2.E.14)}
+\begin{key}[{Definition 2.E.8 \textperiodcentered\ symmetric difference}]
+$X\symdiff Y=\{a\mid a\in X\text{ or }a\in Y\text{ but not both}\}$. In the dictionary of page 92: $a\in X\symdiff Y$ is $(p\vee q)\wedge\neg(p\wedge q)$ where $p$: $a\in X$, $q$: $a\in Y$. The book's hint for 2.E.13--14: rather than long chains of equations, use double containment with cases, or ``a cunning use of truth tables'' (a truth table in $p,q,r$ decides any identity built from $\cap,\cup,\setminus,\symdiff$).
+\end{key}
+
+\begin{bookex}{2.E.9}
+Prove that $X\symdiff Y=(X\setminus Y)\cup(Y\setminus X)=(X\cup Y)\setminus(X\cap Y)$ for all sets $X$ and $Y$.
+\solution
+Let $a$ be arbitrary and write $p$ for $a\in X$ and $q$ for $a\in Y$. Then $a\in X\symdiff Y$ is $(p\vee q)\wedge\neg(p\wedge q)$; $a\in(X\setminus Y)\cup(Y\setminus X)$ is $(p\wedge\neg q)\vee(q\wedge\neg p)$; and $a\in(X\cup Y)\setminus(X\cap Y)$ is $(p\vee q)\wedge\neg(p\wedge q)$, literally the same formula as the first. For the middle one:
+\[
+\begin{array}{cc|c|c}
+p&q&(p\vee q)\wedge\neg(p\wedge q)&(p\wedge\neg q)\vee(q\wedge\neg p)\\\hline
+\checkmark&\checkmark&\times&\times\\
+\checkmark&\times&\checkmark&\checkmark\\
+\times&\checkmark&\checkmark&\checkmark\\
+\times&\times&\times&\times
+\end{array}
+\]
+The columns agree, so the three membership conditions are equivalent for every $a$; by set extensionality (Axiom 2.1.14) the three sets are equal.\qed
+\end{bookex}
+
+\begin{trybox}[{2.E.10--2.E.14 \fO}]
+\textbf{2.E.10} $X\symdiff X=\varnothing$ and $X\symdiff\varnothing=X$.\quad \textbf{2.E.11} $X=Y\Leftrightarrow X\symdiff Y=\varnothing$.\quad \textbf{2.E.12} $X,Y$ disjoint $\Leftrightarrow X\symdiff Y=X\cup Y$.\quad \textbf{2.E.13} $X\symdiff(Y\symdiff Z)=(X\symdiff Y)\symdiff Z$.\quad \textbf{2.E.14} $X\cap(Y\symdiff Z)=(X\cap Y)\symdiff(X\cap Z)$.
+\end{trybox}
+
+\hsub{Open subsets of $\R$ (2.E.15--2.E.20)}
+\begin{key}[{Definition 2.E.15 \textperiodcentered\ open set}]
+$U\subseteq\R$ is \term{open} if for all $a\in U$ there exists $\delta>0$ such that $(a-\delta,a+\delta)\subseteq U$. \textbf{To prove $U$ open:} ``Let $a\in U$. Put $\delta=\dots$ \reason{in terms of $a$}; then $\delta>0$, and if $a-\delta<x<a+\delta$ then \dots\ so $x\in U$.'' \textbf{To prove $U$ not open:} negate ($\exists a\in U,\ \forall\delta>0,\ (a-\delta,a+\delta)\nsubseteq U$): ``Take $a=\dots\in U$. Let $\delta>0$. Then $x=\dots\in(a-\delta,a+\delta)$ but $x\notin U$.''
+\end{key}
+
+\begin{bookex}[recommended]{2.E.16}
+For each subset of $\R$, determine (with proof) whether it is open: (a) $\varnothing$; (b) $(0,1)$; (c) $(0,1]$; (d) $\Z$; (e) $\R\setminus\Z$; (f) $\Q$.
+\solution
+\emph{(a) Open.} The condition ``for all $a\in\varnothing$, \dots'' is vacuously true (Exercise 2.1.24).\\
+\emph{(b) Open.} Let $a\in(0,1)$ and put $\delta=\min(a,1-a)$; then $\delta>0$ since $0<a<1$. If $x\in(a-\delta,a+\delta)$ then $x>a-\delta\ge a-a=0$ and $x<a+\delta\le a+(1-a)=1$, so $x\in(0,1)$. Hence $(a-\delta,a+\delta)\subseteq(0,1)$.\\
+\emph{(c) Not open.} Take $a=1\in(0,1]$ and let $\delta>0$. Then $x=1+\frac\delta2$ satisfies $1-\delta<x<1+\delta$, but $x>1$, so $x\notin(0,1]$. Hence no $\delta$ works for $a=1$.\\
+\emph{(d) Not open.} Take $a=0\in\Z$ and let $\delta>0$. Put $x=\frac12\min(\delta,1)$. Then $0<x<\delta$, so $x\in(-\delta,\delta)$, and $0<x\le\frac12$, so $x$ is not an integer.\\
+\emph{(e) Open.} Let $a\in\R\setminus\Z$ and let $n=\lfloor a\rfloor$, the greatest integer $\le a$; since $a\notin\Z$ we have $n<a<n+1$. Put $\delta=\min(a-n,\ n+1-a)>0$. If $x\in(a-\delta,a+\delta)$ then $n\le a-\delta<x<a+\delta\le n+1$, so $x$ lies strictly between the consecutive integers $n$ and $n+1$ and is not an integer: $x\in\R\setminus\Z$.\\
+\emph{(f) Not open.} Take $a=0\in\Q$ and let $\delta>0$. Choose $n\in\N$ with $n>\sqrt2/\delta$ (the natural numbers are unbounded in $\R$) and put $x=\sqrt2/n$. Then $0<x<\delta$, so $x\in(-\delta,\delta)$; but $x\notin\Q$, for if $\sqrt2/n=r\in\Q$ then $\sqrt2=nr\in\Q$, contradicting Assumption 0.49.\qed
+\end{bookex}
+
+\begin{bookex}[bonus]{2.E.18}
+(a) Let $n\ge1$ and let $U_1,\dots,U_n$ be open subsets of $\R$. Prove that $U_1\cap\dots\cap U_n$ is open. (b) Prove that $(0,1+\frac1n)$ is open for all $n\ge1$, but that $\bigcap_{n\ge1}(0,1+\frac1n)$ is not open.
+\solution
+\emph{(a)} Let $a\in U_1\cap\dots\cap U_n$. For each $i$ we have $a\in U_i$, and $U_i$ is open, so there is $\delta_i>0$ with $(a-\delta_i,a+\delta_i)\subseteq U_i$. Put $\delta=\min(\delta_1,\dots,\delta_n)$; then $\delta>0$ (a minimum of finitely many positive numbers). If $x\in(a-\delta,a+\delta)$ then, for each $i$, $a-\delta_i\le a-\delta<x<a+\delta\le a+\delta_i$, so $x\in U_i$. Hence $x\in U_1\cap\dots\cap U_n$, and $(a-\delta,a+\delta)\subseteq U_1\cap\dots\cap U_n$.\\
+\emph{(b)} Fix $n\ge1$. Let $a\in(0,1+\frac1n)$ and put $\delta=\min(a,\ 1+\frac1n-a)>0$. If $a-\delta<x<a+\delta$ then $x>0$ and $x<1+\frac1n$, so $(a-\delta,a+\delta)\subseteq(0,1+\frac1n)$: the interval is open.\\
+Now $\bigcap_{n\ge1}(0,1+\frac1n)=(0,1]$. ($\supseteq$) If $0<x\le1$ then $0<x<1+\frac1n$ for every $n\ge1$. ($\subseteq$) Let $x$ be in every $(0,1+\frac1n)$; then $x>0$. If $x>1$, choose $n\ge1$ with $n>\frac1{x-1}$; then $\frac1n<x-1$, i.e.\ $1+\frac1n<x$, so $x\notin(0,1+\frac1n)$, a contradiction. Hence $x\le1$. Finally $(0,1]$ is not open by Exercise 2.E.16(c). So an intersection of infinitely many open sets need not be open: the proof of (a) breaks down because infinitely many $\delta_i$ need not have a positive minimum.\qed
+\end{bookex}
+
+\begin{trybox}[{2.E.17, 2.E.19, 2.E.20 \fO}]
+\textbf{2.E.17} $U$ is open iff for all $a\in U$ there are $u<a<v$ with $(u,v)\subseteq U$.\quad \textbf{2.E.19} $U$ is open iff $U=\bigcup_{i\in I}(a_i,b_i)$ for some family of open intervals.\quad \textbf{2.E.20} Families $\{A_i\}$, $\{B_j\}$ with (i) $\forall i\,\exists j\ge i,\ B_j\subseteq A_i$ and (ii) $\forall j\,\exists i\ge j,\ A_i\subseteq B_j$: prove $\bigcap_iA_i=\bigcap_jB_j$.
+\end{trybox}
+
+\hsub{True--false and always--sometimes--never (2.E.21--2.E.42)}
+\begin{strategy}[{How to answer these}]
+\textbf{True/false:} decide, then prove the statement or exhibit a counterexample. \textbf{Always:} prove the conclusion from the hypotheses for arbitrary $X,Y,\dots$. \textbf{Never:} prove the \emph{negation} of the conclusion from the hypotheses. \textbf{Sometimes:} give one concrete example satisfying the hypotheses where the conclusion holds and one where it fails. Tiny sets ($\varnothing$, $\{0\}$, $\{1\}$, $\{0,1\}$, $\{\varnothing\}$) settle almost every ``sometimes''.
+\end{strategy}
+
+\begin{bookex}[recommended]{2.E.28}
+Let $a,b,c$ be arbitrary objects. Then $\{a,b\}=\{a,c\}$.
+\solution
+\emph{Sometimes.} If $b=c$ (for instance $a=b=c=0$) the two sets are the same set, so the conclusion holds. If $a=0$, $b=1$, $c=2$ then $1\in\{a,b\}$ but $1\notin\{a,c\}=\{0,2\}$, so $\{a,b\}\ne\{a,c\}$ by Axiom 2.1.14.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.E.32}
+Let $X$ and $Y$ be sets with $X\cap Y=\varnothing$. Then $\forall a,\ a\in X\Rightarrow a\notin Y$.
+\solution
+\emph{Always.} Let $a$ be arbitrary and suppose $a\in X$. If $a\in Y$, then $a\in X\cap Y=\varnothing$, which is impossible. Hence $a\notin Y$. (This is just the unfolding of ``$X\cap Y$ is empty''.)\qed
+\end{bookex}
+
+\begin{bookex}[essential]{2.E.33}
+Let $X$ and $Y$ be sets with $X\ne Y$. Then $\exists a,\ a\in X\wedge a\notin Y$.
+\solution
+\emph{Sometimes.} Take $X=\{0\}$ and $Y=\varnothing$: $X\ne Y$, and $a=0$ satisfies $a\in X$ and $a\notin Y$. Now take $X=\varnothing$ and $Y=\{0\}$: $X\ne Y$, but there is no $a$ with $a\in X$ at all, so the conclusion is false.\\
+\emph{Why:} $X\ne Y$ means, by Axiom 2.1.14, that $\neg\forall a,\ (a\in X\Leftrightarrow a\in Y)$, i.e.\ some $a$ lies in exactly one of $X$, $Y$: either $a\in X\setminus Y$ or $a\in Y\setminus X$. The hypothesis does not tell you which, so the one-sided conclusion can fail.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{2.E.38}
+Let $X$ and $Y$ be sets such that $\PS(X)=\PS(Y)$. Then $X=Y$.
+\solution
+\emph{Always.} Since $X\subseteq X$ we have $X\in\PS(X)=\PS(Y)$, so $X\subseteq Y$. Likewise $Y\in\PS(Y)=\PS(X)$, so $Y\subseteq X$. Hence $X=Y$ by double containment.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.E.41}
+Let $X$ and $Y$ be sets. Then $X\cup Y=X\cap Y$.
+\solution
+\emph{Sometimes.} For $X=Y$ it holds: $X\cup X=X=X\cap X$ (Exercise 2.2.26 with $X\subseteq X$, and Exercise 2.2.9). For $X=\{0\}$, $Y=\varnothing$ it fails: $X\cup Y=\{0\}\ne\varnothing=X\cap Y$.\\
+In fact $X\cup Y=X\cap Y$ if and only if $X=Y$: if $X\cup Y=X\cap Y$ and $a\in X$ then $a\in X\cup Y=X\cap Y$, so $a\in Y$; symmetrically $Y\subseteq X$.\qed
+\end{bookex}
+
+\begin{trybox}[{2.E.21--2.E.27, 2.E.29--2.E.31, 2.E.34--2.E.37, 2.E.39, 2.E.40, 2.E.42 \fO}]
+\textbf{True/false:} \textbf{2.E.21} $\neg\forall x,\ x\in E$ implies $E=\varnothing$.\ \textbf{2.E.22} $\forall x,\ \neg x\in E$ implies $E=\varnothing$.\ \textbf{2.E.23} $\{1,2,3\}=\{1,2,1,3,2,1\}$.\ \textbf{2.E.24} $\varnothing\in\varnothing$.\ \textbf{2.E.25} $\varnothing\in\{\varnothing\}$.\ \textbf{2.E.26} $\varnothing\in\{\{\varnothing\}\}$.\\
+\textbf{Always/sometimes/never:} \textbf{2.E.27} $\{a,b\}=\{b,a\}$.\ \textbf{2.E.29} some $a$ with $a\in X\Leftrightarrow a\in Y$; then $X=Y$.\ \textbf{2.E.30} some $a\in X$ with $a\notin Y$; then $X=Y$.\ \textbf{2.E.31} $X\ne Y$; then $\forall a,\ a\in X\Rightarrow a\notin Y$.\ \textbf{2.E.34} $X,Y$ sets of sets, $X\in Y$; then $X\subseteq Y$.\ \textbf{2.E.35} $\varnothing\in\PS(X)$.\ \textbf{2.E.36} $\{\varnothing\}\in\PS(X)$.\ \textbf{2.E.37} $\{\varnothing,X\}\subseteq\PS(X)$.\ \textbf{2.E.39} $X\setminus Y=\varnothing$; then $X=Y$.\ \textbf{2.E.40} $X\setminus Y=Z$ and $Y\subseteq Z$; then $X=Y\cup Z$.\ \textbf{2.E.42} $A\subseteq X$; then $A\in X$.
+\end{trybox}

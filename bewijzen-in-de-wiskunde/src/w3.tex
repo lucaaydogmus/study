@@ -1,0 +1,462 @@
+\chapter{Functions}
+\chaptercontents{A & Functions (\S3.1) \\ B & Injections and surjections (\S3.2) \\ C & Chapter 3 exercises (3.E)}%
+{\fE\ 3.1: 11, 15abc, 36\\ \fE\ 3.2: 5, 8, 12, 14, 20, 40, 47\\ \fE\ 3.E: 13, 17, 19, 24, 25, 34, 41, 48\\ \fR\ 3.1: 8, 16, 19, 33, 40, 41; bonus 21\\ \fR\ 3.2: 6, 16, 19, 25, 39ab, 45, 46\\ \fR\ 3.E: 2, 35, 37, 38, 47; later 25e, 26b; bonus 26cd\\ Tested in \textbf{Quiz 2} (7 Oct).}
+
+\hsection{Functions}
+
+\begin{key}[{Definition 3.1.1 \textperiodcentered\ function, domain, codomain}]
+A \term{function} $f$ from a set $X$ to a set $Y$ is a specification of elements $f(x)\in Y$ for $x\in X$ such that
+\[
+\forall x\in X,\ \exists!\,y\in Y,\ y=f(x).
+\]
+$f(x)$ is the \term{value} of $f$ at $x$; $X$ is the \term{domain}, $Y$ the \term{codomain}; $f:X\to Y$ asserts that $f$ is a function with this domain and codomain. Any true proposition $\forall x\in X,\ \exists!\,y\in Y,\ p(x,y)$ defines a function $X\to Y$: send $x$ to the unique $y$ with $p(x,y)$ (Example 3.1.2: $r:(0,\infty)\to(0,\infty)$, $r(x)=\sqrt x$).
+\end{key}
+
+\begin{strategy}[{Well-definedness (page 101) \textperiodcentered\ the three checks}]
+A specification of $f:X\to Y$ is \term{well-defined} if it satisfies: \textbf{totality} (a value $f(x)$ is specified for \emph{each} $x\in X$), \textbf{existence} (the specified value exists and lies in $Y$), \textbf{uniqueness} (the specification refers to only one element of $Y$). Usually only uniqueness needs an argument, but check all three. Ways to specify: \textbf{lists} (finite $X$), \textbf{formulae} ($f(x)=x^2+3$), \textbf{by cases} (the conditions must be \emph{exhaustive} and \emph{compatible}: where two cases overlap they must give the same value, like $|x|$ at $x=0$), \textbf{algorithms} (must be deterministic).
+\end{strategy}
+
+\begin{bookex}[essential (a)--(c)]{3.1.15}
+Which of the following specifications of functions are well-defined?\\
+(a) $g:\Q\to\Q$ defined by $(x+1)g(x)=1$ for all $x\in\Q$;\quad (b) $h:\N\to\Q$ defined by $(x+1)h(x)=1$ for all $x\in\N$;\\
+(c) $k:\N\to\N$ defined by $(x+1)k(x)=1$ for all $x\in\N$;\quad (d) $\ell:\N\to\N$ defined by $\ell(x)=\ell(x)$ for all $x\in\N$.
+\solution
+\emph{(a) Not well-defined.} For $x=-1\in\Q$ the condition reads $0\cdot g(-1)=1$, which no rational number $g(-1)$ satisfies: existence fails at $x=-1$.\\
+\emph{(b) Well-defined.} For $x\in\N$ we have $x+1\ge1$, so $x+1\ne0$ and the equation has exactly one solution $h(x)=\frac1{x+1}$, which is a rational number. Totality, existence and uniqueness all hold.\\
+\emph{(c) Not well-defined.} As in (b) the only candidate is $k(x)=\frac1{x+1}$, but for $x=1$ this is $\frac12\notin\N$: existence (of a value \emph{in the codomain}) fails.\\
+\emph{(d) Not well-defined.} The equation $\ell(x)=\ell(x)$ is satisfied by every natural number, so it does not single out one value: uniqueness fails.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{3.1.16}
+Find a condition on sets $X$ and $Y$ such that the specification of $i:X\cup Y\to\{0,1\}$ given by $i(z)=0$ if $z\in X$ and $i(z)=1$ if $z\in Y$ is well-defined.
+\solution
+The cases are exhaustive: every $z\in X\cup Y$ is in $X$ or in $Y$. They are compatible exactly when no $z$ falls under both with different values. If $z\in X\cap Y$ the two cases prescribe $i(z)=0$ and $i(z)=1$, which differ, so uniqueness fails. Hence the specification is well-defined if and only if $X\cap Y=\varnothing$ ($X$ and $Y$ are disjoint). (Then $i=\chi_Y$ in the notation of Definition 3.1.23.)\qed
+\end{bookex}
+
+\begin{trybox}[{3.1.3 \fO}]
+\textbf{3.1.3} Which of the statements (a), (b), (c) of Exercise 1.2.37 has the form $\forall x\in X,\ \exists!\,y\in Y,\ p(x,y)$? For each such statement give the domain, codomain and an expression for the function.
+\end{trybox}
+
+\hsub{Function equality and graphs}
+\begin{result}[{Axiom 3.1.4 and Strategy 3.1.5 \textperiodcentered\ function extensionality}]
+$f:X\to Y$ and $g:A\to B$ are equal iff (i) $X=A$ and $Y=B$, and (ii) $f(x)=g(x)$ for all $x\in X$. \textbf{To prove $f=g$} for $f,g:X\to Y$: ``Let $x\in X$. Then $f(x)=\dots=g(x)$.'' (Two functions given by different procedures with the same values are equal.)
+\end{result}
+\begin{key}[{Definition 3.1.6 and Theorem 3.1.9 \textperiodcentered\ graphs}]
+$\mathrm{Gr}(f)=\{(x,f(x))\mid x\in X\}=\{(x,y)\in X\times Y\mid y=f(x)\}\subseteq X\times Y$. A subset $G\subseteq X\times Y$ is the graph of a function $X\to Y$ \textbf{iff} $\forall x\in X,\ \exists!\,y\in Y,\ (x,y)\in G$: every $x\in X$ occurs as a first coordinate (totality/existence) exactly once (uniqueness). Example 3.1.10: $\{(1,\mathrm{red}),(2,\mathrm{red}),(3,\mathrm{green})\}$ is the graph of a function $\{1,2,3\}\to\{\mathrm{red},\mathrm{green},\mathrm{blue}\}$ but not of one with domain $\{1,2,3,4\}$; adding $(2,\mathrm{blue})$ destroys uniqueness.
+\end{key}
+
+\begin{bookex}[recommended]{3.1.8}
+Find a function $f:\Z\to\Z$ whose graph is $\{\dots,(-2,-5),(-1,-2),(0,1),(1,4),(2,7),(3,10),\dots\}$.
+\solution
+The second coordinates increase by $3$ when the first increases by $1$, and $(0,1)$ is in the graph, so try $f(n)=3n+1$: $f(-2)=-5$, $f(-1)=-2$, $f(0)=1$, $f(1)=4$, $f(2)=7$, $f(3)=10$. So $f:\Z\to\Z$, $f(n)=3n+1$ for all $n\in\Z$, has $\mathrm{Gr}(f)=\{(n,3n+1)\mid n\in\Z\}$, the given set.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.1.11}
+For each of the following, determine whether $G$ is the graph of a function from $X$ to $Y$.\\
+(a) $X=Y=\R$, $G=\{(a,a^2)\mid a\in\R\}$;\quad (b) $X=Y=\R$, $G=\{(a^2,a)\mid a\in\R\}$;\quad (c) $X=Y=[0,\infty)$, $G=\{(a^2,a)\mid a\in[0,\infty)\}$;\\
+(d) $X=Y=\Q$, $G=\{(x,y)\in\Q\times\Q\mid xy=1\}$;\quad (e) $X=Y=\Q$, $G=\{(a,a)\mid a\in\Z\}$.
+\solution
+Use Theorem 3.1.9: for every $x\in X$ there must be exactly one $y\in Y$ with $(x,y)\in G$.\\
+\emph{(a) Yes.} For $x\in\R$, $(x,y)\in G$ iff $y=x^2$; this $y$ exists and is unique. ($G$ is the graph of $x\mapsto x^2$.)\\
+\emph{(b) No.} For $x=-1$ there is no $a\in\R$ with $a^2=-1$, so no $(x,y)\in G$ (existence fails). Also for $x=1$ both $(1,1)$ and $(1,-1)$ lie in $G$ (uniqueness fails). Either failure suffices.\\
+\emph{(c) Yes.} For $x\in[0,\infty)$, $(x,y)\in G$ iff $y\in[0,\infty)$ and $y^2=x$; the unique such $y$ is $\sqrt x$ (Example 1.2.36 for $x>0$; $y=0$ for $x=0$). So $G$ is the graph of $x\mapsto\sqrt x$.\\
+\emph{(d) No.} For $x=0$ there is no $y$ with $0\cdot y=1$: existence fails.\\
+\emph{(e) No.} For $x=\frac12\in\Q$ there is no $y$ with $(\frac12,y)\in G$, since first coordinates of elements of $G$ are integers: totality fails.\qed
+\end{bookex}
+
+\begin{key}[{Definitions 3.1.12, 3.1.13 and Example 3.1.14 \textperiodcentered\ identity, empty function, a non-function}]
+$\id_X:X\to X$, $\id_X(x)=x$. The \term{empty function} $\varnothing\to X$ is the unique function with domain $\varnothing$; it is well-defined because there is nothing to check. Example 3.1.14: ``$f:\R\to\R$ defined by $f(x)^2=x$'' is \emph{not} well-defined (no value for $x<0$; two values for $x>0$), while the same equation does define $r:(0,\infty)\to(0,\infty)$. \textbf{Domain and codomain are part of the function.}
+\end{key}
+
+\hsub{Composition}
+\begin{key}[{Definition 3.1.17 \textperiodcentered\ composite}]
+For $f:X\to Y$ and $g:Y\to Z$, the \term{composite} $g\circ f:X\to Z$ (``$g$ after $f$'') is $(g\circ f)(x)=g(f(x))$. \textbf{Common error:} the function applied \emph{first} is written \emph{last}. The codomain of $f$ must equal the domain of $g$. Example 3.1.18: the machine ``multiply by 2, add 5, square, divide by 6'' is $M=((k\circ h)\circ g)\circ f$ with $f(x)=2x$, $g(x)=x+5$, $h(x)=x^2$, $k(x)=\frac x6$. Example 3.1.20: $\id_Y\circ f=f=f\circ\id_X$.
+\end{key}
+
+\begin{bookex}[recommended]{3.1.19}
+With $f,g,h,k:\Q\to\Q$ as in Example 3.1.18, compute equations defining (a) $f\circ g$; (b) $g\circ f$; (c) $((f\circ g)\circ h)\circ k$; (d) $f\circ(g\circ(h\circ k))$; (e) $(g\circ g)\circ(g\circ g)$.
+\solution
+(a) $(f\circ g)(x)=f(g(x))=f(x+5)=2(x+5)=2x+10$.\quad (b) $(g\circ f)(x)=g(2x)=2x+5$. (So $f\circ g\ne g\circ f$.)\\
+(c) Apply $k$, then $h$, then $g$, then $f$: $x\mapsto\frac x6\mapsto\frac{x^2}{36}\mapsto\frac{x^2}{36}+5\mapsto\frac{x^2}{18}+10$. So $(((f\circ g)\circ h)\circ k)(x)=\frac{x^2}{18}+10$.\\
+(d) $(f\circ(g\circ(h\circ k)))(x)=f(g(h(k(x))))$, the same chain of operations as in (c): $\frac{x^2}{18}+10$ (associativity, Exercise 3.1.21).\\
+(e) $(g\circ g)(x)=x+10$, so $((g\circ g)\circ(g\circ g))(x)=(x+10)+10=x+20$.\qed
+\end{bookex}
+
+\begin{bookex}[bonus]{3.1.21}
+Prove that composition is associative: if $f:X\to Y$, $g:Y\to Z$, $h:Z\to W$ then $h\circ(g\circ f)=(h\circ g)\circ f:X\to W$.
+\solution
+Both composites have domain $X$ and codomain $W$, so by Strategy 3.1.5 it suffices to check values. Let $x\in X$. Then
+\[
+(h\circ(g\circ f))(x)=h\big((g\circ f)(x)\big)=h\big(g(f(x))\big)=(h\circ g)\big(f(x)\big)=((h\circ g)\circ f)(x),
+\]
+each step by Definition 3.1.17. Hence the functions are equal, and we may write $h\circ g\circ f$.\qed
+\end{bookex}
+
+\begin{trybox}[{3.1.22 \fO}]
+\textbf{3.1.22} $f:X\to Y$, $g:Z\to W$ with $Y\subsetneq Z$; $h(x)=g(f(x))$ defines $h:X\to W$. Write $h$ as a composite involving $f$ and $g$. \hint{look closely at Definition 3.1.17: why is $g\circ f$ itself not allowed?}
+\end{trybox}
+
+\hsub{Characteristic functions}
+\begin{key}[{Definition 3.1.23, Theorems 3.1.25 and 3.1.27, Strategy 3.1.26}]
+For $A\subseteq X$, $\chi_A:X\to[2]=\{0,1\}$ is $\chi_A(x)=1$ if $x\in A$ and $0$ if $x\notin A$. \textbf{Theorem 3.1.25:} $A=B\Leftrightarrow\chi_A=\chi_B$, so to prove $A=B$ it suffices to prove $\chi_A=\chi_B$. \textbf{Theorem 3.1.27:} for all $x\in X$,
+\[
+\chi_{A\cap B}(x)=\chi_A(x)\chi_B(x),\qquad \chi_{A\cup B}(x)=\chi_A(x)+\chi_B(x)-\chi_A(x)\chi_B(x),\qquad \chi_{X\setminus A}(x)=1-\chi_A(x).
+\]
+Example 3.1.29 proves $X\cap(Y\cup Z)=(X\cap Y)\cup(X\cap Z)$ by computing $\chi_{X\cap(Y\cup Z)}=\chi_X(\chi_Y+\chi_Z-\chi_Y\chi_Z)=\chi_X\chi_Y+\chi_X\chi_Z-\chi_X\chi_Y\chi_Z$, then using $\chi_X^2=\chi_X$ to rewrite the last term as $\chi_{X\cap Y}\chi_{X\cap Z}$, giving $\chi_{(X\cap Y)\cup(X\cap Z)}$.
+\end{key}
+
+\begin{trybox}[{3.1.28, 3.1.30 \fO}]
+\textbf{3.1.28} Prove parts (b) and (c) of Theorem 3.1.27. \hint{the only possible values are $0$ and $1$: check the cases $x\in A$ / $x\notin A$, $x\in B$ / $x\notin B$.}\quad \textbf{3.1.30} Use characteristic functions to prove de Morgan's laws for pairwise unions and intersections (Theorem 2.2.44(a),(b)).
+\end{trybox}
+
+\hsub{Images and preimages}
+\begin{key}[{Definitions 3.1.31 and 3.1.37}]
+For $f:X\to Y$, $U\subseteq X$, $V\subseteq Y$:
+\[
+f[U]=\{f(x)\mid x\in U\}=\{y\in Y\mid\exists x\in U,\ y=f(x)\}\subseteq Y,\qquad
+f^{-1}[V]=\{x\in X\mid f(x)\in V\}\subseteq X.
+\]
+$f[U]$ is the \term{image} of $U$ (also $f_*(U)$, $f(U)$); $f[X]$ is \emph{the image of $f$}. $f^{-1}[V]$ is the \term{preimage} of $V$ (also $f^*(V)$, $f^{-1}(V)$); it is defined for every function, whether or not $f$ has an inverse. Example 3.1.38 ($f:\Z\to\Z$, $f(x)=x^2$): $f^{-1}[\{1,4,9\}]=\{-3,-2,-1,1,2,3\}=f^{-1}[\{1,\dots,9\}]$, $f^{-1}[\N]=\Z$.
+\end{key}
+\begin{strategy}[{Working with images and preimages}]
+\textbf{Using $y\in f[U]$:} ``fix $x\in U$ with $y=f(x)$''. \textbf{Proving $y\in f[U]$:} exhibit $x\in U$ with $f(x)=y$. \textbf{$x\in f^{-1}[V]$} means exactly $x\in X$ and $f(x)\in V$: no choice is involved. Example 3.1.32: $f[\R]=[0,\infty)$ for $f(x)=x^2$, by double containment ($y=x^2\ge0$; conversely $y=(\sqrt y)^2$). Example 3.1.35: $f[U\cap V]\subseteq f[U]\cap f[V]$. Example 3.1.39: $f[U]\subseteq V\Leftrightarrow U\subseteq f^{-1}[V]$.
+\end{strategy}
+
+\begin{bookex}[recommended]{3.1.33}
+Describe the image $f[U]$: (a) $f:\Z\to\Z$, $f(n)=3n$, $U=\N$; (b) $f:X\to X\times X$, $f(x)=(x,x)$, $U=X$; (c) $f:\{a,b,c\}\to\{1,2,3\}$, $f(a)=1$, $f(b)=3$, $f(c)=1$, $U=\{a,b,c\}$.
+\solution
+(a) $f[\N]=\{3n\mid n\in\N\}=\{0,3,6,9,\dots\}$, the natural multiples of $3$.\quad (b) $f[X]=\{(x,x)\mid x\in X\}$, the ``diagonal'' of $X\times X$.\quad (c) $f[\{a,b,c\}]=\{f(a),f(b),f(c)\}=\{1,3,1\}=\{1,3\}$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.1.36}
+Example 3.1.35 showed $f[U\cap V]\subseteq f[U]\cap f[V]$. Determine which of the following hold for all sets $U,V,X,Y$ and functions $f:X\to Y$, with proof of truth or falsity: (a) $f[U]\cap f[V]\subseteq f[U\cap V]$; (b) $f[U\cup V]\subseteq f[U]\cup f[V]$; (c) $f[U]\cup f[V]\subseteq f[U\cup V]$.
+\solution
+\emph{(a) False.} Let $f:\R\to\R$, $f(x)=x^2$, $U=\{1\}$, $V=\{-1\}$. Then $f[U]=\{1\}=f[V]$, so $f[U]\cap f[V]=\{1\}$, while $U\cap V=\varnothing$ and $f[\varnothing]=\varnothing$ (Exercise 3.1.34). So $1\in f[U]\cap f[V]$ but $1\notin f[U\cap V]$.\\
+\emph{(b) True.} Let $y\in f[U\cup V]$; fix $x\in U\cup V$ with $y=f(x)$. If $x\in U$ then $y=f(x)\in f[U]$; if $x\in V$ then $y\in f[V]$. Either way $y\in f[U]\cup f[V]$.\\
+\emph{(c) True.} Let $y\in f[U]\cup f[V]$. If $y\in f[U]$, fix $x\in U$ with $y=f(x)$; then $x\in U\cup V$, so $y\in f[U\cup V]$. The case $y\in f[V]$ is identical. (So $f[U\cup V]=f[U]\cup f[V]$, but for intersections only one inclusion holds.)\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{3.1.40}
+Let $f:X\to Y$ and $A,B\subseteq Y$. Prove that $f^{-1}[A\cap B]=f^{-1}[A]\cap f^{-1}[B]$, $f^{-1}[A\cup B]=f^{-1}[A]\cup f^{-1}[B]$ and $f^{-1}[Y\setminus A]=X\setminus f^{-1}[A]$.
+\solution
+For any $x\in X$, unfolding Definition 3.1.37:
+\begin{align*}
+x\in f^{-1}[A\cap B]&\Leftrightarrow f(x)\in A\cap B\Leftrightarrow f(x)\in A\wedge f(x)\in B\\
+&\Leftrightarrow x\in f^{-1}[A]\wedge x\in f^{-1}[B]\Leftrightarrow x\in f^{-1}[A]\cap f^{-1}[B];\\
+x\in f^{-1}[A\cup B]&\Leftrightarrow f(x)\in A\vee f(x)\in B\Leftrightarrow x\in f^{-1}[A]\vee x\in f^{-1}[B]\Leftrightarrow x\in f^{-1}[A]\cup f^{-1}[B];\\
+x\in f^{-1}[Y\setminus A]&\Leftrightarrow f(x)\in Y\wedge f(x)\notin A\Leftrightarrow x\notin f^{-1}[A]\Leftrightarrow x\in X\setminus f^{-1}[A]
+\end{align*}
+(in the last line $f(x)\in Y$ is automatic and $x\in X$ throughout). Each identity follows by set extensionality.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{3.1.41}
+Let $f:X\to Y$. Prove that $f^{-1}[\varnothing]=\varnothing$ and $f^{-1}[Y]=X$.
+\solution
+If $x\in f^{-1}[\varnothing]$ then $f(x)\in\varnothing$, impossible; so $f^{-1}[\varnothing]$ is empty. For the second: $f^{-1}[Y]\subseteq X$ by definition, and if $x\in X$ then $f(x)\in Y$ (the codomain), so $x\in f^{-1}[Y]$. Hence $f^{-1}[Y]=X$.\qed
+\end{bookex}
+
+\begin{trybox}[{3.1.34, 3.1.42 \fO}]
+\textbf{3.1.34} Prove $f[\varnothing]=\varnothing$ for every function $f$.\quad \textbf{3.1.42} Prove that every $f:X\to\{0,1\}$ is the characteristic function of $f^{-1}[\{1\}]\subseteq X$.
+\end{trybox}
+
+\begin{warn}
+\begin{itemize}
+\item A function is \emph{not} a formula: $x\mapsto x^2$ is a different function on $\R\to\R$, on $\R\to[0,\infty)$ and on $[0,\infty)\to[0,\infty)$ (Example 3.1.14, 3.E.25). Always state domain and codomain, and check well-definedness when a value is specified by an equation or by cases.
+\item $f^{-1}[V]$ is a set and exists for every $f$; it does not say $f$ is invertible. $f^{-1}[\{y\}]$ can be empty or have many elements (Example 3.1.38).
+\item From $y\in f[U]$ you get \emph{some} $x\in U$ with $f(x)=y$, not a specific one: this is why $f[U]\cap f[V]\subseteq f[U\cap V]$ fails (3.1.36(a)).
+\end{itemize}
+\end{warn}
+
+\hsection{Injections and surjections}
+
+\begin{key}[{Definition 3.2.1 and Strategy 3.2.2 \textperiodcentered\ injective}]
+$f:X\to Y$ is \term{injective} (one-to-one) if $\forall a,b\in X,\ f(a)=f(b)\Rightarrow a=b$. \textbf{Proof:} ``Let $a,b\in X$ and suppose $f(a)=f(b)$. \dots\ So $a=b$.'' Contrapositive form: $a\ne b\Rightarrow f(a)\ne f(b)$ (distinct inputs, distinct outputs). Example 3.2.3: $f(n)=2n+1$ on $\Z$ is injective ($2m+1=2n+1\Rightarrow m=n$). Proposition 3.2.4: composites of injections are injective ($g(f(a))=g(f(b))\Rightarrow f(a)=f(b)\Rightarrow a=b$).
+\end{key}
+
+\begin{bookex}[essential]{3.2.5}
+Let $f:X\to Y$ and $g:Y\to Z$. Prove that if $g\circ f$ is injective then $f$ is injective.
+\solution
+Suppose $g\circ f$ is injective. Let $a,b\in X$ and suppose $f(a)=f(b)$. Applying $g$ to both sides, $g(f(a))=g(f(b))$, i.e.\ $(g\circ f)(a)=(g\circ f)(b)$. Since $g\circ f$ is injective, $a=b$. Hence $f$ is injective.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{3.2.6}
+Write out what it means for $f:X\to Y$ to be \emph{not} injective, say how you would prove it, give an example and prove it is not injective.
+\solution
+Negating Definition 3.2.1 (de Morgan for quantifiers, Theorem 1.3.29, and $\neg(p\Rightarrow q)\equiv p\wedge\neg q$):
+\[
+\exists a,b\in X,\ f(a)=f(b)\wedge a\ne b .
+\]
+\textbf{To prove $f$ not injective:} exhibit two specific elements $a\ne b$ of $X$ and check $f(a)=f(b)$. Example: $g:\Z\to\Z$, $g(n)=n^2$. Take $a=1$, $b=-1$: $a\ne b$ but $g(1)=1=g(-1)$. So $g$ is not injective.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.2.8}
+Let $a,b\in\R$ with $b\ne0$ and define $f:\R\to\R$ by $f(t)=a+bt$. Prove that $f$ is injective.
+\solution
+Let $s,t\in\R$ and suppose $f(s)=f(t)$, i.e.\ $a+bs=a+bt$. Subtracting $a$ gives $bs=bt$; since $b\ne0$ we may divide by $b$ to get $s=t$. Hence $f$ is injective.\qed
+\end{bookex}
+
+\begin{trybox}[{3.2.7 \fO}]
+\textbf{3.2.7} Injective or not? $f:\N\to\Z$, $f(n)=n^2$; $g:\Z\to\N$, $g(n)=n^2$; $h:\N\times\N\times\N\to\N$, $h(x,y,z)=2^x3^y5^z$.
+\end{trybox}
+
+\begin{key}[{Definition 3.2.9 and Strategy 3.2.10 \textperiodcentered\ surjective}]
+$f:X\to Y$ is \term{surjective} (onto) if $\forall y\in Y,\ \exists x\in X,\ f(x)=y$. \textbf{Proof:} ``Let $y\in Y$. Put $x=\dots$ \reason{solve $f(x)=y$ for $x$ on scrap paper}. Then $x\in X$ \reason{check!} and $f(x)=\dots=y$.'' The verification that $f(x)=y$ and that $x$ really lies in $X$ is part of the proof. Example 3.2.11: $r:\Z\to[n]$, $r(a)$ = remainder of $a$ on division by $n$, is surjective since $r(k)=k$ for $k\in[n]$.
+\end{key}
+
+\begin{bookex}[essential]{3.2.12}
+For each pair $(X,Y)$ determine whether $f:X\to Y$, $f(x)=2x+1$, is surjective: (a) $X=\Z$, $Y=\{x\in\Z\mid x\text{ odd}\}$; (b) $X=Y=\Z$; (c) $X=Y=\Q$; (d) $X=Y=\R$.
+\solution
+\emph{(a) Surjective.} Let $y\in Y$, so $y$ is odd. By Proposition 1.1.58, $y=2k+1$ for some $k\in\Z$. Then $k\in X$ and $f(k)=2k+1=y$.\\
+\emph{(b) Not surjective.} $0\in\Z$, but $f(x)=0$ means $2x=-1$, which has no solution in $\Z$ ($-1$ is odd). So no $x\in\Z$ has $f(x)=0$.\\
+\emph{(c) Surjective.} Let $y\in\Q$. Put $x=\frac{y-1}2$; then $x\in\Q$ and $f(x)=2\cdot\frac{y-1}2+1=y$.\\
+\emph{(d) Surjective.} Same as (c) with $x=\frac{y-1}2\in\R$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.2.14}
+Let $f:X\to Y$. Prove that $f$ is surjective if and only if $Y=f[X]$.
+\solution
+Note first that $f[X]\subseteq Y$ always (its elements are values $f(x)\in Y$). So $Y=f[X]$ iff $Y\subseteq f[X]$.\\
+($\Rightarrow$) Suppose $f$ is surjective and let $y\in Y$. Then there is $x\in X$ with $f(x)=y$, so $y\in f[X]$ by Definition 3.1.31. Hence $Y\subseteq f[X]$, so $Y=f[X]$.\\
+($\Leftarrow$) Suppose $Y=f[X]$ and let $y\in Y$. Then $y\in f[X]$, so $y=f(x)$ for some $x\in X$. This is exactly surjectivity.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{3.2.16}
+Let $f:X\to\PS(X)$. By considering $B=\{x\in X\mid x\notin f(x)\}$, prove that $f$ is not surjective.
+\solution
+$B\subseteq X$, so $B\in\PS(X)$. We show there is no $a\in X$ with $f(a)=B$. Suppose, towards a contradiction, that $a\in X$ and $f(a)=B$. Either $a\in B$ or $a\notin B$.\\
+If $a\in B$, then by definition of $B$, $a\notin f(a)=B$: contradiction. If $a\notin B$, then $a\notin f(a)$ (as $f(a)=B$), so $a$ satisfies the defining condition of $B$ and $a\in B$: contradiction.\\
+So $B$ is an element of the codomain that is not a value of $f$, and $f$ is not surjective. (Cantor's argument: no set surjects onto its power set.)\qed
+\end{bookex}
+
+\begin{trybox}[{3.2.13, 3.2.15 \fO}]
+\textbf{3.2.13} Find $V\subseteq Y$ and a surjection $g:X\to V$ with $g(x)=f(x)$ for all $x$. \hint{Definition 3.1.31.}\quad \textbf{3.2.15} Find a set $Z$ and functions $p:X\to Z$ (surjective), $i:Z\to Y$ (injective) with $f=i\circ p$. \hint{if $Z\subseteq Y$, $i(z)=z$ is an injection.}
+\end{trybox}
+
+\begin{key}[{Definition 3.2.17 \textperiodcentered\ bijective}]
+$f$ is \term{bijective} if it is injective and surjective. \textbf{Proof tip:} prove both, in two labelled parts. Example 3.2.18: on the dyadic rationals $D=\{\frac a{2^n}\mid a\in\Z,n\in\N\}$, $f(x)=\frac x{2^k}$ is a bijection $D\to D$ (injective: $\frac x{2^k}=\frac y{2^k}\Rightarrow x=y$; surjective: $f(2^ky)=y$, after checking $2^ky\in D$ by the cases $k\le n$, $k>n$).
+\end{key}
+
+\begin{bookex}[recommended]{3.2.19}
+Let $X$ be a set. Prove that $\id_X:X\to X$ is a bijection.
+\solution
+\emph{Injective:} let $a,b\in X$ with $\id_X(a)=\id_X(b)$. Then $a=b$ by definition of $\id_X$.\\
+\emph{Surjective:} let $x\in X$. Then $x=\id_X(x)$, so $x$ is a value of $\id_X$ at the element $x\in X$.\\
+Hence $\id_X$ is bijective.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.2.20}
+Let $f:X\to Y$ and $g:Y\to Z$ be bijections. Prove that $g\circ f$ is a bijection.
+\solution
+\emph{Injective:} $f$ and $g$ are injective, so $g\circ f$ is injective by Proposition 3.2.4.\\
+\emph{Surjective:} let $z\in Z$. Since $g$ is surjective there is $y\in Y$ with $g(y)=z$; since $f$ is surjective there is $x\in X$ with $f(x)=y$. Then $(g\circ f)(x)=g(f(x))=g(y)=z$. Hence $g\circ f$ is surjective, and so bijective.\qed
+\end{bookex}
+
+\hsub{Inverses}
+\begin{key}[{Definitions 3.2.23, 3.2.29, 3.2.37 \textperiodcentered\ left, right and two-sided inverses}]
+For $f:X\to Y$, a function $g:Y\to X$ is a \term{left inverse} if $g\circ f=\id_X$ (i.e.\ $g(f(x))=x$ for all $x\in X$); a \term{right inverse} if $f\circ g=\id_Y$ (i.e.\ $f(g(y))=y$ for all $y\in Y$); an \term{inverse} if both. Example 3.2.24: $e(m,n)=2^m3^n$ has left inverse $d(k)=(m,n)$ if $k=2^m3^n$, $(0,0)$ otherwise. Example 3.2.30: $f(x)=x^2:\R\to[0,\infty)$ has infinitely many right inverses ($\sqrt y$, $-\sqrt y$, and mixtures), none of them left inverses since $f$ is not injective.
+\end{key}
+\begin{result}[{The dictionary (3.2.25--3.2.44)}]
+\begin{itemize}
+\item $f$ has a left inverse $\Rightarrow$ $f$ injective (Exercise 3.2.25); conversely injective and $X\ne\varnothing$ $\Rightarrow$ left inverse (Proposition 3.2.27). \textbf{Strategy 3.2.26:} to prove injective, find $g$ with $g(f(x))=x$.
+\item $f$ has a right inverse $\Rightarrow$ $f$ surjective (Exercise 3.2.31); conversely every surjection has a right inverse (Proposition 3.2.36, needs the \textbf{axiom of choice} 3.2.33: from $\forall y\,\exists x\,f(x)=y$ one may \emph{choose} such an $x$ for each $y$, Strategy 3.2.35). \textbf{Strategy 3.2.32:} to prove surjective, find $g$ with $f(g(y))=y$.
+\item $f$ bijective $\Leftrightarrow$ $f$ has an inverse (Exercise 3.2.40). \textbf{Strategy 3.2.41:} to prove bijective, find $g$ and check \emph{both} $g(f(x))=x$ and $f(g(y))=y$.
+\item A left inverse and a right inverse are equal (Proposition 3.2.42: $\ell(y)=\ell(f(r(y)))=r(y)$), so the inverse is unique: $f^{-1}:Y\to X$ (Notation 3.2.43). For a bijection, left inverse $\Leftrightarrow$ right inverse (Proposition 3.2.44).
+\end{itemize}
+\end{result}
+
+\begin{bookex}[recommended]{3.2.25}
+Let $f:X\to Y$. Prove that if $f$ has a left inverse then $f$ is injective.
+\solution
+Let $g:Y\to X$ with $g\circ f=\id_X$. Let $a,b\in X$ and suppose $f(a)=f(b)$. Applying $g$: $g(f(a))=g(f(b))$, i.e.\ $a=b$ since $g(f(x))=x$ for all $x$. So $f$ is injective.\qed
+\end{bookex}
+
+\begin{bookex}[recommended (a), (b)]{3.2.39}
+Find the inverse and prove it is an inverse: (a) $f:\R\to\R$, $f(x)=\frac{2x+1}3$; (b) $g:\PS(\N)\to\PS(\N)$, $g(X)=\N\setminus X$.
+\solution
+\emph{(a)} Solving $y=\frac{2x+1}3$ gives $x=\frac{3y-1}2$, so define $f^{-1}:\R\to\R$ by $f^{-1}(y)=\frac{3y-1}2$. Left inverse: for $x\in\R$, $f^{-1}(f(x))=\frac{3\cdot\frac{2x+1}3-1}2=\frac{2x+1-1}2=x$. Right inverse: for $y\in\R$, $f(f^{-1}(y))=\frac{2\cdot\frac{3y-1}2+1}3=\frac{3y-1+1}3=y$. So $f^{-1}$ is a two-sided inverse.\\
+\emph{(b)} $g$ is its own inverse: for $X\in\PS(\N)$, $g(g(X))=\N\setminus(\N\setminus X)=\N\cap X=X$ by Exercise 2.2.43 (and $X\subseteq\N$). This single computation shows $g\circ g=\id_{\PS(\N)}$, which is both the left- and the right-inverse condition.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.2.40}
+Let $f:X\to Y$. Prove that $f$ is bijective if and only if $f$ has an inverse.
+\solution
+($\Rightarrow$) Suppose $f$ is bijective. For each $y\in Y$ there is a unique $x\in X$ with $f(x)=y$: existence by surjectivity, uniqueness by injectivity (if $f(x)=y=f(x')$ then $x=x'$). So by Definition 3.1.1 we may define $g:Y\to X$ by letting $g(y)$ be this unique $x$; thus $f(g(y))=y$ for all $y\in Y$. Also for $x\in X$, the unique element mapping to $f(x)$ is $x$ itself, so $g(f(x))=x$. Hence $g$ is an inverse for $f$.\\
+($\Leftarrow$) Suppose $g:Y\to X$ is an inverse. Since $g$ is a left inverse, $f$ is injective (Exercise 3.2.25). Since $g$ is a right inverse, $f$ is surjective: for $y\in Y$, $x=g(y)\in X$ satisfies $f(x)=f(g(y))=y$. Hence $f$ is bijective.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{3.2.45}
+Let $f:X\to Y$ be a bijection. Prove that $f^{-1}:Y\to X$ is a bijection.
+\solution
+By Exercise 3.2.40, $f$ has an inverse $f^{-1}$, with $f^{-1}\circ f=\id_X$ and $f\circ f^{-1}=\id_Y$. Read these two equations from the point of view of $f^{-1}$: $f\circ f^{-1}=\id_Y$ says $f$ is a left inverse for $f^{-1}$, and $f^{-1}\circ f=\id_X$ says $f$ is a right inverse for $f^{-1}$. So $f$ is an inverse for $f^{-1}$, and by Exercise 3.2.40 (direction $\Leftarrow$) $f^{-1}$ is a bijection. (Moreover $(f^{-1})^{-1}=f$.)\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{3.2.46}
+Let $f:X\to Y$ and $g:Y\to Z$ be bijections. Prove that $g\circ f$ is a bijection and express its inverse in terms of $f^{-1}$ and $g^{-1}$.
+\solution
+Claim: $(g\circ f)^{-1}=f^{-1}\circ g^{-1}:Z\to X$. Using associativity (3.1.21):
+\[
+(f^{-1}\circ g^{-1})\circ(g\circ f)=f^{-1}\circ(g^{-1}\circ g)\circ f=f^{-1}\circ\id_Y\circ f=f^{-1}\circ f=\id_X,
+\]
+\[
+(g\circ f)\circ(f^{-1}\circ g^{-1})=g\circ(f\circ f^{-1})\circ g^{-1}=g\circ\id_Y\circ g^{-1}=g\circ g^{-1}=\id_Z .
+\]
+So $f^{-1}\circ g^{-1}$ is a two-sided inverse for $g\circ f$; by Strategy 3.2.41, $g\circ f$ is a bijection with this inverse (``socks and shoes'': undo the last step first).\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.2.47}
+Let $f:X\to A$ and $g:Y\to B$ be bijections. Prove that there is a bijection $X\times Y\to A\times B$ and describe its inverse.
+\solution
+Define $h:X\times Y\to A\times B$ by $h(x,y)=(f(x),g(y))$ (well-defined: $f(x)\in A$, $g(y)\in B$). Define $k:A\times B\to X\times Y$ by $k(a,b)=(f^{-1}(a),g^{-1}(b))$. Then for $(x,y)\in X\times Y$,
+\[
+k(h(x,y))=k(f(x),g(y))=(f^{-1}(f(x)),g^{-1}(g(y)))=(x,y),
+\]
+and for $(a,b)\in A\times B$, $h(k(a,b))=h(f^{-1}(a),g^{-1}(b))=(f(f^{-1}(a)),g(g^{-1}(b)))=(a,b)$. So $k$ is an inverse for $h$, and $h$ is a bijection by Strategy 3.2.41, with $h^{-1}=k$.\qed
+\end{bookex}
+
+\begin{trybox}[{3.2.21, 3.2.22, 3.2.28, 3.2.31, 3.2.39(c) \fO}]
+\textbf{3.2.21} $f$ injective iff $\forall y\in f[X],\ \exists!\,x\in X,\ y=f(x)$.\quad \textbf{3.2.22} $e(m,n)=2^m3^n$ is injective; decode $1$, $24$, $7776$, $59049$, $396718580736$.\quad \textbf{3.2.28} A left inverse $g$ of $f$ is surjective. \hint{one sentence.}\quad \textbf{3.2.31} If $f$ has a right inverse then $f$ is surjective.\quad \textbf{3.2.39(c)} Inverse of $h:\N\times\N\to\N$, $h(m,n)=2^m(2n+1)-1$. \hint{every positive integer is uniquely $2^m\cdot(\text{odd})$.}
+\end{trybox}
+
+\begin{warn}
+\begin{itemize}
+\item If you only prove $g(f(x))=x$ you have only proved $f$ injective (text after Strategy 3.2.41). A bijection proof via an inverse needs both equations.
+\item In a surjectivity proof, after solving for $x$ check that $x$ lies in the \emph{domain} (3.2.12(b): $x=-\frac12\notin\Z$) and that $f(x)=y$ really holds.
+\item ``Not injective'' needs two \emph{specific} unequal inputs with equal outputs; ``not surjective'' needs one \emph{specific} element of the codomain and a proof that nothing maps to it.
+\end{itemize}
+\end{warn}
+
+\hsection{Chapter 3 exercises}
+
+\hsub{Functions, graphs, even and odd functions (3.E.1--3.E.11)}
+\begin{key}[{Definition 3.E.4 \textperiodcentered\ even and odd functions}]
+$f:\R\to\R$ is \term{even} if $f(-x)=f(x)$ for all $x\in\R$, and \term{odd} if $f(-x)=-f(x)$ for all $x\in\R$.
+\end{key}
+
+\begin{bookex}[recommended]{3.E.2}
+Let $X$ be a set. Prove that $\forall a\in X,\ \exists!\,U\in\PS(X),\ (a\in U\wedge\exists!\,x\in X,\ x\in U)$, and describe explicitly the function $X\to\PS(X)$ this suggests.
+\solution
+Let $a\in X$. \emph{Existence:} take $U=\{a\}$. Then $U\subseteq X$, so $U\in\PS(X)$; $a\in U$; and $a$ is the unique element of $U$ (any $x\in U$ equals $a$), so $\exists!\,x\in X,\ x\in U$ holds. \emph{Uniqueness:} let $U\in\PS(X)$ with $a\in U$ and with exactly one element. Let $u\in U$; since $a\in U$ and $U$ has exactly one element, $u=a$. So $U\subseteq\{a\}$, and $a\in U$ gives $\{a\}\subseteq U$; hence $U=\{a\}$.\\
+The function is $X\to\PS(X)$, $a\mapsto\{a\}$ (``singleton''), well-defined by what we just proved.\qed
+\end{bookex}
+
+\begin{trybox}[{3.E.1, 3.E.3, 3.E.5--3.E.11 \fO}]
+\textbf{3.E.1} For which equations is there $f:\R\to\R$ with ``equation holds iff $y=f(x)$'' for all $x,y$: (a) $x+y=1$; (b) $x^2+y^2=1$; (c) $x=0$; (d) $y=0$; (e) $(1+x^2)y=1$; (f) $(1-x^2)y=0$?\quad \textbf{3.E.3} There is only one function with empty codomain; what is its domain?\quad \textbf{3.E.5} $x^n$ is even iff $n$ even, odd iff $n$ odd.\quad \textbf{3.E.6} Unique $f$ both even and odd.\quad \textbf{3.E.7} $\chi_U:\R\to\{-1,+1\}$: even iff $\{-u\mid u\in U\}=U$; odd iff $\{-u\mid u\in U\}=\R\setminus U$.\quad \textbf{3.E.8} Every $f$ is uniquely $g+h$ with $g$ even, $h$ odd.\quad \textbf{3.E.9} If $f\circ\theta_m=\theta_n\circ f$ for all $f:[m]\to[n]$ then $\theta_n=\id_{[n]}$.\quad \textbf{3.E.10} $\chi_{U\symdiff V}$ in terms of $\chi_U,\chi_V$.\quad \textbf{3.E.11} $\int\frac1x\,dx=\log|x|+a\chi_U(x)+b\chi_V(x)$: find $U,V$.
+\end{trybox}
+
+\hsub{Images and preimages (3.E.12--3.E.23)}
+\begin{bookex}[essential]{3.E.13}
+$f:\Z\times\Z\to\Z$, $f(a,b)=a+2b$; $U=\{1\}\times\Z$. Find $f[U]$.
+\solution
+$f[U]=\{f(1,b)\mid b\in\Z\}=\{1+2b\mid b\in\Z\}$, the set of odd integers (Proposition 1.1.58). Explicitly: ($\subseteq$) $1+2b$ is odd. ($\supseteq$) If $n$ is odd then $n=2b+1$ for some $b\in\Z$, and $n=f(1,b)$ with $(1,b)\in U$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.E.17}
+$f:\Z\times\Z\to\Z$, $f(a,b)=a+2b$; $V=\{n\in\Z\mid n\text{ is odd}\}$. Find $f^{-1}[V]$.
+\solution
+$f^{-1}[V]=\{(a,b)\in\Z\times\Z\mid a+2b\text{ is odd}\}$. Now $a+2b$ is odd iff $a$ is odd: if $a=2k+1$ then $a+2b=2(k+b)+1$ is odd; if $a=2k$ then $a+2b=2(k+b)$ is even, hence not odd (Definition 0.41). So
+\[
+f^{-1}[V]=\{(a,b)\in\Z\times\Z\mid a\text{ is odd}\}=\{n\in\Z\mid n\text{ odd}\}\times\Z .
+\]\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.E.19}
+Let $f:X\to Y$. Prove or find a counterexample: (a) $U\subseteq f^{-1}[f[U]]$ for all $U\subseteq X$; (b) $f^{-1}[f[U]]\subseteq U$; (c) $V\subseteq f[f^{-1}[V]]$ for all $V\subseteq Y$; (d) $f[f^{-1}[V]]\subseteq V$.
+\solution
+\emph{(a) True.} Let $x\in U$. Then $f(x)\in f[U]$ (witness $x$), so $x\in f^{-1}[f[U]]$ by definition of preimage.\\
+\emph{(b) False.} $f:\R\to\R$, $f(x)=x^2$, $U=\{1\}$: $f[U]=\{1\}$ and $f^{-1}[\{1\}]=\{-1,1\}\nsubseteq\{1\}$.\\
+\emph{(c) False.} Same $f$, $V=\{-1\}$: $f^{-1}[V]=\varnothing$ (no real square is $-1$), so $f[f^{-1}[V]]=f[\varnothing]=\varnothing\nsupseteq\{-1\}$.\\
+\emph{(d) True.} Let $y\in f[f^{-1}[V]]$; fix $x\in f^{-1}[V]$ with $y=f(x)$. Then $f(x)\in V$ by definition of preimage, i.e.\ $y\in V$.\\
+(So in general: $U\subseteq f^{-1}[f[U]]$ with equality when $f$ is injective, and $f[f^{-1}[V]]\subseteq V$ with equality when $f$ is surjective.)\qed
+\end{bookex}
+
+\begin{trybox}[{3.E.12, 3.E.14--3.E.16, 3.E.18, 3.E.20--3.E.23 \fO}]
+\textbf{3.E.12} $f(x)=\sqrt{1+x^2}$, $U=\R$: find $f[U]$.\ \textbf{3.E.14} $f:\N\to\PS(\N)$, $f(0)=\varnothing$, $f(n+1)=f(n)\cup\{n\}$: find $f[\N]$.\ \textbf{3.E.15} $f:\R^\R\to\R^\R$, $f(h)(x)=h(|x|)$: find $f[\R^\R]$. \hint{each $f(h)$ is even.}\ \textbf{3.E.16} $f(x)=\sqrt{1+x^2}$: find $f^{-1}[(-5,5]]$.\ \textbf{3.E.18} $f(A,B)=A\cap B$ on $\PS(\N)\times\PS(\N)$: find $f^{-1}[\{\varnothing\}]$.\ \textbf{3.E.20} The universal property of $f[X]$ (fiddly; see Appendix S).\ \textbf{3.E.21} = Exercise 3.1.40.\ \textbf{3.E.22} $(g\circ f)[U]=g[f[U]]$ and $(g\circ f)^{-1}[W]=f^{-1}[g^{-1}[W]]$.\ \textbf{3.E.23} $p[S]=\mathrm{Gr}(g\circ f)$ for $S=\{(x,y,z)\mid y=f(x),\ z=g(y)\}$, $p(x,y,z)=(x,z)$.
+\end{trybox}
+
+\hsub{Injections, surjections and bijections (3.E.24--3.E.28)}
+\begin{bookex}[essential]{3.E.24}
+(a) Prove that for all $f:X\to Y$, $g:Y\to Z$: if $g\circ f$ is bijective then $f$ is injective and $g$ is surjective. (b) Find $f,g$ with $g\circ f$ bijective, $f$ not surjective and $g$ not injective.
+\solution
+\emph{(a)} $f$ is injective by Exercise 3.2.5 (since $g\circ f$ is injective). For $g$: let $z\in Z$. As $g\circ f$ is surjective, there is $x\in X$ with $g(f(x))=z$; put $y=f(x)\in Y$, then $g(y)=z$. So $g$ is surjective.\\
+\emph{(b)} $X=\{0\}$, $Y=\{0,1\}$, $Z=\{0\}$; $f(0)=0$; $g(0)=g(1)=0$. Then $g\circ f:\{0\}\to\{0\}$ sends $0\mapsto0$, so $g\circ f=\id_{\{0\}}$ is a bijection (3.2.19). But $f$ is not surjective ($1\notin f[X]$) and $g$ is not injective ($g(0)=g(1)$, $0\ne1$).\qed
+\end{bookex}
+
+\begin{bookex}[essential; (e) recommended later]{3.E.25}
+For each pair $(U,V)$ of subsets of $\R$, determine whether ``$f(x)=x^2-4x+7$ for all $x\in U$'' defines a function $f:U\to V$, and if so whether $f$ is injective and whether it is surjective.\\
+(a) $U=V=\R$;\ (b) $U=(1,4)$, $V=[3,7)$;\ (c) $U=[3,4)$, $V=[4,7)$;\ (d) $U=(3,4]$, $V=[4,7)$;\ (e) $U=[2,\infty)$, $V=[3,\infty)$;\ (f) $U=[2,\infty)$, $V=\R$.
+\solution
+Complete the square: $f(x)=(x-2)^2+3$. So $f(x)\ge3$ with equality only at $x=2$, $f$ is symmetric about $x=2$ ($f(2+t)=f(2-t)$), and on $x\ge2$ the equation $f(x)=y$ with $y\ge3$ has exactly the solution $x=2+\sqrt{y-3}$.\\
+\emph{(a)} Defined (every real $x$ gives a real value). Not injective: $f(0)=7=f(4)$. Not surjective: $0\in V$ but $f(x)\ge3>0$ for all $x$.\\
+\emph{(b)} For $1<x<4$: $-1<x-2<2$, so $0\le(x-2)^2<4$ and $3\le f(x)<7$: defined. Not injective: $f(1.5)=f(2.5)=3.25$. Surjective: let $y\in[3,7)$; put $x=2+\sqrt{y-3}$. Then $0\le\sqrt{y-3}<2$, so $x\in[2,4)\subseteq(1,4)$ and $f(x)=(\sqrt{y-3})^2+3=y$.\\
+\emph{(c)} For $3\le x<4$: $1\le x-2<2$, so $1\le(x-2)^2<4$, $4\le f(x)<7$: defined. Injective: if $f(a)=f(b)$ with $a,b\in[3,4)$ then $(a-2)^2=(b-2)^2$ with $a-2,b-2>0$, so $a-2=b-2$ (positive square roots are unique), $a=b$. Surjective: for $y\in[4,7)$, $x=2+\sqrt{y-3}$ has $1\le\sqrt{y-3}<2$, so $x\in[3,4)$, and $f(x)=y$. Hence bijective.\\
+\emph{(d)} Not a function: $4\in U$ but $f(4)=7\notin[4,7)$ (existence of a value in the codomain fails).\\
+\emph{(e)} For $x\ge2$: $f(x)\ge3$: defined. Injective as in (c) (now $a-2,b-2\ge0$). Surjective: for $y\ge3$, $x=2+\sqrt{y-3}\ge2$ and $f(x)=y$. Bijective.\\
+\emph{(f)} Defined and injective as in (e). Not surjective: $0\in\R$ is not a value since $f(x)\ge3$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{3.E.26(b)}
+Find (with proof) a bijection $\R\to(-1,1)$.
+\solution
+Define $f:\R\to(-1,1)$ by $f(x)=\dfrac{x}{1+|x|}$. Well-defined: $1+|x|>0$, and $|f(x)|=\frac{|x|}{1+|x|}<1$, so $f(x)\in(-1,1)$. Define $g:(-1,1)\to\R$ by $g(y)=\dfrac{y}{1-|y|}$ (well-defined as $1-|y|>0$). We check $g$ is an inverse (Strategy 3.2.41).\\
+For $x\in\R$: $|f(x)|=\frac{|x|}{1+|x|}$, so $1-|f(x)|=\frac1{1+|x|}$, and $g(f(x))=\frac{x}{1+|x|}\cdot(1+|x|)=x$.\\
+For $y\in(-1,1)$: $|g(y)|=\frac{|y|}{1-|y|}$, so $1+|g(y)|=\frac1{1-|y|}$, and $f(g(y))=\frac{y}{1-|y|}\cdot(1-|y|)=y$.\\
+Hence $f$ is a bijection with inverse $g$.\qed
+\end{bookex}
+
+\begin{trybox}[{3.E.26(a),(c),(d), 3.E.27, 3.E.28 \fO\ (26cd bonus)}]
+\textbf{3.E.26} Bijections (a) $\Z\to\N$; (c) $[0,1]\to(0,1)$; (d) $[a,b]\to(c,d)$. \hint{for (c) move $0,1,\frac12,\frac13,\dots$ along and fix everything else.}\quad \textbf{3.E.27} $f(a,b)=\binom{a+b+1}2+b$ is a bijection $\N\times\N\to\N$. \hint{for each $n$ there is a unique $k$ with $\binom{k+1}2\le n<\binom{k+2}2$.}\quad \textbf{3.E.28} If $e\circ e=e$, find $Y$, $f:X\to Y$, $g:Y\to X$ with $g\circ f=e$, $f\circ g=\id_Y$. \hint{fixed points of $e$.}
+\end{trybox}
+
+\hsub{True--false (3.E.29--3.E.36)}
+\begin{bookex}[essential]{3.E.34}
+Given $f:X\to Y$, the assignment $V\mapsto f^{-1}[V]$ defines a function $\PS(Y)\to\PS(X)$.
+\solution
+\emph{True.} Let $V\in\PS(Y)$, i.e.\ $V\subseteq Y$. Then $f^{-1}[V]=\{x\in X\mid f(x)\in V\}$ is a uniquely specified subset of $X$ (Definition 3.1.37; it is given by set-builder notation, so it exists and is unique), hence an element of $\PS(X)$. Totality, existence and uniqueness hold, so $V\mapsto f^{-1}[V]$ is a well-defined function $\PS(Y)\to\PS(X)$ (the book's $f^*$).\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{3.E.35}
+Let $f,g,h$ be composable functions. If $h\circ g\circ f$ is injective, then $g$ is injective.
+\solution
+\emph{False.} Let $X=\{0\}$, $Y=\{0,1\}$, $Z=\{0\}$, $W=\{0\}$; $f:X\to Y$, $f(0)=0$; $g:Y\to Z$, $g(0)=g(1)=0$; $h=\id_Z$. Then $h\circ g\circ f:\{0\}\to\{0\}$ is injective (a function on a one-element set is trivially injective: if $a,b\in\{0\}$ then $a=b$), but $g(0)=g(1)$ with $0\ne1$, so $g$ is not injective. (Exercise 3.2.5 only gives that $f$, the \emph{first} function applied, is injective.)\qed
+\end{bookex}
+
+\begin{trybox}[{3.E.29--3.E.33, 3.E.36 \fO}]
+\textbf{3.E.29} $\{(x,y)\in\R\times\R\mid x^2=y^2\}$ is a graph of a function.\ \textbf{3.E.30} $\{(x,y)\in\Z\times\N\mid x^2=y^2\}$ is a graph of a function.\ \textbf{3.E.31} Every function with empty domain has empty codomain.\ \textbf{3.E.32} Every function with empty codomain has empty domain.\ \textbf{3.E.33} The image of a function is a subset of its domain.\ \textbf{3.E.36} Every left inverse is surjective and every right inverse is injective.
+\end{trybox}
+
+\hsub{Always--sometimes--never (3.E.37--3.E.48)}
+\begin{bookex}[recommended]{3.E.37}
+Let $f:X\to Y$ and $U\subseteq X$. Then there is a function $g:U\to Y$ defined by $g(x)=f(x)$ for all $x\in U$.
+\solution
+\emph{Always.} Let $x\in U$. Then $x\in X$, so $f(x)$ is a uniquely specified element of $Y$. Thus the specification satisfies totality, existence and uniqueness, and $g$ (the \emph{restriction} of $f$ to $U$) is well-defined.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{3.E.38}
+Let $f:X\to Y$ and $V\subseteq Y$. Then there is a function $g:X\to V$ defined by $g(x)=f(x)$ for all $x\in X$.
+\solution
+\emph{Sometimes.} The specification is well-defined exactly when $f(x)\in V$ for every $x\in X$, i.e.\ $f[X]\subseteq V$ (existence of a value in the codomain). It holds for $V=Y$ (then $g=f$). It fails for $f=\id_\R$ and $V=\{0\}$: $f(1)=1\notin V$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.E.41}
+Let $X,Y$ be sets and $G\subseteq X\times Y$. Then $G$ is the graph of a function $f:X\to Y$.
+\solution
+\emph{Sometimes.} By Theorem 3.1.9, $G$ is a graph iff $\forall x\in X,\ \exists!\,y\in Y,\ (x,y)\in G$. Holds: $X=Y=\{0\}$, $G=\{(0,0)\}$ (the graph of $\id_{\{0\}}$). Fails: $X=Y=\{0\}$, $G=\varnothing$ (no pair with first coordinate $0$). Also fails for $X=\{0\}$, $Y=\{0,1\}$, $G=X\times Y$ (two pairs with first coordinate $0$).\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{3.E.47}
+Let $a,b,c,d\in\R$ and define $f:\R^2\to\R^2$ by $f(x,y)=(ax+by,cx+dy)$. Then $f$ is injective if and only if $f$ is surjective.
+\solution
+\emph{Always.} We prove: $f$ injective $\Leftrightarrow ad-bc\ne0\Leftrightarrow f$ surjective.\\
+\emph{If $ad-bc\ne0$, $f$ is bijective.} Define $g(u,v)=\big(\frac{du-bv}{ad-bc},\frac{av-cu}{ad-bc}\big)$. Then $f(g(u,v))=\big(\frac{a(du-bv)+b(av-cu)}{ad-bc},\frac{c(du-bv)+d(av-cu)}{ad-bc}\big)=\big(\frac{(ad-bc)u}{ad-bc},\frac{(ad-bc)v}{ad-bc}\big)=(u,v)$, and similarly $g(f(x,y))=(x,y)$ (substitute $u=ax+by$, $v=cx+dy$: $du-bv=(ad-bc)x$ and $av-cu=(ad-bc)y$). By Strategy 3.2.41, $f$ is bijective, so both injective and surjective.\\
+\emph{If $ad-bc=0$, $f$ is neither.} \textbf{Not injective:} we find $(x,y)\ne(0,0)$ with $f(x,y)=(0,0)=f(0,0)$. If $(a,b)\ne(0,0)$ take $(x,y)=(b,-a)$: $ax+by=ab-ba=0$ and $cx+dy=cb-da=-(ad-bc)=0$. If $(a,b)=(0,0)$ take $(x,y)=(d,-c)$ if $(c,d)\ne(0,0)$ (then $cx+dy=cd-dc=0$), and $(1,0)$ if $(c,d)=(0,0)$ too. \textbf{Not surjective:} if $(a,c)\ne(0,0)$, every value satisfies $c(ax+by)-a(cx+dy)=(cb-ad)y=0$, but $(u,v)=(c,-a)$ has $cu-av=c^2+a^2\ne0$, so it is not a value. If $(a,c)=(0,0)$ but $(b,d)\ne(0,0)$, every value $(by,dy)$ satisfies $du-bv=0$, but $(d,-b)$ has $du-bv=d^2+b^2\ne0$. If all four are $0$, $f$ is constantly $(0,0)$ and $(1,0)$ is not a value.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.E.48}
+Let $U,V\subseteq\R$ with $x^2\in V$ for all $x\in U$. The function $f:U\to V$ defined by $f(x)=x^2$ is injective.
+\solution
+\emph{Sometimes.} (The hypothesis guarantees $f$ is well-defined.) For $U=[0,\infty)$, $V=\R$: if $a,b\ge0$ and $a^2=b^2$ then $a=b$ (uniqueness of nonnegative square roots), so $f$ is injective. For $U=V=\R$: $f(-1)=1=f(1)$ with $-1\ne1$, so $f$ is not injective.\qed
+\end{bookex}
+
+\begin{trybox}[{3.E.39, 3.E.40, 3.E.42--3.E.46 \fO}]
+\textbf{3.E.39} There is a unique function $X\to\{0\}$.\ \textbf{3.E.40} There is a unique function $X\to\varnothing$.\ \textbf{3.E.42} $f:\{1,2,3\}\to\{1,2\}$, $G'=\{(y,x)\mid(x,y)\in\mathrm{Gr}(f)\}$ is the graph of a function $\{1,2\}\to\{1,2,3\}$.\ \textbf{3.E.43} $U\ne\varnothing\Rightarrow f[U]\ne\varnothing$.\ \textbf{3.E.44} $V\ne\varnothing\Rightarrow f^{-1}[V]\ne\varnothing$.\ \textbf{3.E.45} $f:\{1,2\}\to\{1,2,3\}$ is injective.\ \textbf{3.E.46} $f:\{1,2\}\to\{1,2,3\}$ is surjective.
+\end{trybox}

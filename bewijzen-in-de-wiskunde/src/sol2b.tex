@@ -1,0 +1,74 @@
+\sol{2.2.55} A typical element of $\R^3=\prod_{i\in[3]}\R=\R\times\R\times\R$ is a triple $(x,y,z)$ of reals, so $\R^3=\R\times\R\times\R$ (Notation 2.2.54 defines $\R^3$ as this product). A typical element of $\R^2\times\R$ is a \emph{pair} $((x,y),z)$ whose first term is a pair, and $(\R\times\R)\times\R=\R^2\times\R$ since $\R\times\R=\R^2$. A typical element of $\R\times\R^2=\R\times(\R\times\R)$ is a pair $(x,(y,z))$. So the six sets fall into three equal groups: $\R^3=\R\times\R\times\R$; $\R^2\times\R=(\R\times\R)\times\R$; $\R\times\R^2=\R\times(\R\times\R)$. Sets from different groups are not equal: a $3$-tuple is not a $2$-tuple (different lengths, Definition 2.2.46), and $((x,y),z)\ne(x,(y,z))$ since their first terms $(x,y)$ and $x$ differ. They are all equivalent in the sense that there are one-to-one correspondences between them, e.g.\ $((x,y),z)\mapsto(x,y,z)$: this is the notion of \emph{bijection} of Section 3.2 (compare Exercise 3.2.47).
+
+\sol{2.E.1} (a) $n^2<20$ for an integer $n$ iff $-4\le n\le4$ (as $4^2=16<20<25=5^2$): $\{-4,-3,-2,-1,0,1,2,3,4\}$. (b) $\{3,7,11,15,19,\dots\}$. (c) An odd multiple of six is $6m$ with $m$ odd: $\{6(2k+1)\mid k\in\Z\}=\{12k+6\mid k\in\Z\}$. (d) $\{n^2+1\mid n\in\N\}$.
+
+\sol{2.E.2} Take $X_n=\{k\in\N\mid k\ge n\}$. Then $X_{n+1}\subseteq X_n$ (if $k\ge n+1$ then $k\ge n$) and $n\in X_n\setminus X_{n+1}$, so $X_{n+1}\subsetneq X_n$. No $X_n$ can be empty, whatever the choice of sets: if $X_n=\varnothing$ then $X_{n+1}\subsetneq\varnothing$, but a proper subset $U\subsetneq\varnothing$ would satisfy $U\subseteq\varnothing$, hence $U=\varnothing$ (an element of $U$ would be an element of $\varnothing$), contradicting $U\ne\varnothing$.
+
+\sol{2.E.3} The set has the two elements $a=\varnothing$ and $b=\{\varnothing,\{\varnothing\}\}$, so its power set has the four subsets $\varnothing$, $\{a\}$, $\{b\}$, $\{a,b\}$:
+$\PS(\{\varnothing,\{\varnothing,\{\varnothing\}\}\})=\{\varnothing,\ \{\varnothing\},\ \{\{\varnothing,\{\varnothing\}\}\},\ \{\varnothing,\{\varnothing,\{\varnothing\}\}\}\}$.
+
+\sol{2.E.7} Let $A\in F$; we show $A\in\PS(F)$, i.e.\ $A\subseteq F$. Let $x\in A$. By the hypothesis applied to $A\in F$ and $x\in A$, $x\in F$. So $A\subseteq F$, and $F\subseteq\PS(F)$.
+
+\sol{2.E.10} By Exercise 2.E.9, $X\symdiff X=(X\setminus X)\cup(X\setminus X)=\varnothing\cup\varnothing=\varnothing$ (an element of $X\setminus X$ would be both in and not in $X$). And $X\symdiff\varnothing=(X\setminus\varnothing)\cup(\varnothing\setminus X)=X\cup\varnothing=X$.
+
+\sol{2.E.11} ($\Rightarrow$) If $X=Y$ then $X\symdiff Y=X\symdiff X=\varnothing$ by 2.E.10. ($\Leftarrow$) Suppose $X\symdiff Y=\varnothing$. Let $a\in X$. If $a\notin Y$ then $a\in X\setminus Y\subseteq X\symdiff Y=\varnothing$, impossible; so $a\in Y$. Thus $X\subseteq Y$, and symmetrically $Y\subseteq X$. Hence $X=Y$.
+
+\sol{2.E.12} By 2.E.9, $X\symdiff Y=(X\cup Y)\setminus(X\cap Y)$. ($\Rightarrow$) If $X\cap Y=\varnothing$ then $X\symdiff Y=(X\cup Y)\setminus\varnothing=X\cup Y$. ($\Leftarrow$) Suppose $X\symdiff Y=X\cup Y$ and suppose $a\in X\cap Y$. Then $a\in X\cup Y=X\symdiff Y$, so $a\in X$ or $a\in Y$ but not both; yet $a$ is in both. Contradiction, so $X\cap Y=\varnothing$.
+
+\sol{2.E.13} Let $a$ be arbitrary; $p$: $a\in X$, $q$: $a\in Y$, $r$: $a\in Z$. Write $s\oplus t$ for ``$s$ or $t$ but not both''. Then $a\in X\symdiff(Y\symdiff Z)$ is $p\oplus(q\oplus r)$ and $a\in(X\symdiff Y)\symdiff Z$ is $(p\oplus q)\oplus r$:
+\[
+\begin{array}{ccc|c|c|c|c}
+p&q&r&q\oplus r&p\oplus(q\oplus r)&p\oplus q&(p\oplus q)\oplus r\\\hline
+\checkmark&\checkmark&\checkmark&\times&\checkmark&\times&\checkmark\\
+\checkmark&\checkmark&\times&\checkmark&\times&\times&\times\\
+\checkmark&\times&\checkmark&\checkmark&\times&\checkmark&\times\\
+\checkmark&\times&\times&\times&\checkmark&\checkmark&\checkmark\\
+\times&\checkmark&\checkmark&\times&\times&\checkmark&\times\\
+\times&\checkmark&\times&\checkmark&\checkmark&\checkmark&\checkmark\\
+\times&\times&\checkmark&\checkmark&\checkmark&\times&\checkmark\\
+\times&\times&\times&\times&\times&\times&\times
+\end{array}
+\]
+The two columns agree (both say: $a$ lies in an odd number of the sets $X,Y,Z$), so the sets are equal by extensionality.
+
+\sol{2.E.14} With $p,q,r$ as above: $a\in X\cap(Y\symdiff Z)$ is $p\wedge(q\oplus r)$ and $a\in(X\cap Y)\symdiff(X\cap Z)$ is $(p\wedge q)\oplus(p\wedge r)$. If $p$ is false both are false. If $p$ is true, $p\wedge q\equiv q$ and $p\wedge r\equiv r$, so both reduce to $q\oplus r$. Hence they agree for all $a$, and the sets are equal.
+
+\sol{2.E.17} ($\Rightarrow$) Let $a\in U$ and take $\delta>0$ with $(a-\delta,a+\delta)\subseteq U$; then $u=a-\delta$, $v=a+\delta$ satisfy $u<a<v$ and $(u,v)\subseteq U$. ($\Leftarrow$) Let $a\in U$ and take $u<a<v$ with $(u,v)\subseteq U$. Put $\delta=\min(a-u,v-a)>0$. If $a-\delta<x<a+\delta$ then $u\le a-\delta<x<a+\delta\le v$, so $x\in(u,v)\subseteq U$. Hence $(a-\delta,a+\delta)\subseteq U$.
+
+\sol{2.E.19} ($\Rightarrow$) Suppose $U$ is open. For each $a\in U$ choose $\delta_a>0$ with $(a-\delta_a,a+\delta_a)\subseteq U$ (Strategy 3.2.35). Take $I=U$ and, for $i\in U$, $a_i=i-\delta_i$, $b_i=i+\delta_i$. Then $U=\bigcup_{i\in U}(a_i,b_i)$: each $a\in U$ lies in its own interval $(a_a,b_a)$, and each interval is contained in $U$. ($\Leftarrow$) Suppose $U=\bigcup_{i\in I}(a_i,b_i)$ and let $a\in U$. Then $a\in(a_i,b_i)$ for some $i\in I$, and $(a_i,b_i)\subseteq U$. So $u=a_i$, $v=b_i$ satisfy the condition of Exercise 2.E.17, and $U$ is open.
+
+\sol{2.E.20} ($\subseteq$) Let $x\in\bigcap_{i\in\N}A_i$ and let $j\in\N$. By (ii) there is $i\ge j$ with $A_i\subseteq B_j$; since $x\in A_i$, $x\in B_j$. As $j$ was arbitrary, $x\in\bigcap_jB_j$. ($\supseteq$) Let $x\in\bigcap_jB_j$ and let $i\in\N$. By (i) there is $j\ge i$ with $B_j\subseteq A_i$; since $x\in B_j$, $x\in A_i$. So $x\in\bigcap_iA_i$. (The conditions $j\ge i$, $i\ge j$ are not even needed.)
+
+\sol{2.E.21} False. $E=\{0\}$: $\neg\forall x,\ x\in E$ is true (e.g.\ $1\notin E$) but $E\ne\varnothing$.
+
+\sol{2.E.22} True. $\forall x,\ \neg x\in E$ says $E$ has no elements, i.e.\ $E$ is empty (Definition 2.1.19), so $E=\varnothing$ by Theorem 2.1.25.
+
+\sol{2.E.23} True: both sets have exactly the elements $1,2,3$ (Axiom 2.1.14; order and repetition are irrelevant).
+
+\sol{2.E.24} False: $\varnothing$ has no elements, so $\varnothing\in\varnothing$ is false.
+
+\sol{2.E.25} True: $\{\varnothing\}$ has the single element $\varnothing$.
+
+\sol{2.E.26} False: the only element of $\{\{\varnothing\}\}$ is $\{\varnothing\}$, and $\{\varnothing\}\ne\varnothing$ (the former has an element, the latter does not).
+
+\sol{2.E.27} Always: both sets have exactly the elements $a$ and $b$, so they are equal by Axiom 2.1.14.
+
+\sol{2.E.29} Sometimes. $X=Y=\varnothing$: any $a$ satisfies $a\in X\Leftrightarrow a\in Y$ (both false) and $X=Y$. $X=\{0\}$, $Y=\{1\}$, $a=2$: $a\in X\Leftrightarrow a\in Y$ holds (both false) but $X\ne Y$.
+
+\sol{2.E.30} Never. If $X=Y$ then $a\in X$ gives $a\in Y$, contradicting $a\notin Y$.
+
+\sol{2.E.31} Sometimes. $X=\{0\}$, $Y=\{1\}$: $X\ne Y$ and every $a\in X$ (only $a=0$) has $a\notin Y$. $X=\{0\}$, $Y=\{0,1\}$: $X\ne Y$ but $0\in X$ and $0\in Y$.
+
+\sol{2.E.34} Sometimes. $X=\varnothing$, $Y=\{\varnothing\}$: $X\in Y$ and $X\subseteq Y$. $X=\{\varnothing\}$, $Y=\{\{\varnothing\}\}$: $X\in Y$, but $\varnothing\in X$ and $\varnothing\notin Y$ (the only element of $Y$ is $\{\varnothing\}\ne\varnothing$), so $X\nsubseteq Y$.
+
+\sol{2.E.35} Always: $\varnothing\subseteq X$ (Exercise 2.1.27), so $\varnothing\in\PS(X)$.
+
+\sol{2.E.36} Sometimes. $\{\varnothing\}\in\PS(X)$ iff $\{\varnothing\}\subseteq X$ iff $\varnothing\in X$. True for $X=\{\varnothing\}$; false for $X=\varnothing$ (then $\PS(X)=\{\varnothing\}$ and $\{\varnothing\}\ne\varnothing$).
+
+\sol{2.E.37} Always: $\varnothing\subseteq X$ and $X\subseteq X$, so both elements of $\{\varnothing,X\}$ are in $\PS(X)$.
+
+\sol{2.E.39} Sometimes. $X=Y=\varnothing$: $X\setminus Y=\varnothing$ and $X=Y$. $X=\varnothing$, $Y=\{0\}$: $X\setminus Y=\varnothing$ but $X\ne Y$. (In general $X\setminus Y=\varnothing$ iff $X\subseteq Y$.)
+
+\sol{2.E.40} Always. First, $Y=\varnothing$: if $y\in Y$ then $y\in Z=X\setminus Y$, so $y\notin Y$, a contradiction. Hence $Z=X\setminus\varnothing=X$, and $Y\cup Z=\varnothing\cup X=X$.
+
+\sol{2.E.42} Sometimes. $X=\{\varnothing\}$, $A=\varnothing$: $A\subseteq X$ and $A\in X$. $X=\{0\}$, $A=\{0\}$: $A\subseteq X$ but $A\notin X$ (the only element of $X$ is $0\ne\{0\}$).
