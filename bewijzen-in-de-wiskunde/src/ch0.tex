@@ -1,0 +1,207 @@
+\setcounter{chapter}{-1}
+\chapter{Getting started: numbers}
+\chaptercontents{A & Number sets and set-builder notation \\ B & Number bases \\ C & Division of integers \\ D & Rational and irrational numbers \\ E & Review set 0}%
+{\ess{Ch0: 2, 21, 24, 40; 0.E: 3, 4, 22, 27, 28}\\ \rec{Ch0: 14, 30, 38, 45, 51; 0.E: 17, 18, 29, 30}\\ Tested in \textbf{Quiz 1} (23 Sep) together with \S1.1.}
+
+Chapter 0 is where the book introduces the objects you will prove things about for the rest of the course, and where you see the first real proofs. The logic behind these proofs is only explained in Chapter 1, so in this chapter copy the \emph{shape} of the model solutions; by Chapter 1 you will know why the shape is right.
+
+\hsection{Number sets and set-builder notation}
+
+\begin{key}[The number sets]
+\[
+\N=\{0,1,2,3,\dots\}\ \subseteq\ \Z=\{\dots,-2,-1,0,1,2,\dots\}\ \subseteq\ \Q\ \subseteq\ \R\ \subseteq\ \C,
+\qquad \Q=\Big\{\tfrac{a}{b}\,\Big|\,a,b\in\Z,\ b\neq0\Big\}.
+\]
+In this book $0\in\N$. Writing $n\ge1$ or $n\in\N$, $n\neq0$ when you need a positive natural number is your job.
+\end{key}
+
+\begin{key}[Set-builder notation]
+There are two forms, and you must be able to read both:
+\begin{itemize}
+\item \textbf{Filter form} $\{x\in X\mid p(x)\}$: the elements of $X$ that satisfy the condition $p(x)$. \\
+  Reading rule: \quad $a\in\{x\in X\mid p(x)\}\ \Leftrightarrow\ a\in X\ \text{and}\ p(a)$.
+\item \textbf{Image form} $\{e(x)\mid x\in X\}$: all values of the expression $e(x)$ as $x$ runs through $X$.\\
+  Reading rule: \quad $b\in\{e(x)\mid x\in X\}\ \Leftrightarrow\ b=e(x)\ \text{for some}\ x\in X$.
+\end{itemize}
+Intervals are filter sets: $[a,b]=\{x\in\R\mid a\le x\le b\}$, $(a,b)=\{x\in\R\mid a<x<b\}$, $[a,\infty)=\{x\in\R\mid x\ge a\}$.
+\end{key}
+
+The two reading rules are the whole secret of Chapter 2: to decide whether something is in a set, replace the set by its condition.
+
+\begin{hexample}[reading set-builder notation]
+\begin{enumerate}
+\item Write the set $E$ of even integers in filter form and in image form.
+\item List the elements of $\{n\in\N\mid n^2<20\}$.
+\item Is $7\in\{3k+1\mid k\in\Z\}$? Is $8$?
+\end{enumerate}
+\solution
+\begin{enumerate}
+\item $E=\{n\in\Z\mid n \text{ is even}\}=\{n\in\Z\mid \exists k\in\Z,\ n=2k\}=\{2k\mid k\in\Z\}$.
+\item $n^2<20$ holds for $n=0,1,2,3,4$ and fails from $n=5$ on, so the set is $\{0,1,2,3,4\}$.\reason{$0\in\N$!}
+\item $7=3\cdot2+1$ with $2\in\Z$, so yes. For $8$ we would need $3k+1=8$, \ie $k=\tfrac73\notin\Z$, so $8\notin\{3k+1\mid k\in\Z\}$.\qed
+\end{enumerate}
+\end{hexample}
+
+\hsection{Number bases}
+
+\begin{key}[Base-$b$ expansion]
+Let $b\in\N$ with $b\ge2$. A \term{base-$b$ expansion} of $n\in\N$ is an expression
+\[
+n=d_r b^r+d_{r-1}b^{r-1}+\dots+d_1 b+d_0,\qquad d_i\in\{0,1,\dots,b-1\},
+\]
+written $n=(d_r d_{r-1}\dots d_1 d_0)_b$. The $d_i$ are the \term{base-$b$ digits}. Base 2 = binary, base 10 = decimal, base 16 = hexadecimal (digits $0,\dots,9,A,\dots,F$).
+\end{key}
+
+\begin{result}[Theorem (existence and uniqueness of base-$b$ expansions)]
+Let $b\ge2$. Every natural number $n\ge1$ has a base-$b$ expansion, and the expansion is unique once leading zeros are discarded ($d_r\ne0$).
+\end{result}
+Existence is proved by strong induction in Chapter 4 (see Example~\ref{ex:baseb}); uniqueness uses the division theorem of Section C. For the exercises you need the \emph{algorithm} and the ability to \emph{use} the expansion in a proof.
+
+\begin{strategy}[Converting between bases]
+\textbf{Decimal $\to$ base $b$:} divide by $b$, write down the remainder, divide the quotient by $b$, \dots\ until the quotient is $0$. The remainders, read \emph{last to first}, are the digits.\\
+\textbf{Base $b$ $\to$ decimal:} evaluate $d_r b^r+\dots+d_0$.\\
+\textbf{Check} by converting back.
+\end{strategy}
+
+\begin{hexample}[conversions]
+(a) Write $2026$ in base 7. \quad (b) Write $(10110)_2$ and $(2F)_{16}$ in decimal.
+\solution
+(a) $2026=7\cdot289+3$,\quad $289=7\cdot41+2$,\quad $41=7\cdot5+6$,\quad $5=7\cdot0+5$.\\
+Reading the remainders upwards: $2026=(5623)_7$.
+\reason{check: $5\cdot343+6\cdot49+2\cdot7+3=1715+294+14+3=2026$ \tick}\\[3pt]
+(b) $(10110)_2=1\cdot16+0\cdot8+1\cdot4+1\cdot2+0=22$;\qquad $(2F)_{16}=2\cdot16+15=47$.\qed
+\end{hexample}
+
+Proofs about digits always start the same way: write $n=10m+d_0$ (or $n=bm+d_0$), where $m=(d_r\dots d_1)_b$ is the number formed by the other digits. See Example 6 after we have divisibility.
+
+\hsection{Division of integers}
+
+\begin{result}[Division theorem]
+Let $a,b\in\Z$ with $b\neq0$. There exist \emph{unique} $q,r\in\Z$ such that
+\[
+a=qb+r\qquad\text{and}\qquad 0\le r<|b|.
+\]
+$q$ is the \term{quotient} and $r$ the \term{remainder} of $a$ on division by $b$.
+\end{result}
+The remainder is never negative: $-7=(-2)\cdot4+1$, so $-7$ has quotient $-2$ and remainder $1$ on division by $4$ (not $-3$).
+
+\begin{key}[Divisibility, even and odd, prime]
+Let $a,b\in\Z$.
+\begin{itemize}
+\item $b$ \term{divides} $a$, written $b\mid a$, if there exists $q\in\Z$ with $a=qb$. (Equivalently: the remainder of $a$ on division by $b$ is $0$.) We also say $a$ is a \term{multiple} of $b$ and $b$ is a \term{divisor} of $a$. Note $b\mid 0$ for every $b$, and $1\mid a$ for every $a$.
+\item $a$ is \term{even} if $2\mid a$, \ie $a=2k$ for some $k\in\Z$; $a$ is \term{odd} if $a=2k+1$ for some $k\in\Z$.
+\item \textbf{Fact} (division theorem with $b=2$): every integer is even or odd, and not both.
+\item $p\in\N$ is \term{prime} if $p\ge2$ and the only positive divisors of $p$ are $1$ and $p$.
+\end{itemize}
+\end{key}
+
+\begin{strategy}[Working with $\mid$ and parity]
+\begin{itemize}
+\item \textbf{To prove} $b\mid a$: produce an explicit integer $q$ and check $a=qb$. Say why $q\in\Z$.
+\item \textbf{To use} an assumption $b\mid a$: ``Fix $q\in\Z$ with $a=qb$.'' Then compute with $qb$ instead of $a$.
+\item \textbf{To prove something about an arbitrary integer} $n$: often split into cases $n=2k$ and $n=2k+1$ (or $n=3k,3k+1,3k+2$, \dots) using the division theorem. Make sure the cases cover everything.
+\item Never write $\frac{a}{b}\in\Z$ as a definition of divisibility: $\frac ab$ is a rational number, and the exercises want the integer $q$.
+\end{itemize}
+\end{strategy}
+
+\begin{hexample}[using and proving divisibility]
+Let $a,b,c\in\Z$. Prove that if $a\mid b$ and $a\mid c$, then $a\mid(bx+cy)$ for all $x,y\in\Z$.
+\solution
+Suppose $a\mid b$ and $a\mid c$. Fix $k,l\in\Z$ with $b=ka$ and $c=la$.\reason{definition of $\mid$}\\
+Let $x,y\in\Z$. Then
+\[
+bx+cy=kax+lay=(kx+ly)\,a .
+\]
+Since $kx+ly\in\Z$, this shows $a\mid(bx+cy)$ by definition of divisibility.\qed
+\end{hexample}
+
+\begin{hexample}[proof by cases on the remainder]
+Let $n\in\Z$. Prove that the remainder of $n^2$ on division by $4$ is $0$ or $1$.
+\solution
+By the division theorem, $n=2k$ or $n=2k+1$ for some $k\in\Z$.
+\begin{itemize}
+\item If $n=2k$, then $n^2=4k^2=4k^2+0$, so the remainder is $0$.\reason{$0\le0<4$}
+\item If $n=2k+1$, then $n^2=4k^2+4k+1=4(k^2+k)+1$, so the remainder is $1$.\reason{$0\le1<4$}
+\end{itemize}
+In both cases the remainder is $0$ or $1$. \reason{uniqueness of the remainder in the division theorem}\qed
+\end{hexample}
+
+\begin{hexample}[digits and divisibility]
+Prove that a natural number $n$ is even if and only if its last decimal digit is even.
+\solution
+Write $n=(d_r\dots d_1d_0)_{10}$ and let $m=(d_r\dots d_1)_{10}$, so that $n=10m+d_0$ with $0\le d_0\le9$.\\
+($\Rightarrow$) Suppose $n$ is even, say $n=2l$ with $l\in\Z$. Then $d_0=n-10m=2l-10m=2(l-5m)$, so $d_0$ is even.\\
+($\Leftarrow$) Suppose $d_0$ is even, say $d_0=2j$. Then $n=10m+2j=2(5m+j)$, so $n$ is even.\qed
+\end{hexample}
+The same trick (``$n=bm+d_0$'') proves: $n$ is even iff its last binary digit is $0$; $5\mid n$ iff the last decimal digit is $0$ or $5$. For ``$3\mid n$ iff $3\mid$ digit sum'' you also need $10^k=9(\dots)+1$, which comes from induction (Chapter 4).
+
+\hsection{Rational and irrational numbers}
+
+\begin{key}[Rational and irrational]
+A real number $x$ is \term{rational} if there exist $a,b\in\Z$ with $b\neq0$ and $x=\frac ab$; otherwise $x$ is \term{irrational}.\\
+\textbf{Lowest terms.} Every rational number can be written as $\frac ab$ with $b>0$ and $a,b$ having no common divisor greater than $1$; in particular $a$ and $b$ are not both even. (Divide out common factors; the process stops because $b$ decreases.)
+\end{key}
+
+Because ``irrational'' is a \emph{negative} statement (``there are no such $a,b$''), irrationality is always proved by \term{contradiction}: assume $x=\frac ab$ in lowest terms and derive something impossible. The lemma that makes it work:
+
+\begin{result}[Lemma]
+Let $n\in\Z$. If $n^2$ is even, then $n$ is even.
+\end{result}
+\emph{Proof.} We prove the contrapositive: if $n$ is odd then $n^2$ is odd. Suppose $n=2k+1$. Then $n^2=4k^2+4k+1=2(2k^2+2k)+1$ is odd.\qed\ (Why the contrapositive is allowed: \S1.3.)
+
+\begin{result}[Theorem: $\sqrt2$ is irrational]
+\end{result}
+\emph{Proof.} Suppose, for a contradiction, that $\sqrt2=\frac ab$ with $a,b\in\Z$, $b>0$, not both even. Squaring, $2b^2=a^2$, so $a^2$ is even, so $a$ is even by the Lemma; write $a=2c$. Then $2b^2=4c^2$, so $b^2=2c^2$ is even, so $b$ is even. Now $a$ and $b$ are both even, contradicting the choice of $a,b$. Hence $\sqrt2$ is irrational.\qed
+
+\begin{hexample}[$\sqrt3$ is irrational]
+Prove that $\sqrt3$ is irrational.
+\solution
+\emph{Step 1 (lemma).} If $n\in\Z$ and $3\mid n^2$ then $3\mid n$. Contrapositive: suppose $3\nmid n$. Then $n=3k+1$ or $n=3k+2$.\reason{division theorem}\\
+If $n=3k+1$: $n^2=9k^2+6k+1=3(3k^2+2k)+1$; if $n=3k+2$: $n^2=9k^2+12k+4=3(3k^2+4k+1)+1$. In both cases $n^2$ has remainder $1$, so $3\nmid n^2$.\\
+\emph{Step 2.} Suppose $\sqrt3=\frac ab$ with $a,b\in\Z$, $b>0$, no common divisor $>1$. Then $3b^2=a^2$, so $3\mid a^2$, so $3\mid a$ by Step 1; write $a=3c$. Then $3b^2=9c^2$, so $b^2=3c^2$, so $3\mid b^2$, so $3\mid b$. Now $3$ divides both $a$ and $b$: contradiction. Hence $\sqrt3$ is irrational.\qed
+\end{hexample}
+
+\begin{hexample}[irrational plus rational]
+Let $x\in\R$ be irrational and $r\in\Q$. Prove that $x+r$ is irrational, and that $rx$ is irrational if $r\neq0$.
+\solution
+Suppose, for a contradiction, that $x+r$ is rational, say $x+r=\frac ab$; write $r=\frac cd$ ($b,d\neq0$). Then
+\[
+x=\frac ab-\frac cd=\frac{ad-bc}{bd}\in\Q,\reason{$ad-bc,\,bd\in\Z$ and $bd\neq0$}
+\]
+contradicting that $x$ is irrational. So $x+r$ is irrational.\\
+Similarly, if $r\neq0$ and $rx=\frac ab$, then $x=\frac ab\cdot\frac dc=\frac{ad}{bc}\in\Q$ (note $c\neq0$ because $r\neq0$): contradiction.\qed
+\end{hexample}
+
+\begin{hexample}[parity contradiction]
+Prove that $\log_2 3$ is irrational.
+\solution
+Note $\log_23>0$. Suppose $\log_23=\frac ab$ with $a,b\in\Z$, $b>0$; then $a>0$ too. By definition of $\log$, $2^{a/b}=3$, so $2^a=3^b$. But $2^a$ is even (since $a\ge1$) and $3^b$ is odd (a product of odd numbers is odd, Example~\ref{ex:oddprod}), so an even number equals an odd number: contradiction.\qed
+\end{hexample}
+
+\begin{warn}
+\begin{itemize}
+\item The irrationals are \emph{not} closed under $+$ or $\times$: $\sqrt2+(-\sqrt2)=0$ and $\sqrt2\cdot\sqrt2=2$. ``Irrational times irrational is irrational'' is false; do not use it.
+\item In a lowest-terms argument, say explicitly which property you contradict (``not both even'', ``no common divisor $>1$''). Without that sentence the contradiction is not there.
+\item $0\in\N$: the base case of statements ``for all $n\in\N$'' is $n=0$, and $n^2<20$ has the solution $n=0$.
+\end{itemize}
+\end{warn}
+
+\begin{planning}[Chapter 0 and 0.E]
+\ess{Ch0: 2, 21, 24, 40 \textperiodcentered\ 0.E: 3, 4, 22, 27, 28}\qquad \rec{Ch0: 14, 30, 38, 45, 51 \textperiodcentered\ 0.E: 17, 18, 29, 30}\\[3pt]
+Skills they test: reading and writing set-builder notation (A); converting numbers between bases and proving statements about digits (B); proving $b\mid a$ from the definition, parity arguments, splitting into cases by remainder (C); lowest-terms contradiction proofs of irrationality and ``rational $\pm$ irrational'' arguments (D). Exercise 45 is the last division exercise you need.
+\end{planning}
+
+\hsection{Review set 0}
+\begin{multicols}{2}\small
+\begin{itemize}
+\item $a\in\{x\in X\mid p(x)\}\Leftrightarrow a\in X\wedge p(a)$.
+\item $b\in\{e(x)\mid x\in X\}\Leftrightarrow\exists x\in X,\ b=e(x)$.
+\item Base $b$: $n=\sum d_ib^i$, $0\le d_i<b$; convert by repeated division; $n=bm+d_0$.
+\item Division theorem: $a=qb+r$, $0\le r<|b|$, unique.
+\item $b\mid a\Leftrightarrow\exists q\in\Z,\ a=qb$. Even $=2k$, odd $=2k+1$; every integer is exactly one of them.
+\item Prove $\mid$: exhibit $q$. Use $\mid$: fix $q$.
+\item Cases by remainder cover all integers.
+\item Rational $=\frac ab$, $b\neq0$; may take lowest terms.
+\item Irrational: assume $\frac ab$ in lowest terms, derive contradiction. Lemma: $n^2$ even $\Rightarrow n$ even (prove the contrapositive).
+\end{itemize}
+\end{multicols}

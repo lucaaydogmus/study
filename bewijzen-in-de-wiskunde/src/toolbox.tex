@@ -1,0 +1,60 @@
+\renewcommand{\chapterprefix}{Appendix}\renewcommand{\thechapter}{T}
+\chapter{One-page proof toolbox}
+\chaptercontents{A & Reading off the first line of a proof \\ & Standard unfoldings}{Use this page while doing the exercises: find the outermost symbol of what you must prove, copy the first line, unfold the definitions, repeat.}
+
+\hsection{Reading off the first line of a proof}
+\begin{center}\footnotesize\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{@{}p{0.21\linewidth} p{0.40\linewidth} p{0.31\linewidth}@{}}
+\toprule
+\textbf{goal looks like} & \textbf{first line(s)} & \textbf{last line}\\
+\midrule
+$\forall x\in X,\ p(x)$ & Let $x\in X$. & \dots\ so $p(x)$. Since $x$ was arbitrary, \dots\\
+$\exists x\in X,\ p(x)$ & Put $x=\dots$ (then check $x\in X$). & \dots\ so $p(x)$.\\
+$\exists!\,x$ & Existence: as above. Uniqueness: suppose $x,y$ both satisfy $p$. & \dots\ so $x=y$.\\
+$P\Rightarrow Q$ & Suppose $P$. \ (or: We prove the contrapositive; suppose $\neg Q$.) & \dots\ hence $Q$. \ (\dots\ hence $\neg P$.)\\
+$P\wedge Q$ & First we prove $P$. \dots\ Next we prove $Q$. & both done.\\
+$P\vee Q$ & Suppose $\neg P$. & \dots\ hence $Q$.\\
+$P\Leftrightarrow Q$ & ($\Rightarrow$) Suppose $P$ \dots\ ($\Leftarrow$) Suppose $Q$ \dots & both directions done.\\
+$\neg P$, ``there is no'', ``irrational'', $X=\varnothing$ & Suppose, for a contradiction, that $P$ (that such an object exists; that $a\in X$). & \dots\ contradiction. Hence $\neg P$.\\
+$X\subseteq Y$ & Let $a\in X$. & \dots\ so $a\in Y$.\\
+$X=Y$ & ($\subseteq$) Let $a\in X$ \dots\ ($\supseteq$) Let $a\in Y$ \dots\ \ or a $\Leftrightarrow$-chain. & both inclusions done.\\
+$f$ injective & Let $a,b\in X$ with $f(a)=f(b)$. & \dots\ so $a=b$.\\
+$f$ surjective & Let $b\in Y$. Put $a=\dots$ & \dots\ so $f(a)=b$.\\
+$\forall n\ge b,\ p(n)$ & Base case $n=b$: \dots\ Induction step: let $n\ge b$, suppose $p(n)$. & \dots\ so $p(n+1)$. By induction \dots\\
+$R$ reflexive / symmetric / transitive & Let $a$. / Let $a,b$ with $aRb$. / Let $a,b,c$ with $aRb$, $bRc$. & $aRa$ / $bRa$ / $aRc$.\\
+$F([a])=h(a)$ well-defined & Let $a\sim b$. & \dots\ so $h(a)=h(b)$.\\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Using an assumption:} $\exists$ or ``$b\mid a$'' or ``$b\in f[U]$'' $\to$ ``Fix $k$ with \dots''. \ $P\vee Q$ or ``$a\in X\cup Y$'' $\to$ cases. \ $P\wedge Q$ or ``$a\in X\cap Y$'' $\to$ two facts. \ $\forall$ $\to$ plug in what you need. \ $P\Rightarrow Q$ and $P$ $\to$ $Q$.
+
+\hsub{Standard unfoldings}
+\begin{center}\footnotesize\renewcommand{\arraystretch}{1.05}
+\begin{tabular}[t]{@{}l l@{}}
+\toprule
+$b\mid a$ & $\exists q\in\Z,\ a=qb$\\
+$n$ even / odd & $n=2k$ / $n=2k+1$, $k\in\Z$\\
+$x\in\Q$ & $x=\frac ab$, $a,b\in\Z$, $b\neq0$\\
+$a\in\{x\in X\mid p(x)\}$ & $a\in X\wedge p(a)$\\
+$b\in\{e(x)\mid x\in X\}$ & $\exists x\in X,\ b=e(x)$\\
+$X\subseteq Y$ & $\forall a\in X,\ a\in Y$\\
+$U\in\PS(X)$ & $U\subseteq X$\\
+$a\in X\cap Y$ & $a\in X\wedge a\in Y$\\
+$a\in X\cup Y$ & $a\in X\vee a\in Y$\\
+$a\in X\setminus Y$ & $a\in X\wedge a\notin Y$\\
+\bottomrule
+\end{tabular}\hspace{1.5em}
+\begin{tabular}[t]{@{}l l@{}}
+\toprule
+$a\in\bigcap_{i\in I}X_i$ & $\forall i\in I,\ a\in X_i$\\
+$a\in\bigcup_{i\in I}X_i$ & $\exists i\in I,\ a\in X_i$\\
+$(a,b)\in X\times Y$ & $a\in X\wedge b\in Y$\\
+$b\in f[U]$ & $\exists a\in U,\ f(a)=b$\\
+$a\in f^{-1}[V]$ & $f(a)\in V$\\
+$g\circ f=\id_X$ & $\forall a\in X,\ g(f(a))=a$\\
+$b\in[a]_\sim$ & $a\sim b$\\
+$[a]=[b]$ & $a\sim b$ (Lemma)\\
+$a\equiv b\pmod n$ & $n\mid a-b$\\
+\bottomrule
+\end{tabular}
+\end{center}

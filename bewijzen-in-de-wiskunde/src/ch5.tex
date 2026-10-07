@@ -1,0 +1,230 @@
+\chapter{Relations}
+\chaptercontents{A & Relations and their properties (\S5.1) \\ B & Equivalence relations and partitions (\S5.2) \\ C & Review set 5}%
+{\ess{5.1: 6, 13, 22, 23, 28, 39, 40, 41; 5.2: 24, 27, 33; 5.E: 18, 22, 23}\\ \rec{5.1: 10, 11, 18, 24, 29, 33, 34; 5.2: 25, 28, 30, 34, 36}\\ Tested in \textbf{Quiz 3} (21 Oct) together with modular arithmetic (\S7.3).}
+
+\hsection{Relations and their properties}
+
+\begin{key}[Relation]
+A \term{relation} $R$ from a set $X$ to a set $Y$ is a statement $a\mathrel Rb$ about pairs $(a,b)$ with $a\in X$, $b\in Y$; equivalently, it is its \term{graph} $\mathrm{Gr}(R)=\{(a,b)\in X\times Y\mid a\mathrel Rb\}\subseteq X\times Y$. A relation \emph{on} $X$ is a relation from $X$ to $X$. Every subset of $X\times Y$ is the graph of exactly one relation, so a set with $n$ elements has $2^{n^2}$ relations on it.\\
+Examples on $\Z$: $=$, $\le$, $<$, $\mid$, ``$a\equiv b\pmod n$'' (\ie $n\mid a-b$), ``$a$ and $b$ have the same parity''. On $\PS(X)$: $\subseteq$. Between $X$ and $Y$: ``$f(a)=b$'' for a function $f:X\to Y$ (its graph is $\mathrm{Gr}(f)$).
+\end{key}
+
+\begin{key}[Properties of a relation $R$ on $X$]
+\begin{center}\small
+\begin{tabular}{@{}l l l@{}}
+\toprule
+$R$ is \dots & definition & to disprove, exhibit \dots\\
+\midrule
+\term{reflexive} & $\forall a\in X,\ a\mathrel Ra$ & one $a$ with $\neg(a\mathrel Ra)$\\
+\term{symmetric} & $\forall a,b\in X,\ (a\mathrel Rb\Rightarrow b\mathrel Ra)$ & $a,b$ with $a\mathrel Rb$ and $\neg(b\mathrel Ra)$\\
+\term{transitive} & $\forall a,b,c\in X,\ (a\mathrel Rb\wedge b\mathrel Rc\Rightarrow a\mathrel Rc)$ & $a,b,c$ with $a\mathrel Rb$, $b\mathrel Rc$, $\neg(a\mathrel Rc)$\\
+\term{antisymmetric} & $\forall a,b\in X,\ (a\mathrel Rb\wedge b\mathrel Ra\Rightarrow a=b)$ & $a\neq b$ with $a\mathrel Rb$ and $b\mathrel Ra$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{center}\small
+\begin{tabular}{@{}l c c c c@{}}
+\toprule
+relation & reflexive & symmetric & transitive & antisymmetric\\
+\midrule
+$=$ on any set & \tick & \tick & \tick & \tick\\
+$\le$ on $\R$; $\subseteq$ on $\PS(X)$; $\mid$ on $\N$ & \tick & \cross & \tick & \tick\\
+$<$ on $\R$ & \cross & \cross & \tick & \tick (vacuously)\\
+$\equiv\pmod n$ on $\Z$ & \tick & \tick & \tick & \cross ($n\ge2$)\\
+$\neq$ on a set with $\ge2$ elements & \cross & \tick & \cross & \cross\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{key}
+
+\begin{strategy}[Proving properties]
+Each property is a $\forall$-statement, usually with an implication inside; write exactly that.
+\begin{itemize}
+\item Reflexive: ``Let $a\in X$. Then \dots, so $a\mathrel Ra$.''
+\item Symmetric: ``Let $a,b\in X$ and suppose $a\mathrel Rb$. \dots\ Hence $b\mathrel Ra$.''
+\item Transitive: ``Let $a,b,c\in X$ and suppose $a\mathrel Rb$ and $b\mathrel Rc$. \dots\ Hence $a\mathrel Rc$.''
+\item Antisymmetric: ``Let $a,b\in X$ and suppose $a\mathrel Rb$ and $b\mathrel Ra$. \dots\ Hence $a=b$.''
+\end{itemize}
+Unfold ``$a\mathrel Rb$'' into its definition on the first line (``so $3\mid a-b$; fix $k$ with $a-b=3k$'').
+\end{strategy}
+
+\begin{hexample}[congruence modulo 3]\label{ex:mod3}
+On $\Z$ define $a\sim b$ to mean $3\mid a-b$. Prove that $\sim$ is reflexive, symmetric and transitive, and show that it is not antisymmetric.
+\solution
+\emph{Reflexive.} Let $a\in\Z$. Then $a-a=0=3\cdot0$, so $3\mid a-a$, \ie $a\sim a$.\\
+\emph{Symmetric.} Let $a,b\in\Z$ with $a\sim b$; fix $k\in\Z$ with $a-b=3k$. Then $b-a=3(-k)$, so $3\mid b-a$, \ie $b\sim a$.\\
+\emph{Transitive.} Let $a,b,c\in\Z$ with $a\sim b$ and $b\sim c$; fix $k,l\in\Z$ with $a-b=3k$ and $b-c=3l$. Then $a-c=(a-b)+(b-c)=3(k+l)$, so $a\sim c$.\\
+\emph{Not antisymmetric.} $0\sim3$ and $3\sim0$ (both differences are $\pm3$), but $0\neq3$.\qed
+\end{hexample}
+
+\begin{hexample}[divisibility is antisymmetric on $\N$ but not on $\Z$]
+Prove that $\mid$ is antisymmetric on $\N$. Show that it is not antisymmetric on $\Z$.
+\solution
+Let $a,b\in\N$ with $a\mid b$ and $b\mid a$; fix $k,l\in\N$ with $b=ka$ and $a=lb$ (the quotients are $\ge0$ since $a,b\ge0$). Then $a=lka$. If $a=0$ then $b=k\cdot0=0=a$. If $a\neq0$ then $lk=1$, and since $k,l\in\N$ this forces $k=l=1$, so $a=b$.\\
+On $\Z$: $2\mid-2$ and $-2\mid2$ but $2\neq-2$.\qed
+\end{hexample}
+
+\begin{hexample}[a relation with some properties and not others]
+On $\Z$ define $a\mathrel Rb$ to mean that $a+b$ is odd. Decide whether $R$ is reflexive, symmetric, transitive.
+\solution
+\emph{Not reflexive:} $0+0=0$ is even, so $\neg(0\mathrel R0)$.\\
+\emph{Symmetric:} let $a,b\in\Z$ with $a\mathrel Rb$. Then $b+a=a+b$ is odd, so $b\mathrel Ra$.\\
+\emph{Not transitive:} $1\mathrel R2$ and $2\mathrel R3$ (sums $3$ and $5$), but $1+3=4$ is even, so $\neg(1\mathrel R3)$.\qed
+\end{hexample}
+
+\begin{key}[Relations that are functions]
+A relation $R$ from $X$ to $Y$ is (the graph of) a function $X\to Y$ iff \ $\forall a\in X,\ \exists!\,b\in Y,\ a\mathrel Rb$: every input is related to exactly one output. Then $f(a)$ is that $b$.
+\end{key}
+
+\begin{hexample}[is it a function?]
+Which of the relations $G_1=\{(x,y)\in\R^2\mid y=x^2\}$ and $G_2=\{(x,y)\in\R^2\mid x=y^2\}$ is the graph of a function $\R\to\R$?
+\solution
+$G_1$: for each $x\in\R$ there is exactly one $y$ with $y=x^2$. So $G_1$ is the graph of $x\mapsto x^2$.\\
+$G_2$: for $x=1$ both $(1,1)$ and $(1,-1)$ lie in $G_2$ (not unique), and for $x=-1$ there is no $y$ with $y^2=-1$ (not existent). So $G_2$ is not the graph of a function.\qed
+\end{hexample}
+
+\begin{warn}
+\begin{itemize}
+\item Reflexivity is about \emph{all} elements. ``Symmetric and transitive imply reflexive'' is false: the empty relation on $\{1\}$ is symmetric and transitive but not reflexive (the argument ``$a\mathrel Rb$, so $b\mathrel Ra$, so $a\mathrel Ra$'' needs some $b$ to exist).
+\item Antisymmetric is not the negation of symmetric: $=$ is both; $\neq$ is neither.
+\item To refute a property one concrete counterexample is enough, but you must check it: state the pairs and why they are (not) related.
+\end{itemize}
+\end{warn}
+
+\begin{planning}[5.1]
+\ess{6, 13, 22, 23, 28, 39, 40, 41}\quad \rec{10, 11, 18, 24, 29, 33, 34}\\[3pt]
+Skills: writing a relation as a set of pairs and back; deciding and proving/refuting reflexive, symmetric, transitive, antisymmetric for concrete relations on $\Z$, $\R$, $\PS(X)$, finite sets; relations as functions (the $\forall\exists!$ test); counting relations.
+\end{planning}
+
+\hsection{Equivalence relations and partitions}
+
+\begin{key}[Equivalence relation, class, quotient]
+An \term{equivalence relation} on $X$ is a relation $\sim$ that is reflexive, symmetric and transitive. For $a\in X$, the \term{equivalence class} of $a$ is
+\[
+[a]_\sim=\{b\in X\mid a\sim b\}\subseteq X,
+\]
+and the \term{quotient} of $X$ by $\sim$ is the set of all classes, $X/{\sim}=\{[a]_\sim\mid a\in X\}\subseteq\PS(X)$. Membership rule: $b\in[a]\Leftrightarrow a\sim b$.
+\end{key}
+
+\begin{result}[Lemma: classes are equal or disjoint]
+Let $\sim$ be an equivalence relation on $X$ and $a,b\in X$. Then
+\[
+a\sim b\quad\Leftrightarrow\quad[a]=[b]\quad\Leftrightarrow\quad[a]\cap[b]\text{ is inhabited.}
+\]
+Moreover $a\in[a]$ for every $a$, so every class is inhabited and every element lies in some class.
+\end{result}
+
+\begin{hexample}[proof of the Lemma]
+Prove the Lemma.
+\solution
+($a\sim b\Rightarrow[a]=[b]$) Suppose $a\sim b$. Let $c\in[a]$, \ie $a\sim c$. By symmetry $b\sim a$, and by transitivity ($b\sim a$, $a\sim c$) $b\sim c$, \ie $c\in[b]$. So $[a]\subseteq[b]$; by symmetry of the situation ($b\sim a$) also $[b]\subseteq[a]$.\\
+($[a]=[b]\Rightarrow[a]\cap[b]$ inhabited) $a\in[a]$ by reflexivity, and $[a]=[b]$, so $a\in[a]\cap[b]$.\\
+($[a]\cap[b]$ inhabited $\Rightarrow a\sim b$) Fix $c\in[a]\cap[b]$: $a\sim c$ and $b\sim c$. By symmetry $c\sim b$; by transitivity $a\sim b$.\qed
+\end{hexample}
+
+\begin{key}[Partition]
+A \term{partition} of $X$ is a set $\mathcal U$ of subsets of $X$ such that
+(i) every $U\in\mathcal U$ is inhabited; (ii) distinct members are disjoint: $U,V\in\mathcal U$, $U\neq V\Rightarrow U\cap V=\varnothing$; (iii) they cover $X$: $\bigcup_{U\in\mathcal U}U=X$ (every $a\in X$ lies in some $U\in\mathcal U$).\\
+Equivalently: every $a\in X$ lies in \emph{exactly one} member of $\mathcal U$.
+\end{key}
+
+\begin{result}[Fundamental theorem: equivalence relations $=$ partitions]
+\begin{enumerate}
+\item If $\sim$ is an equivalence relation on $X$, then $X/{\sim}$ is a partition of $X$ (by the Lemma).
+\item If $\mathcal U$ is a partition of $X$, then $a\sim_{\mathcal U}b\ \Leftrightarrow\ \exists U\in\mathcal U,\ (a\in U\wedge b\in U)$ defines an equivalence relation on $X$ whose classes are exactly the members of $\mathcal U$.
+\item These constructions are inverse to each other: equivalence relations on $X$ correspond bijectively to partitions of $X$.
+\end{enumerate}
+\end{result}
+Consequence for computations: to describe $X/{\sim}$, find one representative per class and prove (a) every element is equivalent to one of the representatives, (b) distinct representatives are not equivalent.
+
+\begin{hexample}[$\Z/n\Z$ has exactly $n$ elements]\label{ex:znz}
+Let $n\ge1$ and let $a\equiv b\pmod n$ mean $n\mid a-b$ (an equivalence relation, as in Example~\ref{ex:mod3}). Write $[a]_n$ for the class of $a$ and $\Z/n\Z$ for the quotient. Prove that $\Z/n\Z=\{[0]_n,[1]_n,\dots,[n-1]_n\}$ and that these $n$ classes are distinct.
+\solution
+(a) Let $a\in\Z$. By the division theorem $a=qn+r$ with $0\le r<n$. Then $a-r=qn$, so $a\equiv r$, so $[a]_n=[r]_n$ by the Lemma, with $r\in\{0,\dots,n-1\}$.\\
+(b) Let $0\le r<s\le n-1$. Then $0<s-r<n$, so $n\nmid s-r$ (the only multiple of $n$ in $(0,n)$ would be $\ge n$). Hence $r\not\equiv s$ and $[r]_n\neq[s]_n$ by the Lemma.\\
+So $\Z/n\Z$ consists of exactly the $n$ distinct classes $[0]_n,\dots,[n-1]_n$; the class of $a$ is the class of its remainder.\qed
+\end{hexample}
+
+\begin{hexample}[describing the classes]
+On $\R$ define $x\sim y$ iff $x-y\in\Z$. Show that $\sim$ is an equivalence relation, describe $[x]$, and show that every class contains exactly one element of $[0,1)$.
+\solution
+\emph{Reflexive:} $x-x=0\in\Z$. \emph{Symmetric:} if $x-y\in\Z$ then $y-x=-(x-y)\in\Z$. \emph{Transitive:} if $x-y,\ y-z\in\Z$ then $x-z=(x-y)+(y-z)\in\Z$.\\
+$[x]=\{y\in\R\mid x-y\in\Z\}=\{x+k\mid k\in\Z\}$.\\
+\emph{Exactly one representative in $[0,1)$:} existence: $r=x-\lfloor x\rfloor\in[0,1)$ and $x-r=\lfloor x\rfloor\in\Z$, so $r\in[x]$. Uniqueness: if $r,r'\in[x]\cap[0,1)$ then $r-r'\in\Z$ (transitivity/symmetry) and $|r-r'|<1$, so $r=r'$.\qed
+\end{hexample}
+
+\begin{hexample}[fractions: transitivity needs care]
+On $X=\Z\times(\Z\setminus\{0\})$ define $(a,b)\sim(c,d)$ iff $ad=bc$. Prove that $\sim$ is transitive. (Its classes are the rational numbers: $[(a,b)]$ ``is'' $\frac ab$.)
+\solution
+Let $(a,b),(c,d),(e,f)\in X$ with $(a,b)\sim(c,d)$ and $(c,d)\sim(e,f)$, \ie $ad=bc$ and $cf=de$. We need $af=be$. Multiply the first equation by $f$ and use the second:
+\[
+adf=bcf=b(cf)=bde,\qquad\text{so}\qquad d(af-be)=0 .
+\]
+Since $d\neq0$ (second coordinates are non-zero), $af-be=0$, \ie $af=be$. Hence $(a,b)\sim(e,f)$.\qed
+\end{hexample}
+
+\begin{hexample}[from partition to relation and back]
+Let $X=\{1,2,3,4,5\}$ and $\mathcal U=\{\{1,3\},\{2\},\{4,5\}\}$. Write the corresponding equivalence relation as a set of pairs. How many equivalence relations are there on $\{1,2,3\}$?
+\solution
+$a\sim b$ iff $a,b$ lie in the same member: $\mathrm{Gr}(\sim)=\{(1,1),(3,3),(1,3),(3,1),(2,2),(4,4),(5,5),(4,5),(5,4)\}$ (nine pairs: $2^2+1^2+2^2$).\\
+Equivalence relations on $\{1,2,3\}$ correspond to partitions: $\{\{1,2,3\}\}$; $\{\{1\},\{2\},\{3\}\}$; and three of the form $\{\{a,b\},\{c\}\}$. Total: $5$.\qed
+\end{hexample}
+
+\begin{key}[The quotient function]
+For an equivalence relation $\sim$ on $X$, the \term{quotient function} is $q_\sim:X\to X/{\sim}$, $q_\sim(a)=[a]_\sim$. It is surjective (every class is $[a]$ for some $a$), and $q_\sim(a)=q_\sim(b)\Leftrightarrow a\sim b$ (Lemma).\\
+For $\equiv\pmod n$: $q_n:\Z\to\Z/n\Z$ sends $a$ to $[r]_n$ where $r$ is the remainder of $a$ on division by $n$ (Example~\ref{ex:znz}); so $q_n(a)=q_n(b)$ iff $a$ and $b$ have the same remainder.
+\end{key}
+
+\begin{result}[Theorem 5.2.35: every surjection is a quotient]
+Let $p:X\to Z$ be a surjection. Define $a\sim b\Leftrightarrow p(a)=p(b)$. Then $\sim$ is an equivalence relation on $X$, and $f:X/{\sim}\to Z$, $f([a])=p(a)$, is a well-defined bijection with $f\circ q_\sim=p$. The relation $\sim$ is the only equivalence relation on $X$ for which such a bijection exists.
+\end{result}
+
+\begin{hexample}[the induced bijection (proof of the core of Theorem 5.2.35)]
+Let $p:X\to Z$ be surjective and $a\sim b\Leftrightarrow p(a)=p(b)$. Prove that $\sim$ is an equivalence relation and that $f([a])=p(a)$ defines a bijection $X/{\sim}\to Z$.
+\solution
+\emph{Equivalence relation.} Reflexive: $p(a)=p(a)$. Symmetric: $p(a)=p(b)\Rightarrow p(b)=p(a)$. Transitive: $p(a)=p(b)$ and $p(b)=p(c)$ give $p(a)=p(c)$.\\
+\emph{Well-defined.} If $[a]=[b]$ then $a\sim b$ (Lemma), \ie $p(a)=p(b)$: the proposed value does not depend on the representative.\\
+\emph{Injective.} Suppose $f([a])=f([b])$, \ie $p(a)=p(b)$. Then $a\sim b$, so $[a]=[b]$ by the Lemma.\\
+\emph{Surjective.} Let $z\in Z$. Since $p$ is surjective, fix $a\in X$ with $p(a)=z$; then $f([a])=z$.\qed
+\end{hexample}
+
+\begin{key}[Defining a function on a quotient: well-definedness]
+To define $F:X/{\sim}\to Y$ by a formula $F([a])=h(a)$ you must prove: \quad $\forall a,b\in X,\ \big(a\sim b\Rightarrow h(a)=h(b)\big)$.\\
+Otherwise the ``function'' assigns two values to one class. This check is mandatory in every exercise that defines something on $\Z/n\Z$, $X/{\sim}$, fractions, etc.
+\end{key}
+
+\begin{hexample}[well-defined and not well-defined on $\Z/n\Z$]
+(a) Prove that $[a]_n+[b]_n:=[a+b]_n$ is a well-defined operation on $\Z/n\Z$.\quad (b) Show that $F:\Z/n\Z\to\Z$, $F([a]_n)=a$ is not well-defined (for $n\ge1$).
+\solution
+(a) Suppose $[a]_n=[a']_n$ and $[b]_n=[b']_n$, \ie $n\mid a-a'$ and $n\mid b-b'$; fix $k,l$ with $a-a'=nk$, $b-b'=nl$. Then $(a+b)-(a'+b')=n(k+l)$, so $n\mid(a+b)-(a'+b')$, \ie $[a+b]_n=[a'+b']_n$. The result does not depend on the representatives.\qed\\
+(b) $[0]_n=[n]_n$ (since $n\mid n-0$), but the rule gives $F([0]_n)=0$ and $F([n]_n)=n\neq0$. So $F$ is not well-defined.\qed
+\end{hexample}
+
+\begin{warn}
+\begin{itemize}
+\item $[a]=[b]$ does not mean $a=b$; it means $a\sim b$. An equivalence class is a \emph{set}; $X/{\sim}$ is a set of sets.
+\item When you define anything on a quotient, write the well-definedness check before anything else. ``Choose a representative'' must be followed by ``and the result is independent of the choice because \dots''.
+\item To prove a relation is an equivalence relation you need all three properties, each with its own ``Let \dots'' line. Reflexivity is the one people forget.
+\item Counting classes: existence of a representative for every element \emph{and} distinctness of the representatives, both proved.
+\end{itemize}
+\end{warn}
+
+\begin{planning}[5.2 and 5.E]
+\ess{5.2: 24, 27, 33; 5.E: 18, 22, 23}\quad \rec{5.2: 25, 28, 30, 34, 36}\\[3pt]
+Skills: proving a relation is an equivalence relation; computing and describing equivalence classes and quotients ($\Z/n\Z$, $\R/\Z$-type examples, fractions, functions grouped by a value); converting between partitions and equivalence relations; the quotient function and Theorem 5.2.35 (surjections $\leftrightarrow$ quotients, Exercise 5.2.33 on remainders); proving well-definedness of functions and operations on quotients; using Lemma 5.2.29-type bijections class by class (Exercise 5.2.30).
+\end{planning}
+
+\hsection{Review set 5}
+\begin{multicols}{2}\small
+\begin{itemize}
+\item Relation on $X$ $=$ subset of $X\times X$; $2^{n^2}$ of them.
+\item Reflexive $\forall a\,aRa$; symmetric $aRb\Rightarrow bRa$; transitive $aRb\wedge bRc\Rightarrow aRc$; antisymmetric $aRb\wedge bRa\Rightarrow a=b$.
+\item Function $\Leftrightarrow\forall a\,\exists!\,b,\ aRb$.
+\item Equivalence relation $=$ R+S+T; $[a]=\{b\mid a\sim b\}$; $X/{\sim}=\{[a]\}$.
+\item $a\sim b\Leftrightarrow[a]=[b]\Leftrightarrow[a]\cap[b]\neq\varnothing$.
+\item Partition: inhabited, pairwise disjoint, cover. Equivalence relations $\leftrightarrow$ partitions.
+\item $\Z/n\Z=\{[0],\dots,[n-1]\}$, class $=$ remainder.
+\item $q_\sim:X\to X/{\sim}$ surjective; every surjection $p$ is $q_\sim$ up to the bijection $[a]\mapsto p(a)$, with $a\sim b\Leftrightarrow p(a)=p(b)$.
+\item Defining $F([a])=h(a)$ needs $a\sim b\Rightarrow h(a)=h(b)$.
+\end{itemize}
+\end{multicols}

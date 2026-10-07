@@ -1,0 +1,255 @@
+\chapter{Sets}
+\chaptercontents{A & Sets, subsets and the power set (\S2.1) \\ B & Set operations (\S2.2) \\ C & Review set 2}%
+{\ess{2.1: 10, 27, 31, 35; 2.2: 5, 24, 26, 28, 35, 36, 37, 40, 51; 2.E: 6, 33, 38}\\ \rec{2.1: 17, 18, 23, 24, 32, 36; 2.2: 4, 6, 9, 25, 41, 45, 53; 2.E: 4, 5, 16, 28, 32, 41}\\ \bonus{2.E: 18}\\ Tested in \textbf{Quiz 2} (7 Oct) together with Chapter 3.}
+
+Sets are where the logic of Chapter 1 gets exercised: every set statement unfolds to a statement with $\forall$, $\exists$, $\wedge$, $\vee$, $\Rightarrow$, and then the strategies of Chapter 1 take over. The two rules of Section 0A (how to read $\{x\in X\mid p(x)\}$ and $\{e(x)\mid x\in X\}$) are used on almost every line.
+
+\hsection{Sets, subsets and the power set}
+
+\begin{key}[Sets, elements, equality]
+A \term{set} is a collection of objects, its \term{elements}; $a\in X$ means $a$ is an element of $X$. Two sets are equal when they have the same elements (\term{extensionality}):
+\[
+X=Y\quad\Leftrightarrow\quad\forall a,\ (a\in X\Leftrightarrow a\in Y).
+\]
+Hence order and repetition do not matter: $\{1,2,2,3\}=\{3,1,2\}$. The \term{empty set} $\varnothing=\{\}$ has no elements. A set is \term{inhabited} if it has at least one element.
+\end{key}
+
+\begin{key}[Subsets and the power set]
+\begin{itemize}
+\item $X$ is a \term{subset} of $Y$, written $X\subseteq Y$, if every element of $X$ is an element of $Y$:\quad $X\subseteq Y\ \Leftrightarrow\ \forall a\in X,\ a\in Y$.
+\item $X\subsetneq Y$ (\term{proper subset}) means $X\subseteq Y$ and $X\neq Y$.
+\item Facts: $\varnothing\subseteq X$ and $X\subseteq X$ for every set $X$; if $X\subseteq Y$ and $Y\subseteq Z$ then $X\subseteq Z$.
+\item \textbf{Equality via double inclusion:}\quad $X=Y\ \Leftrightarrow\ X\subseteq Y\ \wedge\ Y\subseteq X$.
+\item The \term{power set} of $X$ is $\PS(X)=\{U\mid U\subseteq X\}$, the set of all subsets of $X$:\quad $U\in\PS(X)\Leftrightarrow U\subseteq X$.\\
+  $\PS(\varnothing)=\{\varnothing\}$,\quad $\PS(\{1,2\})=\{\varnothing,\{1\},\{2\},\{1,2\}\}$,\quad a set with $n$ elements has $2^n$ subsets.
+\end{itemize}
+\end{key}
+
+\begin{strategy}[Proving things about sets]
+\begin{itemize}
+\item \textbf{$X\subseteq Y$:} ``Let $a\in X$.'' Unfold what $a\in X$ means. \dots\ ``So $a\in Y$.'' (It is a $\forall$-proof.)
+\item \textbf{$X=Y$:} prove $X\subseteq Y$ and $Y\subseteq X$ separately (label them ($\subseteq$) and ($\supseteq$)); \emph{or} show $a\in X\Leftrightarrow a\in Y$ by a chain of $\Leftrightarrow$ steps, each justified by a definition or a logical law.
+\item \textbf{$X\not\subseteq Y$:} exhibit one $a$ with $a\in X$ and $a\notin Y$. \quad \textbf{$X\neq Y$:} exhibit an element of one set that is not in the other.
+\item \textbf{$X=\varnothing$:} ``Suppose $a\in X$'' and derive a contradiction. \quad \textbf{$X$ inhabited:} exhibit an element.
+\item \textbf{$X\subsetneq Y$:} prove $X\subseteq Y$ and exhibit an element of $Y\setminus X$.
+\end{itemize}
+\end{strategy}
+
+\begin{hexample}[subset and proper subset]
+Let $A=\{n\in\Z\mid 6\mid n\}$ and $B=\{n\in\Z\mid 3\mid n\}$. Prove that $A\subsetneq B$.
+\solution
+($A\subseteq B$) Let $n\in A$. Then $n\in\Z$ and $6\mid n$; fix $k\in\Z$ with $n=6k$. Then $n=3(2k)$ with $2k\in\Z$, so $3\mid n$, \ie $n\in B$.\\
+(proper) $3\in B$ since $3=3\cdot1$, but $3\notin A$ since $3=6k$ would force $k=\tfrac12\notin\Z$. So $A\neq B$.\qed
+\end{hexample}
+
+\begin{hexample}[set equality by double inclusion]
+Prove that $\{x\in\R\mid x^2-3x+2=0\}=\{1,2\}$.
+\solution
+($\subseteq$) Let $x\in\R$ with $x^2-3x+2=0$. Then $(x-1)(x-2)=0$, so $x-1=0$ or $x-2=0$, \ie $x=1$ or $x=2$. Hence $x\in\{1,2\}$.\\
+($\supseteq$) Let $x\in\{1,2\}$. If $x=1$: $1-3+2=0$. If $x=2$: $4-6+2=0$. In both cases $x\in\R$ and $x^2-3x+2=0$.\qed\\[2pt]
+\emph{Shorter, by equivalences:} $x\in\text{LHS}\Leftrightarrow x\in\R\wedge(x-1)(x-2)=0\Leftrightarrow x=1\vee x=2\Leftrightarrow x\in\{1,2\}$.
+\end{hexample}
+
+\begin{hexample}[power sets and inclusion]\label{ex:powinc}
+Let $X$ and $Y$ be sets. Prove that if $X\subseteq Y$ then $\PS(X)\subseteq\PS(Y)$.
+\solution
+Suppose $X\subseteq Y$. Let $U\in\PS(X)$; then $U\subseteq X$.\reason{definition of $\PS$}\ We show $U\subseteq Y$: let $a\in U$. Then $a\in X$ since $U\subseteq X$, and so $a\in Y$ since $X\subseteq Y$. Thus $U\subseteq Y$, \ie $U\in\PS(Y)$.\qed
+\end{hexample}
+
+\begin{hexample}[$\in$ versus $\subseteq$]
+Let $X=\{1,\{2\}\}$. Write down $\PS(X)$ and decide: \ $2\in X$? \ $\{2\}\in X$? \ $\{2\}\subseteq X$? \ $\varnothing\in\PS(X)$? \ $\varnothing\subseteq\PS(X)$?
+\solution
+$X$ has two elements, $1$ and $\{2\}$, so $\PS(X)=\{\varnothing,\ \{1\},\ \{\{2\}\},\ \{1,\{2\}\}\}$.\\
+$2\in X$: no ($2$ is not one of the two elements). \ $\{2\}\in X$: yes. \ $\{2\}\subseteq X$: no, because $2\in\{2\}$ but $2\notin X$. \ $\varnothing\in\PS(X)$: yes, $\varnothing\subseteq X$. \ $\varnothing\subseteq\PS(X)$: yes, $\varnothing$ is a subset of every set.\qed
+\end{hexample}
+
+\begin{warn}
+\begin{itemize}
+\item $\in$ asks ``is it one of the listed things?''; $\subseteq$ asks ``is everything in it one of the listed things?''. $\{\varnothing\}\neq\varnothing$: the left set has one element.
+\item A proof of $X=Y$ with only one inclusion is half a proof. If you use a chain of $\Leftrightarrow$, each step must really be an equivalence, not just $\Rightarrow$.
+\item ``Let $a\in\varnothing$'' can never happen, so $\varnothing\subseteq X$ holds vacuously. Do not try to pick an element of $\varnothing$.
+\end{itemize}
+\end{warn}
+
+\begin{planning}[2.1]
+\ess{10, 27, 31, 35}\quad \rec{17, 18, 23, 24, 32, 36}\\[3pt]
+Skills: deciding $\in$ / $\subseteq$ / $=$ for concrete (often nested) sets; writing $\subseteq$-proofs that start with ``Let $a\in X$''; double-inclusion proofs; listing power sets; proving statements about $\PS$ such as Example~\ref{ex:powinc}.
+\end{planning}
+
+\hsection{Set operations}
+
+\begin{key}[Intersection, union, difference]
+Let $X,Y$ be sets.
+\begin{center}\small
+\begin{tabular}{@{}l l l@{}}
+\toprule
+operation & definition & membership rule\\
+\midrule
+intersection $X\cap Y$ & $\{a\mid a\in X\wedge a\in Y\}$ & $a\in X\cap Y\Leftrightarrow a\in X\wedge a\in Y$\\
+union $X\cup Y$ & $\{a\mid a\in X\vee a\in Y\}$ & $a\in X\cup Y\Leftrightarrow a\in X\vee a\in Y$\\
+relative complement $X\setminus Y$ & $\{a\in X\mid a\notin Y\}$ & $a\in X\setminus Y\Leftrightarrow a\in X\wedge a\notin Y$\\
+\bottomrule
+\end{tabular}
+\end{center}
+$X$ and $Y$ are \term{disjoint} if $X\cap Y=\varnothing$.
+\begin{center}
+\begin{tikzpicture}[scale=0.55, every node/.style={font=\footnotesize}]
+\foreach \i/\lbl in {0/{$X\cap Y$},1/{$X\cup Y$},2/{$X\setminus Y$}}{
+\begin{scope}[xshift=\i*5.2cm]
+\begin{scope}
+\ifnum\i=0 \clip (0,0) circle (1.2); \fill[hblue2!40] (1.3,0) circle (1.2); \fi
+\ifnum\i=1 \fill[hblue2!40] (0,0) circle (1.2); \fill[hblue2!40] (1.3,0) circle (1.2); \fi
+\ifnum\i=2 \clip (0,0) circle (1.2); \fill[hblue2!40] (-3,-2) rectangle (3,2); \fill[white] (1.3,0) circle (1.2); \fi
+\end{scope}
+\draw[hblue, thick] (0,0) circle (1.2) (1.3,0) circle (1.2);
+\draw[hblue] (-1.6,-1.6) rectangle (2.9,1.6);
+\node at (-0.9,1.0) {$X$}; \node at (2.2,1.0) {$Y$};
+\node at (0.65,-2.0) {\lbl};
+\end{scope}}
+\end{tikzpicture}
+\end{center}
+\end{key}
+
+\begin{result}[Algebra of sets]
+For all sets $X,Y,Z$:
+\begin{center}\small
+\begin{tabular}{@{}l l@{}}
+\toprule
+commutative, associative & $X\cap Y=Y\cap X$, \ $X\cup Y=Y\cup X$, \ $(X\cap Y)\cap Z=X\cap(Y\cap Z)$, \ $(X\cup Y)\cup Z=X\cup(Y\cup Z)$\\
+distributive & $X\cap(Y\cup Z)=(X\cap Y)\cup(X\cap Z)$, \quad $X\cup(Y\cap Z)=(X\cup Y)\cap(X\cup Z)$\\
+De Morgan & $X\setminus(Y\cup Z)=(X\setminus Y)\cap(X\setminus Z)$, \quad $X\setminus(Y\cap Z)=(X\setminus Y)\cup(X\setminus Z)$\\
+subsets & $X\cap Y\subseteq X\subseteq X\cup Y$, \quad $X\subseteq Y\Leftrightarrow X\cap Y=X\Leftrightarrow X\cup Y=Y$\\
+\bottomrule
+\end{tabular}
+\end{center}
+Each law is the set version of a logical law ($\cap\leftrightarrow\wedge$, $\cup\leftrightarrow\vee$, $\setminus\leftrightarrow\wedge\neg$); that is also how you prove it.
+\end{result}
+
+\begin{strategy}[Proving a set identity]
+\textbf{Method 1 (membership chain).} Take an arbitrary $a$ and rewrite $a\in\text{LHS}$ by definitions until it is a logical formula; transform it with the laws of \S1.3; fold it back into $a\in\text{RHS}$. Every step is a $\Leftrightarrow$.\\
+\textbf{Method 2 (double inclusion).} ``Let $a\in\text{LHS}$'' \dots\ ``so $a\in\text{RHS}$'', then the other way. Membership in a union gives \emph{cases}; membership in an intersection gives \emph{two facts}; membership in $X\setminus Y$ gives a fact and a negated fact.\\
+Use Method 1 when the identity is a direct translation of a logical law; use Method 2 when the two directions need different ideas.
+\end{strategy}
+
+\begin{hexample}[distributive law, both methods]
+Prove that $X\cap(Y\cup Z)=(X\cap Y)\cup(X\cap Z)$ for all sets $X,Y,Z$.
+\solution
+\emph{Method 1.} For any $a$:
+\begin{align*}
+a\in X\cap(Y\cup Z)&\Leftrightarrow a\in X\wedge(a\in Y\vee a\in Z)\reason{definitions of $\cap,\cup$}\\
+&\Leftrightarrow(a\in X\wedge a\in Y)\vee(a\in X\wedge a\in Z)\reason{distributivity, \S1.3}\\
+&\Leftrightarrow a\in(X\cap Y)\cup(X\cap Z).\reason{definitions}
+\end{align*}
+Since this holds for all $a$, the sets are equal.\qed\\[3pt]
+\emph{Method 2.} ($\subseteq$) Let $a\in X\cap(Y\cup Z)$. Then $a\in X$ and $a\in Y\cup Z$, so $a\in Y$ or $a\in Z$. If $a\in Y$ then $a\in X\cap Y$; if $a\in Z$ then $a\in X\cap Z$. Either way $a\in(X\cap Y)\cup(X\cap Z)$.\\
+($\supseteq$) Let $a\in(X\cap Y)\cup(X\cap Z)$. If $a\in X\cap Y$ then $a\in X$ and $a\in Y\subseteq Y\cup Z$. If $a\in X\cap Z$ then $a\in X$ and $a\in Z\subseteq Y\cup Z$. Either way $a\in X$ and $a\in Y\cup Z$, so $a\in X\cap(Y\cup Z)$.\qed
+\end{hexample}
+
+\begin{hexample}[De Morgan for sets]
+Prove that $X\setminus(Y\cup Z)=(X\setminus Y)\cap(X\setminus Z)$.
+\solution
+For any $a$:
+\begin{align*}
+a\in X\setminus(Y\cup Z)&\Leftrightarrow a\in X\wedge\neg(a\in Y\vee a\in Z)\reason{definitions}\\
+&\Leftrightarrow a\in X\wedge(a\notin Y\wedge a\notin Z)\reason{De Morgan}\\
+&\Leftrightarrow(a\in X\wedge a\notin Y)\wedge(a\in X\wedge a\notin Z)\reason{$P\wedge Q\wedge R\equiv(P\wedge Q)\wedge(P\wedge R)$}\\
+&\Leftrightarrow a\in(X\setminus Y)\cap(X\setminus Z).\reason{definitions}\qquad\square
+\end{align*}
+\end{hexample}
+
+\begin{hexample}[an ``iff'' about sets]
+Prove that $X\subseteq Y$ if and only if $X\cap Y=X$.
+\solution
+($\Rightarrow$) Suppose $X\subseteq Y$. $X\cap Y\subseteq X$ always holds (if $a\in X\cap Y$ then in particular $a\in X$). For $X\subseteq X\cap Y$: let $a\in X$; then $a\in Y$ by assumption, so $a\in X\cap Y$. Hence $X\cap Y=X$.\\
+($\Leftarrow$) Suppose $X\cap Y=X$. Let $a\in X$. Then $a\in X\cap Y$ by assumption, so $a\in Y$. Hence $X\subseteq Y$.\qed
+\end{hexample}
+
+\begin{hexample}[refuting a set identity]
+Is it true that $X\setminus(Y\setminus Z)=(X\setminus Y)\setminus Z$ for all sets $X,Y,Z$?
+\solution
+No. Take $X=Z=\{1\}$ and $Y=\varnothing$. Then $Y\setminus Z=\varnothing$, so $X\setminus(Y\setminus Z)=\{1\}$; but $(X\setminus Y)\setminus Z=\{1\}\setminus\{1\}=\varnothing$. The two sides differ ($1$ is in the left side only).\qed\\
+\emph{Tip: to find a counterexample, compute both sides as logical formulas; here LHS is $a\in X\wedge(a\notin Y\vee a\in Z)$ and RHS is $a\in X\wedge a\notin Y\wedge a\notin Z$, so put an element in $X$ and $Z$ but not $Y$.}
+\end{hexample}
+
+\begin{key}[Cartesian product]
+The \term{ordered pair} $(a,b)$ satisfies $(a,b)=(c,d)\Leftrightarrow a=c\wedge b=d$ (so $(1,2)\neq(2,1)$, unlike $\{1,2\}=\{2,1\}$). The \term{Cartesian product} is
+\[
+X\times Y=\{(a,b)\mid a\in X,\ b\in Y\},\qquad (a,b)\in X\times Y\Leftrightarrow a\in X\wedge b\in Y.
+\]
+$X^2=X\times X$; $\R^2$ is the plane. If $X$ has $m$ elements and $Y$ has $n$, then $X\times Y$ has $mn$ elements; $X\times\varnothing=\varnothing$.
+\end{key}
+
+\begin{hexample}[product and intersection]
+Prove that $X\times(Y\cap Z)=(X\times Y)\cap(X\times Z)$.
+\solution
+Elements of both sides are ordered pairs. For any pair $(a,b)$:
+\begin{align*}
+(a,b)\in X\times(Y\cap Z)&\Leftrightarrow a\in X\wedge(b\in Y\wedge b\in Z)\\
+&\Leftrightarrow(a\in X\wedge b\in Y)\wedge(a\in X\wedge b\in Z)\reason{$\wedge$ is associative, commutative, idempotent}\\
+&\Leftrightarrow(a,b)\in X\times Y\wedge(a,b)\in X\times Z\Leftrightarrow(a,b)\in(X\times Y)\cap(X\times Z).\qquad\square
+\end{align*}
+\end{hexample}
+
+\begin{key}[Indexed families]
+Let $I$ be a set and let $X_i$ be a set for each $i\in I$ (an \term{indexed family} $\{X_i\mid i\in I\}$). Then
+\[
+\bigcap_{i\in I}X_i=\{a\mid\forall i\in I,\ a\in X_i\},\qquad
+\bigcup_{i\in I}X_i=\{a\mid\exists i\in I,\ a\in X_i\}.
+\]
+Membership rules: $a\in\bigcap_{i\in I}X_i\Leftrightarrow\forall i\in I,\ a\in X_i$ and $a\in\bigcup_{i\in I}X_i\Leftrightarrow\exists i\in I,\ a\in X_i$. Typical index sets: $I=\N$ (write $\bigcup_{n\in\N}$ or $\bigcup_{n\ge1}$), or $I=\{1,\dots,k\}$. De Morgan: $X\setminus\bigcup_{i\in I}Y_i=\bigcap_{i\in I}(X\setminus Y_i)$ and $X\setminus\bigcap_{i\in I}Y_i=\bigcup_{i\in I}(X\setminus Y_i)$ (these are the quantifier laws $\neg\exists\equiv\forall\neg$, $\neg\forall\equiv\exists\neg$).
+\end{key}
+
+\begin{hexample}[computing an indexed intersection and union]
+For each $n\in\N$ let $A_n=[n,\infty)=\{x\in\R\mid x\ge n\}$. Prove that $\bigcup_{n\in\N}A_n=[0,\infty)$ and $\bigcap_{n\in\N}A_n=\varnothing$.
+\solution
+\emph{Union.} ($\subseteq$) Let $x\in\bigcup_nA_n$; fix $n\in\N$ with $x\in A_n$. Then $x\ge n\ge0$, so $x\in[0,\infty)$. ($\supseteq$) Let $x\in[0,\infty)$. Then $x\ge0$, so $x\in A_0$, so $x\in\bigcup_nA_n$.\reason{witness $n=0$}\\
+\emph{Intersection.} Suppose, for a contradiction, that $x\in\bigcap_nA_n$. Then $x\ge n$ for every $n\in\N$. But there is a natural number $n>x$ (\eg $n=\lfloor x\rfloor+1$ if $x\ge0$, and $n=0$ if $x<0$), and for this $n$ we get $x\ge n>x$: contradiction. So the intersection is empty.\qed
+\end{hexample}
+
+\begin{hexample}[De Morgan for families]
+Prove that $X\setminus\bigcup_{i\in I}Y_i=\bigcap_{i\in I}(X\setminus Y_i)$.
+\solution
+For any $a$:
+\begin{align*}
+a\in X\setminus\textstyle\bigcup_{i\in I}Y_i
+&\Leftrightarrow a\in X\wedge\neg(\exists i\in I,\ a\in Y_i)\reason{definitions}\\
+&\Leftrightarrow a\in X\wedge\forall i\in I,\ a\notin Y_i\reason{$\neg\exists\equiv\forall\neg$}\\
+&\Leftrightarrow\forall i\in I,\ (a\in X\wedge a\notin Y_i)\reason{$a\in X$ does not depend on $i$; $I$ is inhabited}\\
+&\Leftrightarrow\forall i\in I,\ a\in X\setminus Y_i\Leftrightarrow a\in\textstyle\bigcap_{i\in I}(X\setminus Y_i).\qquad\square
+\end{align*}
+\end{hexample}
+
+\begin{hexample}[power sets and operations]
+Prove that $\PS(X\cap Y)=\PS(X)\cap\PS(Y)$, and show by example that $\PS(X\cup Y)=\PS(X)\cup\PS(Y)$ can fail.
+\solution
+For any set $U$: $U\in\PS(X\cap Y)\Leftrightarrow U\subseteq X\cap Y\Leftrightarrow(\forall a\in U,\ a\in X\wedge a\in Y)\Leftrightarrow(U\subseteq X)\wedge(U\subseteq Y)\Leftrightarrow U\in\PS(X)\cap\PS(Y)$, using $\forall x,(p\wedge q)\equiv\forall x\,p\wedge\forall x\,q$.\\
+Counterexample for $\cup$: $X=\{1\}$, $Y=\{2\}$. Then $\{1,2\}\in\PS(X\cup Y)$, but $\{1,2\}\not\subseteq X$ and $\{1,2\}\not\subseteq Y$, so $\{1,2\}\notin\PS(X)\cup\PS(Y)$.\qed
+\end{hexample}
+
+\begin{warn}
+\begin{itemize}
+\item From $a\in X\cup Y$ you may \emph{not} conclude $a\in X$. You get a disjunction: do cases.
+\item You cannot ``cancel'': $X\cup Y=X\cup Z$ does not give $Y=Z$ (take $X=\{1\}$, $Y=\{1\}$, $Z=\varnothing$).
+\item In a chain of $\Leftrightarrow$ steps, a step that silently uses $X\subseteq Y$ or a specific property of the sets is not a general law. Check that every step holds for \emph{all} sets.
+\item Elements of $X\times Y$ are pairs; elements of $\PS(X)$ are sets. Start those proofs with ``Let $(a,b)\in\dots$'' or ``Let $U\in\dots$''.
+\end{itemize}
+\end{warn}
+
+\begin{planning}[2.2 and 2.E]
+\ess{2.2: 5, 24, 26, 28, 35, 36, 37, 40, 51; 2.E: 6, 33, 38}\quad \rec{2.2: 4, 6, 9, 25, 41, 45, 53; 2.E: 4, 5, 16, 28, 32, 41}\quad \bonus{2.E: 18}\\[3pt]
+Skills: computing $\cap,\cup,\setminus,\times,\PS$ for concrete sets; proving identities by membership chains or double inclusion; refuting false identities with a small counterexample; computing and proving $\bigcap$/$\bigcup$ of families indexed by $\N$ (intervals!); De Morgan in both finite and indexed form; translating $\subseteq$ statements into statements about $\cap$, $\cup$.
+\end{planning}
+
+\hsection{Review set 2}
+\begin{multicols}{2}\small
+\begin{itemize}
+\item $X=Y\Leftrightarrow\forall a,(a\in X\Leftrightarrow a\in Y)$; prove by double inclusion or a $\Leftrightarrow$ chain.
+\item $X\subseteq Y$: ``Let $a\in X$ \dots\ so $a\in Y$''.
+\item $U\in\PS(X)\Leftrightarrow U\subseteq X$; $|\PS(X)|=2^{|X|}$; $\varnothing\in\PS(X)$ and $\varnothing\subseteq\PS(X)$.
+\item $\cap\leftrightarrow\wedge$, $\cup\leftrightarrow\vee$, $\setminus\leftrightarrow\wedge\neg$, $\bigcap\leftrightarrow\forall$, $\bigcup\leftrightarrow\exists$.
+\item Union membership gives cases; intersection gives two facts.
+\item $(a,b)\in X\times Y\Leftrightarrow a\in X\wedge b\in Y$; pairs are ordered.
+\item Set laws = logic laws; De Morgan for families = quantifier De Morgan.
+\item Counterexamples to identities: tiny sets such as $\varnothing,\{1\},\{2\}$.
+\end{itemize}
+\end{multicols}

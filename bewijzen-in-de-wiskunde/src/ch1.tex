@@ -1,0 +1,356 @@
+\chapter{Logical structure}
+\chaptercontents{A & Propositional logic (\S1.1) \\ B & Variables and quantifiers (\S1.2) \\ C & Logical equivalence (\S1.3) \\ D & Review set 1}%
+{\ess{1.1: 21, 25, 32, 33, 38, 47, 56, 57; 1.3: 5, 13, 14, 22, 27}\\ \ess{1.2: 6, 15, 18, 39; 1.3: 44ace; 1.E: 18}\\ \rec{1.1: 37, 43, 54, 55, 65, 66; 1.2: 21, 22, 28, 37ab; 1.3: 32, 35; 1.E: 11, 28, 29, 30}\\ \S1.1 is in \textbf{Quiz 1}.}
+
+This chapter is the engine of the course. Every statement you will ever be asked to prove is built from a handful of \emph{connectives} ($\wedge,\vee,\Rightarrow,\Leftrightarrow,\neg$) and \emph{quantifiers} ($\forall,\exists$), and \textbf{each of them comes with a fixed proof strategy}. Learn the strategies as a table (two of them below), then every proof starts by reading off the outermost symbol.
+
+\hsection{Propositional logic}
+
+\begin{key}[Propositions and connectives]
+A \term{proposition} is a statement that is either true or false. Propositional variables $P,Q,R$ stand for propositions; they are combined with the \term{logical operators}:
+\begin{center}\small
+\begin{tabular}{@{}c l l l@{}}
+\toprule
+symbol & name & read as & true exactly when\\
+\midrule
+$P\wedge Q$ & conjunction & ``$P$ and $Q$'' & both are true\\
+$P\vee Q$ & disjunction & ``$P$ or $Q$'' & at least one is true (\emph{inclusive} or)\\
+$P\Rightarrow Q$ & implication & ``if $P$ then $Q$'' & $P$ is false, or $Q$ is true\\
+$P\Leftrightarrow Q$ & biconditional & ``$P$ if and only if $Q$'' & $P$ and $Q$ have the same truth value\\
+$\neg P$ & negation & ``not $P$'' & $P$ is false\\
+\bottomrule
+\end{tabular}
+\end{center}
+Precedence: $\neg$ binds tightest, then $\wedge$, then $\vee$, then $\Rightarrow$, then $\Leftrightarrow$. So $\neg P\wedge Q\Rightarrow R$ means $((\neg P)\wedge Q)\Rightarrow R$. When in doubt, bracket.
+\end{key}
+
+\begin{key}[Truth tables]
+\begin{center}
+$\begin{array}{cc|ccccc}
+P & Q & P\wedge Q & P\vee Q & P\Rightarrow Q & P\Leftrightarrow Q & \neg P\\\hline
+\mathrm{T}&\mathrm{T}&\mathrm{T}&\mathrm{T}&\mathrm{T}&\mathrm{T}&\mathrm{F}\\
+\mathrm{T}&\mathrm{F}&\mathrm{F}&\mathrm{T}&\mathrm{F}&\mathrm{F}&\mathrm{F}\\
+\mathrm{F}&\mathrm{T}&\mathrm{F}&\mathrm{T}&\mathrm{T}&\mathrm{F}&\mathrm{T}\\
+\mathrm{F}&\mathrm{F}&\mathrm{F}&\mathrm{T}&\mathrm{T}&\mathrm{T}&\mathrm{T}
+\end{array}$
+\end{center}
+A formula that is true in every row is a \term{tautology}; false in every row, a \term{contradiction}. The only row that makes $P\Rightarrow Q$ false is $P$ true, $Q$ false. An implication with a false hypothesis is true (\term{vacuously true}): ``if $1=2$ then $\sqrt2\in\Q$'' is a true statement.
+\end{key}
+
+\begin{key}[Reading implications in English]
+All of these mean $P\Rightarrow Q$: \quad if $P$ then $Q$ \textperiodcentered\ $P$ implies $Q$ \textperiodcentered\ $Q$ if $P$ \textperiodcentered\ $P$ only if $Q$ \textperiodcentered\ $Q$ whenever $P$ \textperiodcentered\ $P$ is sufficient for $Q$ \textperiodcentered\ $Q$ is necessary for $P$.\\
+``$P$ unless $Q$'' means $\neg Q\Rightarrow P$.\quad The \term{converse} of $P\Rightarrow Q$ is $Q\Rightarrow P$; it is a different statement.
+\end{key}
+
+\begin{strategy}[Proof strategies for the connectives]
+\begin{center}\small
+\begin{tabular}{@{}l p{0.40\linewidth} p{0.37\linewidth}@{}}
+\toprule
+goal / assumption & \textbf{to PROVE it} & \textbf{to USE it as an assumption}\\
+\midrule
+$P\wedge Q$ & prove $P$; then prove $Q$. & you may use both $P$ and $Q$.\\[2pt]
+$P\vee Q$ & prove $P$, or prove $Q$; usually: \emph{assume $\neg P$ and prove $Q$}. & \emph{proof by cases}: prove the goal assuming $P$, then prove it again assuming $Q$.\\[2pt]
+$P\Rightarrow Q$ & ``Suppose $P$.'' \dots\ ``Hence $Q$.'' & if you also know $P$, conclude $Q$ (modus ponens). Or use the contrapositive $\neg Q\Rightarrow\neg P$.\\[2pt]
+$P\Leftrightarrow Q$ & prove $P\Rightarrow Q$ and prove $Q\Rightarrow P$ (label the directions). & use either direction.\\[2pt]
+$\neg P$ & ``Suppose $P$.'' \dots\ derive a contradiction. & if you also know $P$: contradiction, and you are done with that case.\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{strategy}
+
+\begin{hexample}[truth table]
+Construct the truth table of $(P\vee Q)\Rightarrow\neg(P\wedge Q)$. When is the formula false? Is it a tautology?
+\solution
+\[
+\begin{array}{cc|ccc|c}
+P&Q&P\vee Q&P\wedge Q&\neg(P\wedge Q)&(P\vee Q)\Rightarrow\neg(P\wedge Q)\\\hline
+\mathrm T&\mathrm T&\mathrm T&\mathrm T&\mathrm F&\mathrm F\\
+\mathrm T&\mathrm F&\mathrm T&\mathrm F&\mathrm T&\mathrm T\\
+\mathrm F&\mathrm T&\mathrm T&\mathrm F&\mathrm T&\mathrm T\\
+\mathrm F&\mathrm F&\mathrm F&\mathrm F&\mathrm T&\mathrm T
+\end{array}
+\]
+It is false only when $P$ and $Q$ are both true (``exclusive or'' fails there). Not a tautology.\qed
+\end{hexample}
+
+\begin{hexample}[translating into symbols]
+Let $n\in\Z$ and $x\in\R$. Write each statement using the propositions $p$: ``$4\mid n$'', $q$: ``$n$ is even'', $s$: ``$x>2$'', $t$: ``$x^2>4$''.\\
+(a) $n$ is even if $4$ divides $n$. \quad (b) $4$ divides $n$ only if $n$ is even. \quad (c) $x>2$ is sufficient for $x^2>4$. \quad (d) $x>2$ is necessary for $x^2>4$. Which of (c), (d) is true?
+\solution
+(a) $p\Rightarrow q$. \quad (b) $p\Rightarrow q$ (same statement!). \quad (c) $s\Rightarrow t$: true. \quad (d) $t\Rightarrow s$: false, since $x=-3$ has $x^2=9>4$ but $x\not>2$.\qed
+\end{hexample}
+
+\begin{hexample}[proof by cases (using a disjunction)]\label{ex:kk1}
+Let $k\in\Z$. Prove that $k(k+1)$ is even.
+\solution
+By the division theorem, $k$ is even or $k$ is odd. We consider the two cases.\\
+\emph{Case 1:} $k=2m$ for some $m\in\Z$. Then $k(k+1)=2m(k+1)=2\,(m(k+1))$, which is even.\\
+\emph{Case 2:} $k=2m+1$ for some $m\in\Z$. Then $k+1=2(m+1)$, so $k(k+1)=2\,(k(m+1))$, which is even.\\
+In both cases $k(k+1)$ is even.\qed
+\end{hexample}
+
+\begin{hexample}[implication and conjunction]\label{ex:oddprod}
+Let $n\in\Z$. Prove that if $n$ is odd, then $n^2$ is odd and $8\mid n^2-1$.
+\solution
+Suppose $n$ is odd; fix $k\in\Z$ with $n=2k+1$.\reason{strategy for $\Rightarrow$: assume the hypothesis}\\
+\emph{First conjunct.} $n^2=4k^2+4k+1=2(2k^2+2k)+1$, so $n^2$ is odd.\\
+\emph{Second conjunct.} $n^2-1=4k^2+4k=4k(k+1)$. By Example~\ref{ex:kk1}, $k(k+1)=2m$ for some $m\in\Z$, so $n^2-1=8m$ and $8\mid n^2-1$.\\
+Both conjuncts hold, so the conjunction holds.\qed\\[2pt]
+\emph{The same computation shows: a product of two odd numbers $(2k+1)(2l+1)=2(2kl+k+l)+1$ is odd.}
+\end{hexample}
+
+\begin{hexample}[proving a disjunction]
+Let $x\in\R$ and suppose $x^2=x$. Prove that $x=0$ or $x=1$.
+\solution
+We prove the disjunction by assuming $x\neq0$ and proving $x=1$.\reason{strategy: $\neg P$, then prove $Q$}\\
+Suppose $x\neq0$. From $x^2=x$ we get $x^2-x=0$, so $x(x-1)=0$. A product of real numbers is $0$ only if a factor is $0$; since $x\neq0$ we must have $x-1=0$, \ie $x=1$.\qed
+\end{hexample}
+
+\begin{hexample}[biconditional]
+Let $n\in\Z$. Prove that $n$ is odd if and only if $n+1$ is even.
+\solution
+($\Rightarrow$) Suppose $n$ is odd, say $n=2k+1$. Then $n+1=2k+2=2(k+1)$ is even.\\
+($\Leftarrow$) Suppose $n+1$ is even, say $n+1=2k$. Then $n=2k-1=2(k-1)+1$ with $k-1\in\Z$, so $n$ is odd.\qed
+\end{hexample}
+
+\begin{hexample}[proving a negation]
+Prove that no integer is both even and odd.
+\solution
+Suppose, for a contradiction, that $n\in\Z$ is both even and odd: $n=2k$ and $n=2l+1$ for some $k,l\in\Z$. Then $2k=2l+1$, so $2(k-l)=1$, so $k-l=\tfrac12$. But $k-l\in\Z$ and $\tfrac12\notin\Z$: contradiction. Hence no integer is both even and odd.\qed
+\end{hexample}
+
+\begin{warn}
+\begin{itemize}
+\item To prove $P\Rightarrow Q$ you \emph{assume} $P$; you do not prove $P$, and you do not assume $Q$. Proving $Q\Rightarrow P$ instead (the converse) earns nothing.
+\item ``Or'' is inclusive. To prove $P\vee Q$ you are not obliged to decide which one; the ``assume $\neg P$, prove $Q$'' route is usually easiest.
+\item Vacuous truth is real: a statement ``if $P$ then $Q$'' about an object for which $P$ fails is true, no proof needed.
+\end{itemize}
+\end{warn}
+
+\begin{planning}[1.1]
+\ess{21, 25, 32, 33, 38, 47, 56, 57}\quad \rec{37, 43, 54, 55, 65, 66}\quad plus \rec{1.E: 11}\\[3pt]
+Skills: truth tables and tautologies; translating ``only if / necessary / sufficient / unless''; writing short proofs whose first line is dictated by the outermost connective ($\Rightarrow$: suppose; $\wedge$: two parts; $\vee$: cases or ``assume not $P$''; $\Leftrightarrow$: two directions; $\neg$: contradiction).
+\end{planning}
+
+\hsection{Variables and quantifiers}
+
+\begin{key}[Predicates and quantifiers]
+A \term{predicate} $p(x)$ is a statement whose truth depends on a variable $x$ from some set $X$ (\eg $p(x)$: ``$x^2<2$'' on $\R$). A variable is \term{bound} when a quantifier controls it and \term{free} otherwise. The quantifiers:
+\begin{itemize}
+\item $\forall x\in X,\ p(x)$ \quad ``for all $x$ in $X$, $p(x)$'': true when $p(a)$ holds for \emph{every} $a\in X$.
+\item $\exists x\in X,\ p(x)$ \quad ``there exists $x$ in $X$ such that $p(x)$'': true when $p(a)$ holds for \emph{at least one} $a\in X$.
+\item $\exists!\,x\in X,\ p(x)$ \quad ``there is exactly one'': $\exists x\in X,\ \big(p(x)\wedge\forall y\in X,\ (p(y)\Rightarrow y=x)\big)$.
+\end{itemize}
+Over the empty set: $\forall x\in\varnothing,\ p(x)$ is true (vacuously); $\exists x\in\varnothing,\ p(x)$ is false.
+\end{key}
+
+\begin{key}[Translation patterns]
+\begin{center}\small
+\begin{tabular}{@{}l l@{}}
+\toprule
+English & formula\\
+\midrule
+every $P$ is a $Q$ & $\forall x\in X,\ (P(x)\Rightarrow Q(x))$\\
+some $P$ is a $Q$ & $\exists x\in X,\ (P(x)\wedge Q(x))$\\
+no $P$ is a $Q$ & $\forall x\in X,\ (P(x)\Rightarrow\neg Q(x))$ \ $\equiv$ \ $\neg\exists x\in X,\ (P(x)\wedge Q(x))$\\
+for every $x$ there is a $y$ (depending on $x$) & $\forall x,\ \exists y,\ \dots$\\
+there is one $y$ that works for every $x$ & $\exists y,\ \forall x,\ \dots$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Order matters} between $\forall$ and $\exists$: $\forall x\in\Z,\ \exists y\in\Z,\ y>x$ is true ($y=x+1$), but $\exists y\in\Z,\ \forall x\in\Z,\ y>x$ is false (no largest integer). Two quantifiers of the same kind may be swapped.
+\end{key}
+
+\begin{strategy}[Proof strategies for the quantifiers]
+\begin{center}\small
+\begin{tabular}{@{}l p{0.40\linewidth} p{0.33\linewidth}@{}}
+\toprule
+ & \textbf{to PROVE it} & \textbf{to USE it as an assumption}\\
+\midrule
+$\forall x\in X,\ p(x)$ & ``Let $x\in X$ (arbitrary).'' Prove $p(x)$ using nothing about $x$ except $x\in X$. & plug in any particular $a\in X$ you like: $p(a)$ holds.\\[2pt]
+$\exists x\in X,\ p(x)$ & exhibit a \emph{witness}: ``Let $x=\dots$. Then $x\in X$ and $p(x)$ because \dots''. & ``Fix $x\in X$ such that $p(x)$.'' Give it a name; assume nothing more about it.\\[2pt]
+$\exists!\,x\in X,\ p(x)$ & \emph{existence} (as above) and \emph{uniqueness}: ``Suppose $x,y\in X$ both satisfy $p$. Then \dots\ $x=y$.'' & you get a witness and the right to say ``so $y=x$'' for any other $y$ with $p(y)$.\\[2pt]
+disprove $\forall x\in X,\ p(x)$ & give a \emph{counterexample}: one $a\in X$ with $\neg p(a)$ (justified by $\neg\forall\equiv\exists\neg$, Section C). & \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{strategy}
+
+\begin{hexample}[translating quantified statements]
+Write in symbols, with $\mathbb P$ the set of primes:\quad (a) every even integer greater than $2$ is a sum of two primes;\quad (b) there is a real number that is smaller than every positive real number;\quad (c) for every positive real number there is a smaller positive real number. Which of (b), (c) are true?
+\solution
+(a) $\forall n\in\Z,\ \big((n \text{ even}\wedge n>2)\Rightarrow\exists p\in\mathbb P,\ \exists q\in\mathbb P,\ n=p+q\big)$.\\
+(b) $\exists x\in\R,\ \forall y\in\R,\ (y>0\Rightarrow x<y)$: true, witness $x=0$ (or $x=-1$).\\
+(c) $\forall y\in\R,\ \big(y>0\Rightarrow\exists x\in\R,\ (x>0\wedge x<y)\big)$: true, given $y$ take $x=y/2$.\qed
+\end{hexample}
+
+\begin{hexample}[proving $\forall\exists$ and disproving $\exists\forall$]
+(a) Prove: $\forall n\in\Z,\ \exists m\in\Z,\ (m>n\wedge m\text{ is even})$.\quad (b) Disprove: $\exists m\in\Z,\ \forall n\in\Z,\ m>n$.
+\solution
+(a) Let $n\in\Z$.\reason{$\forall$: arbitrary $n$}\ Put $m=2|n|+2$.\reason{$\exists$: a witness, allowed to depend on $n$}\ Then $m\in\Z$, $m$ is even, and $m=2|n|+2>|n|\ge n$. So $m$ has both properties.\qed\\[2pt]
+(b) We show the negation, $\forall m\in\Z,\ \exists n\in\Z,\ m\le n$. Let $m\in\Z$ and put $n=m$. Then $n\in\Z$ and $m\le n$.\qed
+\end{hexample}
+
+\begin{hexample}[using an $\exists$, proving an $\exists$]
+Let $a,b,c\in\Z$. Prove that if $a\mid b$ then $a\mid bc$.
+\solution
+Suppose $a\mid b$. Fix $k\in\Z$ with $b=ka$.\reason{using the $\exists$ hidden in $a\mid b$}\\
+Then $bc=(ka)c=(kc)a$, and $kc\in\Z$, so $a\mid bc$.\reason{witness $q=kc$ for the $\exists$ in $a\mid bc$}\qed
+\end{hexample}
+
+\begin{hexample}[unique existence]
+Prove that for all $a,b\in\R$ with $a\neq0$ there is a unique $x\in\R$ such that $ax+b=0$.
+\solution
+Let $a,b\in\R$ with $a\neq0$.\\
+\emph{Existence.} Put $x=-b/a$ (defined since $a\neq0$). Then $ax+b=-b+b=0$.\\
+\emph{Uniqueness.} Suppose $x,y\in\R$ satisfy $ax+b=0$ and $ay+b=0$. Subtracting, $a(x-y)=0$; since $a\neq0$, $x-y=0$, so $x=y$.\qed
+\end{hexample}
+
+\begin{hexample}[counterexample]
+Decide whether the statement ``for all $n\in\N$, $n^2+n+41$ is prime'' is true.
+\solution
+It is false. Counterexample: $n=40$ gives $40^2+40+41=1600+81=1681=41\cdot41$, which is not prime.\reason{one explicit $n$ with $\neg p(n)$ suffices}\qed
+\end{hexample}
+
+\begin{warn}
+\begin{itemize}
+\item ``Let $x\in X$'' introduces an arbitrary element; from then on you may not choose $x$, give it extra properties, or ``take $x=3$''. If you need a specific element you are proving an $\exists$, not a $\forall$.
+\item In a $\forall x\,\exists y$ proof, the witness $y$ may depend on $x$. In an $\exists y\,\forall x$ proof it may not: $y$ must be chosen \emph{before} $x$ is introduced.
+\item Name a witness before using it: ``Fix $k\in\Z$ with $b=ka$'' comes before any line mentioning $k$. Do not reuse the same letter for two different witnesses.
+\item A counterexample needs a verification, not just a value: show that $p$ really fails there.
+\end{itemize}
+\end{warn}
+
+\begin{planning}[1.2]
+\ess{6, 15, 18, 39}\quad \rec{21, 22, 28, 37ab}\quad \bonus{14}\quad plus \ess{1.E: 18}\\[3pt]
+Skills: identifying free/bound variables; translating English into $\forall/\exists$ formulas (and back) with the right pattern ($\forall\dots\Rightarrow$, $\exists\dots\wedge$); recognising when quantifier order changes the meaning; writing $\forall$-proofs with ``let'', $\exists$-proofs with a witness, $\exists!$-proofs in two parts; disproving with a counterexample.
+\end{planning}
+
+\hsection{Logical equivalence}
+
+\begin{key}[Logical equivalence]
+Two formulas are \term{logically equivalent}, written $\varphi\equiv\psi$, if they have the same truth value under every assignment of truth values to their variables (for propositional formulas: identical final columns in the truth table). Equivalent formulas may be substituted for each other inside any statement and inside any proof.
+\end{key}
+
+\begin{result}[Laws of logical equivalence]
+For all propositions $P,Q,R$:
+\begin{center}\small
+\begin{tabular}{@{}l l@{}}
+\toprule
+double negation & $\neg\neg P\equiv P$\\
+De Morgan & $\neg(P\wedge Q)\equiv\neg P\vee\neg Q$,\qquad $\neg(P\vee Q)\equiv\neg P\wedge\neg Q$\\
+implication & $P\Rightarrow Q\equiv\neg P\vee Q$,\qquad $\neg(P\Rightarrow Q)\equiv P\wedge\neg Q$\\
+contrapositive & $P\Rightarrow Q\equiv\neg Q\Rightarrow\neg P$\\
+biconditional & $P\Leftrightarrow Q\equiv(P\Rightarrow Q)\wedge(Q\Rightarrow P)$\\
+distributivity & $P\wedge(Q\vee R)\equiv(P\wedge Q)\vee(P\wedge R)$,\qquad $P\vee(Q\wedge R)\equiv(P\vee Q)\wedge(P\vee R)$\\
+excluded middle & $P\vee\neg P$ is a tautology;\qquad $P\wedge\neg P$ is a contradiction\\
+\bottomrule
+\end{tabular}
+\end{center}
+For predicates $p(x),q(x)$ on a set $X$:
+\begin{center}\small
+\begin{tabular}{@{}l l@{}}
+\toprule
+negating $\forall$ & $\neg\,\forall x\in X,\ p(x)\ \equiv\ \exists x\in X,\ \neg p(x)$\\
+negating $\exists$ & $\neg\,\exists x\in X,\ p(x)\ \equiv\ \forall x\in X,\ \neg p(x)$\\
+$\forall$ and $\wedge$ & $\forall x,\ (p(x)\wedge q(x))\ \equiv\ (\forall x,\ p(x))\wedge(\forall x,\ q(x))$\\
+$\exists$ and $\vee$ & $\exists x,\ (p(x)\vee q(x))\ \equiv\ (\exists x,\ p(x))\vee(\exists x,\ q(x))$\\
+\textbf{not} laws & $\forall x,(p\vee q)\not\equiv\forall x\,p\vee\forall x\,q$ \ and \ $\exists x,(p\wedge q)\not\equiv\exists x\,p\wedge\exists x\,q$\\
+ & \reason{counterexample on $\Z$: $p(x)$: $x$ even, $q(x)$: $x$ odd}\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{result}
+The propositional laws are verified by truth tables (Example~\ref{ex:tt}). The quantifier laws are the formal version of ``not everyone is \dots'' = ``someone is not \dots''.
+
+\begin{strategy}[Negating a statement mechanically]
+Push $\neg$ inwards one symbol at a time: swap $\forall\leftrightarrow\exists$ (keeping the domain), swap $\wedge\leftrightarrow\vee$, replace $\neg(p\Rightarrow q)$ by $p\wedge\neg q$, and finally negate the atomic statements ($\neg(x<y)$ becomes $x\ge y$, $\neg(a=b)$ becomes $a\ne b$). The result has no $\neg$ in front of a quantifier.
+\end{strategy}
+
+\begin{strategy}[Three strategies that come from the laws]
+\begin{itemize}
+\item \textbf{Contraposition.} To prove $P\Rightarrow Q$ you may instead assume $\neg Q$ and prove $\neg P$. Use it when $\neg Q$ is more concrete than $P$ (``$n$ is odd'' is easier to compute with than ``$n^2$ is even'').
+\item \textbf{Contradiction.} To prove $P$ you may assume $\neg P$ and derive a contradiction ($R$ and $\neg R$ for some $R$). Use it for ``not'' statements: irrationality, ``there is no \dots'', ``$X=\varnothing$''.
+\item \textbf{Cases via excluded middle.} For any $R$, you may split a proof into the case $R$ and the case $\neg R$.
+\end{itemize}
+Always announce the strategy: ``We prove the contrapositive.'' / ``Suppose, for a contradiction, that \dots''.
+\end{strategy}
+
+\begin{hexample}[verifying a law with a truth table]\label{ex:tt}
+Show that $\neg(P\Rightarrow Q)\equiv P\wedge\neg Q$.
+\solution
+\[
+\begin{array}{cc|cc|cc}
+P&Q&P\Rightarrow Q&\neg(P\Rightarrow Q)&\neg Q&P\wedge\neg Q\\\hline
+\mathrm T&\mathrm T&\mathrm T&\mathrm F&\mathrm F&\mathrm F\\
+\mathrm T&\mathrm F&\mathrm F&\mathrm T&\mathrm T&\mathrm T\\
+\mathrm F&\mathrm T&\mathrm T&\mathrm F&\mathrm F&\mathrm F\\
+\mathrm F&\mathrm F&\mathrm T&\mathrm F&\mathrm T&\mathrm F
+\end{array}
+\]
+The columns for $\neg(P\Rightarrow Q)$ and $P\wedge\neg Q$ agree in every row, so the formulas are logically equivalent.\qed
+\end{hexample}
+
+\begin{hexample}[equivalence by a chain of laws]
+Prove without a truth table that $(P\Rightarrow Q)\wedge(P\Rightarrow R)\equiv P\Rightarrow(Q\wedge R)$.
+\solution
+\begin{align*}
+(P\Rightarrow Q)\wedge(P\Rightarrow R)
+&\equiv(\neg P\vee Q)\wedge(\neg P\vee R)\reason{implication law, twice}\\
+&\equiv\neg P\vee(Q\wedge R)\reason{distributivity of $\vee$ over $\wedge$}\\
+&\equiv P\Rightarrow(Q\wedge R).\reason{implication law}\qquad\square
+\end{align*}
+\end{hexample}
+
+\begin{hexample}[negating a quantified statement]
+Negate: \ (a) $\forall\varepsilon>0,\ \exists N\in\N,\ \forall n\in\N,\ (n\ge N\Rightarrow|a_n-L|<\varepsilon)$;\quad (b) $\forall x\in\R,\ \exists y\in\R,\ (y>x\wedge y^2<x)$.
+\solution
+(a) $\exists\varepsilon>0,\ \forall N\in\N,\ \exists n\in\N,\ (n\ge N\wedge|a_n-L|\ge\varepsilon)$.\reason{swap quantifiers; $\neg(p\Rightarrow q)\equiv p\wedge\neg q$; $\neg(<)$ is $\ge$}\\
+(b) $\exists x\in\R,\ \forall y\in\R,\ (y\le x\vee y^2\ge x)$.\reason{De Morgan on $\wedge$}\qed
+\end{hexample}
+
+\begin{hexample}[contraposition]
+Let $n\in\Z$. Prove that if $n^2$ is even then $n$ is even.
+\solution
+We prove the contrapositive: if $n$ is odd then $n^2$ is odd. Suppose $n$ is odd, say $n=2k+1$ with $k\in\Z$. Then $n^2=4k^2+4k+1=2(2k^2+2k)+1$, which is odd. This proves the contrapositive, hence the statement.\qed
+\end{hexample}
+
+\begin{hexample}[contradiction]
+Prove that there is no smallest positive rational number.
+\solution
+Suppose, for a contradiction, that $q$ is a smallest positive rational number: $q\in\Q$, $q>0$, and $q\le r$ for every positive $r\in\Q$. Consider $r=q/2$. Then $r\in\Q$ (if $q=\frac ab$ then $r=\frac a{2b}$), $r>0$, and $r<q$ because $q>0$. This contradicts $q\le r$. Hence no smallest positive rational number exists.\qed
+\end{hexample}
+
+\begin{hexample}[true or false, with proof]
+Is it true that $\forall x\in\R,\ \exists y\in\R,\ y^2=x$?
+\solution
+No. The negation is $\exists x\in\R,\ \forall y\in\R,\ y^2\neq x$, and we prove that. Take $x=-1$. Let $y\in\R$. Then $y^2\ge0>-1$, so $y^2\neq-1$.\qed
+\end{hexample}
+
+\begin{warn}
+\begin{itemize}
+\item Contrapositive $\neg Q\Rightarrow\neg P$ \textbf{is} equivalent to $P\Rightarrow Q$. Converse $Q\Rightarrow P$ and inverse $\neg P\Rightarrow\neg Q$ \textbf{are not}.
+\item Contraposition proves an implication; contradiction proves anything. If you start ``suppose not'' for an implication, the assumption is $P\wedge\neg Q$ (both parts!), not just $\neg Q$.
+\item When negating, keep the domain: the negation of $\forall x\in\R,\ x>0\Rightarrow\dots$ is $\exists x\in\R,\ x>0\wedge\dots$, not $\exists x\in\R,\ x\le0\wedge\dots$.
+\item A truth table only proves equivalences of \emph{propositional} formulas. Quantifier laws are quoted by name.
+\end{itemize}
+\end{warn}
+
+\begin{planning}[1.3 and 1.E]
+\ess{1.3: 5, 13, 14, 22, 27 (up to 1.3.28); 44ace (from 1.3.29); 1.E: 18}\quad \rec{1.3: 32, 35; 1.E: 11, 28, 29, 30}\\[3pt]
+Skills: proving or refuting $\varphi\equiv\psi$ by truth table or by a chain of laws; using contraposition and contradiction and saying which one you use; negating statements with several quantifiers correctly (44ace-type); deciding ``true or false'' by proving the statement or its negation.
+\end{planning}
+
+\hsection{Review set 1}
+\begin{multicols}{2}\small
+\begin{itemize}
+\item $P\Rightarrow Q$ false only for $P$ true, $Q$ false; ``$P$ only if $Q$'', ``$Q$ is necessary for $P$'' both mean $P\Rightarrow Q$.
+\item Prove $\wedge$: both. Prove $\vee$: assume $\neg P$, show $Q$. Prove $\Rightarrow$: suppose $P$. Prove $\Leftrightarrow$: two directions. Prove $\neg P$: suppose $P$, contradiction.
+\item Use $\vee$: cases. Use $\Rightarrow$ with $P$: get $Q$.
+\item Prove $\forall$: ``Let $x\in X$''. Prove $\exists$: witness. Prove $\exists!$: existence + uniqueness. Use $\exists$: ``Fix $x$ with \dots''.
+\item $\forall x\exists y\neq\exists y\forall x$.
+\item $\neg\forall\equiv\exists\neg$, $\neg\exists\equiv\forall\neg$, $\neg(p\Rightarrow q)\equiv p\wedge\neg q$, De Morgan.
+\item Contrapositive $\neg Q\Rightarrow\neg P$ (equivalent); converse $Q\Rightarrow P$ (not).
+\item Counterexample = proof of $\exists x\,\neg p(x)$.
+\end{itemize}
+\end{multicols}

@@ -1,0 +1,186 @@
+% haese.sty -- Haese-Mathematics-inspired layout for the BiW study guide
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{haese}[2026/10/07 Haese-style study guide layout]
+
+\RequirePackage[T1]{fontenc}
+\RequirePackage[utf8]{inputenc}
+\RequirePackage{mathptmx}
+\RequirePackage[scaled=0.92]{helvet}
+\RequirePackage{amsmath,amssymb,mathtools,amsthm}
+\RequirePackage[dvipsnames,svgnames,table]{xcolor}
+\RequirePackage{tikz}
+\RequirePackage[most]{tcolorbox}
+\RequirePackage{enumitem}
+\RequirePackage{fancyhdr}
+\RequirePackage{titlesec}
+\RequirePackage{array,booktabs,tabularx,multicol}
+\RequirePackage{pifont}
+\RequirePackage{microtype}
+\RequirePackage{etoolbox}
+\RequirePackage{needspace}
+\RequirePackage[hidelinks]{hyperref}
+
+% ---------- colours ----------
+\definecolor{hblue}{HTML}{1F4E79}
+\definecolor{hblue2}{HTML}{2E75B6}
+\definecolor{hlight}{HTML}{EAF2FA}
+\definecolor{hyellow}{HTML}{FFF5CC}
+\definecolor{hyellowline}{HTML}{D9A400}
+\definecolor{hgreen}{HTML}{E8F5E9}
+\definecolor{hgreenline}{HTML}{2E7D32}
+\definecolor{horange}{HTML}{E8710A}
+\definecolor{hgray}{HTML}{555555}
+\definecolor{hgrayline}{HTML}{BBBBBB}
+\definecolor{hred}{HTML}{B71C1C}
+\definecolor{hredbg}{HTML}{FDECEA}
+\definecolor{hpurple}{HTML}{5E35B1}
+\definecolor{hpurplebg}{HTML}{EFEAF8}
+
+% ---------- page layout ----------
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt plus 1pt minus 1pt}
+\setlength{\emergencystretch}{2em}
+\renewcommand{\arraystretch}{1.15}
+\setlist{nosep, itemsep=2pt, topsep=3pt, leftmargin=*}
+\setlist[enumerate,1]{label=\textbf{\arabic*}, leftmargin=2em}
+\setlist[enumerate,2]{label=\textbf{\alph*}, leftmargin=1.8em}
+\setlist[itemize,1]{label=\textcolor{hblue}{\textbullet}}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\lhead{\small\sffamily\color{hgray}Bewijzen in de Wiskunde \textperiodcentered\ Study guide Ch.\,0--5}
+\rhead{\small\sffamily\color{hgray}\nouppercase{\leftmark}}
+\cfoot{\sffamily\small\textcolor{hblue}{\thepage}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{hblue2}\leaders\hrule height \headrulewidth\hfill}}
+\fancypagestyle{plain}{\fancyhf{}\cfoot{\sffamily\small\textcolor{hblue}{\thepage}}\renewcommand{\headrulewidth}{0pt}}
+
+% ---------- chapter opener ----------
+\titleformat{\chapter}[display]
+  {\sffamily}
+  {}
+  {0pt}
+  {\chapterbanner}
+\titlespacing*{\chapter}{0pt}{-20pt}{10pt}
+\newcommand{\chapterbanner}[1]{%
+  \begin{tcolorbox}[enhanced, colback=hblue, colframe=hblue, boxrule=0pt, arc=3pt,
+      left=10pt, right=10pt, top=8pt, bottom=8pt, width=\linewidth]
+    \color{white}\sffamily
+    {\large\bfseries \chapterprefix\ \thechapter}\\[2pt]
+    {\Huge\bfseries #1}
+  \end{tcolorbox}}
+
+\newcommand{\chapterprefix}{Chapter}
+% chapter contents list: \chaptercontents{A & Title \\ B & Title}
+\newcommand{\chaptercontents}[2]{%
+  \begin{tcolorbox}[enhanced, colback=white, colframe=hblue2, boxrule=0.8pt, arc=2pt,
+      left=8pt, right=8pt, top=6pt, bottom=6pt, width=\linewidth, before skip=4pt, after skip=10pt]
+    \sffamily\small
+    \begin{minipage}[t]{0.42\linewidth}
+      \textbf{\textcolor{hblue}{Contents}}\\[3pt]
+      \begin{tabular}{@{}>{\bfseries\color{hblue}}l l@{}}#1\end{tabular}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.54\linewidth}
+      \textbf{\textcolor{hblue}{Planning}}\\[3pt]
+      #2
+    \end{minipage}
+  \end{tcolorbox}}
+
+% ---------- section header (letter box) ----------
+\newcounter{hsec}[chapter]
+\renewcommand{\thehsec}{\Alph{hsec}}
+\newcommand{\hsection}[1]{%
+  \refstepcounter{hsec}%
+  \addcontentsline{toc}{section}{\protect\numberline{\thehsec}#1}%
+  \par\needspace{7\baselineskip}\vspace{14pt plus 4pt minus 2pt}%
+  \noindent\begin{tcolorbox}[enhanced, colback=hblue2, colframe=hblue2, boxrule=0pt, arc=2pt,
+      left=4pt, right=8pt, top=3pt, bottom=3pt, width=\linewidth, before skip=0pt, after skip=6pt]
+    \sffamily\bfseries
+    \colorbox{white}{\textcolor{hblue}{\large\strut\thehsec}}\quad
+    \textcolor{white}{\large\MakeUppercase{#1}}
+  \end{tcolorbox}\par\nopagebreak}
+
+% sub-heading
+\newcommand{\hsub}[1]{\par\vspace{8pt plus 2pt}\noindent{\sffamily\bfseries\color{hblue}\large #1}\par\nopagebreak\vspace{2pt}}
+
+% ---------- boxes ----------
+% key box (yellow): definitions and key facts
+\newtcolorbox{key}[1][]{enhanced, breakable, colback=hyellow, colframe=hyellowline,
+  boxrule=0.6pt, arc=2pt, left=7pt, right=7pt, top=5pt, bottom=5pt,
+  before={\par\needspace{5\baselineskip}\vskip 7pt}, after skip=7pt, fonttitle=\sffamily\bfseries\small,
+  coltitle=black, colbacktitle=hyellow, attach boxed title to top left={xshift=6pt, yshift=-\tcboxedtitleheight/2},
+  boxed title style={boxrule=0.6pt, colframe=hyellowline, arc=1pt, left=3pt, right=3pt, top=1pt, bottom=1pt},
+  title={#1}}
+% result box (blue): theorems / propositions / lemmas
+\newtcolorbox{result}[1][]{enhanced, breakable, colback=hlight, colframe=hblue2,
+  boxrule=0.6pt, arc=2pt, left=7pt, right=7pt, top=5pt, bottom=5pt,
+  before={\par\needspace{5\baselineskip}\vskip 7pt}, after skip=7pt, fonttitle=\sffamily\bfseries\small,
+  coltitle=white, colbacktitle=hblue2, attach boxed title to top left={xshift=6pt, yshift=-\tcboxedtitleheight/2},
+  boxed title style={boxrule=0pt, arc=1pt, left=4pt, right=4pt, top=1.5pt, bottom=1.5pt},
+  title={#1}}
+% strategy box (green): proof strategies / templates
+\newtcolorbox{strategy}[1][]{enhanced, breakable, colback=hgreen, colframe=hgreenline,
+  boxrule=0.6pt, arc=2pt, left=7pt, right=7pt, top=5pt, bottom=5pt,
+  before={\par\needspace{5\baselineskip}\vskip 7pt}, after skip=7pt, fonttitle=\sffamily\bfseries\small,
+  coltitle=white, colbacktitle=hgreenline, attach boxed title to top left={xshift=6pt, yshift=-\tcboxedtitleheight/2},
+  boxed title style={boxrule=0pt, arc=1pt, left=4pt, right=4pt, top=1.5pt, bottom=1.5pt},
+  title={#1}}
+% warning box (red)
+\newtcolorbox{warn}[1][Watch out]{enhanced, breakable, colback=hredbg, colframe=hred,
+  boxrule=0.6pt, arc=2pt, left=7pt, right=7pt, top=5pt, bottom=5pt,
+  before={\par\needspace{5\baselineskip}\vskip 7pt}, after skip=7pt, fonttitle=\sffamily\bfseries\small,
+  coltitle=white, colbacktitle=hred, attach boxed title to top left={xshift=6pt, yshift=-\tcboxedtitleheight/2},
+  boxed title style={boxrule=0pt, arc=1pt, left=4pt, right=4pt, top=1.5pt, bottom=1.5pt},
+  title={\ding{43}\ #1}}
+% planning box (purple): which exercises this section targets
+\newtcolorbox{planning}[1][]{enhanced, breakable, colback=hpurplebg, colframe=hpurple,
+  boxrule=0.6pt, arc=2pt, left=7pt, right=7pt, top=5pt, bottom=5pt,
+  before={\par\needspace{5\baselineskip}\vskip 7pt}, after skip=7pt, fonttitle=\sffamily\bfseries\small,
+  coltitle=white, colbacktitle=hpurple, attach boxed title to top left={xshift=6pt, yshift=-\tcboxedtitleheight/2},
+  boxed title style={boxrule=0pt, arc=1pt, left=4pt, right=4pt, top=1.5pt, bottom=1.5pt},
+  title={EXERCISES #1}}
+
+% ---------- worked example (Haese "Example n | Self Tutor") ----------
+\newcounter{hex}[chapter]
+\renewcommand{\thehex}{\thechapter.\arabic{hex}}
+\newtcolorbox{example}[1][]{enhanced, breakable, colback=white, colframe=hblue,
+  boxrule=0.8pt, arc=2pt, left=8pt, right=8pt, top=8pt, bottom=6pt,
+  before={\par\needspace{6\baselineskip}\vskip 9pt}, after skip=9pt,
+  overlay unbroken and first={%
+    \node[anchor=west, fill=hblue, text=white, font=\sffamily\bfseries\small, inner xsep=7pt, inner ysep=2.5pt, rounded corners=1pt]
+      at ([xshift=8pt]frame.north west) {Example \arabic{hex}};
+    \node[anchor=east, fill=horange, text=white, font=\sffamily\bfseries\scriptsize, inner xsep=6pt, inner ysep=2pt, rounded corners=1pt]
+      at ([xshift=-8pt]frame.north east) {Self Tutor};
+    \ifstrempty{#1}{}{\node[anchor=west, fill=white, text=hblue, font=\sffamily\bfseries\small, inner xsep=4pt, inner ysep=1.5pt] at ([xshift=78pt]frame.north west) {#1};}
+  }}
+\newcommand{\solution}{\par\nopagebreak\vspace{2pt}\noindent{\color{hblue2}\rule{\linewidth}{0.5pt}}\par\nopagebreak\vspace{3pt}\noindent}
+\newcommand{\reason}[1]{\ifmmode\quad\text{\color{hgray}\small\{#1\}}\else\quad{\color{hgray}\small\{#1\}}\fi}
+\renewcommand{\qed}{\hfill$\square$}
+\newenvironment{hexample}[1][]{\refstepcounter{hex}\begin{example}[{#1}]}{\end{example}}
+
+% ---------- misc macros ----------
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\PS}{\mathcal{P}}
+\newcommand{\id}{\mathrm{id}}
+\newcommand{\divides}{\mid}
+\newcommand{\ndivides}{\nmid}
+\newcommand{\img}[2]{#1[#2]}
+\newcommand{\preimg}[2]{#1^{-1}[#2]}
+\newcommand{\setst}{\;\middle|\;}
+\newcommand{\ie}{i.e.\ }
+\newcommand{\eg}{e.g.\ }
+\newcommand{\term}[1]{\textbf{\textcolor{hblue}{#1}}}
+\newcommand{\book}[1]{\textcolor{hgray}{\small[#1]}}
+\newcommand{\lab}[1]{\textsf{\small\textbf{#1}}}
+\newcommand{\tick}{\textcolor{hgreenline}{\ding{51}}}
+\newcommand{\cross}{\textcolor{hred}{\ding{55}}}
+\newcommand{\ess}[1]{\textbf{Essential:} #1}
+\newcommand{\rec}[1]{\textbf{Recommended:} #1}
+\newcommand{\bonus}[1]{\textbf{Bonus:} #1}
+\newcommand{\contra}{\text{\Lightning}}
+\RequirePackage{marvosym}
