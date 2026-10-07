@@ -1,0 +1,119 @@
+\chapter{Differential equations}
+\chaptercontents{A & First acquaintance (\S5.1) \\ B & Homogeneous linear equations (\S5.2.1) \\ C & Inhomogeneous equations (\S5.2.2) \\ D & Initial value problems (\S5.2.3)}%
+{Exercises 501--524 (all worked or solved).\\ Hoofdpunten: what a d.v.\ is; order, (in)homogeneous, initial value, integration constant, homogeneous/particular/general solution; recognising linearity; solving a homogeneous d.v.\ by separating variables; solving an inhomogeneous first-order linear initial value problem; checking that a function solves a d.v.}
+
+\hsection{First acquaintance}
+\begin{key}[{\S5.1, Definition 5.3 \textperiodcentered\ what a differential equation is}]
+A \term{differential equation} (d.v.) relates a function to one or more of its derivatives. Voorbeeld 5.1 (radioactive decay): $y'=ky$, solved by $y(t)=ce^{kt}$ for every $c$ (a whole family; $c$ is fixed by the initial amount). Voorbeeld 5.2 (falling with air resistance): $m\,\dfrac{dv}{dt}=mg-kv$; without solving: $v$ increases, ever more slowly, and cannot exceed $\frac{mg}k$; the solution is $v(t)=\frac{mg}k\big(1-e^{-kt/m}\big)$. The \term{order} is the highest derivative that occurs. Solving a d.v.\ means finding \emph{all} functions that satisfy it; often impossible in closed form, but \textbf{checking} a proposed solution is always possible: substitute it. When the variable is clear one writes $u''+6u'+5u=10x+2$ for $u''(x)+\dots$.
+\end{key}
+
+\begin{bookex}{502}
+For $y(t)=ce^{kt}$: (a) find $c$ (grams) if you start at $t=0$ with $3$ g of Radium-226; (b) find $k$ if after $100$ years $2.87281$ g is left; (c) find the half-life; (d) what do $c=0$ and $k=0$ mean physically?
+\solution
+(a) $y(0)=ce^0=c=3$.\\
+(b) $3e^{100k}=2.87281$, so $k=\dfrac1{100}\log\dfrac{2.87281}3\approx-4.33\cdot10^{-4}$ per year (negative: decay, Oefening 501).\\
+(c) The half-life $T$ satisfies $e^{kT}=\frac12$, so $T=\dfrac{\log\frac12}k=\dfrac{\log2}{4.33\cdot10^{-4}}\approx1600$ years (independent of the starting amount).\\
+(d) $c=0$: there is no radium at all ($y\equiv0$). $k=0$: $y$ is constant, the substance does not decay (a stable isotope).\qed
+\end{bookex}
+
+\begin{bookex}{506}
+Check that the following solve $h'=h^2$: (a) $t\mapsto0$ on $\R$; (b) $t\mapsto-\frac1t$ on $(0,\infty)$; (c) $t\mapsto\frac1{1-t}$ on $(-\infty,1)$.
+\solution
+(a) $h'=0=0^2$. (b) $h'=\frac1{t^2}=\big(-\frac1t\big)^2=h^2$. (c) $h'=\frac{1}{(1-t)^2}=h^2$ (chain rule: $\frac d{dt}(1-t)^{-1}=-(1-t)^{-2}\cdot(-1)$). Note that one d.v.\ has very different solutions, each on its own domain.\qed
+\end{bookex}
+
+\begin{trybox}[{501, 503, 504, 505, 507}]
+\textbf{501} What do you know about $k$ in $y'=ky$ for decay?\quad \textbf{503} Orders of (5.2)--(5.7).\quad \textbf{504} Check $v(t)=\frac{mg}k(1-e^{-kt/m})$ in Voorbeeld 5.2.\quad \textbf{505} Solutions of $g'^2+g^2=1$: the constant $-1$, and more.\quad \textbf{507} Check $2x-2$ and $c_1e^{-x}+c_2e^{-5x}+2(x-1)$ in $u''+6u'+5u=10x+2$.
+\end{trybox}
+
+\hsection{Linear first-order equations: the homogeneous case}
+\begin{key}[{Definitions 5.4, 5.5 \textperiodcentered\ linear, homogeneous}]
+A \term{linear first-order d.v.} can be written as $y'+a(x)y=f(x)$ with known $a,f$; it is \term{homogeneous} if $f\equiv0$. (General $n$-th order linear: $y^{(n)}+a_{n-1}(x)y^{(n-1)}+\dots+a_0(x)y=f(x)$.) $g'^2+g^2=1$ and $h'=h^2$ are not linear; $j'-xj=0$ is linear, homogeneous, first order; $u''+6u'+5u=10x+2$ is linear, inhomogeneous, second order. The zero function always solves the homogeneous equation (Oefening 508).
+\end{key}
+\begin{strategy}[{\S5.2.1 \textperiodcentered\ separating variables}]
+For $\dfrac{dy}{dx}+2(x+1)y=0$: put everything with $y$ on one side and everything with $x$ on the other, $\dfrac{dy}y=-2(x+1)\,dx$; integrate both sides, $\log|y|=-x^2-2x+C_1$; exponentiate, $y=C_2e^{-x^2-2x}$. Remarks: one integration constant suffices (a constant on each side is just their difference); $C_2=e^{C_1}$ is renamed to a new constant; the absolute value disappears because $C_2$ may be negative, and $C_2=0$ gives the zero solution. \textbf{General rule (Oefening 512):} $y'+a(x)y=0$ has general solution $y=Ce^{-A(x)}$ with $A$ a primitive of $a$. Whatever manipulations you use, \textbf{justify the result by substituting it into the d.v.}
+\end{strategy}
+
+\begin{bookex}{511}
+Solve the homogeneous equations: (a) $y'+3y=0$; (b) $y'-xy=0$; (c) $y'=-\dfrac{2y}x$; (d) $4y=x^2y'$; (e) $y'+\sin(x)\,y=0$.
+\solution
+(a) $\frac{dy}y=-3\,dx$, $\log|y|=-3x+C_1$: $y=Ce^{-3x}$. Check: $-3Ce^{-3x}+3Ce^{-3x}=0$.\\
+(b) $\frac{dy}y=x\,dx$, $\log|y|=\frac12x^2+C_1$: $y=Ce^{x^2/2}$. Check: $y'=xCe^{x^2/2}=xy$.\\
+(c) $\frac{dy}y=-\frac{2\,dx}x$, $\log|y|=-2\log|x|+C_1$: $y=Cx^{-2}=\dfrac C{x^2}$. Check: $y'=-2Cx^{-3}=-\frac2x\cdot\frac C{x^2}$.\\
+(d) $y'=\frac{4y}{x^2}$, $\frac{dy}y=\frac4{x^2}dx$, $\log|y|=-\frac4x+C_1$: $y=Ce^{-4/x}$. Check: $y'=\frac4{x^2}Ce^{-4/x}$, and $x^2y'=4Ce^{-4/x}=4y$.\\
+(e) $\frac{dy}y=-\sin x\,dx$, $\log|y|=\cos x+C_1$: $y=Ce^{\cos x}$. Check: $y'=-\sin x\,Ce^{\cos x}=-\sin(x)\,y$.\qed
+\end{bookex}
+
+\begin{trybox}[{508, 509, 510, 512, 513}]
+\textbf{508} The zero function solves $y'+a(x)y=0$.\quad \textbf{509} Check the manipulation that separates the variables.\quad \textbf{510} Substitute $y=Ce^{-x^2-2x}$ (all $C$, also $0$).\quad \textbf{512} General rule for $y'+a(x)y=0$.\quad \textbf{513} Check your solutions of 511 (done above).
+\end{trybox}
+
+\hsection{The inhomogeneous equation}
+\begin{result}[{Definition 5.6, Stelling 5.7 \textperiodcentered\ general = homogeneous + particular}]
+A \term{particular solution} $y_p$ is any one solution of $y'+a(x)y=f(x)$. If $y_h$ is the general solution of the homogeneous equation and $y_p$ a particular solution, then $y=y_h+y_p$ is the general solution of the inhomogeneous equation (Oefening 514: the sum solves it, and two particular solutions differ by a homogeneous solution). So: first solve the homogeneous equation, then find \emph{one} $y_p$.
+\end{result}
+\begin{strategy}[{\S5.2.2 \textperiodcentered\ three ways to a particular solution}]
+\textbf{Guessing (gokken met voorkennis):} for $y'+3y=x+2$ try $y_p=ax+b$: $3ax+3b+a=x+2$ gives $a=\frac13$, $b=\frac59$; general solution $y=Ce^{-3x}+\frac13x+\frac59$. Try the same type as $f$: polynomial, $Ae^{5x}$ for $e^{5x}$, constants for constants.\\
+\textbf{Integrating factor:} multiply $y'+ay=f$ by $u=e^{\int a\,dx}$; since $u'=au$, the left side becomes $(uy)'$, so $uy=\int uf\,dx$ and $y=\dfrac1u\int uf\,dx$. Voorbeeld 5.8: $y'+\frac2xy=2x+1$, $u=e^{2\log x}=x^2$, $(x^2y)'=2x^3+x^2$, $y=\frac12x^2+\frac13x+\frac C{x^2}$.\\
+\textbf{Variation of constants:} replace $C$ in $y_h=Ce^{-A(x)}$ by $C(x)$ and substitute: the $C(x)$-terms cancel and $C'(x)e^{-A(x)}=f(x)$ remains, so $C(x)=\int f(x)e^{A(x)}dx$ (Oefening 518). Example: $xy'+4\frac yx=\frac1x$ has $y_h=Ce^{4/x}$; $C'(x)=\frac1{x^2}e^{-4/x}$, $C(x)=\frac14e^{-4/x}+c$, $y=\frac14+ce^{4/x}$.\\
+Any method is allowed on the exam; \textbf{always check the result in the equation.}
+\end{strategy}
+
+\begin{bookex}{516}
+Use an integrating factor to solve: (a) $y'+2y=3$; (b) $y'+2xy=3e^{-x^2}$.
+\solution
+(a) $a=2$, $u=e^{2x}$: $(e^{2x}y)'=3e^{2x}$, so $e^{2x}y=\frac32e^{2x}+C$ and $y=\frac32+Ce^{-2x}$. Check: $y'+2y=-2Ce^{-2x}+3+2Ce^{-2x}=3$.\\
+(b) $a=2x$, $u=e^{x^2}$: $(e^{x^2}y)'=e^{x^2}\cdot3e^{-x^2}=3$, so $e^{x^2}y=3x+C$ and $y=(3x+C)e^{-x^2}$. Check: $y'=3e^{-x^2}-2x(3x+C)e^{-x^2}$ and $2xy=2x(3x+C)e^{-x^2}$; sum $3e^{-x^2}$.\qed
+\end{bookex}
+
+\begin{bookex}{517}
+Solve by a method of your choice: (a) $y'+xy=x$; (b) $y'-3y=e^{5x}$; (c) $y'+\dfrac{2xy}{1+x^2}=2x$; (d) $xy'+(1+x^2)y=x$.
+\solution
+(a) Homogeneous: $y_h=Ce^{-x^2/2}$ (511b with the sign changed). Guess a constant: $y_p=1$ gives $0+x=x$. General solution $y=1+Ce^{-x^2/2}$.\\
+(b) $y_h=Ce^{3x}$. Guess $y_p=Ae^{5x}$: $5Ae^{5x}-3Ae^{5x}=e^{5x}$ gives $A=\frac12$. So $y=Ce^{3x}+\frac12e^{5x}$.\\
+(c) $a=\dfrac{2x}{1+x^2}$ has primitive $\log(1+x^2)$, so the integrating factor is $u=1+x^2$: $\big((1+x^2)y\big)'=2x(1+x^2)=2x+2x^3$, hence $(1+x^2)y=x^2+\frac12x^4+C$ and $y=\dfrac{x^2+\frac12x^4+C}{1+x^2}$.\\
+(d) Divide by $x$: $y'+\big(\frac1x+x\big)y=1$. Primitive of $a$: $\log|x|+\frac12x^2$, so $u=xe^{x^2/2}$ (for $x>0$): $\big(xe^{x^2/2}y\big)'=xe^{x^2/2}$, hence $xe^{x^2/2}y=e^{x^2/2}+C$ and $y=\dfrac1x+\dfrac{C}{x}e^{-x^2/2}=\dfrac{1+Ce^{-x^2/2}}x$. Check: with $y=\frac1x+\frac Cxe^{-x^2/2}$ one finds $y'=-\frac1{x^2}-\frac C{x^2}e^{-x^2/2}-Ce^{-x^2/2}$, so $xy'+(1+x^2)y=\big(-\frac1x-\frac Cxe^{-x^2/2}-Cxe^{-x^2/2}\big)+\big(\frac1x+x+\frac Cxe^{-x^2/2}+Cxe^{-x^2/2}\big)=x$. \checkmark\qed
+\end{bookex}
+
+\begin{trybox}[{514, 515, 518}]
+\textbf{514} Prove Stelling 5.7: (a) $y_h+y_p$ solves the inhomogeneous equation; (b) $\tilde y_p-y_p$ solves the homogeneous one; (c) why does this prove the theorem?\quad \textbf{515} Find the integrating factor $x^2$ of Voorbeeld 5.8 from $e^{\int a}$.\quad \textbf{518} Variation of constants for general $y'+a(x)y=f(x)$.
+\end{trybox}
+
+\hsection{Initial value problems}
+\begin{key}[{Definition 5.9, Voorbeeld 5.10 \textperiodcentered\ fixing the constant}]
+The general solution is a family (one integration constant for a first-order equation). An \term{initial value} $y(a)=b$ picks one member: substitute $x=a$ into the \emph{general} solution $y=y_h+y_p$ and solve for $C$ (Oefening 521). Voorbeeld 5.10: $y'+\frac2xy=2x+1$, $y(-1)=\frac23$: from $\frac23=\frac12-\frac13+C$ we get $C=\frac12$.
+\end{key}
+
+\begin{bookex}{519}
+$x^2y'+4y=1$ has $y_h=Ce^{4/x}$ and $y_p=\frac14$. Solve the initial value problem with $y(4)=1$.
+\solution
+General solution $y=\frac14+Ce^{4/x}$. At $x=4$: $1=\frac14+Ce^{1}$, so $C=\dfrac3{4e}$ and $y=\dfrac14+\dfrac3{4e}e^{4/x}=\dfrac14+\dfrac34e^{4/x-1}$. Check: $y(4)=\frac14+\frac34=1$ \checkmark; and $x^2y'=x^2\cdot\frac34e^{4/x-1}\cdot(-\frac4{x^2})=-3e^{4/x-1}$, $4y=1+3e^{4/x-1}$, sum $1$. \checkmark\qed
+\end{bookex}
+
+\begin{bookex}{522}
+A pizza leaves the freezer at 8 o'clock at $-18^\circ$C; kitchen temperature $T_k=20^\circ$C; model $\dfrac{dT}{dt}=-p(T-T_k)$, $p>0$. (a) Argue that $T$ approaches $T_k$ quickly at first, then ever more slowly. (b) At 9 o'clock the pizza is $-9^\circ$C; solve the d.v.\ and find $p$. (c) When is the pizza thawed ($0^\circ$C)? (d) How warm must the kitchen be for the pizza to be thawed at 9 o'clock?
+\solution
+(a) While $T<T_k$ the right side $-p(T-T_k)$ is positive, so $T$ rises; as $T$ gets closer to $T_k$ the difference $T-T_k$ shrinks, so $T'$ shrinks: slower and slower, never passing $T_k$.\\
+(b) Linear: $T'+pT=pT_k$; $T_h=Ce^{-pt}$, $T_p=T_k$ (constant guess). So $T(t)=20+Ce^{-pt}$ with $t$ in hours after 8. $T(0)=-18$ gives $C=-38$: $T(t)=20-38e^{-pt}$. $T(1)=-9$: $38e^{-p}=29$, $e^{-p}=\frac{29}{38}$, $p=\log\frac{38}{29}\approx0.270$ per hour.\\
+(c) $T=0$: $38e^{-pt}=20$, $t=\dfrac{\log(38/20)}{p}=\dfrac{\log1.9}{\log(38/29)}\approx\dfrac{0.642}{0.270}\approx2.37$ hours: about 10:22.\\
+(d) With kitchen temperature $T_k$: $T(t)=T_k+(-18-T_k)e^{-pt}$ (same $p$, a property of the pizza). $T(1)=0$: $T_k+(-18-T_k)\cdot\frac{29}{38}=0$, so $T_k\big(1-\frac{29}{38}\big)=18\cdot\frac{29}{38}$, $T_k=\frac{18\cdot29}{9}=58^\circ$C.\qed
+\end{bookex}
+
+\begin{bookex}{523}
+Solve by separation: $y'=-2y^3$, $y(1)=\frac13$.
+\solution
+Not linear, but separable: $\dfrac{dy}{y^3}=-2\,dx$, so $-\dfrac1{2y^2}=-2x+C_1$, i.e.\ $\dfrac1{y^2}=4x+c$. The initial value: $9=4+c$, $c=5$, so $y^2=\dfrac1{4x+5}$ and, since $y(1)>0$, $y=\dfrac1{\sqrt{4x+5}}$ (for $x>-\frac54$). Check: $y'=-\frac12(4x+5)^{-3/2}\cdot4=-2(4x+5)^{-3/2}=-2y^3$ and $y(1)=\frac13$. \checkmark\qed
+\end{bookex}
+
+\begin{trybox}[{520, 521, 524}]
+\textbf{520} Derive the solution of Voorbeeld 5.2 ($mv'=mg-kv$, $v(0)=0$).\quad \textbf{521} Which equation determines $C$ in an initial value problem?\quad \textbf{524} Logistic equation $y'=\alpha y(\beta-y)$: constant solutions; $\lim_{t\to\infty}y(t)$ for $y(0)>0$ without solving.
+\end{trybox}
+
+\begin{warn}
+\begin{itemize}
+\item Bring the equation to the form $y'+a(x)y=f(x)$ first (divide by the coefficient of $y'$, as in 517d); the integrating factor is $e^{\int a}$, not $e^{\int f}$.
+\item The initial condition is applied to the \emph{general} solution $y_h+y_p$, not to $y_h$ alone (Oefening 521).
+\item Every solution must be checked by substitution; the symbolic manipulations with $dy$ and $dx$ are justified only by that check.
+\item Keep the integration constant until the end, and keep it even when it turns out to be $0$ (the zero solution).
+\end{itemize}
+\end{warn}

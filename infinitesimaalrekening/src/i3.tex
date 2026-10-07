@@ -1,0 +1,165 @@
+\chapter{Approximating functions}
+\chaptercontents{A & Linearisation (\S3.1) \\ B & Second-order approximation (\S3.2) \\ C & Taylor approximation of order $n$ (\S3.3) \\ D & l'H\^opital, standard limits (\S3.4) \\ E & (Extra) Infinite sums (\S3.5)}%
+{Exercises 301--330 (all worked or solved).\\ Hoofdpunten: notation $f^{(n)}$ and $n!$; the Taylor formula (with steunpunt and order); using Taylor approximations for values and for limits; l'H\^opital; the standard limits $\lim_{x\to0}\frac{\sin x}x=1$, $\lim_{x\to\infty}\frac{\log x}x=0$, $\lim_{t\to\infty}\frac{t^x}{e^t}=0$.}
+
+\hsection{Linearisation}
+\begin{key}[{\S3.1 \textperiodcentered\ the tangent line as approximation}]
+The \term{linearisation} of $f$ at the \term{steunpunt} (base point) $a$ is the tangent line, written in powers of $x-a$:
+\[
+P_1(x)=f(a)+f'(a)(x-a),\qquad P_1(a)=f(a),\ P_1'(a)=f'(a).
+\]
+Voorbeeld 3.1: $\sqrt5$ with $f(x)=\sqrt x$, $a=4$: $f(4)=2$, $f'(4)=\frac1{2\sqrt4}=\frac14$, so $\sqrt5\approx2+\frac14(5-4)=2\frac14$; self-check: $(2\frac14)^2=5\frac1{16}$, close to $5$.
+\end{key}
+
+\begin{bookex}{301}
+Linear approximations of: (a) $\sqrt e$ with $f(x)=e^x$, $a=0$; (b) $\log3$ with $f(x)=\log(1+x)$, $a=0$; (c) $\sqrt[3]4$ with $f(x)=\sqrt[3]x$, $a=1$.
+\solution
+(a) $f(0)=1$, $f'(0)=1$: $P_1(x)=1+x$, and $\sqrt e=e^{1/2}\approx1+\frac12=1.5$.\\
+(b) $f(0)=0$, $f'(x)=\frac1{1+x}$, $f'(0)=1$: $P_1(x)=x$, and $\log3=f(2)\approx2$.\\
+(c) $f(1)=1$, $f'(x)=\frac13x^{-2/3}$, $f'(1)=\frac13$: $P_1(x)=1+\frac13(x-1)$, and $\sqrt[3]4\approx1+\frac13\cdot3=2$.\\
+(True values: $1.6487$, $1.0986$, $1.5874$: (b) and (c) are far from the steunpunt, so the approximations are poor.)\qed
+\end{bookex}
+
+\begin{bookex}{302}
+The approximation of $\sqrt5$ was slightly too large. Predict, without a calculator, whether the answers in 301 are too large or too small. Hint: the second derivative.
+\solution
+The tangent line lies below the graph where $f''>0$ (convex) and above it where $f''<0$ (concave), so $P_1$ is too small for convex $f$ and too large for concave $f$ (near $a$; the second-order term $\frac12f''(a)(x-a)^2$ has the sign of $f''$).\\
+(a) $(e^x)''=e^x>0$: $1.5$ is too small. (b) $\log(1+x)''=-\frac1{(1+x)^2}<0$: $2$ is too large. (c) $(x^{1/3})''=-\frac29x^{-5/3}<0$ for $x>0$: $2$ is too large. ($\sqrt x$ is concave, which explains Voorbeeld 3.1.)\qed
+\end{bookex}
+
+\hsection{Second-order approximation}
+\begin{key}[{\S3.2 \textperiodcentered\ matching the curvature}]
+$P_2(x)=f(a)+f'(a)(x-a)+c_2(x-a)^2$ with $c_2=\frac12f''(a)$ satisfies $P_2(a)=f(a)$, $P_2'(a)=f'(a)$, $P_2''(a)=f''(a)$ (Oefening 303). More work does not always give a better approximation, especially far from the steunpunt; the cure is even more work (next section).
+\end{key}
+
+\begin{bookex}{303}
+(a) Show that $P_2(x)=f(a)+f'(a)(x-a)+c_2(x-a)^2$ satisfies $P_2(a)=f(a)$, $P_2'(a)=f'(a)$ for every $c_2$. (b) Show that $c_2=\frac12f''(a)$ gives $P_2''(a)=f''(a)$. (c) Redo Voorbeeld 3.1 with a second-order approximation; check that it is sometimes better and sometimes not.
+\solution
+(a) $P_2(a)=f(a)+0+0$. $P_2'(x)=f'(a)+2c_2(x-a)$, so $P_2'(a)=f'(a)$.\\
+(b) $P_2''(x)=2c_2$, so $P_2''(a)=f''(a)$ iff $c_2=\frac12f''(a)$.\\
+(c) $f(x)=\sqrt x$, $a=4$: $f''(x)=-\frac14x^{-3/2}$, $f''(4)=-\frac1{32}$, $c_2=-\frac1{64}$: $P_2(x)=2+\frac14(x-4)-\frac1{64}(x-4)^2$. At $x=5$: $P_2(5)=2.25-0.015625=2.234375$ versus $\sqrt5=2.23607$: error $0.0017$ instead of $0.014$ for $P_1$. Better. At $x=20$: $P_1(20)=6$, $P_2(20)=6-\frac{256}{64}=2$, while $\sqrt{20}=4.47$: $P_2$ is now worse than $P_1$ (far from the steunpunt the quadratic term dominates in the wrong direction).\qed
+\end{bookex}
+
+\begin{trybox}[{304}]
+\textbf{304} Look at 302 again, now that you know $P_2$: the correction term $\frac12f''(a)(x-a)^2$ has the sign of $f''(a)$.
+\end{trybox}
+
+\hsection{Taylor approximation of order $n$}
+\begin{key}[{Definitions 3.2--3.4 \textperiodcentered\ $f^{(k)}$, $k!$, the Taylor polynomial}]
+$f^{(k)}$ is the $k$-th derivative, $f^{(0)}=f$; $k!=k(k-1)\cdots2\cdot1$, $0!=1$. The \term{Taylor approximation of order $n$ with steunpunt $a$} is
+\[
+P_n(x)=f(a)+f'(a)(x-a)+\frac{f''(a)}{2!}(x-a)^2+\dots+\frac{f^{(n)}(a)}{n!}(x-a)^n=\sum_{k=0}^n\frac{f^{(k)}(a)}{k!}(x-a)^k,
+\]
+the unique polynomial of degree $\le n$ with $P_n^{(k)}(a)=f^{(k)}(a)$ for $k=0,\dots,n$ (Oefening 306). Raising the order adds terms without redoing earlier work. \textbf{The standard ones at $a=0$} (Oefening 307): $e^x=1+x+\frac{x^2}2+\frac{x^3}{3!}+\dots$; $\sin x=x-\frac{x^3}{3!}+\frac{x^5}{5!}-\dots$; $\cos x=1-\frac{x^2}2+\frac{x^4}{4!}-\dots$; $\log(1+x)=x-\frac{x^2}2+\frac{x^3}3-\frac{x^4}4+\dots$; also $\frac1{1-x}=1+x+x^2+\dots$ and $\sqrt{1+x}=1+\frac x2-\frac{x^2}8+\dots$ (Oefening 308).
+\end{key}
+\begin{strategy}[{Voorbeelden 3.5, 3.6 and Oefening 316 \textperiodcentered\ three shortcuts}]
+\textbf{Substitution:} if $u\to0$ when $x\to0$, substitute $u$ into a known expansion: $\log(1+x^2)=x^2-\frac12x^4+\dots$; $\log(\cos x)=\log(1+u)$ with $u=\cos x-1=-\frac12x^2+\frac1{24}x^4+\text{h.o.t.}$, so $\log\cos x=u-\frac12u^2+\dots=-\frac12x^2+\frac1{24}x^4-\frac12\cdot\frac14x^4+\dots=-\frac12x^2-\frac1{12}x^4+\text{h.o.t.}$ Keep track of which terms are higher order than you need. \textbf{Algebra:} $\log\frac{1+x}{1-x}=\log(1+x)-\log(1-x)$ (Oefening 314). \textbf{A differential equation:} if $f'=(2x-2)f$ (Oefening 316) or $\tan'=1+\tan^2$ (317), differentiate the relation repeatedly and substitute $x=0$ instead of computing messy quotients.
+\end{strategy}
+
+\begin{bookex}{308}
+Fourth-order Taylor approximations at $0$ of: (a) $\dfrac1{x-1}$; (b) $\sqrt{1+x}$; (c) $\sqrt{1+x^2}$.
+\solution
+(a) $f(x)=(x-1)^{-1}$: $f'=-(x-1)^{-2}$, $f''=2(x-1)^{-3}$, $f'''=-6(x-1)^{-4}$, $f''''=24(x-1)^{-5}$; at $0$: $-1,-1,-2,-6,-24$, so $c_k=f^{(k)}(0)/k!=-1$: $P_4(x)=-1-x-x^2-x^3-x^4$. (Check: $\frac1{x-1}=-\frac1{1-x}=-(1+x+x^2+\dots)$.)\\
+(b) $f=(1+x)^{1/2}$: $f'=\frac12(1+x)^{-1/2}$, $f''=-\frac14(1+x)^{-3/2}$, $f'''=\frac38(1+x)^{-5/2}$, $f''''=-\frac{15}{16}(1+x)^{-7/2}$; at $0$: $1,\frac12,-\frac14,\frac38,-\frac{15}{16}$. Divide by $k!$: $P_4(x)=1+\frac12x-\frac18x^2+\frac1{16}x^3-\frac5{128}x^4$.\\
+(c) Substitute $u=x^2$ in (b): $\sqrt{1+x^2}=1+\frac12x^2-\frac18x^4+\text{h.o.t.}$, so $P_4(x)=1+\frac12x^2-\frac18x^4$ (the $x^3$ term of (b) would give $x^6$).\qed
+\end{bookex}
+
+\begin{bookex}{309}
+Compute $\sin37^\circ$ to three decimals with a Taylor approximation, and check.
+\solution
+Radians first: $37^\circ=\frac{37\pi}{180}\approx0.64577$. With $P_5(x)=x-\frac{x^3}6+\frac{x^5}{120}$: $x^3\approx0.26930$, $x^5\approx0.11230$, so $\sin37^\circ\approx0.64577-0.04488+0.00094=0.60182$. Three decimals: $0.602$. Check: $\sin37^\circ\approx0.6018$ (and $\sin30^\circ=0.5<0.602<0.707=\sin45^\circ$, plausible). Using $37$ instead of $0.6458$ in the polynomial gives nonsense: degrees must be converted.\qed
+\end{bookex}
+
+\begin{bookex}{314}
+Find a fifth-degree Taylor approximation of $\log\dfrac{1+x}{1-x}$ at $0$, the smart way.
+\solution
+$\log\frac{1+x}{1-x}=\log(1+x)-\log(1-x)$. From Oefening 307/313: $\log(1+x)=x-\frac{x^2}2+\frac{x^3}3-\frac{x^4}4+\frac{x^5}5$ and $\log(1-x)=-x-\frac{x^2}2-\frac{x^3}3-\frac{x^4}4-\frac{x^5}5$ (substitute $-x$). Subtracting, the even powers cancel and the odd ones double:
+\[
+\log\frac{1+x}{1-x}\approx2x+\frac23x^3+\frac25x^5 .
+\]
+(The function is odd, so only odd powers can occur; Oefening 311.)\qed
+\end{bookex}
+
+\begin{bookex}{316}
+Taylor approximation of $f(x)=e^{x^2-2x}$ at $0$, reusing results: (a) $f(0)$; (b) show $f'(x)=(2x-2)f(x)$, find $f'(0)$; (c) differentiate again, find $f''(0)$; (d) as many $f^{(n)}(0)$ as you can.
+\solution
+(a) $f(0)=e^0=1$.\quad (b) Chain rule: $f'(x)=(2x-2)e^{x^2-2x}=(2x-2)f(x)$, so $f'(0)=-2\cdot1=-2$.\\
+(c) Product rule on $f'=(2x-2)f$: $f''=2f+(2x-2)f'$, so $f''(0)=2\cdot1+(-2)(-2)=6$.\\
+(d) Keep differentiating the relation: $f'''=2f'+2f'+(2x-2)f''=4f'+(2x-2)f''$, so $f'''(0)=4(-2)-2\cdot6=-20$; $f''''=4f''+2f''+(2x-2)f'''=6f''+(2x-2)f'''$, so $f''''(0)=36+40=76$; in general $f^{(n+1)}=2nf^{(n-1)}+(2x-2)f^{(n)}$, giving $f^{(n+1)}(0)=2nf^{(n-1)}(0)-2f^{(n)}(0)$: $f^{(5)}(0)=8\cdot6-2\cdot76=-104$, $f^{(6)}(0)=10(-20)-2(-104)=8$, \dots\ Hence $P_4(x)=1-2x+3x^2-\frac{10}3x^3+\frac{19}6x^4$.\qed
+\end{bookex}
+
+\begin{bookex}{317}
+Redo Oefening 312 ($P_5$ of $\tan x$ at $0$) efficiently, using $\tan'x=1+\tan^2x$.
+\solution
+Write $T=\tan x$, so $T'=1+T^2$ and $T(0)=0$. Differentiate the relation repeatedly, always substituting $T'=1+T^2$:
+$T''=2TT'=2T+2T^3$; $T'''=(2+6T^2)T'=(2+6T^2)(1+T^2)=2+8T^2+6T^4$; $T''''=(16T+24T^3)(1+T^2)=16T+40T^3+24T^5$; $T^{(5)}=(16+120T^2+120T^4)(1+T^2)$.\\
+At $x=0$ ($T=0$): $T=0$, $T'=1$, $T''=0$, $T'''=2$, $T''''=0$, $T^{(5)}=16$. So
+\[
+\tan x\approx x+\frac2{3!}x^3+\frac{16}{5!}x^5=x+\frac13x^3+\frac2{15}x^5 .
+\]
+(Odd function, odd powers only. Doing this with the quotient rule on $\sin/\cos$ is the long way of Oefening 312.)\qed
+\end{bookex}
+
+\begin{bookex}{319}
+With the substitution technique, order-4 approximations at $0$ of: (a) $\log(2+x)$ (hint: $2+x=2(1+\frac x2)$); (b) $\log\big((1+x)^2\big)$, in a very short and in a longer way.
+\solution
+(a) $\log(2+x)=\log2+\log(1+\tfrac x2)$; substitute $u=\frac x2$ in $\log(1+u)=u-\frac{u^2}2+\frac{u^3}3-\frac{u^4}4$: $\log(2+x)\approx\log2+\frac x2-\frac{x^2}8+\frac{x^3}{24}-\frac{x^4}{64}$.\\
+(b) Short: $\log(1+x)^2=2\log(1+x)\approx2x-x^2+\frac23x^3-\frac12x^4$. Longer: $(1+x)^2=1+u$ with $u=2x+x^2$; then $u^2=4x^2+4x^3+x^4$, $u^3=8x^3+12x^4+\dots$, $u^4=16x^4+\dots$, and $u-\frac{u^2}2+\frac{u^3}3-\frac{u^4}4=2x+x^2-2x^2-2x^3-\frac12x^4+\frac83x^3+4x^4-4x^4+\text{h.o.t.}=2x-x^2+\frac23x^3-\frac12x^4$. Same answer. \checkmark\qed
+\end{bookex}
+
+\begin{bookex}{320}
+Order-4 approximations at $0$ of (a) $e^{\sin x}$ and (b) $e^{\cos2x}$; (c) check.
+\solution
+(a) $u=\sin x=x-\frac16x^3+\text{h.o.t.}$ (the $x^5$ term is beyond order 4). $u^2=x^2-\frac13x^4+\dots$, $u^3=x^3+\dots$, $u^4=x^4+\dots$. Then $e^u=1+u+\frac{u^2}2+\frac{u^3}6+\frac{u^4}{24}=1+x-\frac16x^3+\frac12x^2-\frac16x^4+\frac16x^3+\frac1{24}x^4+\dots=1+x+\frac12x^2-\frac18x^4$. (The $x^3$ terms cancel.)\\
+(b) $\cos2x=1-2x^2+\frac23x^4+\dots$ (substitute $2x$ in the cosine series: $\frac{(2x)^2}2=2x^2$, $\frac{(2x)^4}{24}=\frac23x^4$). Since $\cos2x$ does not tend to $0$, first split off the constant: $e^{\cos2x}=e\cdot e^{u}$ with $u=-2x^2+\frac23x^4+\dots$; $u^2=4x^4+\dots$; so $e^u=1+u+\frac{u^2}2+\dots=1-2x^2+\frac23x^4+2x^4=1-2x^2+\frac83x^4$, and $e^{\cos2x}\approx e\big(1-2x^2+\frac83x^4\big)$.\\
+(c) Direct differentiation (or Wolfram Alpha) confirms both; the direct route for (a) needs $f'=\cos x\,e^{\sin x}$, $f''=(\cos^2x-\sin x)e^{\sin x}$, \dots, much messier.\qed
+\end{bookex}
+
+\begin{trybox}[{305, 306, 307, 310, 311, 312, 313, 315, 318, 321, 322 (Extra)}]
+\textbf{305} $P_3$ matches $f,f',f'',f'''$ at $a$.\quad \textbf{306} $P_n^{(k)}(a)=f^{(k)}(a)$.\quad \textbf{307} Complete the degree-9 expansions of $e^x$, $\sin x$, $\cos x$, $\log(1+x)$.\quad \textbf{310} All Taylor approximations of $2x^3-3x^2+4$ at $0$; is a polynomial equal to its own $P_{n,a}$?\quad \textbf{311} Taylor approximations at $0$ of even/odd functions.\quad \textbf{312} $P_5$ of $\tan x$ by organised differentiation.\quad \textbf{313} $k$-th derivatives of $\log(1\pm x)$ at $0$; $P_5$ of $\log(1-x)$; substitution $-x$.\quad \textbf{315} From $\sqrt{1-x^2}$: $\frac12\sqrt3\approx\frac{111}{128}$.\quad \textbf{318} No order-$\le4$ terms were dropped in Voorbeeld 3.6.\quad \textbf{321} $P_5$ of $e^{x-\frac16x^3}$.\quad \textbf{322 (Extra)} Approximating $\log\frac12$, $\log0$, $\log1.9$, $\log2.1$, $\log2$ by Taylor polynomials.
+\end{trybox}
+
+\hsection{l'H\^opital's rule and some important limits}
+\begin{result}[{Voorbeeld 3.7, Stelling 3.8 \textperiodcentered\ Taylor for limits; l'H\^opital}]
+\textbf{Taylor:} near $0$, $\dfrac{\sin x}x=\dfrac{x+c_3x^3+\dots}x=1+c_3x^2+\dots\to1$; the exact coefficients do not matter, only that the remaining terms tend to $0$. \textbf{l'H\^opital:} if $f(x)\to0$ and $g(x)\to0$ as $x\to a$ (or both $\to\pm\infty$; $a=\pm\infty$ allowed) and $\lim\frac{f'(x)}{g'(x)}$ exists, then $\lim\frac{f(x)}{g(x)}=\lim\frac{f'(x)}{g'(x)}$. Voorbeeld 3.9: $\lim_{x\to0}\frac x{\tan x}=\lim\frac1{1/\cos^2x}=\lim\cos^2x=1$. \textbf{Check the hypotheses first}: l'H\^opital on a quotient that is not $\frac00$ or $\frac\infty\infty$ gives wrong answers (325d).
+\end{result}
+
+\begin{bookex}{323}
+Repeat the Taylor argument for $\lim_{x\to0}\dfrac{\sin3x}{2x}$ and $\lim_{x\to0}\dfrac{\sin x}{9x^3}$.
+\solution
+$\sin3x=3x-\frac{(3x)^3}6+\dots=3x-\frac92x^3+\dots$, so $\dfrac{\sin3x}{2x}=\dfrac32-\dfrac94x^2+\dots\to\dfrac32$.\\
+$\dfrac{\sin x}{9x^3}=\dfrac{x-\frac16x^3+\dots}{9x^3}=\dfrac1{9x^2}-\dfrac1{54}+\dots$; the first term tends to $+\infty$, so the limit does not exist as a real number ($+\infty$).\qed
+\end{bookex}
+
+\begin{bookex}{325}
+Determine in two ways (with and without l'H\^opital): (a) $\lim_{x\to0}\dfrac{\log(1+x)}x$; (b) $\lim_{x\to1}\dfrac{\log x}{1-x}$; (c) $\lim_{x\to0}\dfrac{1-\cos x}{\sin x}$; (d) $\lim_{x\to\pi/2}\dfrac{1-\cos x}{\sin x}$; (e) $\lim_{x\to0}\Big(\dfrac1x-\dfrac1{\sin x}\Big)$.
+\solution
+(a) $\frac00$. l'H: $\dfrac{1/(1+x)}1\to1$. Taylor: $\dfrac{x-\frac12x^2+\dots}x=1-\frac12x+\dots\to1$. (Also: it is $\log'(1)$.)\\
+(b) $\frac00$. l'H: $\dfrac{1/x}{-1}\to-1$. Taylor at $1$: $\log x=\log(1+(x-1))=(x-1)-\frac12(x-1)^2+\dots$, so the quotient is $\dfrac{(x-1)(1-\frac12(x-1)+\dots)}{-(x-1)}\to-1$.\\
+(c) $\frac00$. l'H: $\dfrac{\sin x}{\cos x}\to0$. Taylor: $\dfrac{\frac12x^2-\dots}{x-\dots}=\dfrac{\frac12x-\dots}{1-\dots}\to0$.\\
+(d) Not indeterminate: numerator $\to1-0=1$, denominator $\to1$; the limit is $1$ by the quotient rule. l'H\^opital would wrongly give $\dfrac{\sin x}{\cos x}\to\infty$.\\
+(e) $\dfrac1x-\dfrac1{\sin x}=\dfrac{\sin x-x}{x\sin x}$, a $\frac00$ form. Taylor: $\dfrac{-\frac16x^3+\dots}{x^2-\dots}=\dfrac{-\frac16x+\dots}{1-\dots}\to0$. l'H twice: $\dfrac{\cos x-1}{\sin x+x\cos x}$ (still $\frac00$) $\to\dfrac{-\sin x}{2\cos x-x\sin x}\to\dfrac02=0$.\qed
+\end{bookex}
+
+\begin{bookex}{326}
+Prove in order: (a) $\lim_{x\to\infty}\dfrac{\log x}x=0$; (b) $\lim_{x\to\infty}\dfrac{(\log x)^n}x=0$ for $n\in\N$; (c) $\lim_{t\to\infty}\dfrac{t^n}{e^t}=0$; (d) $\lim_{t\to\infty}\dfrac{t^x}{e^t}=0$ for all real $x$.
+\solution
+(a) $\frac\infty\infty$; l'H\^opital: $\dfrac{1/x}1=\dfrac1x\to0$.\\
+(b) Induction on $n$; (a) is $n=1$. If $\frac{(\log x)^{n-1}}x\to0$, then l'H\^opital on $\frac{(\log x)^n}x$ gives $\dfrac{n(\log x)^{n-1}\cdot\frac1x}1=n\dfrac{(\log x)^{n-1}}x\to0$.\\
+(c) Substitute $t=\log x$, i.e.\ $x=e^t$; as $t\to\infty$, $x\to\infty$, and $\dfrac{t^n}{e^t}=\dfrac{(\log x)^n}x\to0$ by (b).\\
+(d) Choose $n\in\N$ with $n\ge x$. For $t\ge1$: $0\le t^x\le t^n$, so $0\le\dfrac{t^x}{e^t}\le\dfrac{t^n}{e^t}\to0$; squeeze.\\
+Meaning: $\log$ grows slower than every power, every power grows slower than $e^t$.\qed
+\end{bookex}
+
+\begin{trybox}[{324, 327, 328, 329, 330 (Extra)}]
+\textbf{324} $\lim_{x\to0}\frac x{\tan x}$ without l'H\^opital.\quad \textbf{327} $\lim_{x\to0}x\log x=0$ from 326(a).\quad \textbf{328, 329 (Extra)} The general terms of the series for $e^x,\sin,\cos,\log(1+x)$; $e^{ix}=\cos x+i\sin x$ from the series.\quad \textbf{330 (Extra)} $\frac1{1+x}=1-x+x^2-\dots$: meaning for $x=0,-\frac12,-1,1$; its Taylor series; differentiating the series of $\log(1+x)$.
+\end{trybox}
+
+\begin{warn}
+\begin{itemize}
+\item Always say which steunpunt and which order. Before substituting a known expansion, check that the inner expression tends to $0$ (split off $e^{1}$ in $e^{\cos2x}$).
+\item Keep terms up to the required order and \emph{all} of them: in $\log\cos x$ the $u^2$ term contributes at order $4$ (Oefening 318).
+\item l'H\^opital only for $\frac00$ or $\frac\infty\infty$; differentiate numerator and denominator separately (no quotient rule).
+\item Degrees to radians before using a Taylor polynomial (Oefening 309).
+\end{itemize}
+\end{warn}

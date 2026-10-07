@@ -1,0 +1,32 @@
+\hsection{Chapter 5}
+\sol{501} The amount $y>0$ decreases, so $y'<0$; from $y'=ky$ it follows that $k<0$.
+
+\sol{503} (5.2) $g'^2+g^2=1$: first order. (5.3) first. (5.4) first. (5.5) first. (5.6) second ($u''$). (5.7) fourth ($f''''$).
+
+\sol{504} $v(t)=\frac{mg}k(1-e^{-kt/m})$: $v'(t)=\frac{mg}k\cdot\frac km e^{-kt/m}=ge^{-kt/m}$, so $mv'=mge^{-kt/m}$; and $mg-kv=mg-mg(1-e^{-kt/m})=mge^{-kt/m}$. Equal. Also $v(0)=\frac{mg}k(1-1)=0$.
+
+\sol{505} (a) $g=-1$: $g'=0$, $0+(-1)^2=1$. (b) Also $g=1$; and the non-constant solutions $g(t)=\sin t$, $g(t)=\cos t$, more generally $g(t)=\sin(t+c)$ (and $-\sin t$, $-\cos t$): $\cos^2t+\sin^2t=1$.
+
+\sol{507} (a) $u=2x-2$: $u'=2$, $u''=0$: $0+12+5(2x-2)=10x+2$. (b) For $u=c_1e^{-x}$: $u''+6u'+5u=c_1(1-6+5)e^{-x}=0$; for $c_2e^{-5x}$: $c_2(25-30+5)e^{-5x}=0$. Adding the solution of (a) (the equation is linear): the sum gives $10x+2$.
+
+\sol{508} $y=0$: $y'=0$ and $a(x)\cdot0=0$, so $y'+a(x)y=0$.
+
+\sol{509} From $\frac{dy}{dx}=-2(x+1)y$: divide by $y$ (assuming $y\ne0$) and ``multiply by $dx$'': $\frac{dy}y=-2(x+1)\,dx$. (The separate symbols $dy$, $dx$ are a formal shorthand; the result is justified afterwards by substitution, Oefening 510.)
+
+\sol{510} $y=Ce^{-x^2-2x}$: $y'=C(-2x-2)e^{-x^2-2x}=-2(x+1)y$, so $y'+2(x+1)y=0$ for every $C$, including $C=0$ (the zero solution).
+
+\sol{512} Let $A$ be a primitive of $a$. Separating: $\frac{dy}y=-a(x)\,dx$, $\log|y|=-A(x)+C_1$, so the general solution of $y'+a(x)y=0$ is $y=Ce^{-A(x)}$, $C\in\R$. Check: $y'=-a(x)Ce^{-A(x)}=-a(x)y$.
+
+\sol{513} See the checks written after each part of Oefening 511.
+
+\sol{514} (a) $(y_h+y_p)'+a(y_h+y_p)=(y_h'+ay_h)+(y_p'+ay_p)=0+f=f$. (b) $(\tilde y_p-y_p)'+a(\tilde y_p-y_p)=(\tilde y_p'+a\tilde y_p)-(y_p'+ay_p)=f-f=0$. (c) By (a) every function $y_h+y_p$ is a solution; by (b) every solution $\tilde y_p$ is $y_p+(\tilde y_p-y_p)$ with $\tilde y_p-y_p$ a homogeneous solution, hence of the form $y_h+y_p$. So $\{y_h+y_p\}$ is exactly the set of all solutions.
+
+\sol{515} $a(x)=\frac2x$ has primitive $2\log|x|$, so $u=e^{2\log|x|}=|x|^2=x^2$.
+
+\sol{518} Write $y_h=Ce^{-A(x)}$ and try $y=C(x)e^{-A(x)}$. Then $y'=C'e^{-A}-aCe^{-A}$, so $y'+ay=C'(x)e^{-A(x)}$; the terms with $C(x)$ cancel (they are the homogeneous equation). Requiring this to equal $f$: $C'(x)=f(x)e^{A(x)}$, so $C(x)=\int f(x)e^{A(x)}dx+c$ and $y=e^{-A(x)}\Big(\int f(x)e^{A(x)}dx+c\Big)$: the same formula as the integrating-factor method ($u=e^{A}$).
+
+\sol{520} $mv'=mg-kv$ is linear: $v'+\frac kmv=g$. Homogeneous: $v_h=Ce^{-kt/m}$. Particular: the constant $v_p=\frac{mg}k$ (then $v'=0$ and $\frac km\cdot\frac{mg}k=g$). General: $v=\frac{mg}k+Ce^{-kt/m}$; $v(0)=0$ gives $C=-\frac{mg}k$, so $v(t)=\frac{mg}k\big(1-e^{-kt/m}\big)$.
+
+\sol{521} The third option: substitute $x=a$ into the general solution $y=y_h+y_p$ and solve $y_h(a)+y_p(a)=b$ for $C$ (the constant sits in $y_h$). Solving $y_h(a)=b$ alone or $y_p(a)=b$ ignores half of the solution; the d.v.\ itself at $x=a$ contains no $C$ to solve for.
+
+\sol{524} (a) $y'=0$ when $\alpha y(\beta-y)=0$: $y\equiv0$ or $y\equiv\beta$. (b) If $0<y<\beta$ then $y'=\alpha y(\beta-y)>0$: $y$ increases, but it can never reach $\beta$ (there the solution would coincide with the constant solution $\beta$, which is impossible for two different solutions of the same d.v.), so it increases towards $\beta$ and $y'\to0$. If $y>\beta$ then $y'<0$: $y$ decreases towards $\beta$ in the same way. If $y(0)=\beta$ it stays $\beta$. In all cases $\lim_{t\to\infty}y(t)=\beta$: the population tends to the carrying capacity $\beta$ whatever the (positive) starting size.

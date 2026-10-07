@@ -1,0 +1,227 @@
+\chapter{Finding primitives}
+\chaptercontents{A & Primitives, improper integrals (\S6.1) \\ B & Integration by parts (\S6.2) \\ C & Integration by substitution (\S6.3) \\ D & Partial fractions (\S6.4) \\ E & Mixed exercises (\S6.5) \\ F & (Extra) $\log$ and $\exp$ (\S6.6)}%
+{Exercises 601--635 (all worked or solved).\\ Hoofdpunten: lots of practice with parts, substitution, partial fractions and rewriting integrands, also in combination; willingness to try something else when an approach fails; the double-angle formulas as a tool; what an improper integral is. \textbf{Always check a primitive by differentiating.}}
+
+\hsection{Standard primitives and improper integrals}
+\begin{key}[{\S6.1 \textperiodcentered\ know these by heart (constants omitted)}]
+\[
+\int x^r\,dx=\frac{x^{r+1}}{r+1}\ (r\ne-1),\quad\int\frac{dx}x=\log|x|,\quad\int e^x\,dx=e^x,\quad\int\sin x\,dx=-\cos x,\quad\int\cos x\,dx=\sin x,
+\]
+\[
+\int\frac{dx}{\sqrt{1-x^2}}=\arcsin x,\qquad\int\frac{dx}{1+x^2}=\arctan x.
+\]
+Differentiating is automatic; primitiving needs creativity, which you get by trying, failing and learning (``goede keuzes maak je met ervaring, ervaring maak je met foute keuzes'').
+\end{key}
+\begin{key}[{\S6.1.1 and Voorbeelden 6.1--6.4 \textperiodcentered\ improper integrals}]
+An integral is \term{improper} if the interval or the integrand is unbounded; evaluate it with a limit: $\int_1^\infty x^{-2}dx=\lim_{b\to\infty}\big[-x^{-1}\big]_1^b=1$ (\term{convergent}); $\int_0^1x^{-2}dx=\big[-x^{-1}\big]_0^1=-1-\lim_{x\to0^+}(-\tfrac1x)$ does not exist (\term{divergent}). Two problems (e.g.\ $\int_0^\infty x^{-2}dx$, or $\int_{-\infty}^\infty$): split the interval and treat each limit separately; the whole integral converges only if every piece does. $\int_{-\infty}^\infty\frac{dx}{1+x^2}=\frac\pi2+\frac\pi2=\pi$.
+\end{key}
+
+\begin{bookex}{605}
+Convergent? If so, compute: (a) $\int_0^1\dfrac{dx}{\sqrt x}$; (b) $\int_1^\infty\dfrac{dx}{\sqrt x}$.
+\solution
+A primitive of $x^{-1/2}$ is $2\sqrt x$.\\
+(a) Improper at $0$ (integrand unbounded): $\int_0^1x^{-1/2}dx=2\sqrt1-\lim_{a\to0^+}2\sqrt a=2-0=2$. Convergent, value $2$.\\
+(b) Improper at $\infty$: $\int_1^bx^{-1/2}dx=2\sqrt b-2\to\infty$ as $b\to\infty$. Divergent. (Compare $x^{-2}$: at infinity, a higher power in the denominator is needed; near $0$, a lower one.)\qed
+\end{bookex}
+
+\begin{trybox}[{601, 602, 603, 604, 606}]
+\textbf{601} Why does $\int c\,dx=cx$ follow from the list?\quad \textbf{602} $\frac1x$ and $\log|x|$ on both sides of $0$; $\int_a^b\frac{dx}x=\log|b|-\log|a|$ for $a<b<0$, sign check.\quad \textbf{603} $\int\frac{p}{qx+r}\,dx$.\quad \textbf{604} Find $f,g\not\equiv0$ with $\int f\cdot\int g=\int fg$.\quad \textbf{606} $\lim_{a\to\infty}\int_{-a}^a\sin x\,dx$; yet $\int_{-\infty}^\infty\sin x\,dx$ diverges.
+\end{trybox}
+
+\hsection{Integration by parts}
+\begin{key}[{\S6.2 \textperiodcentered\ partieel integreren}]
+From the product rule: $\displaystyle\int f'(x)g(x)\,dx=f(x)g(x)-\int f(x)g'(x)\,dx$, also written $\int g\,df=fg-\int f\,dg$; with limits, $\int_a^bf'g\,dx=\big[fg\big]_a^b-\int_a^bfg'\,dx$. Split the integrand sensibly into a factor $f'$ you can primitive and a factor $g$ that becomes simpler when differentiated. Voorbeeld 6.5: $\int xe^x\,dx$ with $f'=e^x$, $g=x$: $xe^x-\int e^x\,dx=(x-1)e^x+C$. Voorbeeld 6.6: $\int e^x\sin x\,dx$: twice by parts brings back the original integral: $I=-e^x\cos x+e^x\sin x-I$, so $I=\frac12e^x(\sin x-\cos x)+C$. The wrong choice shows itself by a more complicated new integral (Oefening 609). ``Multiply by $1$'' (Oefening 610): $\int\log x\,dx=\int1\cdot\log x\,dx$.
+\end{key}
+
+\begin{bookex}{607}
+Find $\int x\sin x\,dx$.
+\solution
+$f'=\sin x$ (so $f=-\cos x$), $g=x$ ($g'=1$): $\int x\sin x\,dx=-x\cos x+\int\cos x\,dx=-x\cos x+\sin x+C$. Check: $(-x\cos x+\sin x)'=-\cos x+x\sin x+\cos x=x\sin x$. \checkmark\qed
+\end{bookex}
+
+\begin{bookex}{610(c)}
+Determine $\int\log x\,dx$ and $\int\arctan x\,dx$ by ``multiplying by $1$''.
+\solution
+$f'=1$, $f=x$, $g=\log x$: $\int\log x\,dx=x\log x-\int x\cdot\frac1x\,dx=x\log x-x+C$.\\
+$f'=1$, $g=\arctan x$: $\int\arctan x\,dx=x\arctan x-\int\dfrac x{1+x^2}\,dx=x\arctan x-\tfrac12\log(1+x^2)+C$, since $\big(\log(1+x^2)\big)'=\frac{2x}{1+x^2}$.\qed
+\end{bookex}
+
+\begin{bookex}{611}
+Compute $\int_1^ex^3\log^2x\,dx$.
+\solution
+Parts with $f'=x^3$, $g=\log^2x$ ($g'=\frac{2\log x}x$): $\Big[\dfrac{x^4}4\log^2x\Big]_1^e-\int_1^e\dfrac{x^4}4\cdot\dfrac{2\log x}x\,dx=\dfrac{e^4}4-\dfrac12\int_1^ex^3\log x\,dx$. Again by parts: $\int_1^ex^3\log x\,dx=\Big[\dfrac{x^4}4\log x\Big]_1^e-\int_1^e\dfrac{x^3}4\,dx=\dfrac{e^4}4-\dfrac{e^4-1}{16}=\dfrac{3e^4+1}{16}$. Hence the integral is $\dfrac{e^4}4-\dfrac{3e^4+1}{32}=\dfrac{5e^4-1}{32}$.\qed
+\end{bookex}
+
+\begin{bookex}{612}
+The gamma function is $\Gamma(x)=\int_0^\infty t^{x-1}e^{-t}\,dt$ ($x>0$; assume convergence). (a) $\Gamma(1)$. (b) Show $\Gamma(x+1)=x\Gamma(x)$. (c) $\Gamma(6)$, and the pattern.
+\solution
+(a) $\Gamma(1)=\int_0^\infty e^{-t}dt=\lim_{b\to\infty}\big[-e^{-t}\big]_0^b=0+1=1$.\\
+(b) Parts with $f'=e^{-t}$ ($f=-e^{-t}$), $g=t^x$: $\Gamma(x+1)=\big[-t^xe^{-t}\big]_0^\infty+x\int_0^\infty t^{x-1}e^{-t}dt$. The boundary term vanishes: at $t=0$ because $t^x\to0$ ($x>0$), at $\infty$ because $t^xe^{-t}\to0$ (Oefening 326d). So $\Gamma(x+1)=x\Gamma(x)$.\\
+(c) $\Gamma(6)=5\Gamma(5)=5\cdot4\Gamma(4)=5\cdot4\cdot3\cdot2\cdot1\cdot\Gamma(1)=120=5!$; likewise $\Gamma(7)=720=6!$, and in general $\Gamma(n)=(n-1)!$: the gamma function extends the factorial to all positive reals.\qed
+\end{bookex}
+
+\begin{trybox}[{608, 609, 610(a),(b),(d)}]
+\textbf{608} Check $\frac12e^x(\sin x-\cos x)$ by differentiating.\quad \textbf{609} Swap the roles of $f'$ and $g$ in Voorbeelden 6.5 and 6.6: which one goes wrong, and what is the signal?\quad \textbf{610} (a) $\int x\,dx$ and (b) $\int x^2dx$ by parts with $f'=1$; (d) try the same for $\int\frac1x\,dx$ and explain the paradox.
+\end{trybox}
+
+\hsection{Integration by substitution}
+\begin{key}[{\S6.3 \textperiodcentered\ the chain rule backwards}]
+$\displaystyle\int f(u(x))\,u'(x)\,dx=\int f(u)\,du$. Choose $u$, compute $du=u'(x)\,dx$, rewrite the integrand entirely in $u$, integrate, substitute back. Voorbeeld 6.7: $\int\frac{x}{\sqrt{1+x^2}}dx$, $u=1+x^2$, $du=2x\,dx$: $\int\frac1{\sqrt u}\cdot\frac12du=\sqrt u+C=\sqrt{1+x^2}+C$. Questions to ask: does the integrand remind you of a standard integral? which part would you like to get rid of? is one part the derivative of another? \textbf{Definite integrals:} either substitute back and use the original limits, or convert the limits ($u(a)$, $u(b)$) and never substitute back (Voorbeeld 6.8: $\int_0^8\frac{\cos\sqrt{1+x}}{\sqrt{1+x}}dx=2\int_1^3\cos u\,du=2(\sin3-\sin1)$).
+\end{key}
+\begin{strategy}[{\S6.3 \textperiodcentered\ trigonometric substitutions}]
+Three variants of $\sin^2u+\cos^2u=1$: for $a^2-x^2$ put $x=a\sin u$ ($a^2-x^2=a^2\cos^2u$); for $x^2-a^2$ put $x=\dfrac a{\cos u}$ ($x^2-a^2=a^2\tan^2u$); for $a^2+x^2$ put $x=a\tan u$ ($a^2+x^2=\dfrac{a^2}{\cos^2u}$). Voorbeeld 6.9: $\int\sqrt{25-x^2}\,dx$ with $x=5\sin u$ becomes $25\int\cos^2u\,du=\frac{25}2\int(\cos2u+1)\,du=\frac{25}4\sin2u+\frac{25}2u$, and back: $\frac52x\sqrt{1-(\frac x5)^2}+\frac{25}2\arcsin\frac x5+C$. No absolute value is needed in $\sqrt{1-\sin^2u}=\cos u$ because $u\in[-\frac\pi2,\frac\pi2]$ (needed anyway for the substitution to be a bijection). Double-angle formulas are essential here.
+\end{strategy}
+
+\begin{bookex}{613}
+With the given substitution: (a) $\int16x(3+4x^2)^7dx$, $u=3+4x^2$; (b) $\int\sin(2x)\sqrt{2+\sin^2x}\,dx$, $u=2+\sin^2x$.
+\solution
+(a) $du=8x\,dx$, so $16x\,dx=2\,du$: $\int2u^7du=\frac14u^8+C=\frac14(3+4x^2)^8+C$.\\
+(b) $du=2\sin x\cos x\,dx=\sin(2x)\,dx$: $\int\sqrt u\,du=\frac23u^{3/2}+C=\frac23(2+\sin^2x)^{3/2}+C$.\qed
+\end{bookex}
+
+\begin{bookex}{615}
+Evaluate $\int\dfrac{dx}{1+\sqrt{3x}}$ with $u=\sqrt{3x}$. Hint: be creative with $\frac{du}{dx}$.
+\solution
+$u^2=3x$, so $2u\,du=3\,dx$, $dx=\frac23u\,du$ (differentiate the squared relation rather than the root). Then
+\begin{align*}
+\int\frac{dx}{1+\sqrt{3x}}&=\int\frac{\frac23u}{1+u}\,du=\frac23\int\Big(1-\frac1{1+u}\Big)du\\
+&=\frac23\big(u-\log|1+u|\big)+C=\frac23\Big(\sqrt{3x}-\log\big(1+\sqrt{3x}\big)\Big)+C.
+\end{align*}\qed
+\end{bookex}
+
+\begin{bookex}{616}
+Compute $\int_0^{\pi/2}\sqrt{1+\cos x}\,dx$.
+\solution
+Double-angle: $1+\cos x=2\cos^2\frac x2$, so $\sqrt{1+\cos x}=\sqrt2\,\big|\cos\frac x2\big|=\sqrt2\cos\frac x2$ on $[0,\frac\pi2]$. Then $\int_0^{\pi/2}\sqrt2\cos\frac x2\,dx=\sqrt2\Big[2\sin\frac x2\Big]_0^{\pi/2}=2\sqrt2\sin\frac\pi4=2\sqrt2\cdot\frac12\sqrt2=2$.\qed
+\end{bookex}
+
+\begin{bookex}{619}
+Compute: (a) $\int\dfrac{x}{\sqrt{x^2-36}}\,dx$; (b) $\int\dfrac{dt}{t^2\sqrt{49-t^2}}$; (c) $\int_{1/2}^{\frac12\sqrt3}\dfrac{dx}{(1+4x^2)^2}$.
+\solution
+(a) No trig needed: $u=x^2-36$, $du=2x\,dx$: $\frac12\int u^{-1/2}du=\sqrt u=\sqrt{x^2-36}+C$.\\
+(b) $t=7\sin u$, $dt=7\cos u\,du$, $\sqrt{49-t^2}=7\cos u$: $\int\dfrac{7\cos u\,du}{49\sin^2u\cdot7\cos u}=\dfrac1{49}\int\dfrac{du}{\sin^2u}=-\dfrac1{49}\cot u+C$. Back: $\cot u=\dfrac{\cos u}{\sin u}=\dfrac{\sqrt{1-(t/7)^2}}{t/7}=\dfrac{\sqrt{49-t^2}}t$, so the integral is $-\dfrac{\sqrt{49-t^2}}{49\,t}+C$.\\
+(c) $2x=\tan u$, $dx=\frac12(1+\tan^2u)\,du=\frac{du}{2\cos^2u}$ and $1+4x^2=\frac1{\cos^2u}$: the integrand becomes $\cos^4u\cdot\frac1{2\cos^2u}du=\frac12\cos^2u\,du=\frac14(1+\cos2u)\,du$. Limits: $x=\frac12\Rightarrow\tan u=1\Rightarrow u=\frac\pi4$; $x=\frac12\sqrt3\Rightarrow\tan u=\sqrt3\Rightarrow u=\frac\pi3$. So the integral is $\frac14\big[u+\frac12\sin2u\big]_{\pi/4}^{\pi/3}=\frac14\Big(\frac\pi3+\frac{\sqrt3}4-\frac\pi4-\frac12\Big)=\dfrac\pi{48}+\dfrac{\sqrt3}{16}-\dfrac18\approx0.0487$.\qed
+\end{bookex}
+
+\begin{trybox}[{614, 617, 618}]
+\textbf{614} By substitution: $\int2\sin(\pi x)dx$; $\int xe^{-x^2}dx$; $\int\frac{\log^2x}x dx$; $\int\tan x\,dx$; $\int(1+\cos x)^3\sin x\,dx$.\quad \textbf{617} $\int_e^{e^2}\frac{dx}{x\log x}$.\quad \textbf{618} Derive $\int\frac{dx}{\sqrt{1-x^2}}=\arcsin x$ with $x=\sin u$.
+\end{trybox}
+
+\hsection{Rational functions and partial fractions}
+\begin{strategy}[{\S6.4 \textperiodcentered\ the standard procedure}]
+\begin{enumerate}[leftmargin=1.5em,itemsep=1pt]
+\item Degree of numerator $\ge$ degree of denominator: long division first (\S0.3). $\dfrac{(2x-1)^3+4}{2x^2-x}=4x-4+\dfrac{2x+3}{2x^2-x}$.
+\item Denominator of degree $1$: $\int\dfrac c{ax+b}dx=\dfrac ca\log|ax+b|$.
+\item Denominator of degree $2$, by the number of real zeros (discriminant): \textbf{none}: complete the square and reduce to $\int\frac{dx}{1+x^2}=\arctan x$ and $\int\frac{x\,dx}{1+x^2}=\frac12\log(1+x^2)$; \textbf{one (double)}: write the numerator in terms of the root, $\dfrac{3x+5}{(x+1)^2}=\dfrac3{x+1}+\dfrac2{(x+1)^2}$; \textbf{two}: partial fractions $\dfrac{ax+b}{(px+q)(rx+s)}=\dfrac A{px+q}+\dfrac B{rx+s}$, found by putting the right side over one denominator and comparing numerators (or substituting the roots).
+\item Degree $\ge3$: factorise the denominator (easy cases only), one term per factor; a repeated factor $(x-c)^k$ or an irreducible quadratic gets a numerator of degree one less than its denominator: $\dfrac{Ax^2+Bx+C}{(1-x)^3}+\dfrac D{2+x}$, $\dfrac{Ax+B}{1+x^2}+\dfrac C{1+2x}$. Sometimes $u=x^2$ lowers the degree instead.
+\end{enumerate}
+Voorbeeld 6.10: $\dfrac{x+2}{x^3-x}=\dfrac{-2}x+\dfrac{3/2}{x-1}+\dfrac{1/2}{x+1}$. Voorbeeld 6.11: $\dfrac{4x^2+x+13}{(x-1)^2(x+5)}=\dfrac{x+2}{(x-1)^2}+\dfrac3{x+5}$ with $\dfrac{x+2}{(x-1)^2}=\dfrac1{x-1}+\dfrac3{(x-1)^2}$.
+\end{strategy}
+
+\begin{bookex}{621}
+Evaluate $\int\dfrac{(2x-1)^3+4}{2x^2-x}\,dx$.
+\solution
+After the division (page 96): $\int(4x-4)\,dx+\int\dfrac{2x+3}{x(2x-1)}\,dx$. Partial fractions: $\dfrac{2x+3}{x(2x-1)}=\dfrac Ax+\dfrac B{2x-1}$ with $A(2x-1)+Bx=2x+3$; $x=0$ gives $A=-3$, $x=\frac12$ gives $\frac12B=4$, $B=8$ (this is the dictaat's example $\frac8{2x-1}-\frac3x$). Hence
+\[
+\int\frac{(2x-1)^3+4}{2x^2-x}\,dx=2x^2-4x-3\log|x|+4\log|2x-1|+C,
+\]
+using $\int\frac8{2x-1}dx=\frac82\log|2x-1|$. Check by differentiating: $4x-4-\frac3x+\frac8{2x-1}$ \checkmark.\qed
+\end{bookex}
+
+\begin{bookex}{624(a)--(d)}
+Evaluate: (a) $\int\dfrac{dt}{1-t^2}$; (b) $\int\dfrac{x^3}{x^2+2x-15}dx$; (c) $\int\dfrac{dx}{x^2+6x+25}$; (d) $\int\dfrac{4y+3}{4y^2-9}dy$.
+\solution
+(a) $\dfrac1{1-t^2}=\dfrac1{(1-t)(1+t)}=\dfrac12\Big(\dfrac1{1-t}+\dfrac1{1+t}\Big)$, so the integral is $\dfrac12\big(-\log|1-t|+\log|1+t|\big)+C=\dfrac12\log\Big|\dfrac{1+t}{1-t}\Big|+C$.\\
+(b) Divide: $x^3=(x^2+2x-15)(x-2)+(19x-30)$. Then $\dfrac{19x-30}{(x+5)(x-3)}=\dfrac A{x+5}+\dfrac B{x-3}$: $A(x-3)+B(x+5)=19x-30$; $x=3$: $8B=27$; $x=-5$: $-8A=-125$. So the integral is $\dfrac{x^2}2-2x+\dfrac{125}8\log|x+5|+\dfrac{27}8\log|x-3|+C$.\\
+(c) No real zeros ($36-100<0$): complete the square, $x^2+6x+25=(x+3)^2+16=16\Big(1+\big(\tfrac{x+3}4\big)^2\Big)$; with $u=\frac{x+3}4$, $dx=4\,du$: $\int\dfrac{4\,du}{16(1+u^2)}=\dfrac14\arctan u=\dfrac14\arctan\dfrac{x+3}4+C$.\\
+(d) $4y^2-9=(2y-3)(2y+3)$: $\dfrac{4y+3}{(2y-3)(2y+3)}=\dfrac A{2y-3}+\dfrac B{2y+3}$, $A(2y+3)+B(2y-3)=4y+3$; $y=\frac32$: $6A=9$, $A=\frac32$; $y=-\frac32$: $-6B=-3$, $B=\frac12$. Integral: $\dfrac32\cdot\dfrac12\log|2y-3|+\dfrac12\cdot\dfrac12\log|2y+3|=\dfrac34\log|2y-3|+\dfrac14\log|2y+3|+C$.\qed
+\end{bookex}
+
+\begin{bookex}{625}
+Solve the logistic equation $y'=\frac1{50}y(100-y)$, $y(0)=25$, by separating variables.
+\solution
+$\dfrac{dy}{y(100-y)}=\dfrac{dt}{50}$. Partial fractions: $\dfrac1{y(100-y)}=\dfrac1{100}\Big(\dfrac1y+\dfrac1{100-y}\Big)$. Integrating: $\dfrac1{100}\big(\log y-\log(100-y)\big)=\dfrac t{50}+C$ (for $0<y<100$), i.e.\ $\log\dfrac y{100-y}=2t+C'$. At $t=0$: $\log\frac{25}{75}=\log\frac13=C'$. So $\dfrac y{100-y}=\dfrac13e^{2t}$, hence $3y=(100-y)e^{2t}$, $y(3+e^{2t})=100e^{2t}$ and
+\[
+y(t)=\frac{100e^{2t}}{3+e^{2t}}=\frac{100}{1+3e^{-2t}} .
+\]
+Check: $y(0)=25$; $y\to100$ as $t\to\infty$ (the carrying capacity $\beta=100$ of Oefening 524); and $y'=\frac{600e^{-2t}}{(1+3e^{-2t})^2}=\frac1{50}y(100-y)$ since $100-y=\frac{300e^{-2t}}{1+3e^{-2t}}$. \checkmark\qed
+\end{bookex}
+
+\begin{trybox}[{620, 622, 623, 624(e)--(h), 626}]
+\textbf{620} Recombine $\frac13\big(\frac4{x-2}-\frac1{x+4}\big)$.\quad \textbf{622} Try partial fractions on $\frac{3x+5}{x^2+2x+1}$: what goes wrong?\quad \textbf{623} Finish Voorbeeld 6.11.\quad \textbf{624} (e) $\int\frac{4x^2+12x+9}{4x^2+12x+10}dx$; (f) $\int\frac{x\,dx}{x^4-x^2-6}$; (g) $\int\frac{dx}{(x^2-1)^2}$; (h) $\int\frac{2x^3-3x^2-2x-5}{x^4-1}dx$.\quad \textbf{626} $\int_0^1\frac{x^4(1-x)^4}{1+x^2}dx=\frac{22}7-\pi$, hence $\frac{22}7>\pi$.
+\end{trybox}
+
+\hsection{Mixed exercises}
+\begin{strategy}[{\S6.5 \textperiodcentered\ choosing a method}]
+Trig integrands: rewrite with the formulas ($\sin2x=2\sin x\cos x$, $\cos2x=2\cos^2x-1=1-2\sin^2x$, products to sums, $\cos^2+\sin^2=1$), then substitute ($u=\sin x$ when an odd power of $\cos$ is left over, and vice versa) or integrate by parts. One method is usually enough (628); sometimes two or three in a row (629). For $\int\frac{dx}{\cos x}$ multiply by $\frac{\cos x}{\cos x}$ and substitute $u=\sin x$ (632). If an approach is not working, try another.
+\end{strategy}
+
+\begin{bookex}{627(a),(c),(d)}
+Evaluate (a) $\int\sin x\sin2x\,dx$; (c) $\int_0^{\pi/12}\sin^4\xi\,d\xi$; (d) $\int\tan^2\alpha\sin\alpha\,d\alpha$.
+\solution
+(a) $\sin2x=2\sin x\cos x$: $\int2\sin^2x\cos x\,dx$; $u=\sin x$: $\int2u^2du=\frac23\sin^3x+C$.\\
+(c) Reduce the power with double angles: $\sin^4\xi=\Big(\dfrac{1-\cos2\xi}2\Big)^2=\dfrac14\big(1-2\cos2\xi+\cos^22\xi\big)=\dfrac14\Big(1-2\cos2\xi+\dfrac{1+\cos4\xi}2\Big)=\dfrac38-\dfrac12\cos2\xi+\dfrac18\cos4\xi$. Integrating: $\Big[\dfrac{3\xi}8-\dfrac14\sin2\xi+\dfrac1{32}\sin4\xi\Big]_0^{\pi/12}=\dfrac{\pi}{32}-\dfrac14\sin\dfrac\pi6+\dfrac1{32}\sin\dfrac\pi3=\dfrac\pi{32}-\dfrac18+\dfrac{\sqrt3}{64}$.\\
+(d) $\tan^2\alpha\sin\alpha=\dfrac{\sin^3\alpha}{\cos^2\alpha}=\dfrac{(1-\cos^2\alpha)\sin\alpha}{\cos^2\alpha}$; $u=\cos\alpha$, $du=-\sin\alpha\,d\alpha$: $-\int\dfrac{1-u^2}{u^2}du=-\int(u^{-2}-1)\,du=\dfrac1u+u+C=\dfrac1{\cos\alpha}+\cos\alpha+C$.\qed
+\end{bookex}
+
+\begin{bookex}{628(c),(e)}
+One method each: (c) $\int x^3e^{-x^2}dx$; (e) $\int\big(\tfrac12(t^2+t)^9+t(t^2+t)^9\big)dt$.
+\solution
+(c) $u=x^2$, $du=2x\,dx$: $\int x^2e^{-x^2}\cdot x\,dx=\frac12\int ue^{-u}du=\frac12\big(-ue^{-u}-e^{-u}\big)+C=-\frac12(x^2+1)e^{-x^2}+C$ (the inner integral by parts as in Voorbeeld 6.5).\\
+(e) Factor: $(t^2+t)^9\big(t+\frac12\big)=\frac12(t^2+t)^9(2t+1)$, and $2t+1$ is the derivative of $t^2+t$: $u=t^2+t$ gives $\frac12\int u^9du=\frac1{20}(t^2+t)^{10}+C$.\qed
+\end{bookex}
+
+\begin{bookex}{629(b),(c),(f),(g)}
+(b) $\int\dfrac{\sqrt{x+1}}{x+2}dx$; (c) $\int x^3\sqrt{1-x^2}\,dx$; (f) $\int\dfrac{x\arctan x}{(1+x^2)^{3/2}}dx$; (g) $\int\dfrac{x^2}{\sqrt{2-x^2}}dx$.
+\solution
+(b) $u=\sqrt{x+1}$, $x=u^2-1$, $dx=2u\,du$: $\int\dfrac{u\cdot2u}{u^2+1}du=2\int\Big(1-\dfrac1{u^2+1}\Big)du=2u-2\arctan u+C=2\sqrt{x+1}-2\arctan\sqrt{x+1}+C$.\\
+(c) $u=1-x^2$, $x^2=1-u$, $du=-2x\,dx$: $\int x^2\sqrt{1-x^2}\cdot x\,dx=-\dfrac12\int(1-u)\sqrt u\,du=-\dfrac12\Big(\dfrac23u^{3/2}-\dfrac25u^{5/2}\Big)+C=-\dfrac13(1-x^2)^{3/2}+\dfrac15(1-x^2)^{5/2}+C$.\\
+(f) Parts with $f'=\dfrac{x}{(1+x^2)^{3/2}}$, whose primitive is $f=-\dfrac1{\sqrt{1+x^2}}$ (substitution $u=1+x^2$), and $g=\arctan x$: $-\dfrac{\arctan x}{\sqrt{1+x^2}}+\int\dfrac{dx}{(1+x^2)^{3/2}}$. The last integral: $x=\tan u$, $dx=\frac{du}{\cos^2u}$, $(1+x^2)^{3/2}=\cos^{-3}u$, so it is $\int\cos u\,du=\sin u=\dfrac x{\sqrt{1+x^2}}$. Result: $\dfrac{x-\arctan x}{\sqrt{1+x^2}}+C$.\\
+(g) $x=\sqrt2\sin u$, $dx=\sqrt2\cos u\,du$, $\sqrt{2-x^2}=\sqrt2\cos u$: $\int\dfrac{2\sin^2u\cdot\sqrt2\cos u}{\sqrt2\cos u}du=2\int\sin^2u\,du=u-\sin u\cos u+C$. Back: $u=\arcsin\frac x{\sqrt2}$, $\sin u\cos u=\frac x{\sqrt2}\sqrt{1-\frac{x^2}2}=\frac12x\sqrt{2-x^2}$. So $\arcsin\dfrac x{\sqrt2}-\dfrac12x\sqrt{2-x^2}+C$.\qed
+\end{bookex}
+
+\begin{bookex}{630(a),(e),(f)}
+Solve the initial value problems: (a) $xy'-(x+1)y=x^2-x^3$, $y(1)=2$; (e) $y'+y\cos x=2xe^{-\sin x}$, $y(\pi)=0$; (f) $y'=\dfrac{4-2x}{3y^2-5}$, $y(1)=3$.
+\solution
+(a) Divide by $x$: $y'-\big(1+\frac1x\big)y=x-x^2$. Integrating factor $u=e^{-x-\log x}=\dfrac{e^{-x}}x$: $\Big(\dfrac{e^{-x}}xy\Big)'=(1-x)e^{-x}$, and $\int(1-x)e^{-x}dx=xe^{-x}+C$ (check: $(xe^{-x})'=e^{-x}-xe^{-x}$). So $\dfrac{e^{-x}}xy=xe^{-x}+C$, $y=x^2+Cxe^x$. $y(1)=1+Ce=2$ gives $C=\frac1e$: $y=x^2+xe^{x-1}$.\\
+(e) Integrating factor $e^{\sin x}$: $\big(e^{\sin x}y\big)'=2x$, so $e^{\sin x}y=x^2+C$, $y=(x^2+C)e^{-\sin x}$. $y(\pi)=(\pi^2+C)e^0=0$ gives $C=-\pi^2$: $y=(x^2-\pi^2)e^{-\sin x}$.\\
+(f) Not linear; separate: $(3y^2-5)\,dy=(4-2x)\,dx$, so $y^3-5y=4x-x^2+C$. At $(1,3)$: $27-15=4-1+C$, $C=9$. The solution is given implicitly by $y^3-5y=4x-x^2+9$ (it cannot be solved for $y$ in closed form; the d.v.\ holds by implicit differentiation).\qed
+\end{bookex}
+
+\begin{bookex}{632}
+$\int\dfrac{dx}{\cos x}$: (a) multiply numerator and denominator by a suitable factor so that $u=\sin x$ works; (b) integrate by partial fractions; (c) use the log rules and back-substitution to reach $\log\big|\frac1{\cos x}+\tan x\big|$.
+\solution
+(a) Multiply by $\cos x$: $\dfrac1{\cos x}=\dfrac{\cos x}{\cos^2x}=\dfrac{\cos x}{1-\sin^2x}$. With $u=\sin x$, $du=\cos x\,dx$: $\int\dfrac{du}{1-u^2}$.\\
+(b) $\dfrac1{1-u^2}=\dfrac12\Big(\dfrac1{1-u}+\dfrac1{1+u}\Big)$ (624a), so $\int\dfrac{du}{1-u^2}=\dfrac12\log\Big|\dfrac{1+u}{1-u}\Big|+C$.\\
+(c) $\dfrac{1+u}{1-u}=\dfrac{(1+u)^2}{1-u^2}=\dfrac{(1+\sin x)^2}{\cos^2x}$, so $\dfrac12\log\dfrac{(1+\sin x)^2}{\cos^2x}=\log\Big|\dfrac{1+\sin x}{\cos x}\Big|=\log\Big|\dfrac1{\cos x}+\tan x\Big|+C$.\qed
+\end{bookex}
+
+\begin{bookex}{633}
+First a substitution, then Oefening 632: (a) $\int\dfrac{dx}{\sqrt{x^2-1}}$; (b) $\int_0^2\dfrac{dx}{\sqrt{4+x^2}}$.
+\solution
+(a) $x=\dfrac1{\cos u}$, $dx=\dfrac{\sin u}{\cos^2u}du$, $\sqrt{x^2-1}=\tan u$ (for $0\le u<\frac\pi2$): $\int\dfrac{\sin u/\cos^2u}{\sin u/\cos u}du=\int\dfrac{du}{\cos u}=\log\Big|\dfrac1{\cos u}+\tan u\Big|=\log\big|x+\sqrt{x^2-1}\big|+C$ (this is $\operatorname{arcosh}x$, Oefening 714).\\
+(b) $x=2\tan u$, $dx=\dfrac{2\,du}{\cos^2u}$, $\sqrt{4+x^2}=\dfrac2{\cos u}$: the integrand becomes $\dfrac{du}{\cos u}$; limits $u=0$ to $u=\frac\pi4$: $\Big[\log\Big(\dfrac1{\cos u}+\tan u\Big)\Big]_0^{\pi/4}=\log(\sqrt2+1)-\log1=\log(1+\sqrt2)$.\qed
+\end{bookex}
+
+\begin{trybox}[{627(b),(e),(f), 628(a),(b),(d),(f), 629(a),(d),(e),(h), 630(b),(c),(d),(g), 631}]
+\textbf{627} (b) $\int\cos^5\psi\,d\psi$; (e) $\int\tan(\arcsin t)\,dt$; (f) $\int\sin(\tau+1)\sin\tau\,d\tau$.\quad \textbf{628} (a) $\frac x{\sqrt{x^2+a^2}}$; (b) $(x^2+3x+2)^{-1}$; (d) $\frac{x^3+1}{x\sqrt x}$; (f) $x^2\cos x$.\quad \textbf{629} (a) $\log(1+1/x^2)$; (d) $\frac{x^3-8}{x^2-8}$; (e) $e^{\sqrt{1+x}}$; (h) $\sin(\log x)$.\quad \textbf{630} (b) $y'=e^{\sqrt x}/y$, $y(0)=-2$; (c) $y'+10y=1$, $y(\frac1{10})=\frac2{10}$; (d) $y'+3x^2y=x^2$, $y(0)=1$; (g) $y'=2xy^3(2x^2+1)$, $y(1)=1$.\quad \textbf{631} $\int_0^2\sqrt{(x-1)^2}\,dx$; $\int_0^\infty\frac{dx}{e^x+1}$.
+\end{trybox}
+
+\hsection{(Extra) The natural logarithm and the exponential function}
+\begin{key}[{Definitions 6.12--6.18 \textperiodcentered\ building $\log$ and $\exp$ from an integral}]
+Define $\log x=\int_1^x\frac{dt}t$ for $x>0$. Then $\log'x=\frac1x$ (fundamental theorem) and $\log(xy)=\log x+\log y$ (Stelling 6.13: $x\mapsto\log(xy)$ has derivative $\frac1x$, so it is $\log x+c$, and $x=1$ gives $c=\log y$): it deserves the name logarithm. Define $\exp=\log_{\mathrm{inv}}:\R\to\R_{>0}$; then $\exp'=\exp$ (differentiate $\log(\exp x)=x$), $\exp(x+y)=\exp x\exp y$, $e=\exp1$ (so $\int_1^e\frac{dt}t=1$), and finally $e^x=\exp x$ and $a^x=e^{x\log a}$ for all real $x$, which at last gives $3^{\sqrt2}$ a meaning. $e=\sum_{k\ge0}\frac1{k!}$.
+\end{key}
+
+\begin{trybox}[{634 (Extra), 635 (Extra)}]
+\textbf{634} How many terms of $\sum\frac1{k!}$ give the first $10$ decimals of $e$?\quad \textbf{635} From Definition 6.18: $a^1=a$, $a^{x+y}=a^xa^y$, $(a^x)^y=a^{xy}$.
+\end{trybox}
+
+\begin{warn}
+\begin{itemize}
+\item Check every primitive by differentiating; it takes ten seconds and catches most errors.
+\item In a substitution, convert $dx$ as well (differentiate the relation between $u$ and $x$; for $u=\sqrt{\cdot}$ square first). With definite integrals, either convert the limits or substitute back, never half of each.
+\item Before partial fractions: divide if the numerator's degree is too high, and check the discriminant of a quadratic denominator.
+\item Improper integrals: one limit per ``improperness''; a symmetric cancellation ($\int_{-a}^a\sin x\,dx=0$) proves nothing (606).
+\item Do not forget $+C$, and do not add one to a definite integral.
+\end{itemize}
+\end{warn}

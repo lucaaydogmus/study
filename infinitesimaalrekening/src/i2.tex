@@ -1,0 +1,140 @@
+\chapter{Limits, differentiation and integration}
+\chaptercontents{A & Limits (\S2.1) \\ B & Continuity (\S2.2) \\ C & Differentiation (\S2.3) \\ D & Integration (\S2.4) \\ E & Integration with common sense (\S2.5)}%
+{Exercises 201--220 (all worked or solved).\\ Hoofdpunten: the limit definition of the derivative and its picture; the rules for limits; the rules for differentiating, above all the chain rule; integration as ``sum of strips'', and the elementary rules that follow from that picture; some definite integrals without (much) computation.}
+
+\hsection{Limits}
+
+\begin{key}[{Definition 2.1 (informal), one-sided limits, Stelling 2.3 \textperiodcentered\ limits and their rules}]
+$\lim_{x\to a}f(x)=b$ means: $f(x)$ can be made as close to $b$ as we like by taking $x$ close enough to $a$. Two things to keep sharp: the limit says nothing about $x=a$ itself ($f(a)$ need not equal $b$, $f$ need not even be defined at $a$); and it does not claim that $f(x)=b$ for some $x$. \textbf{Left limit} $\lim_{x\to a^-}$ ($x\uparrow a$), \textbf{right limit} $\lim_{x\to a^+}$ ($x\downarrow a$): if they differ, the limit does not exist; if they agree, that common value is the limit. $\lim f(x)=+\infty$ means $f$ takes arbitrarily large values near $a$ (strictly the limit then does not exist, $\infty$ is not a number, but we distinguish this from the case of different one-sided limits).\\
+\textbf{Rules (Stelling 2.3):} if $f(x)\to\varphi$ and $g(x)\to\gamma$ as $x\to a$, then $f\pm g\to\varphi\pm\gamma$, $fg\to\varphi\gamma$, $f/g\to\varphi/\gamma$ if $\gamma\ne0$, and $\lim_{x\to a}f(g(x))=\lim_{x\to\gamma}f(x)$ (substitution).
+\end{key}
+\begin{result}[{Stelling 2.4 \textperiodcentered\ squeeze theorem (insluitstelling)}]
+If $g(x)\le f(x)\le h(x)$ on an open interval around $a$ (except possibly at $a$) and $\lim_{x\to a}g(x)=\lim_{x\to a}h(x)=\lambda$, then $\lim_{x\to a}f(x)=\lambda$. The creative step is choosing $g$ and $h$. Voorbeeld 2.5: for $x\sin\frac1x$ use $-1\le\sin\frac1x\le1$, but since $x$ can be negative, squeeze between $g(x)=-|x|$ and $h(x)=|x|$ (Oefening 204). Standard use: ``bounded times something tending to $0$'' tends to $0$.
+\end{result}
+
+\begin{bookex}{201}
+Determine the limits, if they exist: (a) $\lim_{k\to1}\dfrac{k^5-k^2}{k-1}$; (b) $\lim_{p\to\infty}e^p$; (c) $\lim_{q\to0^-}e^{1/q}$; (d) $\lim_{t\to\infty}\dfrac{\sin t}t$; (e) $\lim_{z\to0^+}\big(x-\frac1z\big)$; (f) $\lim_{x\to\infty}\log\dfrac1{1+x^2}$.
+\solution
+(a) Numerator and denominator both tend to $0$; factor: $k^5-k^2=k^2(k^3-1)=k^2(k-1)(k^2+k+1)$, so for $k\ne1$ the quotient equals $k^2(k^2+k+1)$, a polynomial, with limit $1\cdot3=3$ (Oefening 203b).\\
+(b) $e^p$ grows without bound: $+\infty$ (no real limit).\\
+(c) As $q\to0^-$, $1/q\to-\infty$ and $e^{1/q}\to0$. (From the right, $1/q\to+\infty$ and $e^{1/q}\to+\infty$: the two-sided limit does not exist.)\\
+(d) $-\frac1t\le\frac{\sin t}t\le\frac1t$ for $t>0$, and $\pm\frac1t\to0$: by the squeeze theorem the limit is $0$.\\
+(e) $\frac1z\to+\infty$ as $z\downarrow0$, so $x-\frac1z\to-\infty$ for any fixed $x$: no real limit.\\
+(f) $\frac1{1+x^2}\to0^+$ and $\log y\to-\infty$ as $y\downarrow0$, so the limit is $-\infty$.\qed
+\end{bookex}
+
+\begin{bookex}{205}
+Determine: (a) $\lim_{x\to0}\sin(2x)\cos(x^{-2})$; (b) $\lim_{x\to\infty}\sin(5x)e^{-5x}$; (c) $\lim_{x\to\infty}\dfrac{4x-3\cos(2\sqrt x+1)}{5-6x}$.
+\solution
+(a) $|\sin(2x)\cos(x^{-2})|\le|\sin2x|$ because $|\cos|\le1$, i.e.\ $-|\sin2x|\le f(x)\le|\sin2x|$, and $|\sin2x|\to0$. Squeeze: the limit is $0$. (The factor $\cos(x^{-2})$ oscillates wildly, but it is bounded.)\\
+(b) $-e^{-5x}\le\sin(5x)e^{-5x}\le e^{-5x}$ and $e^{-5x}\to0$: limit $0$.\\
+(c) Divide numerator and denominator by $x$: $\dfrac{4-3\cos(2\sqrt x+1)/x}{5/x-6}$. Here $|3\cos(\cdot)/x|\le3/x\to0$ (squeeze) and $5/x\to0$, so by the quotient rule the limit is $\dfrac4{-6}=-\dfrac23$.\qed
+\end{bookex}
+
+\begin{trybox}[{202, 203, 204}]
+\textbf{202} (a) $\lim_{x\to0}\frac{e^x}{1+x}$ and $\lim_{x\to1}\frac{e^{x-1}}x$. (b) Why is $\lim_{x\to a-b}f(x)=\lim_{x\to a}f(x-b)$, and how does that apply to (a)?\quad \textbf{203} From the rules: $\lim kf(x)=k\varphi$; $\lim_{x\to a}P(x)=P(a)$ for polynomials; $\lim f(x)^k=\varphi^k$ for $k\in\Q$, $k>0$.\quad \textbf{204} Finish Voorbeeld 2.5: $\lim_{x\to0}|x|=0$, $\lim_{x\to0}(-|x|)=0$, squeeze $x\sin\frac1x$, sketch.
+\end{trybox}
+
+\hsection{Continuity}
+\begin{key}[{Definition 2.6 and Voorbeeld 2.7}]
+$f$ is \term{continuous at $a$} if $a$ is in the domain and $\lim_{x\to a}f(x)=f(a)$; continuous if this holds at every point of the domain (no jumps). Watch fractions: $f(x)=\frac{x^2-9}{x-3}$ is not defined at $3$, but for $x\ne3$ it equals $x+3$, so $\lim_{x\to3}f(x)=6$ (cancel the factor $x-3$ only for $x\ne3$). Continuity plays a small role in this course; differentiability is what matters.
+\end{key}
+
+\hsection{Differentiation}
+\begin{key}[{Definition 2.8 and Oefening 206 \textperiodcentered\ the derivative as a limit}]
+\[
+f'(a)=\lim_{h\to0}\frac{f(a+h)-f(a)}h=\lim_{x\to a}\frac{f(x)-f(a)}{x-a},
+\]
+provided the limit exists as a real number: the slope of the chord through $(a,f(a))$ and $(x,f(x))$ ``just before'' $x-a$ becomes $0$ (figure 2.3: the small right triangle with legs $x-a$ and $f(x)-f(a)$). Remember the formula together with the picture. Notations: $f'=\frac{df}{dx}=\frac d{dx}f$, and $\dot x$ for $\frac{dx}{dt}$ in physics.
+\end{key}
+\begin{result}[{Stelling 2.9 \textperiodcentered\ rules}]
+$\frac d{dx}x^r=rx^{r-1}$, $\sin'=\cos$, $\cos'=-\sin$, $\log'x=\frac1x$, $(e^x)'=e^x$; sum rule; product rule $(fg)'=f'g+fg'$; quotient rule $\big(\frac fg\big)'=\frac{f'g-fg'}{g^2}$; \textbf{chain rule} $f(g(x))'=f'(g(x))\,g'(x)$, i.e.\ $(f\circ g)'=(f'\circ g)\cdot g'$ (Oefening 208). The quotient rule follows from the product and chain rules applied to $f\cdot g^{-1}$ (Oefening 207).
+\end{result}
+
+\begin{bookex}{209}
+Differentiate with the rules: (a) $f(x)=e^{x^3}(1-x^2)$; (b) $g(x)=\sin(x^2+\sqrt{3x})$; (c) $h(x)=\dfrac{\log(4x+1)}{4x}$; (d) $j(x)=2^x$ (rewrite as an $e$-power); (e) $k(x)=\log(\log(\pi x))$; (f) $m(x)=\sqrt[3]{x^3+1}\,e^{\sin x}$.
+\solution
+(a) Product and chain rule: $f'(x)=3x^2e^{x^3}(1-x^2)+e^{x^3}(-2x)=e^{x^3}\big(3x^2-3x^4-2x\big)$. (If the exponent is meant to be $x^3(1-x^2)=x^3-x^5$, then $f'(x)=(3x^2-5x^4)e^{x^3-x^5}$.)\\
+(b) Chain rule, inner derivative $2x+\dfrac3{2\sqrt{3x}}$: $g'(x)=\cos\big(x^2+\sqrt{3x}\big)\Big(2x+\dfrac3{2\sqrt{3x}}\Big)$. (If the inner function is $x^2+\sqrt3\,x$, the inner derivative is $2x+\sqrt3$.)\\
+(c) Quotient rule with $(\log(4x+1))'=\frac4{4x+1}$: $h'(x)=\dfrac{\frac4{4x+1}\cdot4x-4\log(4x+1)}{16x^2}=\dfrac{\frac{4x}{4x+1}-\log(4x+1)}{4x^2}$.\\
+(d) $2^x=e^{x\log2}$, so $j'(x)=\log2\cdot e^{x\log2}=2^x\log2$.\\
+(e) Chain rule twice: $k'(x)=\dfrac1{\log(\pi x)}\cdot\dfrac1{\pi x}\cdot\pi=\dfrac1{x\log(\pi x)}$.\\
+(f) $\big((x^3+1)^{1/3}\big)'=\frac13(x^3+1)^{-2/3}\cdot3x^2=x^2(x^3+1)^{-2/3}$ and $(e^{\sin x})'=\cos x\,e^{\sin x}$, so $m'(x)=e^{\sin x}\Big(\dfrac{x^2}{(x^3+1)^{2/3}}+\cos x\sqrt[3]{x^3+1}\Big)$.\qed
+\end{bookex}
+
+\begin{bookex}{210}
+(a) Show $1+\tan^2x=\dfrac1{\cos^2x}$. (b) Differentiate $\tan x$. (c) Conclude that $\tan'$ has two very different-looking forms.
+\solution
+(a) $1+\tan^2x=\dfrac{\cos^2x+\sin^2x}{\cos^2x}=\dfrac1{\cos^2x}$.\quad (b) Quotient rule: $\tan'x=\dfrac{\cos x\cos x-\sin x(-\sin x)}{\cos^2x}=\dfrac1{\cos^2x}$.\quad (c) $\tan'x=\dfrac1{\cos^2x}=1+\tan^2x$; the second form is what makes Oefening 317 work.\qed
+\end{bookex}
+
+\begin{strategy}[{\S2.3.1 \textperiodcentered\ recognise a limit as a derivative}]
+$\lim_{x\to0}\dfrac{\sin x}x=\lim_{x\to0}\dfrac{\sin x-\sin0}{x-0}=\sin'(0)=\cos0=1$: a \textbf{standard limit}. Whenever a limit has the shape $\frac{f(x)-f(a)}{x-a}$ with $x\to a$, it equals $f'(a)$.
+\end{strategy}
+
+\begin{bookex}{211}
+Compute in the same way: (a) $\lim_{x\to0}\dfrac{\cos x-1}x$; (b) $\lim_{x\to1}\dfrac{e^x-e}{x-1}$.
+\solution
+(a) $\cos0=1$, so this is $\lim_{x\to0}\dfrac{\cos x-\cos0}{x-0}=\cos'(0)=-\sin0=0$.\quad (b) $e=e^1$, so this is $\dfrac d{dx}e^x\big|_{x=1}=e^1=e$.\qed
+\end{bookex}
+
+\begin{bookex}{212}
+Which is true: (A) every continuous function is differentiable; (B) every differentiable function is continuous? Why?
+\solution
+\emph{(B) is true.} If $f'(a)$ exists then $f(x)-f(a)=\dfrac{f(x)-f(a)}{x-a}\cdot(x-a)\to f'(a)\cdot0=0$ as $x\to a$ (product rule for limits), i.e.\ $\lim_{x\to a}f(x)=f(a)$.\\
+\emph{(A) is false.} $f(x)=|x|$ is continuous at $0$, but $\dfrac{f(x)-f(0)}{x-0}=\dfrac{|x|}x$ is $-1$ for $x<0$ and $+1$ for $x>0$: the one-sided limits differ, so $f'(0)$ does not exist (the graph has a corner).\qed
+\end{bookex}
+
+\begin{trybox}[{206, 207, 208}]
+\textbf{206} Why can Definition 2.8 be written with $x\to a$ instead of $h\to0$?\quad \textbf{207} Derive the quotient rule from $f\cdot g^{-1}$.\quad \textbf{208} Complete $(\dots)'=\dots\cdot g'$ in composition notation.
+\end{trybox}
+
+\hsection{Integration}
+\begin{key}[{Definitions 2.10 and Stelling 2.11 \textperiodcentered\ primitives, the fundamental theorem}]
+$g$ is a \term{primitive} (antiderivative) of $f$ if $g'=f$. Primitives are unique up to a constant: the \term{indefinite integral} $\int f(x)\,dx=g(x)+c$ is the whole set of primitives ($c$: integration constant; easily forgotten, and the dictaat lets it pop up unexpectedly). The \term{definite integral} is a number: $\int_a^bf(x)\,dx=g(b)-g(a)$ (the constant cancels, Oefening 213). \textbf{Picture (figure 2.4):} $\int_a^bf(x)\,dx$ is the sum ($\int$ is a long s) of strips of height $f(x)$ and infinitely small width $dx$ between $a$ and $b$; heights can be negative. \textbf{Hoofdstelling 2.11:} for continuous $f$ on $[a,b]$, $F(x)=\int_a^xf(t)\,dt$ is a primitive of $f$, and $\int_a^bf(x)\,dx=F(b)-F(a)$ for any primitive $F$. The integration variable is a dummy: $\int f(x)dx=\int f(t)dt$; never reuse it outside the integral ($x^2+\int_0^xe^t\,dt$ is right, $x^2+\int_0^xe^x\,dx$ is wrong).
+\end{key}
+
+\begin{trybox}[{213, 214 (Extra)}]
+\textbf{213} If $\tilde g=g+c$ then $\tilde g(b)-\tilde g(a)=g(b)-g(a)$: no integration constant in definite integrals.\quad \textbf{214 (Extra)} With $g(x)=\int_0^xf(t)\,dt$: write $g(x+dx)$ and $dg=g(x+dx)-g(x)$ as integrals and argue $\frac{dg}{dx}=f(x)$.
+\end{trybox}
+
+\hsection{Integration with common sense}
+\begin{result}[{Stelling 2.12 \textperiodcentered\ rules for definite integrals}]
+(a) for $f\ge0$ continuous, $\int_a^bf$ is the area under the graph; (b) $\int_a^af=0$; (c) $\int_a^bf=-\int_b^af$; (d) $\int_a^bf=\int_a^cf+\int_c^bf$ (cut up); (e) $\int_a^bf(x)\,dx=\int_{a+c}^{b+c}f(x-c)\,dx$ (translate); (f) linearity; (g) $f$ odd $\Rightarrow\int_{-a}^af=0$; (h) $f$ even $\Rightarrow\int_{-a}^af=2\int_0^af$; (i) changing $f$ at a single point does not change the integral; (j) $f\le g$ on $(a,b)\Rightarrow\int_a^bf\le\int_a^bg$; (k) $\big|\int_a^bf\big|\le\int_a^b|f|$. Do not memorise; recognise when they help. Voorbeeld 2.13: $\int_{-1}^1(x-4)\,dx=0-4\cdot2=-8$ (odd part vanishes, rectangle $2\times1$ four times); or translate to $\int_{-5}^{-3}x\,dx=-8$ (signed area of a trapezium); $\int_{-2}^2\sqrt{4-x^2}\,dx=2\pi$ (half disc of radius $2$).
+\end{result}
+
+\begin{bookex}{215}
+Compare, with a sketch: (a) the area enclosed by $y=x-1$, $x=0$, $y=0$; (b) the integral $\int_0^1(x-1)\,dx$.
+\solution
+(a) The region is the triangle with vertices $(0,0)$, $(1,0)$, $(0,-1)$: area $\frac12\cdot1\cdot1=\frac12$.\\
+(b) $\int_0^1(x-1)\,dx=\big[\tfrac12x^2-x\big]_0^1=-\tfrac12$. The integral is minus the area, because the strips have negative height: the triangle lies below the $x$-axis. Area is non-negative; a definite integral is signed.\qed
+\end{bookex}
+
+\begin{bookex}{218}
+Compute with the basic rules but without primitives: (a) $\int_0^{2\pi}(\pi x+e^\pi\sin x)\,dx$; (b) $\int_{-2}^0(x+1)\cos(x+1)\,dx$; (c) $\int_0^6\sqrt{9-(x-3)^2}\,dx$; (d) $\int_{-1}^3\big(2(x-1)^3-4\sin(x-1)+\operatorname{sgn}x+5|x|\big)dx$; (e) $\int_0^{\pi/2}\sin^2t\,dt$.
+\solution
+(a) Linearity: $\pi\int_0^{2\pi}x\,dx+e^\pi\int_0^{2\pi}\sin x\,dx$. The first integral is the area of the triangle with base $2\pi$ and height $2\pi$: $2\pi^2$. The second is $0$: translating by $\pi$, $\int_0^{2\pi}\sin x\,dx=\int_{-\pi}^{\pi}\sin(x+\pi)\,dx=-\int_{-\pi}^\pi\sin x\,dx=0$ by oddness (or: the positive hump on $[0,\pi]$ cancels the negative one on $[\pi,2\pi]$). Total: $2\pi^3$.\\
+(b) Translate by $1$: $\int_{-2}^0(x+1)\cos(x+1)\,dx=\int_{-1}^1x\cos x\,dx=0$, since $x\cos x$ is odd (odd times even).\\
+(c) $y=\sqrt{9-(x-3)^2}$ is the upper half of the circle with centre $(3,0)$ and radius $3$: the integral is the area of a half disc, $\frac12\pi\cdot3^2=\frac92\pi$.\\
+(d) Split by linearity. Translating by $1$: $\int_{-1}^3\big(2(x-1)^3-4\sin(x-1)\big)dx=\int_{-2}^2(2x^3-4\sin x)\,dx=0$ (odd integrand). $\int_{-1}^3\operatorname{sgn}x\,dx=\int_{-1}^0(-1)\,dx+\int_0^31\,dx=-1+3=2$ (the value at $0$ is irrelevant, rule (i)). $\int_{-1}^35|x|\,dx=5\big(\tfrac12\cdot1\cdot1+\tfrac12\cdot3\cdot3\big)=25$ (two triangles). Total: $27$.\\
+(e) The substitution $t\mapsto\frac\pi2-t$ reflects $[0,\frac\pi2]$ onto itself and turns $\sin$ into $\cos$, so $\int_0^{\pi/2}\sin^2t\,dt=\int_0^{\pi/2}\cos^2t\,dt$. Their sum is $\int_0^{\pi/2}(\sin^2t+\cos^2t)\,dt=\int_0^{\pi/2}1\,dt=\frac\pi2$, so each equals $\frac\pi4$.\qed
+\end{bookex}
+
+\begin{bookex}{219}
+Show with Stelling 2.12, without a primitive, that $\int_a^bx\,dx=\frac12(b^2-a^2)$.
+\solution
+First $\int_0^cx\,dx=\frac12c^2$ for every $c$: for $c\ge0$ it is the area of the triangle with legs $c$ and $c$; for $c<0$, by the reversal rule $\int_0^cx\,dx=-\int_c^0x\,dx$, and $\int_c^0x\,dx$ is minus the area $\frac12c^2$ of the triangle below the axis, so again $\frac12c^2$. Now cut up: $\int_a^bx\,dx=\int_a^0x\,dx+\int_0^bx\,dx=-\int_0^ax\,dx+\int_0^bx\,dx=\frac12b^2-\frac12a^2$.\qed
+\end{bookex}
+
+\begin{trybox}[{216, 217, 220}]
+\textbf{216} Sketch the rules of Stelling 2.12 that surprise you.\quad \textbf{217} Match the graphs of $f$ with those of $\int_a^xf(t)\,dt$.\quad \textbf{220} The Gini index $G=2\int_0^1(x-v(x))\,dx$: sketch $v$ for a socialist and a capitalist society, interpret $G$ graphically, find its extreme values.
+\end{trybox}
+
+\begin{warn}
+\begin{itemize}
+\item A limit at $a$ ignores $f(a)$; one-sided limits that differ mean ``does not exist''; $\pm\infty$ is a description of behaviour, not a number.
+\item The chain rule: differentiate the outer function at the inner one, then multiply by the inner derivative. ``Kettingregel vergeten?'' is the dictaat's first question when you are stuck.
+\item A definite integral is a signed quantity; area is not. Odd/even symmetry and translation remove most of the work in \S2.5 problems.
+\item Never write the integration variable outside its integral.
+\end{itemize}
+\end{warn}

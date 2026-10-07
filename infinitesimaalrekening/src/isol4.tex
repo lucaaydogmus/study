@@ -1,0 +1,22 @@
+\hsection{Chapter 4}
+\sol{402} Put $x=y=1$ in $(x+y)^n=\sum(\text{row }n)\,x^ky^{n-k}$: the sum of row $n$ is $(1+1)^n=2^n$. (Also: every entry of row $n$ is added into two entries of row $n+1$, so the row sum doubles each step, starting from $1$.)
+
+\sol{403} $(fg)'=f'g+fg'$; $(fg)''=f''g+2f'g'+fg''$; $(fg)'''=f'''g+3f''g'+3f'g''+fg'''$. The coefficients are the rows of Pascal's triangle: $(fg)^{(n)}=\sum_{k=0}^n\binom nkf^{(k)}g^{(n-k)}$ (Leibniz' rule), because each differentiation of a term $f^{(k)}g^{(n-k)}$ produces $f^{(k+1)}g^{(n-k)}+f^{(k)}g^{(n-k+1)}$, exactly the ``sum of the two above'' rule.
+
+\sol{406} $f(x)=x^{(e^x)}$: $\log f=e^x\log x$, $(\log f)'=e^x\log x+\frac{e^x}x$, so $f'(x)=x^{e^x}e^x\big(\log x+\frac1x\big)$. $g(x)=e^{(x^e)}$: chain rule with $(x^e)'=ex^{e-1}$: $g'(x)=ex^{e-1}e^{x^e}$ (no logarithm needed: the exponent $e$ is a constant).
+
+\sol{408} They are products, quotients or powers of simpler functions, or have the variable in the exponent: the logarithm turns products into sums, powers into multiples and $a^{b(x)}$ into $b(x)\log a$, after which only sums are left to differentiate. Without it: use the product/quotient rule repeatedly (404, 407), or rewrite $u(x)^{v(x)}=e^{v(x)\log u(x)}$ and use the chain rule (405, 406).
+
+\sol{409} (a) $t=0$: $\arcsin0=0$, $\arccos0=\frac\pi2$, $\arctan0=0$. $t\to\infty$: $\arctan t\to\frac\pi2$ (the others are undefined). $t=\frac12$: $\frac\pi6,\frac\pi3$, $\arctan\frac12$ not nice. $t=-\frac12$: $-\frac\pi6,\frac{2\pi}3$, not nice. $t=\frac12\sqrt2$: $\frac\pi4,\frac\pi4$, not nice; $t=-\frac12\sqrt2$: $-\frac\pi4,\frac{3\pi}4$, not nice. $t=\frac12\sqrt3$: $\frac\pi3,\frac\pi6$, not nice; $t=-\frac12\sqrt3$: $-\frac\pi3,\frac{5\pi}6$, not nice. $t=1$: $\frac\pi2,0,\frac\pi4$; $t=-1$: $-\frac\pi2,\pi,-\frac\pi4$. $t=\frac13\sqrt3$: $\arcsin,\arccos$ not nice, $\arctan=\frac\pi6$; $t=-\frac13\sqrt3$: not nice, not nice, $-\frac\pi6$. $t=\sqrt3$: $\arcsin,\arccos$ do not exist ($\sqrt3>1$), $\arctan\sqrt3=\frac\pi3$; $t=-\sqrt3$: do not exist, $-\frac\pi3$. (b) ``Not nice'' ($/$) for $\arctan$ of $\pm\frac12,\pm\frac12\sqrt2,\pm\frac12\sqrt3$ and for $\arcsin,\arccos$ of $\pm\frac13\sqrt3$; ``does not exist'' for $\arcsin,\arccos$ of $\pm\sqrt3$ and of $t\to\infty$.
+
+\sol{413} $\arcsin'x=1/\sqrt{1-x^2}\ge1$, equal to $1$ at $0$ and tending to $\infty$ at $\pm1$: the graph rises with slope $1$ through the origin and becomes vertical at the endpoints $(\pm1,\pm\frac\pi2)$, the mirror image of the flat tops of the sine wave. $\arccos'=-\arcsin'$: the same shape falling from $(-1,\pi)$ to $(1,0)$. $\arctan'x=1/(1+x^2)$ is $1$ at $0$ and tends to $0$ for $x\to\pm\infty$: the graph has slope $1$ at the origin and flattens towards the horizontal asymptotes $y=\pm\frac\pi2$.
+
+\sol{414} In the figure $\tan t$ is the vertical segment on the tangent line $x=1$. The ray from $O$ through the point at angle $t$ meets that line at distance $\sqrt{1+\tan^2t}=\frac1{\cos t}=\sec t$ from $O$ (hypotenuse of the triangle with legs $1$ and $\tan t$). Similarly, with the horizontal tangent line $y=1$: the ray meets it at the point $(\cot t,1)$ (the triangle $O$, $(0,1)$, $(\cot t,1)$ is similar to the triangle with legs $\cos t,\sin t$), so $\cot t$ is the horizontal segment on $y=1$ and $\csc t=\sqrt{1+\cot^2t}=\frac1{\sin t}$ is the distance from $O$ to that point.
+
+\sol{415} $\sinh(-t)=\frac{e^{-t}-e^t}2=-\sinh t$: odd. $\cosh(-t)=\cosh t$: even. $\sinh t=0$ iff $e^t=e^{-t}$ iff $e^{2t}=1$ iff $t=0$. $\cosh t=0$ would need $e^t=-e^{-t}<0$: impossible, $\cosh$ has no zeros (in fact $\cosh t\ge1$).
+
+\sol{416} $e^x$ rises through $(0,1)$, $e^{-x}$ is its mirror image; $\cosh$ is their average: a U-shaped even curve with minimum $(0,1)$, hugging $\frac12e^{x}$ for large $x$ and $\frac12e^{-x}$ for large negative $x$; $\sinh$ is half their difference: an odd increasing curve through the origin with slope $1$, close to $\frac12e^x$ for large $x$ and to $-\frac12e^{-x}$ for large negative $x$. Both $\sinh$ and $\cosh$ lie below $\frac12(e^x+e^{-x})$-type bounds; $\cosh x>\sinh x$ everywhere (difference $e^{-x}>0$).
+
+\sol{417} $\sinh't=\frac{e^t+e^{-t}}2=\cosh t$ and $\cosh't=\frac{e^t-e^{-t}}2=\sinh t$. Like $\sin'=\cos$, but $\cosh'=+\sinh$ without the minus sign of $\cos'=-\sin$.
+
+\sol{418} $\cosh t-\sinh t=e^{-t}$ and $\cosh t+\sinh t=e^t$. Multiplying (difference of squares): $\cosh^2t-\sinh^2t=(\cosh t-\sinh t)(\cosh t+\sinh t)=e^{-t}e^t=1$.

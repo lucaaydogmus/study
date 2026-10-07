@@ -1,0 +1,46 @@
+\hsection{Chapter 6}
+\sol{601} $c=c\cdot x^0$, and by linearity (Stelling 2.12f) and the rule for $x^r$ with $r=0$: $\int c\,dx=c\int x^0dx=c\cdot\frac{x^1}1=cx$.
+
+\sol{602} (a) $\frac1x$: hyperbola in quadrants I and III; $\log|x|$: the usual log curve for $x>0$ and its mirror image in the $y$-axis for $x<0$ (both branches go to $-\infty$ at $0$). (b) For $x<0$, $\log|x|=\log(-x)$ and the chain rule gives $\frac1{-x}\cdot(-1)=\frac1x$. (c) For $a<b<0$ the integrand $\frac1x$ is negative, so the integral is negative; and $\log|b|-\log|a|=\log\frac{|b|}{|a|}<0$ because $|b|<|a|$. Signs agree.
+
+\sol{603} For $q\ne0$: $\int\frac p{qx+r}dx=\frac pq\log|qx+r|+C$ (check: derivative $\frac pq\cdot\frac q{qx+r}$). For $q=0$ it is $\frac prx+C$.
+
+\sol{604} Try $f=g$ of the form $ce^{cx}$: $\int ce^{cx}dx=e^{cx}$, so the left side is $e^{2cx}$, while $\int c^2e^{2cx}dx=\frac c2e^{2cx}$. They agree for $c=2$: $f(x)=g(x)=2e^{2x}$ (with the integration constants taken $0$).
+
+\sol{606} (a) $\sin$ is odd, so $\int_{-a}^a\sin x\,dx=0$ for every $a$, and the limit is $0$. (b) Split at $0$: $\int_0^b\sin x\,dx=1-\cos b$ has no limit as $b\to\infty$ (it oscillates between $0$ and $2$), so $\int_0^\infty\sin x\,dx$ diverges and therefore so does $\int_{-\infty}^\infty\sin x\,dx$, even though the symmetric limits in (a) cancel. Each improperness gets its own limit.
+
+\sol{608} $\frac d{dx}\big(\frac12e^x(\sin x-\cos x)\big)=\frac12e^x(\sin x-\cos x)+\frac12e^x(\cos x+\sin x)=e^x\sin x$. \checkmark
+
+\sol{609} Voorbeeld 6.5 with $f'=x$, $g=e^x$: $\int xe^x\,dx=\frac12x^2e^x-\int\frac12x^2e^x\,dx$; the new integral has a higher power of $x$: worse. That is the signal (the integrand got more complicated). Voorbeeld 6.6 with $f'=e^x$, $g=\sin x$: $\int e^x\sin x\,dx=e^x\sin x-\int e^x\cos x\,dx$, and again $=e^x\sin x-\big(e^x\cos x+\int e^x\sin x\,dx\big)$, giving the same result as before. Either choice works there, as long as you make the \emph{same} choice twice (mixing them gives $0=0$).
+
+\sol{610} (a) $f'=1$, $f=x$, $g=x$: $\int x\,dx=x\cdot x-\int x\cdot1\,dx$, so $2\int x\,dx=x^2$, $\int x\,dx=\frac12x^2+C$. (b) $\int x^2dx=x\cdot x^2-\int x\cdot2x\,dx=x^3-2\int x^2dx$, so $\int x^2dx=\frac13x^3+C$. (d) $\int\frac1x\,dx=x\cdot\frac1x-\int x\cdot\big(-\frac1{x^2}\big)dx=1+\int\frac1x\,dx$, apparently $0=1$. No paradox: both sides are \emph{sets} of primitives, $\log|x|+C_1=1+\log|x|+C_2$, which is fine with $C_1=C_2+1$. An indefinite integral is only determined up to a constant.
+
+\sol{614} (a) $u=\pi x$: $-\frac2\pi\cos(\pi x)+C$. (b) $u=-x^2$, $du=-2x\,dx$: $-\frac12e^{-x^2}+C$. (c) $u=\log x$, $du=\frac{dx}x$: $\int u^2du=\frac13\log^3x+C$. (d) $\tan x=\frac{\sin x}{\cos x}$, $u=\cos x$: $-\int\frac{du}u=-\log|\cos x|+C$. (e) $u=1+\cos x$, $du=-\sin x\,dx$: $-\int u^3du=-\frac14(1+\cos x)^4+C$.
+
+\sol{617} $u=\log x$, $du=\frac{dx}x$, limits $u(e)=1$, $u(e^2)=2$: $\int_1^2\frac{du}u=\log2$.
+
+\sol{618} $x=\sin u$ with $u\in[-\frac\pi2,\frac\pi2]$, $dx=\cos u\,du$, $\sqrt{1-x^2}=\sqrt{\cos^2u}=\cos u$ (non-negative on that interval): $\int\frac{\cos u\,du}{\cos u}=u+C=\arcsin x+C$.
+
+\sol{620} $\frac13\Big(\frac4{x-2}-\frac1{x+4}\Big)=\frac13\cdot\frac{4(x+4)-(x-2)}{(x-2)(x+4)}=\frac13\cdot\frac{3x+18}{x^2+2x-8}=\frac{x+6}{x^2+2x-8}$. \checkmark
+
+\sol{622} $x^2+2x+1=(x+1)^2$ has a double zero, so $\frac A{x+1}+\frac B{x+1}=\frac{A+B}{x+1}$ has a constant numerator and can never equal $\frac{3x+5}{(x+1)^2}$: the system for $A,B$ has no solution. Use case 3(b) instead: $\frac{3x+5}{(x+1)^2}=\frac3{x+1}+\frac2{(x+1)^2}$.
+
+\sol{623} From $A+C=4$, $5A+B-2C=1$, $5B+C=13$: $C=4-A$, so $5A+B-8+2A=1$ gives $B=9-7A$, and $45-35A+4-A=13$ gives $A=1$, $B=2$, $C=3$. Then $\int\frac{4x^2+x+13}{x^3+3x^2-9x+5}dx=\int\Big(\frac1{x-1}+\frac3{(x-1)^2}+\frac3{x+5}\Big)dx=\log|x-1|-\frac3{x-1}+3\log|x+5|+C$.
+
+\sol{624(e)--(h)} (e) Numerator $=$ denominator $-1$: $\int\Big(1-\frac1{(2x+3)^2+1}\Big)dx=x-\frac12\arctan(2x+3)+C$ (substitute $u=2x+3$). (f) $u=x^2$, $du=2x\,dx$: $\frac12\int\frac{du}{(u-3)(u+2)}=\frac12\cdot\frac15\int\Big(\frac1{u-3}-\frac1{u+2}\Big)du=\frac1{10}\log\Big|\frac{x^2-3}{x^2+2}\Big|+C$. (g) $\frac1{(x^2-1)^2}=\frac14\Big(\frac1{x-1}-\frac1{x+1}\Big)^2=\frac14\Big(\frac1{(x-1)^2}+\frac1{(x+1)^2}-\frac1{x-1}+\frac1{x+1}\Big)$ (using $\frac2{(x-1)(x+1)}=\frac1{x-1}-\frac1{x+1}$), so the integral is $\frac14\Big(-\frac1{x-1}-\frac1{x+1}+\log\Big|\frac{x+1}{x-1}\Big|\Big)+C=-\frac{x}{2(x^2-1)}+\frac14\log\Big|\frac{x+1}{x-1}\Big|+C$. (h) $x^4-1=(x-1)(x+1)(x^2+1)$ and $\frac{2x^3-3x^2-2x-5}{x^4-1}=\frac{-2}{x-1}+\frac2{x+1}+\frac{2x+1}{x^2+1}$ (compare numerators: $-2(x+1)(x^2+1)+2(x-1)(x^2+1)+(2x+1)(x^2-1)=2x^3-3x^2-2x-5$). Integral: $-2\log|x-1|+2\log|x+1|+\log(1+x^2)+\arctan x+C$.
+
+\sol{626} Long division of $x^4(1-x)^4=x^8-4x^7+6x^6-4x^5+x^4$ by $x^2+1$: quotient $x^6-4x^5+5x^4-4x^2+4$, remainder $-4$. So $\int_0^1\frac{x^4(1-x)^4}{1+x^2}dx=\Big[\frac{x^7}7-\frac{2x^6}3+x^5-\frac{4x^3}3+4x\Big]_0^1-4\arctan1=\frac17-\frac23+1-\frac43+4-\pi=\frac{22}7-\pi$. The integrand is positive on $(0,1)$, so the integral is positive: $\frac{22}7-\pi>0$.
+
+\sol{627(b),(e),(f)} (b) $\cos^5\psi=(1-\sin^2\psi)^2\cos\psi$; $u=\sin\psi$: $\int(1-u^2)^2du=u-\frac23u^3+\frac15u^5+C=\sin\psi-\frac23\sin^3\psi+\frac15\sin^5\psi+C$. (e) $\tan(\arcsin t)=\frac t{\sqrt{1-t^2}}$ (Oefening 411), and $\int\frac{t\,dt}{\sqrt{1-t^2}}=-\sqrt{1-t^2}+C$ ($u=1-t^2$). (f) $\sin A\sin B=\frac12(\cos(A-B)-\cos(A+B))$: $\int\sin(\tau+1)\sin\tau\,d\tau=\frac12\int\big(\cos1-\cos(2\tau+1)\big)d\tau=\frac12\tau\cos1-\frac14\sin(2\tau+1)+C$.
+
+\sol{628(a),(b),(d),(f)} (a) $u=x^2+a^2$: $\sqrt{x^2+a^2}+C$. (b) $\frac1{(x+1)(x+2)}=\frac1{x+1}-\frac1{x+2}$: $\log\Big|\frac{x+1}{x+2}\Big|+C$. (d) $\frac{x^3+1}{x^{3/2}}=x^{3/2}+x^{-3/2}$: $\frac25x^{5/2}-2x^{-1/2}+C$. (f) Parts twice: $x^2\sin x-\int2x\sin x\,dx=x^2\sin x+2x\cos x-2\sin x+C$.
+
+\sol{629(a),(d),(e),(h)} (a) Parts with $f'=1$: $x\log(1+x^{-2})-\int x\cdot\frac{-2x^{-3}}{1+x^{-2}}dx=x\log\big(1+\frac1{x^2}\big)+\int\frac{2}{x^2+1}dx=x\log\big(1+\frac1{x^2}\big)+2\arctan x+C$. (d) Divide: $x^3-8=x(x^2-8)+8x-8$, so $\int\Big(x+\frac{8x}{x^2-8}-\frac8{x^2-8}\Big)dx=\frac{x^2}2+4\log|x^2-8|-8\cdot\frac1{4\sqrt2}\log\Big|\frac{x-2\sqrt2}{x+2\sqrt2}\Big|+C$, using $\frac1{x^2-8}=\frac1{4\sqrt2}\Big(\frac1{x-2\sqrt2}-\frac1{x+2\sqrt2}\Big)$; i.e.\ $\frac{x^2}2+4\log|x^2-8|-\sqrt2\log\Big|\frac{x-2\sqrt2}{x+2\sqrt2}\Big|+C$. (e) $u=\sqrt{1+x}$, $dx=2u\,du$: $\int2ue^udu=2(u-1)e^u+C=2\big(\sqrt{1+x}-1\big)e^{\sqrt{1+x}}+C$. (h) $u=\log x$, $x=e^u$, $dx=e^udu$: $\int e^u\sin u\,du=\frac12e^u(\sin u-\cos u)$ (Voorbeeld 6.6) $=\frac12x\big(\sin(\log x)-\cos(\log x)\big)+C$.
+
+\sol{630(b),(c),(d),(g)} (b) Separate: $y\,dy=e^{\sqrt x}dx$, so $\frac12y^2=2(\sqrt x-1)e^{\sqrt x}+C$ (629e). $y(0)=-2$: $2=-2+C$, $C=4$; so $y^2=4(\sqrt x-1)e^{\sqrt x}+8$ and, as $y(0)<0$, $y=-\sqrt{4(\sqrt x-1)e^{\sqrt x}+8}$. (c) $y_h=Ce^{-10x}$, $y_p=\frac1{10}$; $y(\frac1{10})=\frac1{10}+Ce^{-1}=\frac2{10}$ gives $C=\frac e{10}$: $y=\frac1{10}\big(1+e^{1-10x}\big)$. (d) $y_h=Ce^{-x^3}$, $y_p=\frac13$; $y(0)=\frac13+C=1$: $y=\frac13+\frac23e^{-x^3}$. (g) $\frac{dy}{y^3}=(4x^3+2x)\,dx$, so $-\frac1{2y^2}=x^4+x^2+C$; at $(1,1)$: $-\frac12=2+C$, $C=-\frac52$. Hence $\frac1{y^2}=5-2x^2-2x^4$ and $y=\frac1{\sqrt{5-2x^2-2x^4}}$ (positive root since $y(1)=1$).
+
+\sol{631} (a) $\sqrt{(x-1)^2}=|x-1|$: two triangles, $\int_0^2|x-1|\,dx=\frac12+\frac12=1$. (b) $\frac1{e^x+1}=\frac{e^{-x}}{1+e^{-x}}$, with primitive $-\log(1+e^{-x})$: $\int_0^\infty\frac{dx}{e^x+1}=\lim_{b\to\infty}\big(-\log(1+e^{-b})\big)+\log2=\log2$. Convergent.
+
+\sol{634} Partial sums $\sum_{k=0}^n\frac1{k!}$: $n=12$ gives $2.71828182828\ldots$, $n=13$ gives $2.718281828446\ldots$, against $e=2.7182818284590\ldots$. The first ten decimals ($7182818284$) are correct from $n=13$ on, i.e.\ after $14$ terms (the error is about $\frac1{(n+1)!}$: $\frac1{13!}\approx1.6\cdot10^{-10}$ is too big, $\frac1{14!}\approx1.1\cdot10^{-11}$ is small enough).
+
+\sol{635} (a) $a^1=e^{1\cdot\log a}=\exp(\log a)=a$, since $\exp$ is the inverse of $\log$. (b) $a^{x+y}=e^{(x+y)\log a}=e^{x\log a}e^{y\log a}=a^xa^y$ by Stelling 6.16. (c) $\log(a^x)=\log(\exp(x\log a))=x\log a$, so $(a^x)^y=e^{y\log(a^x)}=e^{yx\log a}=a^{xy}$.

@@ -1,0 +1,22 @@
+\hsection{Chapter 2}
+\sol{202} (a) By the quotient rule, $\lim_{x\to0}\frac{e^x}{1+x}=\frac{e^0}{1+0}=1$ and $\lim_{x\to1}\frac{e^{x-1}}x=\frac{e^0}1=1$. (b) Substitution rule (Stelling 2.3e) with $g(x)=x-b$: as $x\to a$, $g(x)\to a-b$, so $\lim_{x\to a}f(x-b)=\lim_{x\to a}f(g(x))=\lim_{u\to a-b}f(u)$. Applied to (a): with $b=1$, $\lim_{x\to1}\frac{e^{x-1}}{x}=\lim_{x\to0}\frac{e^{x}}{x+1}$, so the second limit is the first one shifted; both equal $1$.
+
+\sol{203} (a) The constant function $g(x)=k$ has limit $k$, so by the product rule $\lim kf(x)=k\varphi$. (b) $\lim_{x\to a}x=a$ (the identity), so by the product rule $\lim x^i=a^i$, by (a) $\lim a_ix^i=a_ia^i$, and by the sum rule $\lim P(x)=\sum a_ia^i=P(a)$. (c) Write $k=p/q$ with $p,q$ positive integers. $\lim f(x)^p=\varphi^p$ by the product rule applied $p$ times. For the root, the substitution rule with the continuous function $y\mapsto y^{1/q}$ gives $\lim f(x)^{1/q}=\lim_{y\to\varphi}y^{1/q}=\varphi^{1/q}$ (for even $q$ we need $f\ge0$). Combining, $\lim f(x)^{p/q}=\lim(f(x)^{1/q})^p=\varphi^{p/q}$. The condition $k>0$ avoids dividing by $\varphi$, which might be $0$.
+
+\sol{204} (a) For $x>0$, $h(x)=|x|=x\to0$; for $x<0$, $h(x)=-x\to0$. Left and right limits are both $0$, so $\lim_{x\to0}|x|=0$. (b) $g=-h$, so by (a) and the rule for constants its limit is $-0=0$. (c) For $x\ne0$: $-1\le\sin\frac1x\le1$; multiplying by $|x|\ge0$: $-|x|\le|x|\sin\frac1x\le|x|$, and $|x|\sin\frac1x=\pm x\sin\frac1x$, so in all cases $-|x|\le x\sin\frac1x\le|x|$. By the squeeze theorem $\lim_{x\to0}x\sin\frac1x=0$. (d) The graph of $f$ oscillates between the lines $y=x$ and $y=-x$, touching them, with oscillations that become infinitely fast near $0$; $g$ and $h$ are the two lines (a V and an upside-down V).
+
+\sol{206} Put $x=a+h$. As $h\to0$, $x\to a$, and $\frac{f(a+h)-f(a)}h=\frac{f(x)-f(a)}{x-a}$. By the substitution rule (Oefening 202b with $b=-a$) the two limits are equal.
+
+\sol{207} $\frac fg=f\cdot g^{-1}$. Product rule: $(f\cdot g^{-1})'=f'g^{-1}+f\,(g^{-1})'$. Chain rule with outer function $y\mapsto y^{-1}$: $(g^{-1})'=-g^{-2}g'$. So $\big(\frac fg\big)'=\frac{f'}g-\frac{fg'}{g^2}=\frac{f'g-fg'}{g^2}$.
+
+\sol{208} $(f\circ g)'=(f'\circ g)\cdot g'$: the derivative of the composition is the derivative of $f$, composed with $g$, times the derivative of $g$.
+
+\sol{213} $\tilde g(b)-\tilde g(a)=(g(b)+c)-(g(a)+c)=g(b)-g(a)$. Whichever primitive you use, the constant cancels; writing ``$+c$'' in a definite integral is pointless.
+
+\sol{214} (a) $g(x+dx)=\int_0^{x+dx}f(t)\,dt$. (b) By the cut-up rule, $dg(x)=\int_0^{x+dx}f(t)\,dt-\int_0^xf(t)\,dt=\int_x^{x+dx}f(t)\,dt$: in the figure, one extra strip of width $dx$ at $x$. (c) On the infinitely thin strip $f$ is constant ($=f(x)$), so $dg(x)=f(x)\,dx$, i.e.\ $\frac{dg(x)}{dx}=f(x)$: differentiating the area function gives back $f$ (the fundamental theorem).
+
+\sol{216} For instance: (c) reversing the limits reverses the direction of the strips, so the sign flips; (e) shifting the graph $c$ to the right and the limits with it leaves the strips unchanged; (g) for an odd function the strips left of $0$ are the mirror images of those right of $0$ with opposite sign; (i) a single point has width $0$ and contributes no area; (k) taking $|f|$ turns negative strips positive, which can only increase the sum.
+
+\sol{217} The dictaat's figure is not reproduced here; the matching rule is: $F(x)=\int_a^xf(t)\,dt$ starts with $F(a)=0$, increases exactly where $f>0$, decreases where $f<0$, has a horizontal tangent where $f=0$ (maxima where $f$ changes from $+$ to $-$, minima the other way), is steepest where $|f|$ is largest, and is linear where $f$ is constant. Conversely $f$ is the slope of $F$. Check each pair against these points.
+
+\sol{220} (a) Socialist: wealth evenly spread, so the poorest fraction $x$ owns fraction $x$: $v(x)=x$, the diagonal from $(0,0)$ to $(1,1)$. Capitalist: the poorest own almost nothing until near $x=1$, where $v$ shoots up to $1$: $v(0)=0$, $v(1)=1$, $v$ increasing (more people own more), $v(x)\le x$, with slope increasing (convex). (b) $G=2\int_0^1(x-v(x))\,dx$ is twice the area between the diagonal and the graph of $v$ (the integrand is $\ge0$); for the socialist graph this area is $0$, for the capitalist graph it is almost the whole triangle under the diagonal. (c) $0\le G\le1$: $G=0$ when $v(x)=x$ (complete equality); $G\to1$ when $v(x)=0$ for all $x<1$ (one person owns everything), since $2\int_0^1x\,dx=1$.

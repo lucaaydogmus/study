@@ -1,0 +1,225 @@
+\setcounter{chapter}{-1}
+\chapter{Voorkennis: prior knowledge refreshed}
+\chaptercontents{A & Algebraic skills (\S0.1) \\ B & Functions and inverse functions (\S0.2) \\ C & Polynomials and factorising (\S0.3) \\ D & Trigonometry (\S0.4) \\ E & The logarithm (\S0.5)}%
+{Exercises 1--30 (all worked or solved).\\ The dictaat's own ``hoofdpunten'': when an inverse function exists and how to find it; $|x|$ and $\sqrt{x^2}=|x|$; composition $f\circ g$; even and odd; the factor theorem; the unit circle, exact values at ``nice'' angles, symmetries, sum formulas (needed hard in Chapter 6); basic properties of $\log$ and $\exp$.}
+
+\hsection{Algebraic skills}
+
+\begin{strategy}[{\S0.1 \textperiodcentered\ the point of these exercises}]
+These exercises refresh vwo algebra. The dictaat insists that you \textbf{find your own way to check an answer}: substitute back, multiply out again, try a special value (``sanity check''). The one identity to recognise instantly: $a^2-b^2=(a-b)(a+b)$.
+\end{strategy}
+
+\begin{bookex}{2}
+Simplify: (a) $(2-\sqrt3)^2$; (b) $(2-\sqrt3)(2+\sqrt3)$; (c) $\dfrac{2025^2-1}{2024}$; (d) $\dfrac{(2+\sqrt\pi-y)^2-(2-\sqrt\pi+y)^2}{\sqrt\pi-y}$ (choose a handy approach!).
+\solution
+(a) $(2-\sqrt3)^2=4-4\sqrt3+3=7-4\sqrt3$.\quad (b) $(2-\sqrt3)(2+\sqrt3)=4-3=1$.\\
+(c) $2025^2-1=(2025-1)(2025+1)=2024\cdot2026$, so the quotient is $2026$.\\
+(d) Put $b=\sqrt\pi-y$; then the numerator is $(2+b)^2-(2-b)^2=\big((2+b)-(2-b)\big)\big((2+b)+(2-b)\big)=2b\cdot4=8b$, and dividing by $b$ gives $8$ (for $y\ne\sqrt\pi$). Expanding both squares would give the same, with ten times the work.\qed
+\end{bookex}
+
+\begin{bookex}{4}
+(a) For which $r$ does $2x^2+rx+6=0$ have exactly one solution $x$? Answer in the form $r=n\sqrt m$, $n\in\Z$, $m\in\N$ minimal. (b) $\dfrac{3t}{t+\frac{1}{1+1/t}}=1$ has exactly one solution; which? (c) Find all $u$ with $\dfrac{1}{1+\frac1{1+u}}<2$. (d) Solve $\sqrt v+1=\sqrt{v+1}$ for $v\in\R$.
+\solution
+(a) Exactly one solution iff the discriminant is $0$: $r^2-4\cdot2\cdot6=r^2-48=0$, so $r=\pm\sqrt{48}=\pm4\sqrt3$. Both $r=4\sqrt3$ and $r=-4\sqrt3$ work ($n=\pm4$, $m=3$).\\
+(b) The fraction only makes sense for $t\ne0$ and $t\ne-1$. Simplify from the inside: $\dfrac1{1+1/t}=\dfrac{t}{t+1}$, so the denominator is $t+\dfrac t{t+1}=\dfrac{t(t+1)+t}{t+1}=\dfrac{t(t+2)}{t+1}$. The equation becomes $\dfrac{3t(t+1)}{t(t+2)}=1$, i.e.\ (as $t\ne0$) $3(t+1)=t+2$, so $t=-\tfrac12$. Check: $1+1/t=-1$, $\frac1{-1}=-1$, $t+(-1)=-\frac32$, and $\frac{-3/2}{-3/2}=1$. \checkmark\\
+(c) Need $u\ne-1$ and $1+\frac1{1+u}\ne0$, i.e.\ $u\ne-2$. Then $1+\dfrac1{1+u}=\dfrac{u+2}{u+1}$ and the inequality is $\dfrac{u+1}{u+2}<2$. Never multiply by $u+2$ without knowing its sign; instead bring everything to one side: $\dfrac{u+1}{u+2}-2=\dfrac{u+1-2u-4}{u+2}=\dfrac{-(u+3)}{u+2}<0$, i.e.\ $\dfrac{u+3}{u+2}>0$: both factors positive ($u>-2$) or both negative ($u<-3$). Removing $u=-1$: $u\in(-\infty,-3)\cup(-2,-1)\cup(-1,\infty)$.\\
+(d) Both sides are defined for $v\ge0$ and non-negative, so squaring is reversible: $v+2\sqrt v+1=v+1$, so $\sqrt v=0$, $v=0$. Check: $\sqrt0+1=1=\sqrt1$. \checkmark\qed
+\end{bookex}
+
+\begin{bookex}{5}
+Find all $c$ with: (a) $(3+c)(c^2+2)=(2c+2)(3+c)$; (b) $1-c=\sqrt{1-2c+c^2}$; (c) $2^{c^2}\cdot2^{2c+1}=16$. (d) Check that $c=-3$ is a solution of all three and $c=3$ of none.
+\solution
+(a) Do \emph{not} divide by $3+c$ (you would lose a solution). Bring to one side and factor: $(3+c)\big(c^2+2-2c-2\big)=(3+c)(c^2-2c)=c(c-2)(c+3)=0$, so $c\in\{-3,0,2\}$.\\
+(b) $1-2c+c^2=(1-c)^2$, so the right side is $\sqrt{(1-c)^2}=|1-c|$. The equation $1-c=|1-c|$ holds exactly when $1-c\ge0$: all $c\le1$.\\
+(c) $2^{c^2+2c+1}=2^4$, so $c^2+2c+1=(c+1)^2=4$, $c+1=\pm2$: $c=1$ or $c=-3$.\\
+(d) $-3$ appears in (a), satisfies $-3\le1$ in (b), and appears in (c); $3$ is not in (a), fails $3\le1$, and $3^2+6+1=16\ne4$. \checkmark\qed
+\end{bookex}
+
+\begin{trybox}[{1, 3}]
+\textbf{1} All positive divisors of $60,61,\dots,65$; which are squares?\quad \textbf{3} Check $\frac16-\frac17=\frac1{6\cdot7}$; for which $p,q$ is $\frac1p-\frac1q=\frac1{pq}$?
+\end{trybox}
+
+\hsection{Functions and inverse functions}
+
+\begin{key}[{Definition 0.1 \textperiodcentered\ function, domain, codomain, range}]
+A \term{function} $f:A\to B$ is a rule assigning to every $x\in A$ exactly one $y=f(x)\in B$, written $x\mapsto f(x)$; $y$ is the \term{image} (beeld) of $x$ and $x$ an \term{original} of $y$. $A$ is the \term{domain}, $B$ the \term{codomain}, and the \term{range} (bereik) is the set of $y\in B$ that actually occur as images. If no domain is given, take the largest subset of $\R$ on which the formula makes sense. Voorbeeld 0.2: $x\mapsto x^2$ on $\R$ has range $[0,\infty)$; $5$ has the two originals $\pm\sqrt5$. Voorbeeld 0.3: ``$f:\R\to\R$, $x\mapsto\sqrt x$'' is wrong (negative $x$); $f:[0,\infty)\to\R$ is right. Strictly, ``the function $f(x)$'' is wrong ($f(x)$ is a number), but the dictaat uses it anyway. \textbf{Piecewise} definitions (Voorbeeld 0.4): $\operatorname{sgn}x=-1,0,+1$ for $x<0$, $x=0$, $x>0$; in graphs a closed dot is on the graph, an open dot is not.
+\end{key}
+\begin{key}[{Definition 0.5 and Voorbeeld 0.7 \textperiodcentered\ inverse function}]
+If $f:A\to B$ is \term{bijective} (a one-to-one pairing of $A$ with $B$), its \term{inverse} $f_{\mathrm{inv}}:B\to A$ is the unique function with $f_{\mathrm{inv}}(f(x))=x$. The dictaat writes $f_{\mathrm{inv}}$, not $f^{-1}$, to avoid confusion with $1/f$. $y=f(x)\Leftrightarrow x=f_{\mathrm{inv}}(y)$; the graphs are mirror images in the line $y=x$. Voorbeeld 0.6: $x\mapsto(x-1)^2$ is not bijective on $\R\to\R$ ($f(-1)=f(3)=4$), nor on $[1,\infty)\to\R$ (negative numbers are never images), but it is bijective $[1,\infty)\to[0,\infty)$ with inverse $y\mapsto1+\sqrt y$. \textbf{To find the inverse:} write $y=f(x)$ and solve for $x$; then swap the letters.
+\end{key}
+
+\begin{bookex}{9}
+Find the inverse of the bijective functions (a) $p:x\mapsto1+\sqrt[3]{2x}$; (b) $q:x\mapsto\dfrac{x^2-4}{x+2}$; (c) $r:x\mapsto\dfrac{3x}{4+5x}$, and state on which domain and range each is bijective.
+\solution
+(a) $y=1+\sqrt[3]{2x}\Leftrightarrow(y-1)^3=2x\Leftrightarrow x=\tfrac12(y-1)^3$. So $p_{\mathrm{inv}}(x)=\tfrac12(x-1)^3$; the cube root is defined for all reals, so $p:\R\to\R$ is bijective (domain $\R$, range $\R$).\\
+(b) For $x\ne-2$: $q(x)=\dfrac{(x-2)(x+2)}{x+2}=x-2$. Domain $\R\setminus\{-2\}$; the value $-2-2=-4$ is never taken, so the range is $\R\setminus\{-4\}$. From $y=x-2$: $q_{\mathrm{inv}}(x)=x+2$ on $\R\setminus\{-4\}$, with range $\R\setminus\{-2\}$.\\
+(c) Domain $x\ne-\frac45$. $y=\dfrac{3x}{4+5x}\Leftrightarrow4y+5xy=3x\Leftrightarrow x(3-5y)=4y\Leftrightarrow x=\dfrac{4y}{3-5y}$, provided $y\ne\frac35$ (and $y=\frac35$ would need $3x=\frac35(4+5x)$, i.e.\ $0=\frac{12}5$: impossible, so $\frac35$ is not in the range). Hence $r:\R\setminus\{-\frac45\}\to\R\setminus\{\frac35\}$ is bijective with $r_{\mathrm{inv}}(x)=\dfrac{4x}{3-5x}$.\qed
+\end{bookex}
+
+\begin{bookex}{10}
+Let $f$ be bijective with inverse $f_{\mathrm{inv}}$ and let $s(x)=1-2f(3-4x)$. Show how to compute $s_{\mathrm{inv}}$ from $f_{\mathrm{inv}}$.
+\solution
+Put $y=s(x)=1-2f(3-4x)$ and peel the layers off from the outside: $f(3-4x)=\dfrac{1-y}2$, so $3-4x=f_{\mathrm{inv}}\!\Big(\dfrac{1-y}2\Big)$, so $x=\dfrac{3-f_{\mathrm{inv}}\big(\frac{1-y}2\big)}4$. Hence $s_{\mathrm{inv}}(y)=\dfrac14\Big(3-f_{\mathrm{inv}}\Big(\dfrac{1-y}2\Big)\Big)$: the inverse undoes the steps $x\mapsto3-4x\mapsto f(\cdot)\mapsto1-2(\cdot)$ in reverse order.\qed
+\end{bookex}
+
+\begin{trybox}[{6, 7, 8}]
+\textbf{6} Sketch the graphs of $x\mapsto x^2$ and $x\mapsto\sqrt x$ by hand.\quad \textbf{7} Give a piecewise formula for the Heaviside function.\quad \textbf{8} Fill in the steps of Voorbeeld 0.7 (inverse of $f(x)=3-\frac1{2+x}$).
+\end{trybox}
+
+\hsub{Absolute value}
+\begin{key}[{\S0.2.1}]
+$|x|=x$ for $x\ge0$ and $-x$ for $x<0$; equivalently $|x|=\sqrt{x^2}$. \textbf{Distance:} $|x-y|$ is the distance between $x$ and $y$ on the number line, so $|x-1|<3$ means ``less than $3$ away from $1$''. Recognise $|x|$ when it is hidden, as in $\sqrt{x^2}$ or $\sqrt{1-\cos^2x}$.
+\end{key}
+
+\begin{bookex}{11}
+Solve $|x-1|\le|x-3|$.
+\solution
+\emph{Distance:} the points no further from $1$ than from $3$ are those on the side of the midpoint $2$ nearer to $1$: $x\le2$.\\
+\emph{Algebra:} both sides are $\ge0$, so squaring is allowed: $x^2-2x+1\le x^2-6x+9\Leftrightarrow4x\le8\Leftrightarrow x\le2$.\qed
+\end{bookex}
+
+\begin{trybox}[{12}]
+\textbf{12} Simplify $\sqrt{1-\cos^2x}$ as far as possible; sanity check at $x=-\frac\pi6$.
+\end{trybox}
+
+\hsub{Compositions, even and odd functions}
+\begin{key}[{\S0.2.2 and Definition 0.8}]
+$(f\circ g)(x)=f(g(x))$ (``$f$ after $g$'': apply $g$ first). $f$ is \term{even} if $f(x)=f(-x)$ for all $x$ in its domain, \term{odd} if $f(x)=-f(-x)$. Even: symmetric in the $y$-axis ($x^2$, $\cos$, $|x|$); odd: symmetric about the origin ($x$, $x^3$, $\sin$).
+\end{key}
+
+\begin{bookex}{15}
+$f(x)=\sqrt x$, $g(x)=x^2$. Give domain and range of each; simplify $f\circ g$ and $g\circ f$; what is the difference?
+\solution
+$f$: domain $[0,\infty)$, range $[0,\infty)$. $g$: domain $\R$, range $[0,\infty)$.\\
+$(f\circ g)(x)=\sqrt{x^2}=|x|$, defined for all $x\in\R$ (since $x^2\ge0$ is always in the domain of $f$).\\
+$(g\circ f)(x)=(\sqrt x)^2=x$, but only for $x\ge0$ (the domain of $f$).\\
+Difference: different domains ($\R$ versus $[0,\infty)$) and different formulas on the negative axis: $f\circ g$ is $|x|$, not $x$. On $[0,\infty)$ they agree.\qed
+\end{bookex}
+
+\begin{bookex}{17}
+Are there values of $p$ for which $f:x\mapsto|x+p|+|x-4|$ is even? Odd?
+\solution
+\emph{Even.} For $x$ larger than both $4$ and $|p|$ all absolute values open with a plus sign: $f(x)=(x+p)+(x-4)=2x+p-4$ and $f(-x)=|{-x}+p|+|{-x}-4|=(x-p)+(x+4)=2x-p+4$. Evenness forces $p-4=-p+4$, so $p=4$. Conversely for $p=4$: $f(-x)=|{-x}+4|+|{-x}-4|=|x-4|+|x+4|=f(x)$ for all $x$. So $f$ is even exactly for $p=4$.\\
+\emph{Odd.} An odd function defined at $0$ has $f(0)=-f(0)$, so $f(0)=0$. Here $f(0)=|p|+4\ge4>0$. So $f$ is odd for no $p$.\qed
+\end{bookex}
+
+\begin{bookex}{19}
+$v$ even and $w$ odd, both defined on all of $\R$. Decide whether $vw$, $w^2$, $v\circ w$, $w\circ v$, $w\circ w$ are even, odd, or neither.
+\solution
+Replace $x$ by $-x$ and use $v(-x)=v(x)$, $w(-x)=-w(x)$:\\
+$(vw)(-x)=v(x)\cdot(-w(x))=-(vw)(x)$: \textbf{odd}.\quad $w^2(-x)=(-w(x))^2=w(x)^2$: \textbf{even}.\\
+$(v\circ w)(-x)=v(-w(x))=v(w(x))$: \textbf{even}.\quad $(w\circ v)(-x)=w(v(x))$: \textbf{even}.\\
+$(w\circ w)(-x)=w(-w(x))=-w(w(x))$: \textbf{odd}.\qed
+\end{bookex}
+
+\begin{trybox}[{13, 14, 16, 18}]
+\textbf{13} $p(x)=1+x$, $q(x)=x^2$: find $p\circ p$, $p\circ q$, $q\circ p$, $q\circ q$.\quad \textbf{14} $m(x)=-x$ satisfies $(m\circ m)(x)=x$; find more functions $f$ with $(f\circ f)(x)=x$.\quad \textbf{16} Examples of even, odd, neither, both.\quad \textbf{18} ``Every odd function has $f(0)=0$'': true? Counterexample? Something similar for even functions?
+\end{trybox}
+
+\hsection{Polynomials, divisibility and factorising}
+
+\begin{key}[{\S0.3 \textperiodcentered\ polynomials, long division, the factor theorem}]
+A \term{polynomial} (veelterm) of degree $n$ is $a_0+a_1x+\dots+a_nx^n$ with $a_n\ne0$. \term{Factorising} is the reverse of expanding: $4-16x^2=4(1-2x)(1+2x)$, $1-x^4=(1-x)(1+x)(1+x^2)$. \textbf{Long division (staartdeling)} of a polynomial by one of equal or lower degree: divide the highest-power terms, subtract, repeat; the dictaat's example gives
+\[
+\frac{8x^3-12x^2+6x+3}{2x^2-x}=4x-4+\frac{2x+3}{2x^2-x},\qquad\text{remainder }2x+3\text{ (lower degree than the divisor).}
+\]
+\textbf{Stelling 0.9 (factorstelling):} $p(x_0)=0$ iff $x-x_0$ is a factor of $p$. (Proof: divide, $p(x)=(x-x_0)q(x)+c$; substituting $x_0$ gives $c=p(x_0)$.) \textbf{Strategy:} to factorise, try $x=0,\pm1,\pm2,\dots$ to find a zero, divide out the factor, repeat; a polynomial of degree $n$ has at most $n$ zeros. \textbf{Vocabulary:} factors are multiplied, terms are added.
+\end{key}
+
+\begin{bookex}{20(a)}
+Divide $\dfrac{6x^4-4x^3-x^2+6x-12}{2x^2-3}$ and check by multiplying back.
+\solution
+$6x^4\div2x^2=3x^2$; subtract $3x^2(2x^2-3)=6x^4-9x^2$: remainder $-4x^3+8x^2+6x-12$.\\
+$-4x^3\div2x^2=-2x$; subtract $-2x(2x^2-3)=-4x^3+6x$: remainder $8x^2-12$.\\
+$8x^2\div2x^2=4$; subtract $4(2x^2-3)=8x^2-12$: remainder $0$.\\
+So the quotient is $3x^2-2x+4$ with remainder $0$: $2x^2-3$ is a factor. Check: $(2x^2-3)(3x^2-2x+4)=6x^4-4x^3+8x^2-9x^2+6x-12=6x^4-4x^3-x^2+6x-12$. \checkmark\qed
+\end{bookex}
+
+\begin{bookex}{21(a)}
+Factorise $x^3+2x^2-5x-6$ and check by expanding.
+\solution
+Try small integers: $x=1$: $1+2-5-6\ne0$; $x=-1$: $-1+2+5-6=0$. So $x+1$ is a factor (Stelling 0.9). Dividing: $x^3+2x^2-5x-6=(x+1)(x^2+x-6)$, and $x^2+x-6=(x+3)(x-2)$. Result: $(x+1)(x+3)(x-2)$. Check: $(x+1)(x^2+x-6)=x^3+x^2-6x+x^2+x-6=x^3+2x^2-5x-6$. \checkmark\qed
+\end{bookex}
+
+\begin{trybox}[{20(b), 21(b), 21(c)}]
+\textbf{20(b)} $\dfrac{6x^4-4x^3-x^2+6x-12}{x+2x^3}$.\quad \textbf{21(b)} $45x^4(x-14)-50x^3(x-14)+30x^2(x-14)$.\quad \textbf{21(c)} $x-x^3+x^5-x^7$.
+\end{trybox}
+
+\hsection{Trigonometry}
+
+\begin{key}[{\S0.4 \textperiodcentered\ the unit circle}]
+Angles in radians. The point of the unit circle at angle $t$ (counterclockwise from the positive $x$-axis) is $(\cos t,\sin t)$; $\tan t=\sin t/\cos t$ is the length cut off on the vertical tangent line at $(1,0)$ (similar triangles). Symmetries read off from the circle: $\sin(-t)=-\sin t$, $\cos(-t)=\cos t$, $\sin(\frac\pi2-t)=\cos t$, $\sin^2t+\cos^2t=1$ (Pythagoras). The sum rule $\sin(x+y)=\sin x\cos y+\cos x\sin y$ is given; everything else in Oefening 26 follows from it. Exact values come from the square with diagonal $1$ (angles $\frac\pi4$, sides $\frac12\sqrt2$) and the equilateral triangle with side $1$ (angles $\frac\pi3$; half of it has angles $\frac\pi6,\frac\pi3$ and sides $\frac12,\frac12\sqrt3$).
+\end{key}
+
+\begin{bookex}{23}
+Fill in the table of $\sin t$, $\cos t$, $\tan t$ for $t=0,\frac\pi6,\frac\pi4,\frac\pi3,\frac\pi2$.
+\solution
+\begin{center}\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{c|ccccc}
+$t$ & $0$ & $\pi/6$ & $\pi/4$ & $\pi/3$ & $\pi/2$\\\hline
+$\sin t$ & $0$ & $\frac12$ & $\frac12\sqrt2$ & $\frac12\sqrt3$ & $1$\\
+$\cos t$ & $1$ & $\frac12\sqrt3$ & $\frac12\sqrt2$ & $\frac12$ & $0$\\
+$\tan t$ & $0$ & $\frac13\sqrt3$ & $1$ & $\sqrt3$ & undefined
+\end{tabular}
+\end{center}
+Memory aid: the sines are $\frac12\sqrt0,\frac12\sqrt1,\frac12\sqrt2,\frac12\sqrt3,\frac12\sqrt4$; the cosines are the same row reversed.\qed
+\end{bookex}
+
+\begin{bookex}{25}
+Use the table and the symmetries of the circle to find: $\sin\frac{2\pi}3$, $\cos\frac{2\pi}3$, $\tan\frac{2\pi}3$, $\sin\frac{5\pi}6$, $\cos\frac{5\pi}6$, $\tan\frac{5\pi}6$, $\sin\pi$, $\cos\pi$, $\tan\pi$, $\sin(-\frac\pi4)$, $\cos(-\frac{3\pi}4)$, $\tan\frac{3\pi}4$, $\sin\frac{4\pi}3$, $\cos\frac{5\pi}3$, $\tan\frac{6\pi}3$, $\sin(-\frac\pi6)$, $\cos(-\frac{2\pi}3)$, $\tan(-\frac{5\pi}6)$.
+\solution
+Reduce each angle to a ``nice'' angle in the first quadrant and fix the sign from the quadrant ($\sin$ positive above the axis, $\cos$ positive to the right, $\tan$ positive in quadrants I and III).\\
+$\frac{2\pi}3=\pi-\frac\pi3$ (II): $\sin=\frac12\sqrt3$, $\cos=-\frac12$, $\tan=-\sqrt3$.\quad $\frac{5\pi}6=\pi-\frac\pi6$ (II): $\sin=\frac12$, $\cos=-\frac12\sqrt3$, $\tan=-\frac13\sqrt3$.\\
+$\pi$: $\sin\pi=0$, $\cos\pi=-1$, $\tan\pi=0$.\quad $\sin(-\frac\pi4)=-\frac12\sqrt2$; $\cos(-\frac{3\pi}4)=\cos\frac{3\pi}4=-\frac12\sqrt2$; $\tan\frac{3\pi}4=-1$.\\
+$\frac{4\pi}3=\pi+\frac\pi3$ (III): $\sin=-\frac12\sqrt3$.\quad $\frac{5\pi}3=2\pi-\frac\pi3$ (IV): $\cos=\frac12$.\quad $\tan\frac{6\pi}3=\tan2\pi=0$.\\
+$\sin(-\frac\pi6)=-\frac12$; $\cos(-\frac{2\pi}3)=\cos\frac{2\pi}3=-\frac12$; $\tan(-\frac{5\pi}6)=-\tan\frac{5\pi}6=\frac13\sqrt3$.\qed
+\end{bookex}
+
+\begin{bookex}{26}
+From $\sin(x+y)=\sin x\cos y+\cos x\sin y$ derive: (a) $\sin(x-y)$; (b) $\cos(x+y)$ using $\cos(x+y)=\sin((\frac\pi2-x)-y)$; (c) $\tan(x+y)$ in terms of $\tan$ only; (d) the double-angle formulas.
+\solution
+(a) Replace $y$ by $-y$ and use $\cos(-y)=\cos y$, $\sin(-y)=-\sin y$: $\sin(x-y)=\sin x\cos y-\cos x\sin y$.\\
+(b) $\cos(x+y)=\sin\big((\tfrac\pi2-x)-y\big)=\sin(\tfrac\pi2-x)\cos y-\cos(\tfrac\pi2-x)\sin y=\cos x\cos y-\sin x\sin y$, using $\sin(\frac\pi2-x)=\cos x$ and $\cos(\frac\pi2-x)=\sin x$.\\
+(c) $\tan(x+y)=\dfrac{\sin x\cos y+\cos x\sin y}{\cos x\cos y-\sin x\sin y}$; divide numerator and denominator by $\cos x\cos y$: $\tan(x+y)=\dfrac{\tan x+\tan y}{1-\tan x\tan y}$.\\
+(d) Put $y=x$: $\sin2x=2\sin x\cos x$; $\cos2x=\cos^2x-\sin^2x=2\cos^2x-1=1-2\sin^2x$ (using $\sin^2x+\cos^2x=1$); $\tan2x=\dfrac{2\tan x}{1-\tan^2x}$.\qed
+\end{bookex}
+
+\begin{trybox}[{22, 24, 27 (Extra)}]
+\textbf{22} Angles (radians) and sides of the square with diagonal $1$ and the equilateral triangle with side $1$.\quad \textbf{24} (a) Why are the labels $\sin,\cos,\tan$ placed where they are in the unit circle? (b) Signs in $\sin(\pi\pm t)$, $\cos(\pi\pm t)$, $\tan(\pi\pm t)$. (c) Check the four basic identities in the figure.\quad \textbf{27 (Extra)} A point moves along the unit circle at speed $1$; conclude $\sin'=\cos$, $\cos'=-\sin$.
+\end{trybox}
+
+\hsection{The logarithm}
+
+\begin{key}[{Definitions 0.10, 0.11 \textperiodcentered\ logarithm, base, change of base}]
+A \term{logarithm} is a function $\log:(0,\infty)\to\R$ with $\log(ab)=\log a+\log b$ for all $a,b>0$ (it turns multiplication into addition; that is why Napier and Briggs invented it). Its \term{base} (grondtal) is the number $g$ with $\log g=1$; notation ${}^g\!\log x$ (or $\log_gx$). All rules follow from the definition (Oefening 28). \textbf{Change of base:} ${}^h\!\log x=\dfrac{{}^g\!\log x}{{}^g\!\log h}$ (the right side satisfies the functional equation and takes the value $1$ at $h$). \textbf{From now on $\log$ means the natural logarithm}, base $e=2.71828\dots$ (the primitive of $1/x$, the inverse of $x\mapsto e^x$).
+\end{key}
+
+\begin{bookex}{28}
+For $a,b>0$ derive from the definition, one by one: (a) $\log1=0$; (b) $\log a^2=2\log a$; (c) $\log\frac1a=-\log a$; (d) $\log a^n=n\log a$ for $n\in\Z$; (e) $\log a^{p/q}=\frac pq\log a$ for $\frac pq\in\Q$.
+\solution
+(a) $\log1=\log(1\cdot1)=\log1+\log1$, so $\log1=0$.\\
+(b) $\log a^2=\log(a\cdot a)=\log a+\log a=2\log a$.\\
+(c) $0=\log1=\log\big(a\cdot\tfrac1a\big)=\log a+\log\tfrac1a$, so $\log\tfrac1a=-\log a$.\\
+(d) For $n>0$ repeat (b): $\log a^n=\log(a\cdots a)=n\log a$. For $n=0$: $\log a^0=\log1=0=0\cdot\log a$. For $n<0$: $\log a^n=\log\frac1{a^{-n}}=-\log a^{-n}=-(-n)\log a=n\log a$ by (c).\\
+(e) First $p=1$: $a=(a^{1/q})^q$, so by (d) $\log a=q\log a^{1/q}$, i.e.\ $\log a^{1/q}=\frac1q\log a$. Then $\log a^{p/q}=\log(a^{1/q})^p=p\log a^{1/q}=\frac pq\log a$.\\
+(The dictaat remarks that $\log a^c=c\log a$ also holds for irrational $c$, but that needs \S6.6.)\qed
+\end{bookex}
+
+\begin{bookex}{30}
+Without a calculator: is $(\log3)^2-\log(3^2)$ negative, zero or positive?
+\solution
+$(\log3)^2-\log(3^2)=(\log3)^2-2\log3=\log3\,(\log3-2)$. Now $\log3>\log1=0$, and $\log3<2$ because $3<e^2$ (as $e>1.7$ gives $e^2>2.89$; more crudely $e^2>2^2=4>3$) and $\log$ is increasing. So the product is \textbf{negative}. (Indeed $\log3\approx1.10$, giving $\approx-0.99$.)\qed
+\end{bookex}
+
+\begin{trybox}[{29}]
+\textbf{29} (a) Why do logarithms with bases $g$ and $h$ differ everywhere by a constant factor? (b) Which factor? (c) What can you say about ${}^g\!\log h\cdot{}^h\!\log g$?
+\end{trybox}
+
+\begin{warn}
+\begin{itemize}
+\item $\sqrt{x^2}=|x|$, never $x$; $\sqrt{1-\cos^2x}=|\sin x|$ (Oefening 12).
+\item $f_{\mathrm{inv}}$ is the inverse under composition, not $1/f$. Before inverting, check bijectivity and state domain and range.
+\item Do not divide an equation by an expression that can be $0$ (Oefening 5a); do not multiply an inequality by an expression of unknown sign (Oefening 4c).
+\item $\log$ is the natural logarithm in this course; ``$\log$'' on a calculator is often base $10$.
+\end{itemize}
+\end{warn}

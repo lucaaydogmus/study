@@ -1,0 +1,117 @@
+\chapter{Complex numbers}
+\chaptercontents{A & Why complex numbers (\S1.1) \\ B & The set $\C$ (\S1.2) \\ C & Modulus, argument, conjugate (\S1.3) \\ D & Calculations in $\C$ (\S1.4) \\ E & The complex exponential (\S1.5)}%
+{Exercises 101--123 (all worked or solved).\\ Hoofdpunten: use the complex plane; real and imaginary part, modulus, argument, conjugate, $e^{i\varphi}$; elementary calculations in $\C$; solving simple polynomial equations in $\C$.}
+
+\hsection{Why complex numbers are unavoidable}
+\begin{key}[{\S1.1 \textperiodcentered\ Cardano and Bombelli}]
+Cardano (1545) solved $x^3+px=q$ by the formula $x=\sqrt[3]{\frac q2+\sqrt{(\frac q2)^2+(\frac p3)^3}}+\sqrt[3]{\frac q2-\sqrt{(\frac q2)^2+(\frac p3)^3}}$. It works for $x^3+6x=20$ ($x=2$), but for $x^3-15x=4$ it needs $\sqrt{-121}$, although $x=4$ is visibly a solution. Bombelli (1572) just computed on with $\sqrt{-121}$: since $(2\pm\sqrt{-1})^3=2\pm\sqrt{-121}$, the formula gives $x=(2+\sqrt{-1})+(2-\sqrt{-1})=4$. Moral: the complex numbers forced themselves upon us. (No exercises; not exam material.)
+\end{key}
+
+\hsection{The set of complex numbers}
+\begin{key}[{Definition 1.1 \textperiodcentered\ $\C$, real and imaginary part}]
+$i$ is a new number with $i^2=-1$ ($i=\sqrt{-1}$, and $-i$ is the other square root of $-1$). $\C=\{a+bi\mid a,b\in\R\}$; for $z=a+bi$, $\operatorname{Re}z=a$ and $\operatorname{Im}z=b$ (both real). $\R\subseteq\C$ via $x=x+0i$. \textbf{Fundamental theorem of algebra:} every non-constant polynomial has a zero in $\C$, so all zeros of all polynomials lie in $\C$ (no further extension needed). For $b\ge0$: $\sqrt{-b}=i\sqrt b$.
+\end{key}
+
+\begin{bookex}{101}
+Compute the complex zeros of $P(x)=x^2-4x+13$ with the abc-formula, in the form $a+bi$.
+\solution
+$x=\dfrac{4\pm\sqrt{16-52}}2=\dfrac{4\pm\sqrt{-36}}2=\dfrac{4\pm6i}2=2\pm3i$. Check: $(2+3i)^2-4(2+3i)+13=4+12i-9-8-12i+13=0$. \checkmark\qed
+\end{bookex}
+
+\hsection{The complex plane: modulus, argument, conjugate}
+\begin{key}[{Definitions 1.2, 1.3 \textperiodcentered\ modulus, argument, polar form, conjugate}]
+Plot $a+bi$ as the point $(a,b)$: real axis horizontal, imaginary axis vertical (the Argand plane). The \term{modulus} $|z|=\sqrt{a^2+b^2}$ is the distance to $0$; the \term{argument} $\arg z$ is the angle from the positive real axis, counterclockwise, with the convention $-\pi<\arg z\le\pi$ ($\arg0$ is undefined). $\tan(\arg z)=\frac ba$ when $a\ne0$, but two angles in $(-\pi,\pi]$ have the same tangent: \textbf{always sketch $z$} to pick the right one. Positive reals have argument $0$, negative reals $\pi$, $bi$ has argument $\pm\frac\pi2$. With $r=|z|$, $\varphi=\arg z$: $z=r(\cos\varphi+i\sin\varphi)$ (\term{polar coordinates}). The \term{conjugate} $\bar z=a-bi$ is the mirror image of $z$ in the real axis.
+\end{key}
+
+\begin{bookex}{103}
+Modulus and argument of $1+i$, $3i$, $-20$, $-1-i$; draw them.
+\solution
+$1+i$: $|1+i|=\sqrt{1+1}=\sqrt2$, in quadrant I on the diagonal: $\arg=\frac\pi4$.\quad $3i$: $|3i|=3$, on the positive imaginary axis: $\arg=\frac\pi2$.\\
+$-20$: $|{-20}|=20$, negative real: $\arg=\pi$.\quad $-1-i$: $|{-1-i}|=\sqrt2$, quadrant III on the diagonal: $\arg=-\frac{3\pi}4$ (not $\frac{5\pi}4$: the argument must lie in $(-\pi,\pi]$).\qed
+\end{bookex}
+
+\begin{bookex}{104}
+$z=a+bi$. Give $\arg z$ in terms of $\arctan$ for: (a) $a>0$, $b\ge0$; (b) $a>0$, $b<0$; (c) $a<0$, $b\ge0$; (d) $a<0$, $b<0$; (e) $a=0$, $b>0$; (f) $a=0$, $b<0$.
+\solution
+$\arctan$ takes values in $(-\frac\pi2,\frac\pi2)$, i.e.\ it returns the angle of a point in the \emph{right} half-plane.\\
+(a) and (b): $z$ is in the right half-plane, so $\arg z=\arctan\frac ba$ (in $[0,\frac\pi2)$ for (a), in $(-\frac\pi2,0)$ for (b)).\\
+(c) $z$ in quadrant II: $\arctan\frac ba$ is the angle of $-z$ (which is in quadrant IV), so $\arg z=\arctan\frac ba+\pi$.\\
+(d) $z$ in quadrant III: $\arg z=\arctan\frac ba-\pi$ (adding $\pi$ would leave $(-\pi,\pi]$).\\
+(e) $\arg z=\frac\pi2$; (f) $\arg z=-\frac\pi2$ ($\tan$ undefined).\qed
+\end{bookex}
+
+\begin{bookex}{105}
+Determine $\arg z$ for $z=-\frac12\sqrt3-\frac12i$.
+\solution
+$|z|=\sqrt{\frac34+\frac14}=1$ and $z$ is in quadrant III (both parts negative). The reference angle has $\tan=\frac{1/2}{\sqrt3/2}=\frac1{\sqrt3}$, i.e.\ $\frac\pi6$. So $\arg z=-\pi+\frac\pi6=-\frac{5\pi}6$ (case (d) of 104: $\arctan\frac{-1/2}{-\sqrt3/2}-\pi=\frac\pi6-\pi$). Indeed $z=\cos(-\frac{5\pi}6)+i\sin(-\frac{5\pi}6)$.\qed
+\end{bookex}
+
+\begin{trybox}[{102, 106, 107, 108, 109, 110}]
+\textbf{102} Draw $1+2i$, $3i$, $-1$, $-4-i$, $2-i$, $4$.\quad \textbf{106} Why is $\arg z$ undefined for $z=0$?\quad \textbf{107} Check $\operatorname{Re}\bar z=\operatorname{Re}z$, $\operatorname{Im}\bar z=-\operatorname{Im}z$, $|\bar z|=|z|$, $\arg\bar z=-\arg z$, $\bar{\bar z}=z$.\quad \textbf{108} $\bar z$ for $1+i$, $3i$, $-20$, $-1-i$.\quad \textbf{109} Solve $z^2+2z+2=0$.\quad \textbf{110} If $z$ solves $az^2+bz+c=0$ with $a,b,c\in\R$, so does $\bar z$.
+\end{trybox}
+
+\hsection{Calculations in $\C$}
+\begin{key}[{Definition 1.4 and Stelling 1.5 \textperiodcentered\ sum, product, conjugation rules, division}]
+$(a+bi)+(c+di)=(a+c)+(b+d)i$ and $(a+bi)(c+di)=(ac-bd)+(ad+bc)i$: this is ordinary expanding of brackets with $i^2=-1$. \textbf{Stelling 1.5:} $\overline{z+w}=\bar z+\bar w$, $\overline{zw}=\bar z\bar w$, $z\bar z=|z|^2$, $z+\bar z=2\operatorname{Re}z$. \textbf{Division:} for $w\ne0$, $\dfrac zw=\dfrac{z\bar w}{w\bar w}=\dfrac{z\bar w}{|w|^2}$: multiply numerator and denominator by the conjugate of the denominator, which makes the denominator real.
+\end{key}
+
+\begin{bookex}{111(a)}
+$z=3-2i$, $w=1+i$: compute $z+w$ and $zw$.
+\solution
+$z+w=(3+1)+(-2+1)i=4-i$.\quad $zw=(3-2i)(1+i)=3+3i-2i-2i^2=3+i+2=5+i$. (With the formula: $ac-bd=3\cdot1-(-2)\cdot1=5$, $ad+bc=3\cdot1+(-2)\cdot1=1$.)\qed
+\end{bookex}
+
+\begin{bookex}{114}
+Write $\dfrac zw$ in the form $a+bi$: (a) $z=1$, $w=2+3i$; (b) $z=1+i$, $w=i$; (c) $z=-2-i$, $w=3-4i$.
+\solution
+(a) $\dfrac1{2+3i}=\dfrac{2-3i}{(2+3i)(2-3i)}=\dfrac{2-3i}{4+9}=\dfrac2{13}-\dfrac3{13}i$.\\
+(b) $\dfrac{1+i}i=\dfrac{(1+i)(-i)}{i(-i)}=\dfrac{-i-i^2}{1}=1-i$. (Check: $i(1-i)=i+1$. \checkmark)\\
+(c) $\dfrac{-2-i}{3-4i}=\dfrac{(-2-i)(3+4i)}{9+16}=\dfrac{-6-8i-3i-4i^2}{25}=\dfrac{-2-11i}{25}=-\dfrac2{25}-\dfrac{11}{25}i$.\qed
+\end{bookex}
+
+\begin{trybox}[{111(b),(c), 112, 113, 115}]
+\textbf{111} (b) $z=i$, $w=1-i$; (c) $z=w=-4+6i$.\quad \textbf{112} Check that Definition 1.4 is ``expanding brackets with $i^2=-1$''.\quad \textbf{113} Prove parts (a), (c), (d) of Stelling 1.5 by writing out.\quad \textbf{115} Commutativity, associativity and distributivity in $\C$ by writing out.
+\end{trybox}
+
+\hsection{The complex exponential function}
+\begin{result}[{Stelling 1.6, Definition 1.8, Stelling 1.11 \textperiodcentered\ multiply moduli, add arguments}]
+$|zw|=|z|\,|w|$ and $\arg(zw)=\arg z+\arg w$ (modulo $2\pi$); proof: multiply the polar forms and use the sum formulas. So powers are easy in polar form: Voorbeeld 1.7, $(\sqrt3+i)^3$ has modulus $2^3=8$ and argument $3\cdot\frac\pi6=\frac\pi2$, hence equals $8i$. \textbf{Definition 1.8:} $e^{it}=\cos t+i\sin t$ for real $t$ (consistent: $e^{0}=1$, $\frac d{dt}e^{it}=ie^{it}$, $e^{is}e^{it}=e^{i(s+t)}$, Voorbeeld 1.9). Hence $z=re^{i\varphi}$ with $r=|z|$, $\varphi=\arg z$, and $re^{i\varphi}\cdot se^{i\theta}=rse^{i(\varphi+\theta)}$. \textbf{De Moivre:} $(\cos\varphi+i\sin\varphi)^n=\cos n\varphi+i\sin n\varphi$. For $z=a+ib$: $e^z=e^a(\cos b+i\sin b)$.
+\end{result}
+\begin{strategy}[{Voorbeeld 1.10 \textperiodcentered\ solving $z^n=w$}]
+Write $z=re^{i\varphi}$ and $w=se^{i\theta}$. Then $z^n=r^ne^{in\varphi}$, so $r^n=s$ gives $r=s^{1/n}$ (moduli are $\ge0$), and $n\varphi=\theta+2k\pi$ gives $\varphi=\dfrac{\theta+2k\pi}n$, $k=0,1,\dots,n-1$ ($n$ different solutions, equally spaced on a circle; other $k$ repeat them). Example: $z^6=1$ has $r=1$, $\varphi=\frac{k\pi}3$: $1,\ \frac12\pm\frac12\sqrt3i,\ -\frac12\pm\frac12\sqrt3i,\ -1$. Convert back to $a+bi$ with $\cos,\sin$ of nice angles.
+\end{strategy}
+
+\begin{bookex}{117}
+Write $(1+i)^7$ in the form $a+bi$.
+\solution
+$1+i=\sqrt2\,e^{i\pi/4}$, so $(1+i)^7=(\sqrt2)^7e^{7i\pi/4}=8\sqrt2\,e^{-i\pi/4}$ (since $\frac{7\pi}4=2\pi-\frac\pi4$). Hence $(1+i)^7=8\sqrt2\big(\cos\tfrac\pi4-i\sin\tfrac\pi4\big)=8\sqrt2\big(\tfrac12\sqrt2-\tfrac12\sqrt2\,i\big)=8-8i$. (Check: $(1+i)^2=2i$, $(1+i)^4=-4$, $(1+i)^7=(-4)(2i)(1+i)=-8i+8$. \checkmark)\qed
+\end{bookex}
+
+\begin{bookex}{120}
+Write $i$ and $1+i$ in the form $re^{i\varphi}$.
+\solution
+$|i|=1$, $\arg i=\frac\pi2$: $i=e^{i\pi/2}$. $|1+i|=\sqrt2$, $\arg(1+i)=\frac\pi4$: $1+i=\sqrt2\,e^{i\pi/4}$.\qed
+\end{bookex}
+
+\begin{bookex}{123}
+Solve: (a) $z^4=16$; (b) $z^2=i$; (c) $z^6-2z^3+1=49$.
+\solution
+(a) $z=re^{i\varphi}$: $r^4=16$ gives $r=2$; $4\varphi=0+2k\pi$ gives $\varphi=\frac{k\pi}2$, $k=0,1,2,3$: $z=2,\ 2i,\ -2,\ -2i$.\\
+(b) $|i|=1$, $\arg i=\frac\pi2$: $r=1$ and $2\varphi=\frac\pi2+2k\pi$, $\varphi=\frac\pi4$ or $\frac{5\pi}4\equiv-\frac{3\pi}4$: $z=\pm e^{i\pi/4}=\pm\big(\tfrac12\sqrt2+\tfrac12\sqrt2\,i\big)$. So yes, $\sqrt i$ is a complex number: $\big(\frac{1+i}{\sqrt2}\big)^2=\frac{2i}2=i$.\\
+(c) Substitute $w=z^3$: $w^2-2w-48=0$, $w=\frac{2\pm\sqrt{4+192}}2=\frac{2\pm14}2$, so $w=8$ or $w=-6$.\\
+$z^3=8$: $r=2$, $\varphi=\frac{2k\pi}3$: $z=2,\ 2e^{2\pi i/3}=-1+\sqrt3\,i,\ 2e^{-2\pi i/3}=-1-\sqrt3\,i$.\\
+$z^3=-6=6e^{i\pi}$: $r=\sqrt[3]6$, $3\varphi=\pi+2k\pi$, $\varphi=\frac\pi3,\pi,-\frac\pi3$: $z=\sqrt[3]6\big(\tfrac12+\tfrac12\sqrt3\,i\big),\ -\sqrt[3]6,\ \sqrt[3]6\big(\tfrac12-\tfrac12\sqrt3\,i\big)$.\\
+Six solutions in total, as expected for degree $6$.\qed
+\end{bookex}
+
+\begin{trybox}[{116, 118, 119, 121, 122}]
+\textbf{116} Adding $a+bi$ and $c+di$ is adding the vectors $(a,b)$ and $(c,d)$.\quad \textbf{118} Geometric meaning of multiplication by $i$.\quad \textbf{119} $e^{i\pi}$ and $4e^{i\pi/3}$ in the form $a+bi$.\quad \textbf{121} $|e^{i\varphi}|=1$: all $e^{i\varphi}$ lie on the unit circle.\quad \textbf{122} Draw the six solutions of $z^6=1$; the conjugate of each solution is again a solution.
+\end{trybox}
+
+\begin{warn}
+\begin{itemize}
+\item $\arg z\in(-\pi,\pi]$: $-1-i$ has argument $-\frac{3\pi}4$, not $\frac{5\pi}4$. $\tan$ alone does not determine the quadrant: sketch.
+\item $|z|^2=z\bar z$, not $z^2$. $\overline{zw}=\bar z\bar w$ is the conjugate of the product; do not confuse with $\bar z\,\bar w$ written out.
+\item An equation $z^n=w$ has $n$ solutions; after finding the modulus, list $k=0,\dots,n-1$ and then stop ($k=n$ repeats $k=0$).
+\end{itemize}
+\end{warn}

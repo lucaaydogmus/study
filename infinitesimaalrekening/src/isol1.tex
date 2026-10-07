@@ -1,0 +1,30 @@
+\hsection{Chapter 1}
+\sol{102} $1+2i\mapsto(1,2)$; $3i\mapsto(0,3)$; $-1\mapsto(-1,0)$; $-4-i\mapsto(-4,-1)$; $2-i\mapsto(2,-1)$; $4\mapsto(4,0)$.
+
+\sol{106} $\arg z$ is the angle between the positive real axis and the line through $0$ and $z$; for $z=0$ there is no such line (every direction fits). Equivalently $\cos\varphi=a/r$ needs $r=|z|\ne0$.
+
+\sol{107} With $z=a+bi$, $\bar z=a-bi$: (a) $\operatorname{Re}\bar z=a=\operatorname{Re}z$. (b) $\operatorname{Im}\bar z=-b=-\operatorname{Im}z$. (c) $|\bar z|=\sqrt{a^2+(-b)^2}=\sqrt{a^2+b^2}=|z|$. (d) Reflection in the real axis sends the angle $\varphi$ to $-\varphi$, so $\arg\bar z=-\arg z$ (for a negative real $z$ both arguments are $\pi$, because of the convention $(-\pi,\pi]$). (e) $\bar{\bar z}=\overline{a-bi}=a+bi=z$.
+
+\sol{108} $\overline{1+i}=1-i$; $\overline{3i}=-3i$; $\overline{-20}=-20$; $\overline{-1-i}=-1+i$.
+
+\sol{109} $z=\dfrac{-2\pm\sqrt{4-8}}2=\dfrac{-2\pm2i}2=-1\pm i$. Check: $(-1+i)^2+2(-1+i)+2=(1-2i-1)-2+2i+2=0$ \checkmark.
+
+\sol{110} Conjugate both sides of $az^2+bz+c=0$: by Stelling 1.5, $\overline{az^2+bz+c}=\bar a\bar z^2+\bar b\bar z+\bar c=a\bar z^2+b\bar z+c$ since $a,b,c$ are real ($\bar a=a$), and $\bar0=0$. So $\bar z$ is a solution. (With the abc-formula: the solutions are $\frac{-b\pm i\sqrt{4ac-b^2}}{2a}$ when $b^2<4ac$, each other's conjugates.)
+
+\sol{111(b),(c)} (b) $z+w=i+1-i=1$; $zw=i(1-i)=i-i^2=1+i$. (c) $z+w=-8+12i$; $zw=(-4+6i)^2=16-48i+36i^2=-20-48i$.
+
+\sol{112} $(a+bi)(c+di)=ac+adi+bci+bdi^2=ac+(ad+bc)i-bd=(ac-bd)+(ad+bc)i$, which is Definition 1.4.
+
+\sol{113} $z=a+bi$, $w=c+di$. (a) $\overline{z+w}=\overline{(a+c)+(b+d)i}=(a+c)-(b+d)i=(a-bi)+(c-di)=\bar z+\bar w$. (c) $z\bar z=(a+bi)(a-bi)=a^2-abi+abi-b^2i^2=a^2+b^2=|z|^2$. (d) $z+\bar z=(a+bi)+(a-bi)=2a=2\operatorname{Re}z$.
+
+\sol{115} $z=a+bi$, $w=c+di$, $v=e+fi$. (a) $z+w=(a+c)+(b+d)i=(c+a)+(d+b)i=w+z$. (b) $zw=(ac-bd)+(ad+bc)i$ and $wz=(ca-db)+(cb+da)i$: equal because real multiplication and addition are commutative. (c) $z+(w+v)=(a+(c+e))+(b+(d+f))i=((a+c)+e)+((b+d)+f)i=(z+w)+v$. (d) $wv=(ce-df)+(cf+de)i$, so $z(wv)=\big(a(ce-df)-b(cf+de)\big)+\big(a(cf+de)+b(ce-df)\big)i=(ace-adf-bcf-bde)+(acf+ade+bce-bdf)i$; and $zw=(ac-bd)+(ad+bc)i$, so $(zw)v=\big((ac-bd)e-(ad+bc)f\big)+\big((ac-bd)f+(ad+bc)e\big)i$, the same. (e) $z(w+v)=\big(a(c+e)-b(d+f)\big)+\big(a(d+f)+b(c+e)\big)i=(ac-bd)+(ad+bc)i+(ae-bf)+(af+be)i=zw+zv$.
+
+\sol{116} $(a+bi)+(c+di)=(a+c)+(b+d)i$ corresponds to the point $(a+c,b+d)=(a,b)+(c,d)$: the sum is the fourth vertex of the parallelogram with vertices $0$, $z$, $w$.
+
+\sol{118} $|iz|=|i||z|=|z|$ and $\arg(iz)=\arg i+\arg z=\arg z+\frac\pi2$ (Stelling 1.6). So multiplying by $i$ rotates the plane over $\frac\pi2$ counterclockwise about $0$. (Multiplying by $i$ twice is multiplying by $-1$: a rotation over $\pi$.)
+
+\sol{119} $e^{i\pi}=\cos\pi+i\sin\pi=-1$. $4e^{i\pi/3}=4\big(\cos\frac\pi3+i\sin\frac\pi3\big)=4\big(\frac12+\frac12\sqrt3\,i\big)=2+2\sqrt3\,i$.
+
+\sol{121} $|e^{i\varphi}|=\sqrt{\cos^2\varphi+\sin^2\varphi}=1$, so every $e^{i\varphi}$ is at distance $1$ from $0$: on the unit circle, at angle $\varphi$.
+
+\sol{122} The six solutions $e^{ik\pi/3}$ ($k=0,\dots,5$) are the vertices of a regular hexagon on the unit circle, starting at $1$: $1$, $\frac12+\frac12\sqrt3i$, $-\frac12+\frac12\sqrt3i$, $-1$, $-\frac12-\frac12\sqrt3i$, $\frac12-\frac12\sqrt3i$. Conjugation reflects in the real axis: $\overline{e^{ik\pi/3}}=e^{-ik\pi/3}=e^{i(6-k)\pi/3}$, again one of the six (the hexagon is symmetric in the real axis). This is Oefening 110 for the polynomial $z^6-1$ with real coefficients.

@@ -1,0 +1,138 @@
+\chapter{Tapas: four short topics}
+\chaptercontents{A & Pascal's triangle (\S4.1) \\ B & Logarithmic differentiation (\S4.2) \\ C & arcsin, arccos, arctan (\S4.3) \\ D & Hyperbolic functions (\S4.4)}%
+{Exercises 401--420 (all worked or solved).\\ Hoofdpunten: expanding $(a+b)^n$ with Pascal's triangle; $\arcsin$, $\arccos$, $\arctan$ with domain, graph and derivative; logarithmic differentiation; simplifying expressions with inverse trig functions. The hyperbolic functions need not be memorised: the skill is deriving an inverse and its derivative from a given formula.}
+
+\hsection{Pascal's triangle}
+\begin{key}[{\S4.1}]
+Rows $1$; $1\,1$; $1\,2\,1$; $1\,3\,3\,1$; $1\,4\,6\,4\,1$; \dots, each number the sum of the two above it. Row $n$ (counting from $0$) gives the coefficients of $(x+y)^n$: $(x+y)^3=x^3+3x^2y+3xy^2+y^3$.
+\end{key}
+
+\begin{bookex}{401}
+Check this for $n=0,1,2,3$ and predict $(x+y)^7$.
+\solution
+$(x+y)^0=1$; $(x+y)^1=x+y$; $(x+y)^2=x^2+2xy+y^2$; $(x+y)^3=(x+y)(x^2+2xy+y^2)=x^3+3x^2y+3xy^2+y^3$: coefficients $1$; $1\,1$; $1\,2\,1$; $1\,3\,3\,1$. Continuing the triangle: $1\,5\,10\,10\,5\,1$, $1\,6\,15\,20\,15\,6\,1$, $1\,7\,21\,35\,35\,21\,7\,1$, so
+\[
+(x+y)^7=x^7+7x^6y+21x^5y^2+35x^4y^3+35x^3y^4+21x^2y^5+7xy^6+y^7 .
+\]\qed
+\end{bookex}
+
+\begin{trybox}[{402, 403}]
+\textbf{402} Why is the sum of row $n$ equal to $2^n$?\quad \textbf{403} How does Pascal's triangle give the $n$-th derivative of $f(x)g(x)$? Try $n=0,1,2,\dots$
+\end{trybox}
+
+\hsection{Logarithmic differentiation}
+\begin{strategy}[{\S4.2 and Voorbeeld 4.1 \textperiodcentered\ take the log first}]
+$\dfrac d{dx}\log f(x)=\dfrac{f'(x)}{f(x)}$, so $f'(x)=f(x)\cdot\big(\log f(x)\big)'$. Useful when $\log f$ is easier to differentiate than $f$: products, quotients, powers and variable exponents become sums, differences and multiples. Voorbeeld 4.1: $f(x)=x^x$, $\log f=x\log x$, $(\log f)'=\log x+1$, so $f'(x)=(\log x+1)x^x$. (Alternative for exponents: $a^{b}=e^{b\log a}$.)
+\end{strategy}
+
+\begin{bookex}{404}
+Differentiate in two ways (``normally'' and logarithmically): (a) $(6x+1)^5(x^4-3)^6$; (b) $\sqrt[5]{\dfrac{x^2+2}{x^2+3}}$.
+\solution
+(a) \emph{Logarithmic:} $\log f=5\log(6x+1)+6\log(x^4-3)$, so $\dfrac{f'}f=\dfrac{30}{6x+1}+\dfrac{24x^3}{x^4-3}$ and $f'=(6x+1)^5(x^4-3)^6\Big(\dfrac{30}{6x+1}+\dfrac{24x^3}{x^4-3}\Big)$. \emph{Normal:} product and chain rule, $f'=30(6x+1)^4(x^4-3)^6+24x^3(6x+1)^5(x^4-3)^5$. Both equal $6(6x+1)^4(x^4-3)^5\big(5(x^4-3)+4x^3(6x+1)\big)=6(6x+1)^4(x^4-3)^5(29x^4+4x^3-15)$.\\
+(b) \emph{Logarithmic:} $\log g=\frac15\big(\log(x^2+2)-\log(x^2+3)\big)$, $\dfrac{g'}g=\dfrac15\Big(\dfrac{2x}{x^2+2}-\dfrac{2x}{x^2+3}\Big)=\dfrac{2x}{5(x^2+2)(x^2+3)}$, so $g'=\sqrt[5]{\dfrac{x^2+2}{x^2+3}}\cdot\dfrac{2x}{5(x^2+2)(x^2+3)}$. \emph{Normal:} $g'=\dfrac15\Big(\dfrac{x^2+2}{x^2+3}\Big)^{-4/5}\cdot\dfrac{2x(x^2+3)-2x(x^2+2)}{(x^2+3)^2}=\dfrac15\Big(\dfrac{x^2+2}{x^2+3}\Big)^{-4/5}\dfrac{2x}{(x^2+3)^2}$, the same after writing $(\cdot)^{-4/5}=(\cdot)^{1/5}\cdot\frac{x^2+3}{x^2+2}$.\qed
+\end{bookex}
+
+\begin{bookex}{405}
+Find $f'$ for (a) $f:x\mapsto a^{\sin(bx)}$ ($a>0$, $b\ne0$); (b) $f:x\mapsto\big(\log(4x+3)\big)^{2x}$.
+\solution
+(a) $\log f=\sin(bx)\log a$, so $f'=f\cdot b\cos(bx)\log a=b\log a\cos(bx)\,a^{\sin(bx)}$.\\
+(b) $\log f=2x\log\big(\log(4x+3)\big)$. Product and chain rule: $(\log f)'=2\log\big(\log(4x+3)\big)+2x\cdot\dfrac1{\log(4x+3)}\cdot\dfrac4{4x+3}$, so
+\[
+f'(x)=\big(\log(4x+3)\big)^{2x}\Big(2\log\big(\log(4x+3)\big)+\frac{8x}{(4x+3)\log(4x+3)}\Big).
+\]\qed
+\end{bookex}
+
+\begin{bookex}{407}
+Find $f'(0)$ if $f(x)=(1-x)(1-2x)^2(1-3x)^3(1-4x)^4(1-5x)^5$.
+\solution
+$\log f=\sum_{k=1}^5k\log(1-kx)$, so $\dfrac{f'}f=\sum_{k=1}^5\dfrac{-k^2}{1-kx}$. At $x=0$: $f(0)=1$ and $f'(0)=-(1+4+9+16+25)=-55$. (Expanding the product would be madness.)\qed
+\end{bookex}
+
+\begin{trybox}[{406, 408}]
+\textbf{406} Differentiate $x^{(e^x)}$ and $e^{(x^e)}$.\quad \textbf{408} What do the examples have in common that makes logarithmic differentiation work so well, and how would you do them without it?
+\end{trybox}
+
+\hsection{Circle functions: arcsin, arccos, arctan}
+\begin{key}[{Tabel 4.1 \textperiodcentered\ inverse trigonometric functions}]
+$\sin,\cos,\tan$ are periodic, hence not bijective; restrict the domain to make them bijective and invert:
+\begin{center}\small
+\begin{tabular}{l|c|l|c}
+function & restricted domain & inverse & domain of the inverse\\\hline
+$\sin$ & $[-\frac\pi2,\frac\pi2]$ & $\arcsin$ & $[-1,1]$, values in $[-\frac\pi2,\frac\pi2]$\\
+$\cos$ & $[0,\pi]$ & $\arccos$ & $[-1,1]$, values in $[0,\pi]$\\
+$\tan$ & $(-\frac\pi2,\frac\pi2)$ & $\arctan$ & $\R$, values in $(-\frac\pi2,\frac\pi2)$
+\end{tabular}
+\end{center}
+Graphs: mirror the restricted graph in the line $y=x$. The American notation $\sin^{-1}$ is avoided (confusion with $1/\sin$). \textbf{Derivatives} (from $\sin(\arcsin x)=x$ by the chain rule): $\arcsin'x=\dfrac1{\sqrt{1-x^2}}$, $\arccos'x=\dfrac{-1}{\sqrt{1-x^2}}$, $\arctan'x=\dfrac1{1+x^2}$ (Oefening 412).
+\end{key}
+\begin{strategy}[{Oefeningen 410, 411 \textperiodcentered\ simplifying}]
+$\arcsin(\sin\alpha)=\alpha$ \emph{only} for $\alpha\in[-\frac\pi2,\frac\pi2]$; otherwise first rewrite $\sin\alpha$ as the sine of an angle in that interval using the unit circle. For $\sin(\arccos x)$ and the like, draw a right triangle with hypotenuse $1$ and an angle $\varphi=\arccos x$: adjacent side $x$, opposite side $\sqrt{1-x^2}$; for $\arctan x$ take legs $1$ and $x$, hypotenuse $\sqrt{1+x^2}$. Then check the sign for negative $x$.
+\end{strategy}
+
+\begin{bookex}{410}
+(a) Why is $\arcsin(\sin\alpha)=\alpha$ for $-\frac\pi2\le\alpha\le\frac\pi2$? (b) Simplify $\arcsin(\sin(\pi+\alpha))$ for such $\alpha$. (c) Largest interval $I$ on which $\arccos(\cos\beta)=\beta$. (d) Simplify $\arccos(\cos(\zeta-\pi))$ for $0\le\zeta\le\pi$. (e) Simplify $\arctan(-\tan(\frac\pi2+\eta))$ for $\frac\pi2\le\eta\le\pi$. (f) An angle $\lambda\in[-\pi,\pi]$ with $\tan\lambda=-\frac13\sqrt3$ but $\arctan(\tan\lambda)\ne\lambda$.
+\solution
+(a) On $[-\frac\pi2,\frac\pi2]$ the sine is bijective and $\arcsin$ is defined as its inverse there, so $\arcsin$ undoes $\sin$: $\arcsin(\sin\alpha)=\alpha$.\\
+(b) The point at angle $\pi+\alpha$ is the point at angle $\alpha$ rotated by a half turn, so its height is $\sin(\pi+\alpha)=-\sin\alpha=\sin(-\alpha)$. Since $-\alpha\in[-\frac\pi2,\frac\pi2]$, $\arcsin$ returns $-\alpha$: $\arcsin(\sin(\pi+\alpha))=-\alpha$.\\
+(c) $I=[0,\pi]$, the restricted domain of $\cos$ (for $\beta$ outside it, $\arccos(\cos\beta)$ is the angle in $[0,\pi]$ with the same cosine, not $\beta$).\\
+(d) $\cos(\zeta-\pi)=-\cos\zeta=\cos(\pi-\zeta)$ (reflection in the $y$-axis), and $\pi-\zeta\in[0,\pi]$. So $\arccos(\cos(\zeta-\pi))=\pi-\zeta$.\\
+(e) $-\tan(\frac\pi2+\eta)=\tan(-\frac\pi2-\eta)=\tan(\frac\pi2-\eta)$ ($\tan$ is odd and has period $\pi$). For $\frac\pi2\le\eta<\pi$, $\frac\pi2-\eta\in(-\frac\pi2,0]$, inside the restricted domain, so the expression equals $\frac\pi2-\eta$. (At $\eta=\pi$, $\tan\frac{3\pi}2$ is undefined.)\\
+(f) $\tan\lambda=-\frac13\sqrt3$ for $\lambda=-\frac\pi6+k\pi$. In $[-\pi,\pi]$: $\lambda=-\frac\pi6$ (then $\arctan(\tan\lambda)=\lambda$) or $\lambda=\frac{5\pi}6$, for which $\arctan(\tan\frac{5\pi}6)=\arctan(-\frac13\sqrt3)=-\frac\pi6\ne\frac{5\pi}6$. So $\lambda=\frac{5\pi}6$.\qed
+\end{bookex}
+
+\begin{bookex}{411}
+(a) With $\arccos x=\varphi$ and hypotenuse $1$, express the legs in $x$. (b) Simplify $\sin(\arccos x)$. (c) Check the simplification for obtuse $\varphi$ ($x<0$). (d) Simplify $\cos(\arcsin x)$; what changes, and does it hold for $x<0$? (e) Simplify $\cos(\arctan x)$. (f) Simplify $\tan(\arccos x)$ and check for $x<0$.
+\solution
+(a) $\cos\varphi=x$, so the adjacent leg is $x$ and the opposite leg is $\sqrt{1-x^2}$ (Pythagoras).\\
+(b) $\sin(\arccos x)=\sin\varphi=\sqrt{1-x^2}$.\\
+(c) For $\frac\pi2<\varphi<\pi$, $x=\cos\varphi<0$; the triangle in the right figure has adjacent leg $|x|=-x$, but its height is still $\sqrt{1-x^2}$, and $\sin\varphi>0$ for $\varphi\in[0,\pi]$. So $\sin(\arccos x)=\sqrt{1-x^2}$ for all $x\in[-1,1]$.\\
+(d) Now $\varphi=\arcsin x$: opposite leg $x$, adjacent leg $\sqrt{1-x^2}$: $\cos(\arcsin x)=\sqrt{1-x^2}$. For $x<0$, $\varphi\in[-\frac\pi2,0)$ and $\cos\varphi\ge0$, so the positive root is right.\\
+(e) $\varphi=\arctan x$: take the adjacent leg $1$ and the opposite leg $x$; hypotenuse $\sqrt{1+x^2}$; $\cos(\arctan x)=\dfrac1{\sqrt{1+x^2}}$ (positive, as $\varphi\in(-\frac\pi2,\frac\pi2)$).\\
+(f) $\tan(\arccos x)=\dfrac{\sin\varphi}{\cos\varphi}=\dfrac{\sqrt{1-x^2}}x$ ($x\ne0$). For $x<0$, $\varphi$ is obtuse and $\tan\varphi<0$; the formula is negative too. \checkmark\qed
+\end{bookex}
+
+\begin{bookex}{412}
+Show in the same way that $\arccos'x=\dfrac{-1}{\sqrt{1-x^2}}$ and $\arctan'x=\dfrac1{1+x^2}$.
+\solution
+Differentiate $\cos(\arccos x)=x$: $-\sin(\arccos x)\cdot\arccos'x=1$, so $\arccos'x=\dfrac{-1}{\sin(\arccos x)}=\dfrac{-1}{\sqrt{1-x^2}}$ by 411(b).\\
+Differentiate $\tan(\arctan x)=x$ with $\tan'=1+\tan^2$: $\big(1+\tan^2(\arctan x)\big)\arctan'x=1$, i.e.\ $(1+x^2)\arctan'x=1$, so $\arctan'x=\dfrac1{1+x^2}$.\qed
+\end{bookex}
+
+\begin{trybox}[{409, 413, 414 (Extra)}]
+\textbf{409} Fill in Tabel 4.2 ($\arcsin t$, $\arccos t$, $\arctan t$ for the standard values $t$); mark ``not nice'' versus ``not defined''.\quad \textbf{413} Check that the derivatives match the shapes of the graphs.\quad \textbf{414 (Extra)} Locate $\sec t$, $\csc t$, $\cot t$ in the unit circle.
+\end{trybox}
+
+\hsection{Hyperbolic functions}
+\begin{key}[{\S4.4}]
+$\sinh t=\dfrac{e^t-e^{-t}}2$, $\cosh t=\dfrac{e^t+e^{-t}}2$. Properties to \emph{derive}, not memorise: $\sinh$ is odd with only zero $0$, $\cosh$ is even and $\ge1$; $\sinh'=\cosh$, $\cosh'=\sinh$; $\cosh^2t-\sinh^2t=1$ (Oefeningen 415--418). $\sinh$ is bijective $\R\to\R$; its inverse $\operatorname{arsinh}x=\log\big(x+\sqrt{x^2+1}\big)$ has derivative $\dfrac1{\sqrt{x^2+1}}$ (Oefeningen 419, 420; compare $\arcsin'$). Chapter 7 has the same for $\cosh$ and $\tanh$.
+\end{key}
+
+\begin{bookex}{419}
+Let $\operatorname{arsinh}x=t$. (a) Check $x=\frac12(e^t-e^{-t})$. (b) Substitute $e^t=u$ and reduce to an expression in $x$ and $u$. (c) Solve the resulting quadratic equation for $u$. (d) Conclude $\operatorname{arsinh}x=\log(x+\sqrt{x^2+1})$ and explain why $\log(x-\sqrt{x^2+1})$ is not an option.
+\solution
+(a) $t=\operatorname{arsinh}x$ means $x=\sinh t=\frac12(e^t-e^{-t})$.\quad (b) With $u=e^t$ ($u>0$) and $e^{-t}=\frac1u$: $x=\frac12\big(u-\frac1u\big)$.\\
+(c) Multiply by $2u$: $2xu=u^2-1$, i.e.\ $u^2-2xu-1=0$, so $u=\dfrac{2x\pm\sqrt{4x^2+4}}2=x\pm\sqrt{x^2+1}$.\\
+(d) $u=e^t$ must be positive. Since $\sqrt{x^2+1}>|x|$, the root $x-\sqrt{x^2+1}$ is negative for every $x$ and $\log$ of it does not exist; the other root $x+\sqrt{x^2+1}$ is positive. Hence $t=\log\big(x+\sqrt{x^2+1}\big)$.\qed
+\end{bookex}
+
+\begin{bookex}{420}
+Differentiate the expression found in 419; the result should resemble $\arcsin'$.
+\solution
+Chain rule with $\big(\sqrt{x^2+1}\big)'=\dfrac{x}{\sqrt{x^2+1}}$:
+\[
+\operatorname{arsinh}'x=\frac{1+\frac{x}{\sqrt{x^2+1}}}{x+\sqrt{x^2+1}}=\frac{\frac{\sqrt{x^2+1}+x}{\sqrt{x^2+1}}}{x+\sqrt{x^2+1}}=\frac1{\sqrt{x^2+1}}.
+\]
+Compare $\arcsin'x=\dfrac1{\sqrt{1-x^2}}$: only the sign inside the root differs.\qed
+\end{bookex}
+
+\begin{trybox}[{415, 416, 417, 418}]
+\textbf{415} Even/odd and zeros of $\sinh$, $\cosh$.\quad \textbf{416} Sketch $e^x$, $e^{-x}$, $\sinh x$, $\cosh x$ in one figure.\quad \textbf{417} Derivatives of $\sinh$, $\cosh$; compare with $\sin$, $\cos$.\quad \textbf{418} $\cosh t-\sinh t$, $\cosh t+\sinh t$, and hence $\cosh^2t-\sinh^2t=1$.
+\end{trybox}
+
+\begin{warn}
+\begin{itemize}
+\item $\arcsin(\sin\alpha)=\alpha$ only on $[-\frac\pi2,\frac\pi2]$, $\arccos(\cos\beta)=\beta$ only on $[0,\pi]$, $\arctan(\tan\lambda)=\lambda$ only on $(-\frac\pi2,\frac\pi2)$. Draw the circle.
+\item $\arcsin$ and $\arccos$ take only $t\in[-1,1]$; $\arctan(\frac12)$ exists but has no nice value.
+\item Logarithmic differentiation needs $f>0$ (or use $\log|f|$); the final answer must be multiplied back by $f$.
+\end{itemize}
+\end{warn}

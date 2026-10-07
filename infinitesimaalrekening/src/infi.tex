@@ -1,0 +1,33 @@
+\documentclass[11pt,a4paper,openany]{book}
+\usepackage[a4paper,margin=2.1cm,top=2.5cm,bottom=2.3cm,headheight=22pt]{geometry}
+\usepackage{haese}
+\renewcommand{\guidename}{Infi workbook Ch.\,0--7}
+\renewcommand{\coursename}{Infinitesimaalrekening}
+\renewenvironment{bookex}[2][from the dictaat]{\begin{bookexbox}[{#1}]{#2}}{\end{bookexbox}}
+\hypersetup{pdftitle={Infinitesimaalrekening - Workbook Ch. 0-7},pdfauthor={Workbook}}
+\begin{document}
+\input{ifront}
+\clearpage
+\thispagestyle{plain}
+{\sffamily\bfseries\Large\color{hblue}Contents}\par\vspace{4pt}
+\makeatletter\@starttoc{toc}\makeatother
+\input{i0}
+\input{i1}
+\input{i2}
+\input{i3}
+\input{i4}
+\input{i5}
+\input{i6}
+\input{i7}
+\renewcommand{\chapterprefix}{Appendix}\renewcommand{\thechapter}{S}
+\chapter{Solutions to the NOW YOU exercises}
+\chaptercontents{A & Chapter 0 \\ B & Chapter 1 \\ C & Chapter 2 \\ D & Chapter 3 \\ E & Chapter 4 \\ F & Chapter 5 \\ G & Chapter 6 \\ H & Chapter 7}{Every Oefening of Hoofdstuk 0--7 that is not worked in the main text is solved here, in the order of the dictaat. Compare line by line, and reflect: could you have seen the answer coming? Would another approach work?}
+\input{isol0}
+\input{isol1}
+\input{isol2}
+\input{isol3}
+\input{isol4}
+\input{isol5}
+\input{isol6}
+\input{isol7}
+\end{document}

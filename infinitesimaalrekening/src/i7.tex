@@ -1,0 +1,152 @@
+\chapter{More exercises}
+\chaptercontents{A & Mixed exercises (701--724) \\ B & (Extra) Function investigation (\S7.1)}%
+{Exercises 701--730 (all worked or solved).\\ The dictaat: ``use them as extra practice, exam preparation, or for fun''. Each one combines techniques from several chapters; the first question to ask is \emph{which} chapter it belongs to.}
+
+\hsection{Mixed exercises on Chapters 0--6}
+
+\begin{bookex}{701}
+$f$ differentiable with inverse $f_{\mathrm{inv}}$, so $f(f_{\mathrm{inv}}(x))=x$. (a) Differentiate both sides and show $f_{\mathrm{inv}}'(x)=\dfrac1{f'(f_{\mathrm{inv}}(x))}$. (b) For $f(x)=x^3+x$ find $f_{\mathrm{inv}}'(-10)$.
+\solution
+(a) Chain rule: $f'(f_{\mathrm{inv}}(x))\cdot f_{\mathrm{inv}}'(x)=1$, so $f_{\mathrm{inv}}'(x)=\dfrac1{f'(f_{\mathrm{inv}}(x))}$ (where $f'\ne0$).\\
+(b) $f_{\mathrm{inv}}(-10)$ is the $x$ with $x^3+x=-10$: $x=-2$ ($-8-2=-10$; $f$ is increasing, so it is the only one). $f'(x)=3x^2+1$, $f'(-2)=13$, so $f_{\mathrm{inv}}'(-10)=\dfrac1{13}$. (No formula for $f_{\mathrm{inv}}$ is needed.)\qed
+\end{bookex}
+
+\begin{bookex}{702}
+Show with sum and double-angle formulas that $\tan\big(\frac\pi4+\frac\varphi2\big)=\dfrac1{\cos\varphi}+\tan\varphi$.
+\solution
+Right side: $\dfrac{1+\sin\varphi}{\cos\varphi}$. With half angles, $1+\sin\varphi=\cos^2\frac\varphi2+\sin^2\frac\varphi2+2\sin\frac\varphi2\cos\frac\varphi2=\big(\cos\frac\varphi2+\sin\frac\varphi2\big)^2$ and $\cos\varphi=\cos^2\frac\varphi2-\sin^2\frac\varphi2=\big(\cos\frac\varphi2-\sin\frac\varphi2\big)\big(\cos\frac\varphi2+\sin\frac\varphi2\big)$. Hence
+\begin{align*}
+\frac{1+\sin\varphi}{\cos\varphi}&=\frac{\cos\frac\varphi2+\sin\frac\varphi2}{\cos\frac\varphi2-\sin\frac\varphi2}=\frac{1+\tan\frac\varphi2}{1-\tan\frac\varphi2}\\
+&=\frac{\tan\frac\pi4+\tan\frac\varphi2}{1-\tan\frac\pi4\tan\frac\varphi2}=\tan\Big(\frac\pi4+\frac\varphi2\Big)
+\end{align*}
+by the sum formula for $\tan$ (Oefening 26c) with $\tan\frac\pi4=1$.\qed
+\end{bookex}
+
+\begin{bookex}{705}
+Second derivative of $\sqrt{\dfrac{1+x}{1-x}}$, simplified.
+\solution
+Logarithmic differentiation: $\log y=\frac12\big(\log(1+x)-\log(1-x)\big)$, so $\dfrac{y'}y=\dfrac12\Big(\dfrac1{1+x}+\dfrac1{1-x}\Big)=\dfrac1{1-x^2}$ and $y'=\dfrac{(1+x)^{1/2}}{(1-x)^{1/2}(1-x)(1+x)}=(1+x)^{-1/2}(1-x)^{-3/2}$. Then
+\begin{align*}
+y''&=-\tfrac12(1+x)^{-3/2}(1-x)^{-3/2}+\tfrac32(1+x)^{-1/2}(1-x)^{-5/2}\\
+&=(1+x)^{-3/2}(1-x)^{-5/2}\big(-\tfrac12(1-x)+\tfrac32(1+x)\big)=\frac{1+2x}{(1+x)^{3/2}(1-x)^{5/2}}.
+\end{align*}\qed
+\end{bookex}
+
+\begin{bookex}{706}
+Find all $a,b$ for which $f(x)=ax^2+b$ ($x<1$), $f(x)=\dfrac1{a+bx}$ ($x\ge1$) is differentiable.
+\solution
+Away from $x=1$ both pieces are differentiable (provided $a+bx\ne0$ for $x\ge1$). At $x=1$ we need continuity and equal one-sided derivatives: $a+b=\dfrac1{a+b}$, so $(a+b)^2=1$; and $2a=\dfrac{-b}{(a+b)^2}=-b$. So $b=-2a$ and $a+b=-a=\pm1$: $(a,b)=(-1,2)$ or $(1,-2)$. Check $(1,-2)$: $f(1^-)=1-2=-1$, $f(1)=\frac1{1-2}=-1$; slopes $2a=2$ and $\frac{-b}{(a+b)^2}=2$; and $a+bx=1-2x\ne0$ for $x\ge1$. Similarly for $(-1,2)$ ($-1+2x\ne0$ for $x\ge1$). Two solutions.\qed
+\end{bookex}
+
+\begin{bookex}{710}
+$f(x)=x\arctan(2x^3)$. Find the coefficient $c_{10}$ of $x^{10}$ in its Taylor approximation at $0$.
+\solution
+$\arctan u=u-\frac13u^3+\frac15u^5-\dots$ (Oefening 709). With $u=2x^3$: $\arctan(2x^3)=2x^3-\frac83x^9+\frac{32}5x^{15}-\dots$, so $f(x)=2x^4-\frac83x^{10}+\dots$ and $c_{10}=-\dfrac83$. (The next term is $x^{16}$.)\qed
+\end{bookex}
+
+\begin{bookex}{713}
+Determine $\lim_{x\to\frac12}\dfrac{\arcsin x-\frac\pi6}{x-\frac12}$.
+\solution
+Since $\arcsin\frac12=\frac\pi6$, this is $\dfrac{\arcsin x-\arcsin\frac12}{x-\frac12}$ with $x\to\frac12$: the derivative of $\arcsin$ at $\frac12$ (\S2.3.1). $\arcsin'x=\dfrac1{\sqrt{1-x^2}}$, so the limit is $\dfrac1{\sqrt{1-\frac14}}=\dfrac2{\sqrt3}=\dfrac23\sqrt3$. (l'H\^opital gives the same in one step.)\qed
+\end{bookex}
+
+\begin{bookex}{718}
+Solve $z'(t)+z(t)=\sin t$ with $z(\frac\pi4)=1$.
+\solution
+$z_h=Ce^{-t}$. Guess $z_p=A\sin t+B\cos t$: $z_p'+z_p=(A\cos t-B\sin t)+(A\sin t+B\cos t)=(A-B)\sin t+(A+B)\cos t=\sin t$ gives $A-B=1$, $A+B=0$: $A=\frac12$, $B=-\frac12$. General solution $z=Ce^{-t}+\frac12(\sin t-\cos t)$. At $t=\frac\pi4$: $\sin\frac\pi4=\cos\frac\pi4$, so $z(\frac\pi4)=Ce^{-\pi/4}=1$, $C=e^{\pi/4}$. Hence $z(t)=e^{\pi/4-t}+\frac12(\sin t-\cos t)$.\qed
+\end{bookex}
+
+\begin{bookex}{719}
+Primitives of: (a) $\arcsin(2x)$; (b) $\dfrac{2x+1}{x^4+2x^3+x^2}$; (c) $x\cos(3x)$; (d) $\dfrac{xe^{2x}}{(1+e^{2x})^2}$.
+\solution
+(a) Parts with $f'=1$: $x\arcsin(2x)-\int\dfrac{2x}{\sqrt{1-4x^2}}dx$; with $u=1-4x^2$, $du=-8x\,dx$ the last integral is $-\frac14\int u^{-1/2}du=-\frac12\sqrt{1-4x^2}$. So $x\arcsin(2x)+\frac12\sqrt{1-4x^2}+C$.\\
+(b) $x^4+2x^3+x^2=(x^2+x)^2$ and $2x+1=(x^2+x)'$: $u=x^2+x$ gives $\int\dfrac{du}{u^2}=-\dfrac1u=-\dfrac1{x^2+x}+C$.\\
+(c) Parts with $f'=\cos3x$, $f=\frac13\sin3x$: $\frac13x\sin3x-\frac13\int\sin3x\,dx=\frac13x\sin3x+\frac19\cos3x+C$.\\
+(d) Parts with $f'=\dfrac{e^{2x}}{(1+e^{2x})^2}$, whose primitive is $f=-\dfrac1{2(1+e^{2x})}$ ($u=1+e^{2x}$), and $g=x$: $-\dfrac x{2(1+e^{2x})}+\dfrac12\int\dfrac{dx}{1+e^{2x}}$. And $\int\dfrac{dx}{1+e^{2x}}=\int\dfrac{e^{-2x}}{e^{-2x}+1}dx=-\dfrac12\log(1+e^{-2x})$ (as in 631b). Result: $-\dfrac x{2(1+e^{2x})}-\dfrac14\log\big(1+e^{-2x}\big)+C$, or equivalently $\dfrac x2-\dfrac x{2(1+e^{2x})}-\dfrac14\log(1+e^{2x})+C$.\qed
+\end{bookex}
+
+\begin{bookex}{720}
+Determine (or show divergence): (a) $\int_0^\pi\cos t\sqrt{1+\cos^2t}\,dt$; (b) $\int_0^1\dfrac{\log(1+x)}{\sqrt x}dx$.
+\solution
+(a) Write $\cos^2t=1-\sin^2t$ and substitute $u=\sin t$, $du=\cos t\,dt$: the limits become $u(0)=0$ and $u(\pi)=0$, so the integral is $\int_0^0\sqrt{2-u^2}\,du=0$. (Symmetry: the integrand at $\pi-t$ is the negative of that at $t$.)\\
+(b) Improper at $0$ (the integrand $\sim\frac x{\sqrt x}=\sqrt x$ there, so it is actually bounded: convergent). $x=u^2$, $dx=2u\,du$: $\int_0^12\log(1+u^2)\,du$. Parts: $\big[2u\log(1+u^2)\big]_0^1-\int_0^1\dfrac{4u^2}{1+u^2}du=2\log2-4\int_0^1\Big(1-\dfrac1{1+u^2}\Big)du=2\log2-4+\pi$.\qed
+\end{bookex}
+
+\begin{bookex}{722}
+Reaction kinetics: $\dfrac{dx}{dt}=k(a-x)(b-x)$, $x(0)=0$, $k>0$. Solve in the form $kt=\dots$ for (a) $a=b$; (b) $a\ne b$.
+\solution
+(a) $\dfrac{dx}{(a-x)^2}=k\,dt$ gives $\dfrac1{a-x}=kt+C$; $x(0)=0$: $C=\frac1a$. So $kt=\dfrac1{a-x}-\dfrac1a=\dfrac x{a(a-x)}$.\\
+(b) Partial fractions: $\dfrac1{(a-x)(b-x)}=\dfrac1{b-a}\Big(\dfrac1{a-x}-\dfrac1{b-x}\Big)$. Integrating (for $x<a,b$): $\dfrac1{b-a}\big(-\log(a-x)+\log(b-x)\big)=kt+C$, and $x(0)=0$ gives $C=\dfrac1{b-a}\log\dfrac ba$. Hence
+\[
+kt=\frac1{b-a}\Big(\log\frac{b-x}{a-x}-\log\frac ba\Big)=\frac1{b-a}\log\frac{a(b-x)}{b(a-x)} .
+\]\qed
+\end{bookex}
+
+\begin{bookex}{723}
+Determine $\int\tan(1-x)\tan(1+x)\,dx$. Hint: Oefening 26(c), creatively.
+\solution
+From $\tan(A+B)=\dfrac{\tan A+\tan B}{1-\tan A\tan B}$ we get $\tan A\tan B=1-\dfrac{\tan A+\tan B}{\tan(A+B)}$. With $A=1-x$, $B=1+x$, $A+B=2$:
+\[
+\tan(1-x)\tan(1+x)=1-\frac{\tan(1-x)+\tan(1+x)}{\tan2}.
+\]
+Now $\int\tan(1-x)\,dx=\log|\cos(1-x)|$ (chain rule, inner derivative $-1$) and $\int\tan(1+x)\,dx=-\log|\cos(1+x)|$. So
+\[
+\int\tan(1-x)\tan(1+x)\,dx=x-\frac1{\tan2}\Big(\log|\cos(1-x)|-\log|\cos(1+x)|\Big)+C .
+\]\qed
+\end{bookex}
+
+\begin{bookex}{724}
+Euler's beta function $B_{p,q}=\int_0^1x^{p-1}(1-x)^{q-1}dx$ ($p,q\ge1$ integers). Prove: (a) $B_{p,q}=B_{q,p}$; (b) $B_{p+1,q}+B_{p,q+1}=B_{p,q}$; (c) $B_{p+1,q}=\frac pqB_{p,q+1}$; (d) $B_{p+1,q}=\frac p{p+q}B_{p,q}$; (e) a closed formula.
+\solution
+(a) Substitute $x=1-u$ ($dx=-du$, limits swap): $\int_0^1(1-u)^{p-1}u^{q-1}du=B_{q,p}$.\\
+(b) $x^p(1-x)^{q-1}+x^{p-1}(1-x)^q=x^{p-1}(1-x)^{q-1}\big(x+(1-x)\big)=x^{p-1}(1-x)^{q-1}$; integrate.\\
+(c) Parts with $f'=(1-x)^{q-1}$, $f=-\frac1q(1-x)^q$, $g=x^p$: $B_{p+1,q}=\Big[-\frac1qx^p(1-x)^q\Big]_0^1+\frac pq\int_0^1x^{p-1}(1-x)^qdx=0+\frac pqB_{p,q+1}$.\\
+(d) By (c), $B_{p,q+1}=\frac qpB_{p+1,q}$; substitute in (b): $B_{p+1,q}\big(1+\frac qp\big)=B_{p,q}$, so $B_{p+1,q}=\frac p{p+q}B_{p,q}$.\\
+(e) $B_{1,q}=\int_0^1(1-x)^{q-1}dx=\frac1q$. Applying (d) repeatedly: $B_{p,q}=\frac{p-1}{p+q-1}\cdot\frac{p-2}{p+q-2}\cdots\frac1{q+1}\cdot B_{1,q}=\dfrac{(p-1)!\,(q-1)!}{(p+q-1)!}$. (Check: $B_{3,4}=\frac{2!\,3!}{6!}=\frac1{60}$.)\qed
+\end{bookex}
+
+\begin{trybox}[{703, 704, 707, 708, 709, 711, 712, 714, 715, 716, 717, 721}]
+\textbf{703} $\log(49+\sqrt{49^2-1})+\log(49-\sqrt{49^2-1})$.\ \textbf{704} $f(x)=\log\frac{e^x+1}{e^x-1}$: $f\circ f(x)=x$.\ \textbf{707} $\sin$ and $\arctan$ share a tangent line at $0$.\ \textbf{708} $P_4$ of $\frac{1+x^2}{1-x}$.\ \textbf{709} $P_5$ of $\arctan x$.\ \textbf{711} Build $\frac{-3}{x+2}$ and $\frac{1-x}{2+x}$ by composing $i(x)=\frac1x$, $p(x)=1+x$, $m(x)=-x$, $t(x)=3x$.\ \textbf{712} $\sin(\arctan x)$.\ \textbf{714--716} $\operatorname{arcosh}x=\log(x\pm\sqrt{x^2-1})$: derivation, the two branches as mirror images, the derivative in two ways.\ \textbf{717} $\tanh$ and $\operatorname{artanh}x=\frac12\log\frac{1+x}{1-x}$.\ \textbf{721} $\int_0^1\frac{1-x^n}{1-x}dx=\sum_{k=1}^n\frac1k$.
+\end{trybox}
+
+\hsection{(Extra) Function investigation}
+\begin{strategy}[{\S7.1 \textperiodcentered\ the six steps and the sign table}]
+(1) Domain. (2) Symmetry (even/odd) and a more convenient form of the formula. (3) Intercepts: $f(x)=0$ and $f(0)$. (4) Behaviour at the edges of the domain, including $\pm\infty$: limits, asymptotes (not every edge gives an asymptote). (5) $f'$: horizontal tangents where $f'=0$, corners where $f'$ does not exist; list the critical points. (6) $f''$: convex ($f''>0$) or concave, inflection points where $f''$ changes sign. Collect everything in a \emph{tekenschema} (sign table) for $f,f',f''$, check for contradictions (an alarm signal means an error somewhere), then sketch, smuggling in no features you did not find. Model (dictaat): $f(x)=\dfrac{2-x}{2+x}=\dfrac4{2+x}-1$: domain $x\ne-2$; zero $x=2$, $f(0)=1$; asymptotes $y=-1$ and $x=-2$; $f'=-\frac4{(2+x)^2}<0$ everywhere; $f''=\frac8{(2+x)^3}$: concave left of $-2$, convex right of it, no inflection point.
+\end{strategy}
+
+\begin{bookex}{726(d)}
+Investigate $f:x\mapsto\dfrac{(x+1)^3}{x^2}$ and sketch the graph.
+\solution
+(1) Domain $x\ne0$. (2) Division gives $f(x)=x+3+\dfrac3x+\dfrac1{x^2}$. (3) Zero: $x=-1$ (triple zero: the graph crosses the axis with a horizontal tangent); no $y$-intercept. (4) $x\to0^\pm$: numerator $\to1$, denominator $\to0^+$: $f\to+\infty$ on both sides, vertical asymptote $x=0$. $x\to\pm\infty$: $f(x)-(x+3)=\frac3x+\frac1{x^2}\to0$: oblique asymptote $y=x+3$, approached from above for $x>0$ and from below for $x<0$ (sign of $\frac3x$). (5) $f'(x)=\dfrac{(x+1)^2(x-2)}{x^3}$: zero at $x=-1$ and $x=2$. Sign: for $x<0$, $(x-2)/x^3>0$: increasing on $(-\infty,0)$ (with a flat point at $-1$); on $(0,2)$ negative: decreasing; on $(2,\infty)$ positive: increasing. Local minimum $f(2)=\frac{27}4$. (6) $f''(x)=\dfrac{6(x+1)}{x^4}$: negative for $x<-1$ (concave), positive for $x>-1$, $x\ne0$ (convex); inflection point $(-1,0)$.\\
+Sign table (values at $-\infty,-1,0^-,0^+,2,+\infty$): $f$: $-\infty,\ 0,\ +\infty\,|\,+\infty,\ \frac{27}4,\ +\infty$; $f'$: $+,\ 0,\ +\,|\,-,\ 0,\ +$; $f''$: $-,\ 0,\ +\,|\,+,\ +,\ +$.\\
+Sketch: from the lower left along $y=x+3$ (below it), concave, rising through $(-1,0)$ with a horizontal tangent, then convex and shooting up to $+\infty$ at $x=0^-$; on the right, coming down from $+\infty$ at $0^+$ to the minimum $(2,\frac{27}4)$, then rising along $y=x+3$ (above it).\qed
+\end{bookex}
+
+\begin{bookex}{727}
+Four students investigated the same differentiable $f$ on $(0,\infty)$ with the single zero $f(3)=0$, $\lim_{x\to\infty}f(x)=-2$ and exactly one inflection point; they claim (a) $\lim_{0^+}f=-\infty$, $f'(3)=0$, inflection at $6$; (b) $\lim_{0^+}f=-4$, $f'(3)>0$, inflection at $1$; (c) $\lim_{0^+}f=+4$, $f'(3)<0$, inflection at $3$; (d) $\lim_{0^+}f=+\infty$, $f'(3)<0$, inflection at $1$. Who can draw a consistent graph?
+\solution
+\emph{(b) impossible:} $f'(3)>0$ means $f$ goes from negative to positive at $3$; then $f>0$ just after $3$, but $f\to-2<0$, so $f$ would have to cross $0$ again, a second zero.\\
+\emph{(d) impossible:} $f$ decreases from $+\infty$ through $(3,0)$ to $-2$. On $(1,\infty)$ (after the only inflection point) $f$ would be either concave or convex. Concave and decreasing with $f'<0$ forces $f\to-\infty$ (the slope keeps getting more negative), contradicting the limit $-2$. So $f$ is convex on $(1,\infty)$ and concave on $(0,1)$; but a concave function on $(0,1)$ stays below its tangent lines, hence is bounded above near $0$, contradicting $f\to+\infty$. \\
+\emph{(a) consistent:} $f$ rises from $-\infty$ to a maximum $f(3)=0$ (touching the axis, $f'(3)=0$), concave there, then decreases to $-2$, which requires it to become convex eventually: one inflection point at some $x>3$, e.g.\ $6$. $f<0$ except at $3$: one zero. \checkmark\\
+\emph{(c) consistent:} $f$ decreases from $4$ through $(3,0)$ to $-2$ like a falling S-curve: concave on $(0,3)$, convex on $(3,\infty)$, inflection at $3$; the value at the inflection need not be the midpoint of $4$ and $-2$. \checkmark\qed
+\end{bookex}
+
+\begin{bookex}{728}
+Find all $x$ with $\dfrac1{1-x^2}>\dfrac1x$. Check carefully.
+\solution
+Domain: $x\ne0,\pm1$. Never multiply by $x$ or $1-x^2$ (unknown signs); bring everything to one side:
+\[
+\frac1{1-x^2}-\frac1x=\frac{x-(1-x^2)}{x(1-x^2)}=\frac{x^2+x-1}{x(1-x^2)}>0 .
+\]
+Zeros of the numerator: $x=\frac{-1\pm\sqrt5}2$, i.e.\ $\alpha\approx-1.618$ and $\beta\approx0.618$. Sign table with the points $\alpha,-1,0,\beta,1$: numerator $+$ on $(-\infty,\alpha)$ and $(\beta,\infty)$, $-$ between; denominator $x(1-x)(1+x)$: $+$ on $(-\infty,-1)$, $-$ on $(-1,0)$, $+$ on $(0,1)$, $-$ on $(1,\infty)$. Quotient positive on $(-\infty,\alpha)$, $(-1,0)$ and $(\beta,1)$. Answer: $x<\dfrac{-1-\sqrt5}2$ or $-1<x<0$ or $\dfrac{\sqrt5-1}2<x<1$. Check $x=-2$: $\frac1{-3}=-0.33>-0.5$ \checkmark; $x=-\frac12$: $\frac43>-2$ \checkmark; $x=\frac12$: $\frac43>2$ \texttimes; $x=0.8$: $\frac1{0.36}=2.8>1.25$ \checkmark; $x=2$: $-\frac13>\frac12$ \texttimes.\qed
+\end{bookex}
+
+\begin{bookex}{729}
+Prove $\log x\le x-1$ for all $x>0$.
+\solution
+Let $g(x)=x-1-\log x$ on $(0,\infty)$. $g(1)=0$ and $g'(x)=1-\frac1x$, negative on $(0,1)$ and positive on $(1,\infty)$: $g$ decreases to its minimum $g(1)=0$ and increases afterwards. So $g(x)\ge0$ with equality only at $x=1$: the graph of $g$ touches the $x$-axis at $1$ without crossing it, i.e.\ $\log x\le x-1$.\qed
+\end{bookex}
+
+\begin{trybox}[{725, 726(a),(b),(c),(e)--(j), 730}]
+\textbf{725} Investigate $\sqrt x$, $e^x$, $\log x$, $\sin x$, $\cos x$, $\tan x$.\quad \textbf{726} (a) $\sqrt{9-x^2}$; (b) $\frac x{\sqrt{1-x^2}}$; (c) $e^{1-x^2}$; (e) $\log\frac{2x}{(x-4)^2}$; (f) $(1+\frac1x)e^{-x}$; (g) $e^{-1/x}$; (h) $\log(x-\frac1x)$; (i) $e^{1-\frac1{1+x}}$; (j) $\arcsin(1-\sqrt x)$.\quad \textbf{730} Prove $\log x\le2(\sqrt x-1)$.
+\end{trybox}
