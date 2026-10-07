@@ -1,0 +1,334 @@
+\chapter{Logical structure}
+\chaptercontents{A & Propositional logic (\S1.1) \\ B & Variables and quantifiers (\S1.2) \\ C & Logical equivalence (\S1.3) \\ D & Chapter 1 exercises (1.E)}%
+{\fE\ 1.1: 21, 25, 32, 33, 38, 47, 56, 57 \textperiodcentered\ 1.2: 6, 15, 18, 39 \textperiodcentered\ 1.3: 5, 13, 14, 22, 27, 44ace \textperiodcentered\ 1.E: 18\\ \fR\ 1.1: 37, 43, 54, 55, 65, 66 \textperiodcentered\ 1.2: 21, 22, 28, 37ab \textperiodcentered\ 1.3: 32, 35 \textperiodcentered\ 1.E: 11, 28, 29, 30\\ Bonus: 1.2.14. \S1.1 is in \textbf{Quiz 1}.}
+
+The chapter's one idea: a proposition's \emph{logical structure} (which operators and quantifiers it is built from) tells you what to write. Each operator has \textbf{introduction rules} (how to prove a goal of that shape) and \textbf{elimination rules} (how to use an assumption of that shape); each rule is a \textbf{Strategy}.
+
+\hsection{Propositional logic}
+
+\begin{key}[{Example 1.1.1 \textperiodcentered\ assumptions and goals}]
+At every point of a proof you have a list of \term{assumptions} (what is known or supposed) and \term{goals} (what remains to be shown). Every sentence you write changes the lists: ``Suppose $P$'' adds $P$ to the assumptions; unfolding a definition (``$b=qc$ for some $q\in\Z$'') replaces an assumption by its definition and introduces a new variable; ``it suffices to show \dots'' replaces the goal. Keep both lists in your head (or on scrap paper) at all times.
+\end{key}
+
+\begin{key}[{Definitions 1.1.2--1.1.3}]
+A \term{propositional variable} ($p,q,r,s$) is a symbol representing a proposition. A \term{propositional formula} is a propositional variable, or is built from simpler formulae using \term{logical operators} ($\wedge,\vee,\Rightarrow,\neg,\Leftrightarrow$). Its truth value is determined by the truth values of its subformulae.
+\end{key}
+
+\hsub{Conjunction $\wedge$ (``and'')}
+\begin{key}[{Definition 1.1.4 \textperiodcentered\ rules for $\wedge$}]
+($\wedge$I) if $p$ and $q$ are true then $p\wedge q$ is true;\quad ($\wedge$E$_1$) if $p\wedge q$ is true then $p$ is true;\quad ($\wedge$E$_2$) if $p\wedge q$ is true then $q$ is true. Watch for hidden ``and''s: ``$7$ is a prime factor of $28$'' is ``$7$ is prime'' $\wedge$ ``$7$ divides $28$''.
+\end{key}
+\begin{strategy}[{Strategies 1.1.7 and 1.1.10}]
+\textbf{Proving $p\wedge q$:} prove $p$, then prove $q$ (two proofs tied together). \textbf{Assuming $p\wedge q$:} you may assume $p$ and assume $q$ separately.
+\end{strategy}
+Rules are written in natural-deduction style, premises above a line and conclusion below; stacking rules gives a \term{proof tree}, which is a plan for a proof (page 36).
+
+\begin{trybox}[{1.1.6, 1.1.13, 1.1.14 \fO}]
+\textbf{1.1.6} Express ``John is a mathematician who lives in Pittsburgh'' as $p\wedge q$.\quad \textbf{1.1.13} Given $(p\wedge q)\wedge r$, prove $q$ using Strategy 1.1.10.\quad \textbf{1.1.14} Proof tree for $(p\wedge q)\wedge(r\wedge s)$; apply it to ``$2$ is an even prime number and $3$ is an odd prime number''.
+\end{trybox}
+
+\hsub{Disjunction $\vee$ (``or'')}
+\begin{key}[{Definition 1.1.15 \textperiodcentered\ rules for $\vee$}]
+($\vee$I$_1$) if $p$ is true then $p\vee q$ is true;\quad ($\vee$I$_2$) if $q$ is true then $p\vee q$ is true;\quad ($\vee$E) if $p\vee q$ is true, and $r$ can be derived from $p$ and also from $q$, then $r$ is true. (``Or'' is inclusive.)
+\end{key}
+\begin{strategy}[{Strategies 1.1.16 and 1.1.19}]
+\textbf{Proving $p\vee q$:} it suffices to prove just one of $p$ or $q$. \textbf{Assuming $p\vee q$ (proof by cases):} to derive $r$, first derive $r$ from the temporary assumption $p$, then derive $r$ from the temporary assumption $q$. Write ``Case 1 \dots\ Case 2 \dots\ In both cases, $r$.''
+\end{strategy}
+The division theorem produces disjunctions to split on: $n=3k$ or $n=3k+1$ or $n=3k+2$ (Proposition 1.1.24: $n^2$ leaves remainder $0$ or $1$ on division by $3$).
+
+\begin{bookex}[essential]{1.1.21}
+Let $p,q,r$ be propositions and suppose $q\vee r$ is true. Prove that $(p\vee q)\vee(p\vee r)$ is true, using Strategies 1.1.19 and 1.1.16.
+\solution
+We split into cases on the assumption $q\vee r$ (Strategy 1.1.19).\\
+\emph{Case 1:} $q$ is true. Then $p\vee q$ is true by Strategy 1.1.16 (rule $\vee$I$_2$), and hence $(p\vee q)\vee(p\vee r)$ is true by Strategy 1.1.16 ($\vee$I$_1$).\\
+\emph{Case 2:} $r$ is true. Then $p\vee r$ is true ($\vee$I$_2$), and hence $(p\vee q)\vee(p\vee r)$ is true ($\vee$I$_2$).\\
+In both cases $(p\vee q)\vee(p\vee r)$ is true.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{1.1.25}
+Let $n$ be an integer. Prove that $n^2$ leaves a remainder of $0$, $1$ or $4$ when divided by $5$.
+\solution
+By the division theorem (Theorem 0.42), $n=5k+r$ for some $k\in\Z$ and $r\in\{0,1,2,3,4\}$. Then
+\[
+n^2=25k^2+10kr+r^2=5(5k^2+2kr)+r^2 .
+\]
+We split into cases on $r$. If $r=0$: $n^2=5(5k^2)$, remainder $0$. If $r=1$: $n^2=5(5k^2+2k)+1$, remainder $1$. If $r=2$: $n^2=5(5k^2+4k)+4$, remainder $4$. If $r=3$: $r^2=9=5+4$, so $n^2=5(5k^2+6k+1)+4$, remainder $4$. If $r=4$: $r^2=16=15+1$, so $n^2=5(5k^2+8k+3)+1$, remainder $1$.\\
+In all cases the number in brackets is an integer and the remainder is $0$, $1$ or $4$ (uniqueness in Theorem 0.42).\qed
+\end{bookex}
+
+\begin{trybox}[{1.1.23, 1.1.26 \fO}]
+\textbf{1.1.23} Let $n$ be $8$ or $9$. Prove that $n$ is even or a perfect square.\quad \textbf{1.1.26} Let $a,b\in\R$ with $a^2-4b\ne0$ and let $\alpha,\beta$ be the roots of $x^2+ax+b$. Prove there is $c\in\R$ with $\alpha-\beta=c$ or $\alpha-\beta=ci$.
+\end{trybox}
+
+\hsub{Implication $\Rightarrow$ (``if \dots\ then'')}
+\begin{key}[{Definition 1.1.27 \textperiodcentered\ rules for $\Rightarrow$}]
+($\Rightarrow$I) if $q$ can be derived from the assumption that $p$ is true, then $p\Rightarrow q$ is true;\quad ($\Rightarrow$E, \emph{modus ponens}) if $p\Rightarrow q$ and $p$ are true, then $q$ is true.
+\end{key}
+\begin{strategy}[{Strategies 1.1.28 and 1.1.34}]
+\textbf{Proving $p\Rightarrow q$:} assume $p$, derive $q$. First words: ``Suppose $p$.'' \textbf{Assuming $p\Rightarrow q$:} if you also have $p$, conclude $q$. Used to reduce a goal: if $p\Rightarrow q$ is known and $p$ is easy, prove $p$ instead of $q$ (Example 1.1.36).
+\end{strategy}
+\begin{result}[{Proposition 1.1.30}]
+Let $x,y\in\R$. If $x$ and $x+y$ are rational, then $y$ is rational. \emph{Proof:} suppose $x=\frac ab$, $x+y=\frac cd$; then $y=(x+y)-x=\frac{bc-ad}{bd}\in\Q$.
+\end{result}
+
+\begin{bookex}[essential]{1.1.32}
+Let $r$ and $s$ be propositions. Prove that $r\Rightarrow(s\Rightarrow s)$ is true, using the strategies for implications.
+\solution
+By Strategy 1.1.28 it suffices to assume $r$ and derive $s\Rightarrow s$. So assume $r$. To prove $s\Rightarrow s$, again by Strategy 1.1.28 it suffices to assume $s$ and derive $s$. So assume $s$. Then $s$ is true, since it is assumed. Hence $s\Rightarrow s$ is true, and therefore $r\Rightarrow(s\Rightarrow s)$ is true.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{1.1.33}
+Let $a,b,c$ be propositions. Prove that $(a\vee b)\Rightarrow\big(c\Rightarrow((c\wedge a)\vee b)\big)$ is true.
+\solution
+Assume $a\vee b$ (Strategy 1.1.28). We must derive $c\Rightarrow((c\wedge a)\vee b)$, so assume $c$ as well. Now split into cases on $a\vee b$ (Strategy 1.1.19).\\
+\emph{Case 1:} $a$ is true. Since $c$ and $a$ are both true, $c\wedge a$ is true (Strategy 1.1.7), and so $(c\wedge a)\vee b$ is true (Strategy 1.1.16).\\
+\emph{Case 2:} $b$ is true. Then $(c\wedge a)\vee b$ is true (Strategy 1.1.16).\\
+In both cases $(c\wedge a)\vee b$ holds. Hence $c\Rightarrow((c\wedge a)\vee b)$, and hence the whole implication, is true.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{1.1.37}
+Let $p,q,r$ be propositions. Prove that $(p\Rightarrow(q\Rightarrow r))\Rightarrow(q\Rightarrow(p\Rightarrow r))$ is true.
+\solution
+Assume $p\Rightarrow(q\Rightarrow r)$. To prove $q\Rightarrow(p\Rightarrow r)$, assume $q$; to prove $p\Rightarrow r$, assume $p$. By modus ponens (Strategy 1.1.34) applied to $p\Rightarrow(q\Rightarrow r)$ and $p$, we get $q\Rightarrow r$; by modus ponens again with $q$, we get $r$. Hence $p\Rightarrow r$, hence $q\Rightarrow(p\Rightarrow r)$, hence the whole formula.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{1.1.38}
+Let $p,q,r$ be propositions. Prove that $(p\Rightarrow p\wedge q)\Rightarrow((p\vee q)\Rightarrow q)$ is true.
+\solution
+Assume $p\Rightarrow(p\wedge q)$. To prove $(p\vee q)\Rightarrow q$, assume $p\vee q$ and split into cases.\\
+\emph{Case 1:} $p$ is true. By modus ponens, $p\wedge q$ is true, so $q$ is true by Strategy 1.1.10 ($\wedge$E$_2$).\\
+\emph{Case 2:} $q$ is true. Then $q$ is true.\\
+In both cases $q$ holds, so $(p\vee q)\Rightarrow q$ is true, and hence the whole formula is true.\qed
+\end{bookex}
+
+\begin{trybox}[{1.1.31 \fO}]
+\textbf{1.1.31} Let $p(x)$ be a polynomial over $\C$. Prove that if $\alpha$ is a root of $p(x)$ and $a\in\C$, then $\alpha$ is a root of $(x-a)p(x)$.
+\end{trybox}
+
+\hsub{Converse and biconditional $\Leftrightarrow$}
+\begin{key}[{Definitions 1.1.39 and 1.1.40}]
+The \term{converse} of $p\Rightarrow q$ is $q\Rightarrow p$. Ways of saying $p\Rightarrow q$: ``if $p$ then $q$'', ``$p$ only if $q$'', ``$p$ is sufficient for $q$''. Ways of saying $q\Rightarrow p$: ``$p$ if $q$'', ``$p$ is necessary for $q$''. \\
+$p\Leftrightarrow q$ means $(p\Rightarrow q)\wedge(q\Rightarrow p)$, read ``$p$ if and only if $q$''. So: \textbf{to prove $p\Leftrightarrow q$, prove both implications}, labelled ($\Rightarrow$) and ($\Leftarrow$); \textbf{to use $p\Leftrightarrow q$}, use either implication.
+\end{key}
+\begin{warn}[{Examples 1.1.44 and 1.1.45 \textperiodcentered\ solving an equation is a biconditional}]
+Rearranging an equation only proves ``if $x$ is a solution then $x=\dots$'' (it narrows the candidates). You must also check the converse by substituting back: for $x+\sqrt x=0$ the rearrangement gives $x=0$ or $x=1$, but $1$ is not a solution.
+\end{warn}
+\begin{key}[{Example 1.1.46 \textperiodcentered\ divisibility tests}]
+To prove ``$n$ is divisible by $8$ iff its last three digits form a number divisible by $8$'': write $n=n'+n''$ with $n'$ the last three digits and $n''=n-n'=1000\cdot(\dots)$, note $8$ divides $n''$, and use Exercise 0.40 in both directions ($n'=1\cdot n+(-1)\cdot n''$ and $n=1\cdot n'+1\cdot n''$).
+\end{key}
+
+\begin{bookex}[recommended]{1.1.43}
+Let $p$ and $q$ be propositions. Prove that $(p\Leftrightarrow q)\Leftrightarrow(q\Leftrightarrow p)$ is true.
+\solution
+By Definition 1.1.40 we prove both implications.\\
+($\Rightarrow$) Assume $p\Leftrightarrow q$, i.e.\ $(p\Rightarrow q)\wedge(q\Rightarrow p)$. By Strategy 1.1.10 we have $q\Rightarrow p$ and $p\Rightarrow q$, so by Strategy 1.1.7, $(q\Rightarrow p)\wedge(p\Rightarrow q)$ is true, which is $q\Leftrightarrow p$.\\
+($\Leftarrow$) Assume $q\Leftrightarrow p$, i.e.\ $(q\Rightarrow p)\wedge(p\Rightarrow q)$. The same two steps give $(p\Rightarrow q)\wedge(q\Rightarrow p)$, i.e.\ $p\Leftrightarrow q$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{1.1.47}
+Prove that a natural number $n$ is divisible by $3$ if and only if the sum of its base-10 digits is divisible by $3$.
+\solution
+Let $d_r\dots d_1d_0$ be the base-10 expansion of $n$, so $n=\sum_{i=0}^rd_i10^i$, and let $s=\sum_{i=0}^rd_i$ be the digit sum. Put $n''=n-s=\sum_{i=0}^rd_i(10^i-1)$.\\
+\emph{Claim: $3$ divides $n''$.} For each $i$, $10^i-1=(10-1)(10^{i-1}+10^{i-2}+\dots+1)=9m_i$ with $m_i\in\N$ (for $i=0$, $10^0-1=0=9\cdot0$), so $10^i-1=3\cdot(3m_i)$. Hence $n''=3\sum_id_i\cdot3m_i$ is divisible by $3$.\\
+($\Rightarrow$) Suppose $3$ divides $n$. Since $3$ divides $n''$, Exercise 0.40 gives that $3$ divides $1\cdot n+(-1)\cdot n''=n-n''=s$.\\
+($\Leftarrow$) Suppose $3$ divides $s$. Since $3$ divides $n''$, Exercise 0.40 gives that $3$ divides $1\cdot s+1\cdot n''=n$.\qed
+\end{bookex}
+
+\hsub{Negation $\neg$ (``not'') and contradiction $\bot$}
+\begin{key}[{Definitions 1.1.48 and 1.1.50}]
+A \term{contradiction} is a proposition known or assumed to be false; $\bot$ denotes an arbitrary one (e.g.\ $0=1$, $\sqrt2\in\Q$). Rules for $\neg$: ($\neg$I) if a contradiction can be derived from the assumption that $p$ is true, then $\neg p$ is true; ($\neg$E) if $\neg p$ and $p$ are both true, a contradiction may be derived.
+\end{key}
+\begin{strategy}[{Strategies 1.1.51 and 1.1.59 \textperiodcentered\ proof by contradiction}]
+\textbf{Proving $\neg p$:} assume $p$ and derive a contradiction. First words: ``Suppose $p$ (towards a contradiction).'' \textbf{Assuming $\neg p$:} any derivation of $p$ is a contradiction; this is how the contradiction is usually reached.\\
+Statements that are negations in disguise: ``$x$ is irrational'' ($=\neg(x\in\Q)$), ``$b$ does not divide $a$'', ``there is no \dots'', ``$X$ is empty''.
+\end{strategy}
+\begin{result}[{Propositions 1.1.53 and 1.1.58}]
+\textbf{1.1.53} If $r\in\Q$ and $a$ is irrational, then $r+a$ is irrational. \emph{Proof:} suppose $r+a\in\Q$; then $a=(r+a)-r\in\Q$ by Proposition 1.1.30, contradicting the assumption. \\
+\textbf{1.1.58} An integer $a$ is odd iff $a=2b+1$ for some $b\in\Z$. \emph{Proof:} ($\Rightarrow$) by the division theorem $a=2b$ or $a=2b+1$; the first contradicts ``odd''. ($\Leftarrow$) $a=2b+1$ leaves remainder $1$, and even numbers leave remainder $0$, so $a$ is not even.
+\end{result}
+
+\begin{bookex}[recommended]{1.1.54}
+Let $p$ and $q$ be propositions. Prove that $(p\Rightarrow\neg q)\Rightarrow(q\Rightarrow\neg p)$ is true.
+\solution
+Assume $p\Rightarrow\neg q$. To prove $q\Rightarrow\neg p$, assume $q$. To prove $\neg p$, we use Strategy 1.1.51: assume $p$ and derive a contradiction. By modus ponens from $p\Rightarrow\neg q$ and $p$ we obtain $\neg q$. But $q$ is also assumed, so by ($\neg$E) we have a contradiction. Hence $\neg p$ is true, so $q\Rightarrow\neg p$ is true, so the whole formula is true.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{1.1.55}
+Let $p$ and $q$ be propositions. Prove that $\neg p\Rightarrow(\neg q\Rightarrow\neg(p\vee q))$ is true.
+\solution
+Assume $\neg p$ and assume $\neg q$. To prove $\neg(p\vee q)$, assume $p\vee q$ and derive a contradiction, by cases. \emph{Case 1:} $p$. This contradicts $\neg p$. \emph{Case 2:} $q$. This contradicts $\neg q$. In both cases we have a contradiction, so $\neg(p\vee q)$ is true. Hence $\neg q\Rightarrow\neg(p\vee q)$, and hence the whole formula, is true.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{1.1.56}
+Let $x\in\R$. Prove by contradiction that if $x$ is irrational then $-x$ and $\frac1x$ are irrational.
+\solution
+Suppose $x$ is irrational. (Note $x\ne0$, since $0=\frac01$ is rational.)\\
+\emph{$-x$ is irrational.} Suppose, towards a contradiction, that $-x$ is rational, say $-x=\frac ab$ with $a,b\in\Z$, $b\ne0$. Then $x=\frac{-a}{b}$ with $-a\in\Z$, so $x$ is rational, contradicting the assumption. Hence $-x$ is irrational.\\
+\emph{$\frac1x$ is irrational.} Suppose $\frac1x=\frac ab$ with $a,b\in\Z$, $b\ne0$. Since $\frac1x\ne0$ we have $a\ne0$, and then $x=\frac ba$ with $b,a\in\Z$ and $a\ne0$, so $x$ is rational: contradiction. Hence $\frac1x$ is irrational.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{1.1.57}
+Prove by contradiction that there is no least positive real number: there is no positive real $a$ such that $a\le b$ for all positive real $b$.
+\solution
+Suppose, towards a contradiction, that $a$ is a positive real number such that $a\le b$ for every positive real number $b$. Then $b=\frac a2$ is a positive real number, so $a\le\frac a2$. Multiplying by $2$ gives $2a\le a$, hence $a\le0$, contradicting $a>0$. So no such $a$ exists.\qed
+\end{bookex}
+
+\hsub{Two logical axioms}
+\begin{result}[{Axioms 1.1.60 and 1.1.67}]
+\textbf{Law of excluded middle (LEM):} for every propositional formula $p$, the formula $p\vee(\neg p)$ is true. \textbf{Principle of explosion:} from a contradiction, any consequence may be derived.
+\end{result}
+\begin{strategy}[{Strategy 1.1.61 \textperiodcentered\ using LEM}]
+To prove $q$, you may split into the cases ``$p$ true'' and ``$p$ false'' for any proposition $p$ you like, and prove $q$ in each case. (Proposition 1.1.63: if $ab$ is even then $a$ or $b$ is even; split on ``$a$ even''.)
+\end{strategy}
+
+\begin{bookex}[recommended]{1.1.65}
+Let $p$ and $q$ be propositions. Prove that $(\neg q\Rightarrow\neg p)\Rightarrow(p\Rightarrow q)$ is true.
+\solution
+Assume $\neg q\Rightarrow\neg p$, and assume $p$; we must derive $q$. By the law of excluded middle, $q$ or $\neg q$.\\
+\emph{Case 1:} $q$ is true. Done.\\
+\emph{Case 2:} $\neg q$ is true. By modus ponens, $\neg p$ is true. Together with $p$ this is a contradiction ($\neg$E), from which $q$ follows by the principle of explosion.\\
+In both cases $q$ holds. Hence $p\Rightarrow q$, and hence the whole formula, is true.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{1.1.66}
+Let $a$ and $b$ be irrational. By considering $\sqrt2^{\sqrt2}$, prove that it is possible that $a^b$ be rational.
+\solution
+By the law of excluded middle, $\sqrt2^{\sqrt2}$ is rational or it is not.\\
+\emph{Case 1:} $\sqrt2^{\sqrt2}$ is rational. Take $a=b=\sqrt2$, both irrational (Assumption 0.49); then $a^b=\sqrt2^{\sqrt2}$ is rational.\\
+\emph{Case 2:} $\sqrt2^{\sqrt2}$ is irrational. Take $a=\sqrt2^{\sqrt2}$ and $b=\sqrt2$, both irrational. Then $a^b=\big(\sqrt2^{\sqrt2}\big)^{\sqrt2}=\sqrt2^{\sqrt2\cdot\sqrt2}=\sqrt2^{\,2}=2$, which is rational.\\
+In both cases we found irrational $a,b$ with $a^b$ rational.\qed\ (We never learn which case holds: a \emph{non-constructive} proof, which is why LEM is called non-constructive.)
+\end{bookex}
+
+\begin{trybox}[{1.1.64 \fO}]
+\textbf{1.1.64} In the proof of Proposition 1.1.63, where is LEM used, where is contradiction used, and what is the contradiction? Prove the proposition again twice, once without LEM and once without contradiction.
+\end{trybox}
+
+\begin{warn}
+\begin{itemize}
+\item Keep the direction straight: to prove $p\Rightarrow q$ assume $p$; proving $q\Rightarrow p$ instead (the converse) proves a different proposition (1.E.12).
+\item When you use the law of excluded middle or proof by cases, the cases must be exhaustive and \emph{every} case must reach the goal.
+\item In a proof by contradiction, say what the contradiction is: ``this contradicts the assumption that $x$ is irrational''.
+\end{itemize}
+\end{warn}
+
+\hsection{Variables and quantifiers}
+
+\begin{key}[{Definitions 1.2.1, 1.2.2, 1.2.4}]
+In a statement, a variable $x$ (understood to range over a set $X$) is \term{free} if it makes sense to substitute elements of $X$ for it, and \term{bound} otherwise (``there exist integers $a,b$ with $x=a^2+b^2$'': $x$ free, $a,b$ bound). A \term{predicate} $p(x_1,\dots,x_n)$ is a symbol with a list of free variables, each with a \term{domain of discourse}; it becomes a proposition when values are substituted. A \term{logical formula} is built from predicates with logical operators and the \term{quantifiers} $\forall$ (``for all $x\in X$''), $\exists$ (``there exists $x\in X$ such that''), $\exists!$ (``there is exactly one''). Quantifiers go \emph{in front}: ``$n=2k$ for some $k\in\Z$'' is written $\exists k\in\Z,\ n=2k$.
+\end{key}
+
+\begin{key}[{Translating (Examples 1.2.5, 1.2.7)}]
+English $\to$ symbols: introduce a variable for each noun phrase, unfold definitions (``$n$ is even'' is $\exists k\in\Z,\ n=2k$), and restrict with an implication inside $\forall$ (``every positive real has a square root'': $\forall a\in\R,\ (a>0\Rightarrow\exists b\in\R,\ b^2=a)$). Symbols $\to$ English: read symbol by symbol, then remove bound variables by naming the concept they encode (``$\exists b\in\R,\ a=b^2$'' is ``$a$ has a real square root'').
+\end{key}
+
+\begin{bookex}[essential]{1.2.6}
+Find logical formulae representing: (a) there is an integer that is divisible by every integer; (b) there is no greatest odd integer; (c) between any two distinct rational numbers is a third distinct rational number; (d) if an integer has a rational square root, then that root is an integer.
+\solution
+(a) $\exists n\in\Z,\ \forall m\in\Z,\ \exists q\in\Z,\ n=qm$. \reason{$m$ divides $n$ unfolded}\\
+(b) $\neg\exists n\in\Z,\ \big([\exists k\in\Z,\ n=2k+1]\wedge\forall m\in\Z,\ ([\exists\ell\in\Z,\ m=2\ell+1]\Rightarrow m\le n)\big)$; equivalently $\forall n\in\Z,\ \big(n\text{ odd}\Rightarrow\exists m\in\Z,\ (m\text{ odd}\wedge m>n)\big)$.\\
+(c) $\forall a\in\Q,\ \forall b\in\Q,\ \big(a<b\Rightarrow\exists c\in\Q,\ (a<c\wedge c<b)\big)$.\\
+(d) $\forall n\in\Z,\ \forall x\in\Q,\ (x^2=n\Rightarrow x\in\Z)$.\qed
+\end{bookex}
+
+\begin{trybox}[{1.2.8 \fO}]
+\textbf{1.2.8} Plain English, as few variables as possible: (a) $\exists q\in\Z,\ a=qb$; (b) $\exists a\in\Z,\ \exists b\in\Z,\ (b\ne0\wedge bx=a)$; (c) $\forall d\in\N,\ [(\exists q\in\Z,\ n=qd)\Rightarrow(d=1\vee d=n)]$; (d) $\forall a\in\R,\ [a>0\Rightarrow\exists b\in\R,\ (b>0\wedge a<b)]$.
+\end{trybox}
+
+\hsub{Universal quantifier $\forall$}
+\begin{key}[{Definition 1.2.9 \textperiodcentered\ rules for $\forall$}]
+($\forall$I) if $p(x)$ can be derived from the assumption that $x$ is an \emph{arbitrary} element of $X$, then $\forall x\in X,\ p(x)$;\quad ($\forall$E) if $\forall x\in X,\ p(x)$ is true and $a\in X$, then $p(a)$ is true.
+\end{key}
+\begin{strategy}[{Strategies 1.2.10 and 1.2.19}]
+\textbf{Proving $\forall x\in X,\ p(x)$:} ``Let $x\in X$'' (or ``fix'', ``take''), then prove $p(x)$ assuming nothing about $x$ except $x\in X$. \textbf{Assuming $\forall x\in X,\ p(x)$:} you may use $p(a)$ for any particular $a\in X$ you need.
+\end{strategy}
+\begin{warn}[{Common error (page 54)}]
+``Let $n$ be an arbitrary integer, say $n=17$'' proves $\exists n$, not $\forall n$. The \emph{reader} chooses $n$, not you. A correct proof of $\forall n\in\Z,\ n^2\ge0$: let $n\in\Z$; either $n\ge0$ or $n<0$; in each case $n^2\ge0$.
+\end{warn}
+\begin{result}[{Propositions 1.2.11 and 1.2.12}]
+The square of every odd integer is odd ($n=2k+1\Rightarrow n^2=2(2k^2+2k)+1$). The last decimal digit of a square is $0,1,4,5,6$ or $9$ (write $n=10m+d_0$; then $n^2=10m(10m+2d_0)+d_0^2$ ends in the last digit of $d_0^2$).
+\end{result}
+
+\begin{bookex}[essential]{1.2.15}
+Prove that for every integer $n$, $n$ is even if and only if $n^2$ is even.
+\solution
+Let $n\in\Z$. We prove both directions.\\
+($\Rightarrow$) Suppose $n$ is even, so $n=2k$ for some $k\in\Z$. Then $n^2=4k^2=2(2k^2)$ with $2k^2\in\Z$, so $n^2$ is even.\\
+($\Leftarrow$) Suppose $n^2$ is even. By the division theorem, $n=2k$ or $n=2k+1$ for some $k\in\Z$. If $n=2k+1$, then $n^2$ is odd by Proposition 1.2.11, contradicting that $n^2$ is even. So $n=2k$, i.e.\ $n$ is even.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{1.2.18}
+Prove that for all real numbers $x$ and $y$, if $x$ is irrational, then $x+y$ and $x-y$ are not both rational.
+\solution
+Let $x,y\in\R$ and suppose $x$ is irrational. Suppose, towards a contradiction, that $x+y$ and $x-y$ are both rational. Then by Theorem 0.16 their sum $(x+y)+(x-y)=2x$ is rational, and hence $x=\frac{2x}2$ is rational (Theorem 0.16 again, dividing by $2\ne0$). This contradicts the assumption that $x$ is irrational. Hence $x+y$ and $x-y$ are not both rational.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{1.2.21 and 1.2.22}
+\textbf{1.2.21} Suppose $\forall x\in\R,\ P(x)$. Show that we can conclude $P(21)$.\quad \textbf{1.2.22} Let $P(x),Q(x)$ be predicates with $x\in\R$. Prove that $(\forall x\in\R,\ P(x)\Rightarrow Q(x))\Rightarrow(\forall x\in\R,\ P(x))\Rightarrow(\forall x\in\R,\ Q(x))$.
+\solution
+\textbf{1.2.21} Since $21\in\R$ and $\forall x\in\R,\ P(x)$ holds, the rule ($\forall$E) (Strategy 1.2.19) gives $P(21)$.\qed\\
+\textbf{1.2.22} Assume $\forall x\in\R,\ (P(x)\Rightarrow Q(x))$ and assume $\forall x\in\R,\ P(x)$. To prove $\forall x\in\R,\ Q(x)$, let $x\in\R$ be arbitrary. By ($\forall$E), $P(x)\Rightarrow Q(x)$ and $P(x)$ are both true, so $Q(x)$ is true by modus ponens. Since $x$ was arbitrary, $\forall x\in\R,\ Q(x)$.\qed
+\end{bookex}
+
+\begin{trybox}[{1.2.14 (bonus), 1.2.16, 1.2.17 \fO}]
+\textbf{1.2.14} Prove $\forall x\in\R,\ x=x$.\quad \textbf{1.2.16} Prove that every integer is rational.\quad \textbf{1.2.17} Prove that every linear polynomial over $\Q$ has a rational root.
+\end{trybox}
+
+\hsub{Existential quantifier $\exists$}
+\begin{key}[{Definition 1.2.23 \textperiodcentered\ rules for $\exists$}]
+($\exists$I) if $a\in X$ and $p(a)$ is true, then $\exists x\in X,\ p(x)$;\quad ($\exists$E) if $\exists x\in X,\ p(x)$ is true, and $q$ can be derived from the assumption that $p(a)$ holds for some fixed $a\in X$, then $q$ is true.
+\end{key}
+\begin{strategy}[{Strategies 1.2.24 and 1.2.30}]
+\textbf{Proving $\exists x\in X,\ p(x)$:} define a specific $a$ (``Define $n=9$'', ``Take $z=\frac{x+y}2$''), check $a\in X$, and prove $p(a)$. \textbf{Assuming $\exists x\in X,\ p(x)$:} ``Take $a\in X$ such that $p(a)$'' with a letter not yet in use. Divisibility assumptions are existential: from ``$3$ divides $n^3$'' take $q$ with $n^3=3q$ (Proposition 1.2.31).
+\end{strategy}
+
+\begin{bookex}[recommended]{1.2.28}
+Prove that there is an integer which is divisible by zero.
+\solution
+Define $n=0$. Then $n\in\Z$, and $0=0\cdot0$ with $0\in\Z$, so $0$ divides $n$ by Definition 0.36. Hence $\exists n\in\Z$ such that $0$ divides $n$.\qed
+\end{bookex}
+
+\begin{bookex}{1.2.29}
+Prove that for all $x,y\in\Q$, if $x<y$ then there is some $z\in\Q$ with $x<z<y$.
+\solution
+Let $x,y\in\Q$ and suppose $x<y$. Define $z=\frac{x+y}2$. Then $z\in\Q$ by Theorem 0.16 ($x+y\in\Q$ and $2\ne0$). Moreover $x<z$ because $2x<x+y$ (add $x$ to $x<y$), and $z<y$ because $x+y<2y$. So $x<z<y$, and $z$ is the required element.\qed
+\end{bookex}
+
+\begin{trybox}[{1.2.27 \fO}]
+\textbf{1.2.27} Prove that there is a real number that is irrational but whose square is rational.
+\end{trybox}
+
+\hsub{Unique existence $\exists!$}
+\begin{key}[{Definition 1.2.32 and Proposition 1.2.38}]
+$\exists!x\in X,\ p(x)$ is shorthand for
+\[
+\underbrace{(\exists x\in X,\ p(x))}_{\text{existence}}\ \wedge\ \underbrace{(\forall a\in X,\ \forall b\in X,\ [(p(a)\wedge p(b))\Rightarrow a=b])}_{\text{uniqueness}} ,
+\]
+equivalently (1.2.38) $\exists x\in X,\ \big(p(x)\wedge\forall y\in X,\ (p(y)\Rightarrow y=x)\big)$.
+\end{key}
+\begin{strategy}[{Strategy 1.2.35}]
+\textbf{Existence:} exhibit $a$ with $p(a)$. \textbf{Uniqueness:} ``Let $a,b\in X$ with $p(a)$ and $p(b)$'' \dots\ ``so $a=b$''. (Or: with the $a$ from existence, show $\forall y,\ p(y)\Rightarrow y=a$.) Example 1.2.36: for $a>0$ the positive square root is unique because $y^2=z^2$ gives $(y-z)(y+z)=0$ and $y+z>0$.
+\end{strategy}
+
+\begin{bookex}[recommended]{1.2.37 (a), (b)}
+Write as a formula with $\exists!$ and prove: (a) for each real $a$, the equation $x^2+2ax+a^2=0$ has exactly one real solution; (b) there is a unique real $a$ for which $x^2+a^2=0$ has a real solution.
+\solution
+(a) $\forall a\in\R,\ \exists!x\in\R,\ x^2+2ax+a^2=0$. Let $a\in\R$. \emph{Existence:} $x=-a$ gives $a^2-2a^2+a^2=0$. \emph{Uniqueness:} let $x,y\in\R$ both be solutions. Since $x^2+2ax+a^2=(x+a)^2$, we get $(x+a)^2=0$, so $x+a=0$, so $x=-a$; likewise $y=-a$; hence $x=y$.\qed\\
+(b) $\exists!a\in\R,\ \exists x\in\R,\ x^2+a^2=0$. \emph{Existence:} $a=0$ works, with $x=0$. \emph{Uniqueness:} let $a,b\in\R$ both have the property; take $x\in\R$ with $x^2+a^2=0$. Since $x^2\ge0$ and $a^2\ge0$, the sum is $0$ only if $a^2=0$, so $a=0$. The same argument gives $b=0$, so $a=b$.\qed
+\end{bookex}
+
+\begin{trybox}[{1.2.37 (c), 1.2.34 \fO}]
+\textbf{1.2.37 (c)} There is a unique natural number with exactly one positive divisor.\quad \textbf{1.2.34} (Discussion) Why does Definition 1.2.32 capture ``exactly one''? Other possible definitions?
+\end{trybox}
+
+\hsub{Quantifier alternation}
+\begin{result}[{Theorem 1.2.40}]
+$\exists y\in Y,\ \forall x\in X,\ p(x,y)\ \Rightarrow\ \forall x\in X,\ \exists y\in Y,\ p(x,y)$. \emph{Proof:} fix $a\in X$; choose $b$ with $\forall x,\ p(x,b)$; then $p(a,b)$. \\
+The converse fails in general: in $\forall x\,\exists y$ the $y$ may depend on $x$ (``every door has a key''); in $\exists y\,\forall x$ one $y$ works for all $x$ (``a master key'').
+\end{result}
+
+\begin{bookex}[essential]{1.2.39}
+Let $p(x,y)$ be ``$x+y$ is even''. Prove that $\forall x\in\Z,\ \exists y\in\Z,\ p(x,y)$ is true, and that $\exists y\in\Z,\ \forall x\in\Z,\ p(x,y)$ is false.
+\solution
+\emph{First statement.} Let $x\in\Z$. Define $y=x$. Then $y\in\Z$ and $x+y=2x$ is even (it is $2\cdot x$ with $x\in\Z$). So $\exists y\in\Z,\ p(x,y)$, and as $x$ was arbitrary the statement holds.\\
+\emph{Second statement.} Suppose, towards a contradiction, that there is $y\in\Z$ with $x+y$ even for every $x\in\Z$. Take $x=1-y\in\Z$. Then $x+y=1$, so $1$ is even, i.e.\ $1=2k$ for some $k\in\Z$; but then $k=\frac12\notin\Z$, a contradiction. Hence the statement is false.\qed
+\end{bookex}

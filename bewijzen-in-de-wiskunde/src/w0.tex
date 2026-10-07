@@ -1,0 +1,280 @@
+\setcounter{chapter}{-1}
+\chapter{Getting started}
+\chaptercontents{A & Propositions, proofs, number sets \\ B & Sets, notation, intervals \\ C & Number bases \\ D & Division of integers \\ E & Irrational numbers \\ F & Polynomials and complex numbers \fO \\ G & Chapter 0 exercises (0.E)}%
+{Planning (Mon 7 Sep): Chapter 0 up to and including irrational numbers.\\ \fE\ 0.2, 0.21, 0.24, 0.40; 0.E.3, 4, 22, 27, 28\\ \fR\ 0.14, 0.30, 0.38, 0.45, 0.51; 0.E.17, 18, 29, 30\\ Section F and the 0.E questions on polynomials, complex and algebraic numbers are not in the planning.}
+
+\hsection{Propositions, proofs, number sets}
+
+\begin{key}[{Definitions 0.1 and 0.3 \textperiodcentered\ proposition, proof}]
+A \term{proposition} is a statement to which it makes sense to assign a truth value (true or false, not both). A \term{proof} of a true proposition is an argument that demonstrates its truth: it starts from what is known or assumed, uses agreed logical steps, and can be verified by its intended reader. Results are called propositions, theorems (key results), lemmas (stepping stones) or corollaries (immediate consequences).
+\end{key}
+
+\begin{trybox}[{0.2 \fE}]
+\textbf{0.2} Give (a) a true proposition, (b) a false one, (c) one whose truth value you don't know.
+\end{trybox}
+
+\begin{key}[{Definitions 0.4--0.10 \textperiodcentered\ the number line and the number types}]
+Real numbers are the points of the number line (0.4). \term{Natural numbers} $0,1,2,\dots$ are reached from $0$ by unit steps to the right (0.6); \term{integers} by unit steps in either direction (0.8). \\
+\textbf{Closure} (Assumptions 0.5, 0.7, 0.9): $\R$ is closed under $+,-,\times$ and $\div$ by non-zero; $\N$ under $+$ and $\times$ only; $\Z$ under $+,-,\times$. Between an integer $n$ and $n+1$ there is no integer.\\
+\textbf{Floor and ceiling} (0.10): for $x\in\R$, $\lfloor x\rfloor$ is \emph{the} integer $n$ with $n\le x<n+1$; $\lceil x\rceil$ is \emph{the} integer $n$ with $n-1<x\le n$.
+\end{key}
+
+\begin{result}[{Proposition 0.12}]
+Let $n$ be an integer. Then $\lfloor n\rfloor=n=\lceil n\rceil$. \quad\emph{Proof idea:} $n$ itself satisfies $n\le n<n+1$, and the floor is the (only) integer with that property.
+\end{result}
+
+The first proofs in the book all have the same shape: \emph{name the integer that the definition asks for, then check the two inequalities.}
+
+\begin{bookex}{0.13}
+Suppose that $x$ is a real number that is not an integer. Prove that $\lceil x\rceil=\lfloor x\rfloor+1$.
+\solution
+Let $n=\lfloor x\rfloor$. By Definition 0.10, $n$ is an integer with $n\le x<n+1$. Since $x$ is not an integer, $x\ne n$, so in fact $n<x<n+1$.\\
+Now $n+1$ is an integer, and $(n+1)-1<x\le n+1$. By Definition 0.10, $\lceil x\rceil$ is \emph{the} integer $m$ with $m-1<x\le m$; so $\lceil x\rceil=n+1=\lfloor x\rfloor+1$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{0.14}
+Suppose that $x$ is a real number. Prove that $\lfloor-x\rfloor=-\lceil x\rceil$ and $\lceil-x\rceil=-\lfloor x\rfloor$.
+\solution
+Let $n=\lceil x\rceil$, so $n\in\Z$ and $n-1<x\le n$ (Definition 0.10). Multiplying through by $-1$ reverses the inequalities: $-n\le-x<-n+1=(-n)+1$. So $-n$ is an integer $m$ with $m\le-x<m+1$, which is exactly the defining property of $\lfloor-x\rfloor$. Hence $\lfloor-x\rfloor=-n=-\lceil x\rceil$.\\
+Similarly let $n=\lfloor x\rfloor$, so $n\le x<n+1$. Then $-n-1<-x\le-n$, i.e.\ $(-n)-1<-x\le-n$, so $\lceil-x\rceil=-n=-\lfloor x\rfloor$.\qed
+\end{bookex}
+
+\begin{key}[{Definition 0.15 \textperiodcentered\ rational number}]
+$x\in\R$ is \term{rational} if there are integers $a,b$ with $b\ne0$ and $x=\dfrac ab$.
+\end{key}
+
+\begin{result}[{Theorem 0.16 \textperiodcentered\ closure of $\Q$}]
+If $x,y\in\Q$ then $x+y$, $x-y$, $xy\in\Q$, and $x/y\in\Q$ if $y\ne0$.\\
+\emph{Proof pattern (the book proves $x+y$):} write $x=\frac ab$, $y=\frac cd$ with $b,d\ne0$; compute; check that numerator and denominator are integers and the denominator is non-zero.
+\end{result}
+
+\begin{bookex}{0.17}
+Complete the proof of Theorem 0.16.
+\solution
+Let $x=\frac ab$ and $y=\frac cd$ with $a,b,c,d\in\Z$ and $b,d\ne0$ (Definition 0.15).\\
+$x-y=\dfrac{ad-bc}{bd}$: here $ad-bc\in\Z$ and $bd\in\Z$ by closure of $\Z$ (Assumption 0.9), and $bd\ne0$ since $b\ne0$ and $d\ne0$. So $x-y\in\Q$.\\
+$xy=\dfrac{ac}{bd}$: $ac,bd\in\Z$ and $bd\ne0$. So $xy\in\Q$.\\
+If $y\ne0$ then $c\ne0$ (otherwise $y=0$), and $\dfrac xy=\dfrac ab\cdot\dfrac dc=\dfrac{ad}{bc}$ with $ad,bc\in\Z$ and $bc\ne0$. So $x/y\in\Q$.\qed
+\end{bookex}
+
+\hsection{Sets, notation, intervals}
+
+\begin{key}[{Definitions 0.18, 0.19 and the two notations}]
+A \term{set} is a collection of objects, its \term{elements}; $x\in X$ asserts that $x$ is an element of $X$ (revised in \S2.1). The \term{number sets} are $\N$, $\Z$, $\Q$, $\R$ (and $\C$, 0.62).\\
+\textbf{List notation} $\{0,1,2,3\}$, implied lists $\{0,1,4,9,\dots\}$.\\
+\textbf{Set-builder notation.} $a\in\{x\mid p(x)\}$ iff $p(a)$ is true. Two variants:
+\begin{itemize}
+\item $\{x\in X\mid p(x)\}=\{x\mid x\in X\text{ and }p(x)\}$: the elements of $X$ satisfying $p$;
+\item $\{\mathrm{expr}(x)\mid p(x)\}$: all objects of the form $\mathrm{expr}(x)$ for some $x$ satisfying $p$. E.g.\ $\{n^2\mid n\in\N\}=\{0,1,4,9,\dots\}$.
+\end{itemize}
+\end{key}
+
+\begin{bookex}[essential]{0.21}
+Determine the truth values: (a) $2\in\N$; (b) $-2\in\N$; (c) $-2\in\Q$; (d) $\frac25\in\Z$; (e) $\dfrac{\sqrt8+\sqrt2}{\sqrt8-\sqrt2}\in\Q$; (f) $\pi^\pi\in\Q$; (g) $\sqrt{-7}\in\R$; (h) $\N\in\Z$.
+\solution
+(a) True: $2$ is a non-negative whole number. (b) False: $-2<0$. (c) True: $-2=\frac{-2}{1}$ with $-2,1\in\Z$, $1\ne0$. (d) False: $0<\frac25<1$ and there is no integer strictly between $0$ and $1$. (e) True: $\sqrt8=2\sqrt2$, so the number is $\frac{3\sqrt2}{\sqrt2}=3=\frac31\in\Q$. (f) This is a proposition, but its truth value is not known: nobody has proved $\pi^\pi$ rational or irrational. (g) False: $\sqrt{-7}=\sqrt7\,i$ is not a point of the real number line (0.62). (h) False: the elements of $\Z$ are numbers, and $\N$ is a set, not a number.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{0.24}
+A dyadic rational is a rational number that can be expressed as an integer divided by a power of $2$. Express the set of all dyadic rationals in set-builder notation in at least two ways.
+\solution
+Filter form: $\Big\{x\in\Q\ \Big|\ \exists a\in\Z,\ \exists n\in\N,\ x=\dfrac{a}{2^n}\Big\}$.\quad Expression form: $\Big\{\dfrac a{2^n}\ \Big|\ a\in\Z,\ n\in\N\Big\}$.\\
+A third: $\{x\in\R\mid 2^nx\in\Z\text{ for some }n\in\N\}$.\qed
+\end{bookex}
+
+\begin{key}[{Definitions 0.25 and 0.28 \textperiodcentered\ $[n]$ and intervals}]
+For $n\in\N$, $[n]=\{k\in\N\mid k<n\}$, so $[0]=\varnothing$, $[1]=\{0\}$, $[3]=\{0,1,2\}$: $[n]$ has $n$ elements.\\
+For $a<b$: $(a,b)=\{x\in\R\mid a<x<b\}$, $[a,b]=\{x\in\R\mid a\le x\le b\}$, $[a,b)$, $(a,b]$ likewise; $(-\infty,b)=\{x\in\R\mid x<b\}$, $[a,\infty)=\{x\in\R\mid x\ge a\}$, etc.; $(-\infty,\infty)=\R$. Intervals consist of \emph{real} numbers: $\{x\in\Z\mid 2\le x\le5\}$ is not $[2,5]$.
+\end{key}
+
+\begin{bookex}{0.27}
+Let $A=\{x\in[10]\mid x\text{ is a power of }2\}$, $B=\{2x\mid x\in[10]\}$ and $C=\{-99,-97,\dots,97,99\}$. (a) List $A$. (b) List $B$. (c) Write $C$ in set-builder notation using some $[n]$.
+\solution
+(a) $[10]=\{0,1,\dots,9\}$; the powers of $2$ in it are $1,2,4,8$. So $A=\{1,2,4,8\}$.\\
+(b) $B=\{0,2,4,6,8,10,12,14,16,18\}$.\\
+(c) The elements are $2k-99$ for $k=0,1,\dots,99$: $C=\{2k-99\mid k\in[100]\}$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{0.30}
+Express each illustrated set in the most appropriate notation. (The figures show, on a number line: (a) filled dot at $-2$, hollow at $4$, segment between; (b) filled dots at $-2$ and $4$, segment between; (c) filled dots at $-2,-1,0,1,2,3,4$ only; (d) hollow dot at $4$, shaded to the left without end; (e) filled dot at $-2$, shaded to the right without end; (f) the whole line shaded.)
+\solution
+(a) $[-2,4)$. (b) $[-2,4]$. (c) $\{-2,-1,0,1,2,3,4\}=\{n\in\Z\mid-2\le n\le4\}$ (not an interval: only integers). (d) $(-\infty,4)$. (e) $[-2,\infty)$. (f) $(-\infty,\infty)=\R$.\qed
+\end{bookex}
+
+\hsection{Number bases}
+
+\begin{key}[{Definition 0.31, Notation 0.34 \textperiodcentered\ base-$b$ expansion}]
+Let $b>1$. The \term{base-$b$ expansion} of $n\in\N$ is the string $d_rd_{r-1}\dots d_0$ with (i) $n=d_rb^r+\dots+d_1b+d_0$; (ii) $0\le d_i<b$; (iii) $d_r\ne0$ if $n>0$ (no leading zeros; the expansion of $0$ is $0$). We write $d_r\dots d_0{}_{(b)}$ for the number with that expansion; no subscript means base $10$. Digits beyond $9$: $A=10$, $B=11$, \dots
+\end{key}
+
+\begin{strategy}[{The algorithm (page 17): repeated division}]
+Divide $n$ by $b$: the remainder is $d_0$, the quotient is $n_0$. Divide $n_0$ by $b$: remainder $d_1$, quotient $n_1$. Repeat until the quotient is $0$. The expansion is $d_id_{i-1}\dots d_0$ (last remainder first). Check by evaluating $\sum d_kb^k$.
+\end{strategy}
+
+\begin{bookex}{0.33}
+Find the binary, ternary, octal, decimal, hexadecimal and base-36 expansions of $21127$.
+\solution
+Repeated division (for base $16$: $21127=1320\cdot16+7$, $1320=82\cdot16+8$, $82=5\cdot16+2$, $5=0\cdot16+5$, read upwards: $5287$). The others the same way:
+\[
+21127=101001010000111_{(2)}=1001222111_{(3)}=51207_{(8)}=21127_{(10)}=5287_{(16)}=GAV_{(36)} .
+\]
+Check of the last one: $G=16$, $A=10$, $V=31$: $16\cdot36^2+10\cdot36+31=20736+360+31=21127$.\qed
+\end{bookex}
+
+\begin{trybox}[{0.47 \fO}]
+\textbf{0.47} Find the base-17 expansion of $408\,735\,787$ and the base-36 expansion of $1\,442\,151\,747$. (Both answers spell something.)
+\end{trybox}
+
+\hsection{Division of integers}
+
+\begin{key}[{Definition 0.36 \textperiodcentered\ divides}]
+Let $a,b\in\Z$. \term{$b$ divides $a$} if $a=qb$ for some integer $q$. Also said: $a$ is divisible by $b$, $b$ is a divisor (factor) of $a$, $a$ is a multiple of $b$. \textbf{No division is involved}: it is a statement about multiplication, so $0$ divides $0$ ($0=q\cdot0$).
+\end{key}
+
+\begin{strategy}[{How divisibility is used in proofs}]
+\textbf{To prove} ``$b$ divides $a$'': write $a$ as (an explicit integer)$\cdot b$ and say why the integer is an integer. \textbf{To use} ``$b$ divides $a$'': introduce a new letter, ``$a=qb$ for some $q\in\Z$'', and compute with it. (This is Proposition 0.39's proof, which the book dissects in Example 1.1.1.)
+\end{strategy}
+
+\begin{result}[{Proposition 0.39}]
+Let $a,b,c\in\Z$. If $c$ divides $b$ and $b$ divides $a$, then $c$ divides $a$. \emph{Proof:} $b=qc$, $a=rb$ for some $q,r\in\Z$; then $a=r(qc)=(rq)c$ with $rq\in\Z$.
+\end{result}
+
+\begin{bookex}[recommended]{0.38}
+Prove that $1$ divides every integer, and that every integer divides $0$.
+\solution
+Let $a\in\Z$. Then $a=a\cdot1$ with $a\in\Z$, so $1$ divides $a$ by Definition 0.36. Let $b\in\Z$. Then $0=0\cdot b$ with $0\in\Z$, so $b$ divides $0$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{0.40}
+Let $a,b,d\in\Z$. Suppose that $d$ divides $a$ and $d$ divides $b$. Given integers $u$ and $v$, prove that $d$ divides $au+bv$.
+\solution
+Since $d$ divides $a$ and $d$ divides $b$, there are integers $q,r$ with $a=qd$ and $b=rd$ (Definition 0.36). Then
+\[
+au+bv=(qd)u+(rd)v=(qu+rv)\,d .
+\]
+Since $qu+rv$ is an integer (closure of $\Z$), $d$ divides $au+bv$ by Definition 0.36.\qed
+\end{bookex}
+
+\begin{key}[{Definition 0.41 and Theorem 0.42 \textperiodcentered\ even, odd, the division theorem}]
+An integer $n$ is \term{even} if it is divisible by $2$; otherwise $n$ is \term{odd}.\\
+\textbf{Division theorem.} Let $a,b\in\Z$ with $b\ne0$. There is exactly one way to write $a=qb+r$ with $q,r\in\Z$ and $0\le r<|b|$. $q$ is the \term{quotient}, $r$ the \term{remainder}. (``Exactly one'' is the clause you use to prove that two expressions give the \emph{same} remainder.)
+\end{key}
+
+\begin{result}[{Proposition 0.44}]
+If $a$ leaves remainder $r>0$ when divided by $b$, then $-a$ leaves remainder $b-r$. \emph{Proof:} $a=qb+r$ gives $-a=-(q+1)b+(b-r)$ with $0<b-r<b$.
+\end{result}
+
+\begin{bookex}[recommended]{0.45}
+Prove that if an integer $a$ leaves a remainder of $r$ when divided by an integer $b$, then $a$ leaves a remainder of $r$ when divided by $-b$.
+\solution
+Suppose $a=qb+r$ with $q\in\Z$ and $0\le r<|b|$. Then $a=(-q)(-b)+r$, where $-q\in\Z$ and $0\le r<|b|=|-b|$. By the uniqueness clause of Theorem 0.42, $-q$ is the quotient and $r$ the remainder of $a$ when divided by $-b$.\qed
+\end{bookex}
+
+\begin{warn}
+\begin{itemize}
+\item ``$b$ divides $a$'' is not ``$a/b$ is an integer''. Writing $\frac ab\in\Z$ in a proof about divisibility is marked wrong; produce the integer $q$.
+\item A remainder is never negative: $-7=(-2)\cdot4+1$, so $-7$ leaves remainder $1$ on division by $4$.
+\item Using the division theorem gives a \emph{case split}: $n=2k$ or $n=2k+1$; $n=3k$, $3k+1$ or $3k+2$. Cover every case.
+\end{itemize}
+\end{warn}
+
+\hsection{Irrational numbers}
+
+\begin{key}[{Definition 0.48, Assumption 0.49}]
+An \term{irrational number} is a real number that is not rational. $\sqrt2$ is irrational (assumed here, proved in Proposition 4.3.12).
+\end{key}
+
+\begin{result}[{Proposition 0.50}]
+There exist irrational numbers $a$ and $b$ such that $ab$ is rational. \emph{Proof:} $a=b=\sqrt2$ gives $ab=2=\frac21$.
+\end{result}
+``It is possible that'' means: \emph{exhibit one example}. That is all Exercise 0.51 asks for.
+
+\begin{bookex}[recommended]{0.51}
+Let $r$ be a rational number and $a$ an irrational number. Prove that it is possible that $ra$ be rational, and possible that $ra$ be irrational.
+\solution
+Take $r=0$ and $a=\sqrt2$: then $ra=0=\frac01$ is rational. Take $r=1$ and $a=\sqrt2$: then $ra=\sqrt2$ is irrational (Assumption 0.49). Both possibilities occur.\qed
+\end{bookex}
+
+\hsection{Polynomials and complex numbers \fO}
+
+\emph{Not in the planning; included so that the 0.E questions that use it can be done.}
+
+\begin{key}[{Definitions 0.52--0.62}]
+A \term{polynomial over $S$} ($S$ one of $\N,\Z,\Q,\R$) is $a_0+a_1x+\dots+a_nx^n$ with all $a_k\in S$; its \term{degree} is the largest $k$ with $a_k\ne0$. Degrees $\le0,1,2,3,4,5$: constant, linear, quadratic, cubic, quartic, quintic. A \term{root} is a number $\alpha$ with $p(\alpha)=0$ (0.56). For $p(x)=ax^2+bx+c$ the \term{discriminant} is $\Delta=b^2-4ac$ (0.59). The \term{imaginary unit} $i$ satisfies $i^2=-1$; for $a<0$, $\sqrt a=\sqrt{|a|}\,i$; a \term{complex number} is $a+bi$ with $a,b\in\R$; $\C$ is the set of them (0.62). Compute with $i$ as a variable, replacing $i^2$ by $-1$; $\frac1{a+bi}=\frac{a-bi}{a^2+b^2}$.
+\end{key}
+
+\begin{result}[{Theorem 0.60 \textperiodcentered\ quadratic formula}]
+Let $p(x)=ax^2+bx+c$ with $a,b,c\in\R$, $a\ne0$, and suppose $\Delta\ge0$. Then the roots of $p(x)$ are precisely $\alpha=\frac{-b+\sqrt\Delta}{2a}$ and $\beta=\frac{-b-\sqrt\Delta}{2a}$.\\
+\emph{Proof shape:} complete the square, $p(x)=a\big(x+\frac b{2a}\big)^2-\frac\Delta{4a}$; check $p(\alpha)=p(\beta)=0$; then show any root $\gamma$ equals $\alpha$ or $\beta$ (``precisely'' means both directions).
+\end{result}
+
+\begin{bookex}{0.58}
+Let $p(x)=ax+b$ be a linear polynomial over $\Z$. (a) Find a root. (b) Prove it is the only root. (c) When is the root an integer?
+\solution
+(a) Linear means degree $1$, so $a\ne0$. Put $\gamma=-\frac ba$; then $p(\gamma)=a\cdot(-\frac ba)+b=0$.\\
+(b) Let $\delta$ be any root: $a\delta+b=0$. Then $a\delta=-b$ and, since $a\ne0$, $\delta=-\frac ba=\gamma$.\\
+(c) $-\frac ba\in\Z$ iff $b=qa$ for some $q\in\Z$ (take $q=-\frac ba$), i.e.\ iff $a$ divides $b$ (Definition 0.36).\qed
+\end{bookex}
+
+\begin{bookex}{0.61}
+Let $p(x)=ax^2+bx+c$ over $\R$ ($a\ne0$) with discriminant $\Delta$. Prove that $p(x)$ has exactly two real roots if $\Delta>0$, exactly one if $\Delta=0$, and none if $\Delta<0$.
+\solution
+\emph{$\Delta>0$.} By Theorem 0.60 the roots are exactly $\alpha$ and $\beta$, and $\alpha-\beta=\frac{\sqrt\Delta}{a}\ne0$, so they are two distinct real roots.\\
+\emph{$\Delta=0$.} Then $\sqrt\Delta=0$, so $\alpha=\beta=-\frac b{2a}$: by Theorem 0.60 this is a root and the only root.\\
+\emph{$\Delta<0$.} Suppose $\gamma\in\R$ is a root. Completing the square, $0=p(\gamma)=a\big(\gamma+\frac b{2a}\big)^2-\frac\Delta{4a}$, so $\big(\gamma+\frac b{2a}\big)^2=\frac{\Delta}{4a^2}<0$. But the square of a real number is $\ge0$: contradiction. So there is no real root.\qed
+\end{bookex}
+
+\begin{trybox}[{0.55, 0.64--0.68 \fO}]
+\textbf{0.55} Find a quartic $s(w)$ over $\R$ that is not over $\Q$ but with $s(3)\in\Q$.\quad \textbf{0.64} Express $i^n$ in the form $a+bi$ for each $n\in\Z$.\quad \textbf{0.65} Verify the conclusion of Theorem 0.60 for every discriminant.\quad \textbf{0.66} Show $\alpha=a+bi$ is a root of a quadratic over $\R$ and find the other root.\quad \textbf{0.67} State and prove the quadratic formula over $\C$.\quad \textbf{0.68} Interpret subtraction and division geometrically on the number line.
+\end{trybox}
+
+\hsection{Chapter 0 exercises (0.E)}
+
+Worked here: the essential and recommended ones. All others are in Appendix S. The True--False and Always--Sometimes--Never formats recur in every chapter: \emph{true/always} needs a proof for all cases; \emph{false/never} needs a counterexample (or a proof that it fails for all cases); \emph{sometimes} needs one example and one counterexample.
+
+\begin{bookex}[essential]{0.E.3}
+Suppose $m$ leaves remainder $i$ and $n$ leaves remainder $j$ when divided by $3$ ($0\le i,j<3$). Prove that $m+n$ and $i+j$ leave the same remainder when divided by $3$.
+\solution
+By Theorem 0.42, $m=3q+i$ and $n=3q'+j$ for some $q,q'\in\Z$. Divide $i+j$ by $3$: $i+j=3s+t$ with $s,t\in\Z$ and $0\le t<3$, so the remainder of $i+j$ is $t$. Then
+\[
+m+n=3q+3q'+i+j=3(q+q'+s)+t,\qquad 0\le t<3,
+\]
+and by the uniqueness clause of Theorem 0.42 the remainder of $m+n$ is $t$ as well.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{0.E.4}
+What are the possible remainders of $n^2$ when divided by $3$, where $n\in\Z$?
+\solution
+By Theorem 0.42, $n=3k$, $3k+1$ or $3k+2$ for some $k\in\Z$. Then $n^2=3(3k^2)$, or $9k^2+6k+1=3(3k^2+2k)+1$, or $9k^2+12k+4=3(3k^2+4k+1)+1$. So the remainder is $0$ or $1$ (and both occur: $n=0$, $n=1$); it is never $2$.\qed\ (This is Proposition 1.1.24.)
+\end{bookex}
+
+\begin{bookex}[recommended]{0.E.17 and 0.E.18}
+True or false? \textbf{0.E.17} Every integer is a natural number. \textbf{0.E.18} Every integer is a rational number.
+\solution
+\textbf{0.E.17} False: $-1\in\Z$ but $-1\notin\N$ since $-1<0$ (Definition 0.6).\\
+\textbf{0.E.18} True: let $n\in\Z$; then $n=\frac n1$ with $n,1\in\Z$ and $1\ne0$, so $n\in\Q$ (Definition 0.15).\qed
+\end{bookex}
+
+\begin{bookex}[essential]{0.E.22}
+True or false? The square root of every positive rational number is a rational number.
+\solution
+False. $2$ is a positive rational number, and its square root $\sqrt2$ is irrational by Assumption 0.49.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{0.E.27 and 0.E.28}
+Let $a,b,c\in\Z$ with $a$ dividing $c$ and $b$ dividing $c$. Always, sometimes or never: \textbf{0.E.27} $ab$ divides $c$; \textbf{0.E.28} $ab$ divides $c^2$.
+\solution
+\textbf{0.E.27} Sometimes. $a=b=c=1$: $1$ divides $1$. $a=b=c=2$: $2$ divides $2$, but $ab=4$ does not divide $2$ (if $2=4q$ then $q=\frac12\notin\Z$).\\
+\textbf{0.E.28} Always. Write $c=qa$ and $c=rb$ with $q,r\in\Z$. Then $c^2=(qa)(rb)=(qr)(ab)$ with $qr\in\Z$, so $ab$ divides $c^2$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{0.E.29 and 0.E.30}
+\textbf{0.E.29} Let $x,y\in\Q$ and $a,b,c,d\in\Z$ with $cy+d\ne0$. Then $\frac{ax+b}{cy+d}\in\Q$: always, sometimes, never?\quad \textbf{0.E.30} Let $\frac ab$ be a rational number. Then $a\in\Z$ and $b\in\Z$: always, sometimes, never?
+\solution
+\textbf{0.E.29} Always. Integers are rational (0.E.18), so $a,b,c,d\in\Q$; by Theorem 0.16, $ax+b\in\Q$ and $cy+d\in\Q$, and since $cy+d\ne0$ the quotient is rational.\\
+\textbf{0.E.30} Sometimes. $\frac12$: $a=1$, $b=2$ are integers. $\frac{\sqrt2}{\sqrt2}=1$ is rational, but $a=\sqrt2\notin\Z$.\qed
+\end{bookex}
+
+\begin{trybox}[{0.E, the rest}]
+\fO\ 0.E.1 (base 64), 0.E.2, 0.E.6--0.E.11 (closure), 0.E.13--0.E.16 (algebraic numbers), 0.E.19--0.E.21, 0.E.23--0.E.26, 0.E.31--0.E.33.
+\end{trybox}

@@ -1,38 +1,41 @@
-# Bewijzen in de Wiskunde — Study guide, chapters 0–5
+# Bewijzen in de Wiskunde — study material
 
-Theory-focused study guide for the first half of *Bewijzen in de Wiskunde* (2026–2027),
-built around the **essential** and **recommended** exercises of the course planning.
-Book: C. Newstead, *An Infinite Descent into Pure Mathematics* (section and exercise
-numbers in the guide refer to that book).
+Two documents, same Haese-style layout, built from the LaTeX sources in `src/`.
 
-**PDF:** [`pdf/BiW-study-guide-ch0-5.pdf`](pdf/BiW-study-guide-ch0-5.pdf) (58 pages, A4)
+## 1. Workbook, chapters 0–2 (built from the book) — use this one
 
-| Guide chapter | Book sections | Planning | Quiz |
-|---|---|---|---|
-| 0 Getting started: numbers | Ch. 0 (number sets, bases, division, irrationals), A.1 | Mon 7 Sep | Quiz 1 (23 Sep) |
-| 1 Logical structure | §1.1, §1.2, §1.3 | 14 & 16 Sep | Quiz 1 (§1.1) |
-| 2 Sets | §2.1, §2.2 | 21 & 23 Sep | Quiz 2 (7 Oct) |
-| 3 Functions | §3.1, §3.2 | 23 & 28 Sep | Quiz 2 (7 Oct) |
-| 4 Mathematical induction | §4.2, §4.3 | 30 Sep & 5 Oct | — |
-| 5 Relations | §5.1, §5.2 | 7 Oct | Quiz 3 (21 Oct) |
-| Appendix T | One-page proof toolbox | — | — |
-| Appendix S | Solutions to the stretch exercises | — | — |
+**PDF:** [`pdf/BiW-workbook-ch0-2-from-book.pdf`](pdf/BiW-workbook-ch0-2-from-book.pdf) (42 pages)
 
-Each chapter climbs three levels: **Level 1** worked examples (one proof shape at a
-time, quiz style), **Level 2 "book level"** examples at the difficulty of the hardest
-essential/recommended exercises, each with its invention step named, and **stretch
-exercises** with hints and full solutions in Appendix S.
+Built strictly from the uploaded pages of C. Newstead, *An Infinite Descent into
+Pure Mathematics* (Utrecht adaptation, 29 July 2026): Chapter 0 with 0.E, Chapter 1
+with 1.E, §2.1 and §2.2 up to Definition 2.2.46. Minimal theory (the book's own
+definitions, strategies and results, with the book's numbers), each piece followed
+immediately by the book's exercises on it. Every exercise in those pages is either
+worked in the text (all essential ★ and recommended ☆ ones from the planning) or
+solved in Appendix S. The rest of §2.2 (tuples, Cartesian products), 2.E and
+chapters 3–5 were not in the upload and are not covered.
 
-Layout follows the Haese Mathematics textbook style: lettered sections, yellow
-definition boxes, blue theorem boxes, green proof-strategy templates,
-“Example n | Self Tutor” worked examples, purple exercise-target boxes listing the
-planning's essential/recommended numbers, and red “Watch out” boxes.
+## 2. Study guide, chapters 0–5 (written without the book)
+
+**PDF:** [`pdf/BiW-study-guide-ch0-5.pdf`](pdf/BiW-study-guide-ch0-5.pdf) (58 pages)
+
+Written before the book was available, from the planning and memory of the standard
+edition. Its chapters 0–2 are superseded by the workbook; its chapters 3–5 remain
+useful as theory and practice but their numbering and examples are not checked
+against the Utrecht edition.
+
+| Guide chapter | Book sections | Planning |
+|---|---|---|
+| 3 Functions | §3.1, §3.2 | 23 & 28 Sep, Quiz 2 |
+| 4 Mathematical induction | §4.2, §4.3 | 30 Sep & 5 Oct |
+| 5 Relations | §5.1, §5.2 | 7 Oct, Quiz 3 |
 
 ## Build
 
 ```
-./build.sh        # pdflatex twice; sources in src/, output in pdf/
+./build.sh        # builds both PDFs into pdf/
 ```
 
-Sources: `src/guide.tex` (main), `src/haese.sty` (layout), `src/front.tex`,
-`src/ch0.tex` … `src/ch5.tex` (theory and Level 1), `src/lvl0.tex` … `src/lvl5.tex` (book-level examples and stretch exercises), `src/toolbox.tex`, `src/solutions.tex`.
+Sources: `src/haese.sty` (layout); workbook `src/wb.tex`, `src/wfront.tex`, `src/w0.tex`,
+`src/w1a.tex`, `src/w1b.tex`, `src/w2.tex`, `src/wsol.tex`; study guide `src/guide.tex`
+and the files it inputs.

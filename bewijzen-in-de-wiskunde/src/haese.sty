@@ -35,6 +35,7 @@
 \definecolor{hredbg}{HTML}{FDECEA}
 \definecolor{hpurple}{HTML}{5E35B1}
 \definecolor{hpurplebg}{HTML}{EFEAF8}
+\colorlet{HGRAY}{hgray}\colorlet{HORANGE}{horange}\colorlet{HBLUE2}{hblue2}\colorlet{HBLUE}{hblue}\colorlet{HPURPLE}{hpurple}
 
 % ---------- page layout ----------
 \setlength{\parindent}{0pt}
@@ -49,7 +50,8 @@
 \pagestyle{fancy}
 \fancyhf{}
 \renewcommand{\chaptermark}[1]{\markboth{#1}{}}
-\lhead{\small\sffamily\color{hgray}Bewijzen in de Wiskunde \textperiodcentered\ Study guide Ch.\,0--5}
+\newcommand{\guidename}{Study guide Ch.\,0--5}
+\lhead{\small\sffamily\color{hgray}Bewijzen in de Wiskunde \textperiodcentered\ \guidename}
 \rhead{\small\sffamily\color{hgray}\nouppercase{\leftmark}}
 \cfoot{\sffamily\small\textcolor{hblue}{\thepage}}
 \renewcommand{\headrulewidth}{0.4pt}
@@ -182,6 +184,29 @@
 \newcommand{\hint}[1]{{\small\color{hgray}[Hint: #1]}}
 \newcommand{\symdiff}{\mathbin{\triangle}}
 \newcommand{\sol}[1]{\par\vspace{4pt}\noindent{\sffamily\bfseries\color{hpurple}#1}\quad}
+
+
+% ---------- worked book exercise (tab = exercise number, badge = planning flag) ----------
+\newtcolorbox{bookexbox}[2][from the book]{enhanced, breakable, colback=white, colframe=hblue,
+  boxrule=0.8pt, arc=2pt, left=8pt, right=8pt, top=8pt, bottom=6pt,
+  before={\par\needspace{6\baselineskip}\vskip 9pt}, after skip=9pt,
+  overlay unbroken and first={%
+    \node[anchor=west, fill=hblue, text=white, font=\sffamily\bfseries\small, inner xsep=7pt, inner ysep=2.5pt, rounded corners=1pt]
+      at ([xshift=8pt]frame.north west) {Exercise #2};
+    \node[anchor=east, fill=horange, text=white, font=\sffamily\bfseries\scriptsize, inner xsep=6pt, inner ysep=2pt, rounded corners=1pt]
+      at ([xshift=-8pt]frame.north east) {#1};
+  }}
+\newenvironment{bookex}[2][from the book]{\begin{bookexbox}[{#1}]{#2}}{\end{bookexbox}}
+% try-it box
+\newtcolorbox{trybox}[1][]{enhanced, breakable, colback=hpurplebg, colframe=hpurple,
+  boxrule=0.6pt, arc=2pt, left=7pt, right=7pt, top=5pt, bottom=5pt,
+  before={\par\needspace{4\baselineskip}\vskip 7pt}, after skip=7pt, fonttitle=\sffamily\bfseries\small,
+  coltitle=white, colbacktitle=hpurple, attach boxed title to top left={xshift=6pt, yshift=-\tcboxedtitleheight/2},
+  boxed title style={boxrule=0pt, arc=1pt, left=4pt, right=4pt, top=1.5pt, bottom=1.5pt},
+  title={NOW YOU #1 \textperiodcentered\ solutions in Appendix S}}
+\newcommand{\fE}{\textcolor{horange}{$\bigstar$}}
+\newcommand{\fR}{\textcolor{hblue2}{$\star$}}
+\newcommand{\fO}{\textcolor{hgray}{$\circ$}}
 
 % ---------- misc macros ----------
 \newcommand{\N}{\mathbb{N}}

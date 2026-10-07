@@ -1,0 +1,293 @@
+\chapter{Sets}
+\chaptercontents{A & Sets (\S2.1) \\ B & Set operations (\S2.2 to Def.\ 2.2.46)}%
+{\fE\ 2.1: 10, 27, 31, 35\\ \fE\ 2.2: 5, 24, 26, 28, 35, 36, 37, 40\\ \fR\ 2.1: 17, 18, 23, 24, 32, 36\\ \fR\ 2.2: 4, 6, 9, 25, 41, 45\\ Not in the uploaded pages: 2.2.46 onwards (2.2.51, 2.2.53) and 2.E. Tested in \textbf{Quiz 2}.}
+
+\hsection{Sets}
+
+\begin{key}[{Definitions 2.1.2 and 2.1.4 \textperiodcentered\ sets, the universe, set-builder notation}]
+A \term{set} is a collection of elements from a specified \term{universe of discourse} $\mathcal U$; $\mathcal U$ contains every mathematical object of interest but $\mathcal U\notin\mathcal U$. Unrestricted quantifiers range over $\mathcal U$: $\forall x,\ p(x)$ means $\forall x\in\mathcal U,\ p(x)$, and
+\[
+\forall x\in X,\ p(x)\equiv\forall x,\ (x\in X\Rightarrow p(x)),\qquad \exists x\in X,\ p(x)\equiv\exists x,\ (x\in X\wedge p(x)).
+\]
+\textbf{Set-builder notation:} $a\in\{x\mid p(x)\}\Leftrightarrow a\in\mathcal U\wedge p(a)$; $\{x\in X\mid p(x)\}=\{x\mid x\in X\wedge p(x)\}$; $\{\mathrm{expr}(x)\mid p(x)\}=\{y\mid\exists x,\ y=\mathrm{expr}(x)\wedge p(x)\}$. A set written in set-builder notation need not be an element of $\mathcal U$ (e.g.\ $\{x\mid x=x\}=\mathcal U$); this is what dissolves Russell's paradox (Exercises 2.1.1, 2.1.5).
+\end{key}
+
+\begin{trybox}[{2.1.1, 2.1.3, 2.1.5 \fO}]
+\textbf{2.1.1} With $S=\{X\mid X\text{ is a set}\}$ and $R=\{X\in S\mid X\notin X\}$, determine the truth value of $R\in R$.\quad \textbf{2.1.3} Why does ``$\forall x\in X$'' expand with $\Rightarrow$ but ``$\exists x\in X$'' with $\wedge$? Verify de Morgan's laws for the expanded forms.\quad \textbf{2.1.5} Repeat 2.1.1 with the updated definitions.
+\end{trybox}
+
+\hsub{Subsets}
+\begin{key}[{Definition 2.1.6}]
+$U$ is a \term{subset} of $X$, written $U\subseteq X$, if $\forall a\in U,\ a\in X$ (equivalently $\forall a,\ (a\in U\Rightarrow a\in X)$). $U\nsubseteq X$: not a subset. $U\subsetneq X$ (\term{proper subset}): $U\subseteq X$ and $U\ne X$. Example 2.1.11: $\N\subseteq\Z\subseteq\Q\subseteq\R\subseteq\C$.
+\end{key}
+\begin{strategy}[{Strategy 2.1.7 \textperiodcentered\ proving $U\subseteq X$}]
+``Let $a\in U$.'' Unfold what that means. \dots\ ``So $a\in X$.'' (It is a $\forall$-proof, Strategy 1.2.10.) Example 2.1.9: $[c,d]\subseteq(a,b)$ when $a<c<d<b$, because $c\le x\le d$ gives $a<x<b$.
+\end{strategy}
+\begin{result}[{Proposition 2.1.12 \textperiodcentered\ transitivity}]
+If $X\subseteq Y$ and $Y\subseteq Z$ then $X\subseteq Z$. \emph{Proof:} let $a\in X$; then $a\in Y$ (as $X\subseteq Y$); then $a\in Z$ (as $Y\subseteq Z$).
+\end{result}
+
+\begin{bookex}[essential]{2.1.10}
+Let $a,b,c,d\in\R$ with $a<b$ and $c<d$. Prove that $[a,b)\subseteq(c,d]$ if and only if $a>c$ and $b\le d$.
+\solution
+($\Leftarrow$) Suppose $a>c$ and $b\le d$. Let $x\in[a,b)$, so $a\le x<b$. Then $c<a\le x$ gives $c<x$, and $x<b\le d$ gives $x\le d$. So $x\in(c,d]$. Hence $[a,b)\subseteq(c,d]$.\\
+($\Rightarrow$) Suppose $[a,b)\subseteq(c,d]$. Since $a<b$, we have $a\in[a,b)$, so $a\in(c,d]$, which gives $c<a$ (and $a\le d$). For $b\le d$, suppose towards a contradiction that $b>d$. Define $x=\frac{d+b}2$. Then $d<x<b$, and $x>d\ge a$, so $x\in[a,b)$; but $x>d$ means $x\notin(c,d]$, contradicting $[a,b)\subseteq(c,d]$. Hence $b\le d$.\qed
+\end{bookex}
+
+\hsub{Set equality}
+\begin{result}[{Axiom 2.1.14 \textperiodcentered\ set extensionality}]
+$X=Y$ if and only if $\forall a,\ (a\in X\Leftrightarrow a\in Y)$, equivalently $X\subseteq Y$ and $Y\subseteq X$. Consequence: order and repetition in list notation do not matter.
+\end{result}
+\begin{strategy}[{Strategy 2.1.15 \textperiodcentered\ proof by double containment}]
+($\subseteq$) Let $a\in X$ \dots\ so $a\in Y$. \quad ($\supseteq$) Let $a\in Y$ \dots\ so $a\in X$. \quad Example 2.1.16: $\{x\in\R\mid x^2\le1\}=[-1,1]$, using $(1-a)(1+a)\ge0$ for $\subseteq$ and $|a|\le1\Rightarrow a^2\le1$ for $\supseteq$.
+\end{strategy}
+
+\begin{bookex}[recommended]{2.1.17}
+Prove that $\{x\in\R\mid x^2<x\}=(0,1)$.
+\solution
+($\subseteq$) Let $a\in\{x\in\R\mid x^2<x\}$, so $a\in\R$ and $a^2<a$, i.e.\ $a(a-1)=a^2-a<0$. A product of two real numbers is negative only if one factor is positive and the other negative. If $a>0$ and $a-1<0$ then $0<a<1$. If $a<0$ and $a-1>0$ then $a<0$ and $a>1$, impossible. So $0<a<1$, i.e.\ $a\in(0,1)$.\\
+($\supseteq$) Let $a\in(0,1)$, so $0<a<1$. Multiplying $a<1$ by $a>0$ gives $a^2<a$; and $a\in\R$. So $a\in\{x\in\R\mid x^2<x\}$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.1.18}
+Prove by double containment that $\{0,1\}=\{1,0\}$ and $\{0,0\}=\{0\}$.
+\solution
+($\subseteq$) Let $a\in\{0,1\}$. Then $a=0$ or $a=1$; in either case $a$ is one of the listed elements $1,0$, so $a\in\{1,0\}$. ($\supseteq$) Let $a\in\{1,0\}$; then $a=1$ or $a=0$, so $a\in\{0,1\}$. Hence $\{0,1\}=\{1,0\}$.\\
+($\subseteq$) Let $a\in\{0,0\}$. Then $a=0$ or $a=0$, so $a=0$, so $a\in\{0\}$. ($\supseteq$) Let $a\in\{0\}$; then $a=0$, so $a\in\{0,0\}$. Hence $\{0,0\}=\{0\}$.\qed
+\end{bookex}
+
+\hsub{Empty and non-empty sets}
+\begin{key}[{Definition 2.1.19, Strategy 2.1.20, Theorem 2.1.25, Notation 2.1.26}]
+$X$ is \term{non-empty} if it has at least one element ($\exists a,\ a\in X$); otherwise \term{empty} ($\neg\exists a,\ a\in X$). \textbf{To prove non-empty:} exhibit an element. \textbf{To prove empty:} assume there is $a\in X$ and derive a contradiction. Any two empty sets are equal (2.1.25), so there is one \term{empty set}, $\varnothing$. Examples 2.1.21--22: $\{x\in\Q\mid x^2=2\}$ and $[0]$ are empty.
+\end{key}
+
+\begin{bookex}[recommended]{2.1.23}
+Let $a,b\in\R$. Prove that $[a,b]$ is empty iff $a>b$, and that $(a,b)$ is empty iff $a\ge b$.
+\solution
+\emph{$[a,b]$.} ($\Leftarrow$) Suppose $a>b$. If $x\in[a,b]$ then $a\le x\le b$, so $a\le b$, contradiction. So $[a,b]$ is empty. ($\Rightarrow$) By contraposition: suppose $a\le b$. Then $a\le a\le b$, so $a\in[a,b]$ and $[a,b]$ is non-empty.\\
+\emph{$(a,b)$.} ($\Leftarrow$) Suppose $a\ge b$. If $x\in(a,b)$ then $a<x<b$, so $a<b$, contradiction. ($\Rightarrow$) By contraposition: suppose $a<b$. Then $\frac{a+b}2\in(a,b)$ (as in Exercise 1.2.29), so $(a,b)$ is non-empty.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.1.24}
+Let $E$ be empty and $p(x)$ a predicate on $E$. Show that $\forall x\in E,\ p(x)$ is true and $\exists x\in E,\ p(x)$ is false. What does $\forall x\in E,\ x\ne x$ mean, and is it true?
+\solution
+$\forall x\in E,\ p(x)$ means $\forall x,\ (x\in E\Rightarrow p(x))$ (Definition 2.1.2). Let $x$ be arbitrary and suppose $x\in E$. Since $E$ is empty this is a contradiction, so $p(x)$ follows by the principle of explosion (Axiom 1.1.67). Hence the implication holds for every $x$, and the statement is true (``vacuously'').\\
+$\exists x\in E,\ p(x)$ means $\exists x,\ (x\in E\wedge p(x))$; if it were true there would be some $x\in E$, contradicting emptiness. So it is false.\\
+$\forall x\in E,\ x\ne x$ says ``every element of the empty set is different from itself''. It is true, by the first part with $p(x)$ being $x\ne x$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{2.1.27}
+Is it true that $\varnothing\in X$ for all sets $X$? Is it true that $\varnothing\subseteq X$ for all sets $X$?
+\solution
+$\varnothing\in X$ for all $X$ is \textbf{false}: take $X=\varnothing$; it has no elements, so $\varnothing\notin\varnothing$.\\
+$\varnothing\subseteq X$ for all $X$ is \textbf{true}: by Definition 2.1.6 we need $\forall a\in\varnothing,\ a\in X$, which holds by Exercise 2.1.24 (vacuously).\qed
+\end{bookex}
+
+\begin{trybox}[{2.1.28 \fO}]
+\textbf{2.1.28} Why are $\varnothing$, $\{\varnothing\}$, $\{\{\varnothing\}\}$ different? Truth values of $\varnothing\in\varnothing$, $\varnothing\subseteq\varnothing$, $\varnothing\in\{\varnothing\}$, $\varnothing\in\{\{\varnothing\}\}$, $\{\varnothing\}\subseteq\{\varnothing\}$, $\{\varnothing\}\subseteq\{\{\varnothing\}\}$; find more.
+\end{trybox}
+
+\hsub{Power sets}
+\begin{key}[{Definition 2.1.29, Example 2.1.34}]
+$\PS(X)$ is the set of all subsets of $X$: $\quad U\in\PS(X)\ \Leftrightarrow\ U\subseteq X.$\quad $\PS(\{1,2\})=\{\varnothing,\{1\},\{2\},\{1,2\}\}$. Confusions come from mixing $\in$ (element) with $\subseteq$ (subset): $U\subseteq X$ is the same as $U\in\PS(X)$.
+\end{key}
+
+\begin{bookex}[essential]{2.1.31}
+Write out the elements of $\PS(\{1,2,3\})$.
+\solution
+$\PS(\{1,2,3\})=\big\{\varnothing,\ \{1\},\ \{2\},\ \{3\},\ \{1,2\},\ \{1,3\},\ \{2,3\},\ \{1,2,3\}\big\}$: eight subsets, one for each choice of which of $1,2,3$ to include.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.1.32}
+Let $X$ be a set. Show that $\varnothing\in\PS(X)$ and $X\in\PS(X)$.
+\solution
+By Exercise 2.1.27, $\varnothing\subseteq X$, so $\varnothing\in\PS(X)$ by Definition 2.1.29. By Example 2.1.8, $X\subseteq X$, so $X\in\PS(X)$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{2.1.35}
+Let $X$ and $Y$ be sets. Prove that if $X\subseteq Y$, then $\PS(X)\subseteq\PS(Y)$.
+\solution
+Suppose $X\subseteq Y$. Let $U\in\PS(X)$. Then $U\subseteq X$ (Definition 2.1.29). Since $U\subseteq X$ and $X\subseteq Y$, transitivity (Proposition 2.1.12) gives $U\subseteq Y$, so $U\in\PS(Y)$. Hence $\PS(X)\subseteq\PS(Y)$ by Strategy 2.1.7.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.1.36}
+True or false? (a) $\PS(\varnothing)\in\{\varnothing\}$; (b) $\PS(\varnothing)\in\PS(\PS(\varnothing))$; (c) $\PS(\PS(\varnothing))\in\{\varnothing,\{\varnothing,\{\varnothing\}\}\}$. Repeat with $\in$ replaced by $\subseteq$.
+\solution
+First compute: $\PS(\varnothing)=\{\varnothing\}$ and $\PS(\PS(\varnothing))=\PS(\{\varnothing\})=\{\varnothing,\{\varnothing\}\}$.\\
+(a) False: the only element of $\{\varnothing\}$ is $\varnothing$, and $\{\varnothing\}\ne\varnothing$ (it has an element).\\
+(b) True: $\PS(\varnothing)\subseteq\PS(\varnothing)$ (Example 2.1.8), so $\PS(\varnothing)\in\PS(\PS(\varnothing))$ by Definition 2.1.29.\\
+(c) True: $\PS(\PS(\varnothing))=\{\varnothing,\{\varnothing\}\}$ is the second listed element.\\
+With $\subseteq$: (a$'$) $\{\varnothing\}\subseteq\{\varnothing\}$: true (Example 2.1.8). (b$'$) $\{\varnothing\}\subseteq\{\varnothing,\{\varnothing\}\}$: true, its only element $\varnothing$ is listed. (c$'$) $\{\varnothing,\{\varnothing\}\}\subseteq\{\varnothing,\{\varnothing,\{\varnothing\}\}\}$: false, because $\{\varnothing\}$ is an element of the left set but not of the right one (the right set's elements are $\varnothing$ and $\{\varnothing,\{\varnothing\}\}$, and $\{\varnothing\}$ differs from both).\qed
+\end{bookex}
+
+\begin{trybox}[{2.1.33 \fO}]
+\textbf{2.1.33} Write out $\PS(\varnothing)$, $\PS(\PS(\varnothing))$ and $\PS(\PS(\PS(\varnothing)))$.
+\end{trybox}
+
+\hsection{Set operations}
+
+\hsub{Intersection}
+\begin{key}[{Definitions 2.2.1, 2.2.2, 2.2.10, Notation 2.2.13}]
+The \term{intersection} of a collection of sets is the set of objects that are elements of all of them. $A\cap B=\{x\mid x\in A\text{ and }x\in B\}$, so $x\in A\cap B\Leftrightarrow x\in A\wedge x\in B$. $A$ and $B$ are \term{disjoint} if $A\cap B$ is empty. $A_0\cap\dots\cap A_{n-1}=\{x\mid x\in A_i\text{ for all }i\in[n]\}$.
+\end{key}
+
+\begin{bookex}[recommended]{2.2.4}
+Prove that $[0,\infty)\cap\Z=\N$.
+\solution
+($\subseteq$) Let $x\in[0,\infty)\cap\Z$. Then $x\in[0,\infty)$ and $x\in\Z$, so $x$ is an integer with $x\ge0$, i.e.\ a non-negative whole number, so $x\in\N$ (Definition 0.6). ($\supseteq$) Let $n\in\N$. Then $n$ is a whole number, so $n\in\Z$, and $n\ge0$, so $n\in[0,\infty)$. Hence $n\in[0,\infty)\cap\Z$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{2.2.5}
+Write down the elements of $\{0,1,4,7\}\cap\{1,2,3,4,5\}$.
+\solution
+The elements common to both lists are $1$ and $4$: $\{0,1,4,7\}\cap\{1,2,3,4,5\}=\{1,4\}$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.2.6}
+Express $[-2,5)\cap[4,7)$ as a single interval.
+\solution
+$x$ lies in both iff $-2\le x<5$ and $4\le x<7$, iff $4\le x<5$. So $[-2,5)\cap[4,7)=[4,5)$.\qed
+\end{bookex}
+
+\begin{result}[{Proposition 2.2.8}]
+$X\subseteq Y$ if and only if $X\cap Y=X$. \emph{Proof:} ($\Rightarrow$) double containment, using $X\subseteq Y$ for $\supseteq$; ($\Leftarrow$) if $a\in X=X\cap Y$ then $a\in Y$.
+\end{result}
+
+\begin{bookex}[recommended]{2.2.9}
+Let $X$ be a set. Prove that $X\cap\varnothing=\varnothing$ and $X\cap X=X$.
+\solution
+\emph{$X\cap\varnothing=\varnothing$.} Suppose $X\cap\varnothing$ is non-empty, say $a\in X\cap\varnothing$. Then $a\in\varnothing$, contradicting that $\varnothing$ has no elements. So $X\cap\varnothing$ is empty, hence equal to $\varnothing$ (Theorem 2.1.25).\\
+\emph{$X\cap X=X$.} For any $a$: $a\in X\cap X\Leftrightarrow a\in X\wedge a\in X\Leftrightarrow a\in X$. So the sets are equal by extensionality (Axiom 2.1.14).\qed
+\end{bookex}
+
+\begin{trybox}[{2.2.7, 2.2.12, 2.2.15 \fO}]
+\textbf{2.2.7} For $A\subseteq\R$, express with $\cap$: (a) the positive elements of $A$; (b) the integer elements of $A$.\quad \textbf{2.2.12} Prove that $(a,b)$ and $(c,d)$ are disjoint iff $b\le c$ or $d\le a$.\quad \textbf{2.2.15} Express the set of non-negative rational elements of $A$ using $\cap$.
+\end{trybox}
+
+\hsub{Indexed families}
+\begin{key}[{Definition 2.2.16, Notation 2.2.18}]
+An \term{indexed family} over a set $I$ assigns a set $A_i$ to each $i\in I$: $\{A_i\mid i\in I\}$. $\displaystyle\bigcap_{i\in I}A_i=\{x\mid x\in A_i\text{ for all }i\in I\}$, so $x\in\bigcap_{i\in I}A_i\Leftrightarrow\forall i\in I,\ x\in A_i$. For $I=\{n\in\N\mid n\ge1\}$ one writes $\bigcap_{n\ge1}A_n$ or $\bigcap_{n=1}^\infty A_n$.
+\end{key}
+\begin{strategy}[{Example 2.2.19 \textperiodcentered\ the technique for intersections over $n\ge1$}]
+To prove $\bigcap_{n\ge1}[0,1+\frac1n)=[0,1]$: ($\supseteq$) let $x\in[0,1]$ and let $n\ge1$ be arbitrary; check $x<1+\frac1n$. ($\subseteq$) let $x$ be in every $[0,1+\frac1n)$ and suppose $x>1$; choose $N=\lfloor\frac1{x-1}\rfloor+1$, which gives $N\ge1$ and $N\ge\frac1{x-1}$, hence $x\ge1+\frac1N$, contradicting $x\in[0,1+\frac1N)$. \textbf{The invention is always the same: build an index $N$ from $x$ that breaks the inequality.}
+\end{strategy}
+
+\begin{trybox}[{2.2.20 \fO}]
+\textbf{2.2.20} For $n\in\Z$ let $A_n=\{x\in\R\mid x\ne n\}$. Describe $\bigcap_{n\in\Z}A_n$ in plain terms.
+\end{trybox}
+
+\hsub{Union}
+\begin{key}[{Definitions 2.2.21, 2.2.22, Notations 2.2.29, 2.2.33}]
+The \term{union} of a collection of sets is the set of objects that are elements of at least one of them. $A\cup B=\{x\mid x\in A\text{ or }x\in B\}$, so $x\in A\cup B\Leftrightarrow x\in A\vee x\in B$. $A_0\cup\dots\cup A_{n-1}=\{x\mid x\in A_i\text{ for some }i\in[n]\}$. $\displaystyle\bigcup_{i\in I}A_i=\{x\mid x\in A_i\text{ for some }i\in I\}$, so $x\in\bigcup_{i\in I}A_i\Leftrightarrow\exists i\in I,\ x\in A_i$. Example 2.2.23: $E\cup O=\Z$ and $E\cap O=\varnothing$ for the even and odd integers.
+\end{key}
+
+\begin{bookex}[essential]{2.2.24}
+Write down the elements of $\{0,1,4,7\}\cup\{1,2,3,4,5\}$.
+\solution
+Everything in either list, each element once: $\{0,1,2,3,4,5,7\}$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.2.25}
+Express $[-2,5)\cup[4,7)$ as a single interval.
+\solution
+$x$ lies in the union iff $-2\le x<5$ or $4\le x<7$; since the two ranges overlap on $[4,5)$, this is iff $-2\le x<7$. So $[-2,5)\cup[4,7)=[-2,7)$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{2.2.26}
+Let $X$ and $Y$ be sets. Prove that $X\subseteq Y$ if and only if $X\cup Y=Y$.
+\solution
+($\Rightarrow$) Suppose $X\subseteq Y$; we prove $X\cup Y=Y$ by double containment. ($\subseteq$) Let $a\in X\cup Y$. Then $a\in X$ or $a\in Y$. If $a\in X$ then $a\in Y$ since $X\subseteq Y$; if $a\in Y$ then $a\in Y$. In both cases $a\in Y$. ($\supseteq$) Let $a\in Y$. Then $a\in X\cup Y$ by definition of union.\\
+($\Leftarrow$) Suppose $X\cup Y=Y$. Let $a\in X$. Then $a\in X\cup Y$ by definition of union, so $a\in Y$ since $X\cup Y=Y$. Hence $X\subseteq Y$.\qed
+\end{bookex}
+
+\begin{result}[{Example 2.2.27 \textperiodcentered\ distributivity of $\cap$ over $\cup$}]
+$X\cap(Y\cup Z)=(X\cap Y)\cup(X\cap Z)$, by double containment; the $\subseteq$ direction splits into cases on $x\in Y\cup Z$.
+\end{result}
+
+\begin{bookex}[essential]{2.2.28}
+Let $X,Y,Z$ be sets. Prove that $X\cup(Y\cap Z)=(X\cup Y)\cap(X\cup Z)$.
+\solution
+($\subseteq$) Let $x\in X\cup(Y\cap Z)$. Then $x\in X$ or $x\in Y\cap Z$. If $x\in X$, then $x\in X\cup Y$ and $x\in X\cup Z$, so $x\in(X\cup Y)\cap(X\cup Z)$. If $x\in Y\cap Z$, then $x\in Y$ and $x\in Z$, so $x\in X\cup Y$ and $x\in X\cup Z$, and again $x\in(X\cup Y)\cap(X\cup Z)$.\\
+($\supseteq$) Let $x\in(X\cup Y)\cap(X\cup Z)$, so $x\in X\cup Y$ and $x\in X\cup Z$. By the law of excluded middle, $x\in X$ or $x\notin X$. If $x\in X$, then $x\in X\cup(Y\cap Z)$. If $x\notin X$, then from $x\in X\cup Y$ we get $x\in Y$, and from $x\in X\cup Z$ we get $x\in Z$; so $x\in Y\cap Z$, and $x\in X\cup(Y\cap Z)$.\qed
+\end{bookex}
+
+\begin{trybox}[{2.2.31, 2.2.32 \fO}]
+\textbf{2.2.31} Write $X=\{x\in\R\mid x^4-5x^2+4>0\}$ as a union of intervals.\quad \textbf{2.2.32} State and prove the distributivity laws for finitary unions and intersections.
+\end{trybox}
+
+\begin{bookex}[essential]{2.2.35}
+Express $\bigcup_{n\ge1}[0,1-\frac1n]$ as an interval.
+\solution
+We claim $\bigcup_{n\ge1}[0,1-\frac1n]=[0,1)$. ($\subseteq$) Let $x$ be in the union; take $n\ge1$ with $x\in[0,1-\frac1n]$. Then $0\le x\le1-\frac1n<1$, so $x\in[0,1)$. ($\supseteq$) Let $x\in[0,1)$, so $0\le x<1$ and $1-x>0$. Define $N=\lceil\frac1{1-x}\rceil$; since $\frac1{1-x}\ge1$ we have $N\ge1$, and $N\ge\frac1{1-x}$ gives $\frac1N\le1-x$, i.e.\ $x\le1-\frac1N$. So $x\in[0,1-\frac1N]$ and hence $x$ is in the union.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{2.2.36}
+Prove that $\bigcap_{n\in\N}[n]=\varnothing$ and $\bigcup_{n\in\N}[n]=\N$.
+\solution
+\emph{Intersection.} Suppose $x\in\bigcap_{n\in\N}[n]$. Then $x\in[n]$ for all $n\in\N$, in particular $x\in[0]$. But $[0]=\{k\in\N\mid k<0\}$ is empty (Example 2.1.22): contradiction. So the intersection is empty.\\
+\emph{Union.} ($\subseteq$) If $x\in[n]$ for some $n$, then $x\in\N$ by definition of $[n]$. ($\supseteq$) Let $k\in\N$. Then $k<k+1$ and $k+1\in\N$, so $k\in[k+1]$, hence $k\in\bigcup_{n\in\N}[n]$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{2.2.37}
+Find a family $\{X_n\mid n\in\N\}$ with (i) $\bigcup_{n\in\N}X_n=\N$; (ii) $\bigcap_{n\in\N}X_n=\varnothing$; (iii) $X_i\cap X_j\ne\varnothing$ for all $i,j\in\N$.
+\solution
+Take $X_n=\{k\in\N\mid k\ne n\}$ (``$\N$ with $n$ removed''). (i) Each $X_n\subseteq\N$; and any $k\in\N$ lies in $X_{k+1}$ since $k\ne k+1$. (ii) If $k$ were in every $X_n$ then in particular $k\in X_k$, i.e.\ $k\ne k$: contradiction. (iii) Given $i,j$, the number $i+j+1$ differs from both $i$ and $j$, so $i+j+1\in X_i\cap X_j$.\qed
+\end{bookex}
+
+\hsub{Relative complement}
+\begin{key}[{Definition 2.2.38}]
+$X\setminus A=\{x\in X\mid x\notin A\}$, the \term{relative complement} of $A$ in $X$ (``$X$ minus $A$''); $x\in X\setminus A\Leftrightarrow x\in X\wedge x\notin A$. The book uses no absolute complement $A^c$. Example 2.2.39: $\Z\setminus E$ is the set of odd integers.
+\end{key}
+
+\begin{bookex}[essential]{2.2.40}
+Write down the elements of $\{0,1,4,7\}\setminus\{1,2,3,4,5\}$.
+\solution
+Keep the elements of the first set that are not in the second: $\{0,7\}$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.2.41}
+Express $[-2,5)\setminus[4,7)$ and $[4,7)\setminus[-2,5)$ as intervals.
+\solution
+$x\in[-2,5)\setminus[4,7)$ iff $-2\le x<5$ and not $4\le x<7$, iff $-2\le x<4$: the set is $[-2,4)$.\\
+$x\in[4,7)\setminus[-2,5)$ iff $4\le x<7$ and not $-2\le x<5$, iff $5\le x<7$: the set is $[5,7)$.\qed
+\end{bookex}
+
+\begin{trybox}[{2.2.42, 2.2.43 \fO}]
+\textbf{2.2.42} $A$ = the reals that are not integers: (a) write $A$ as a relative complement; (b) as a union of intervals.\quad \textbf{2.2.43} Prove $X\setminus(X\setminus A)=X\cap A$, and deduce that $A\subseteq X$ iff $X\setminus(X\setminus A)=A$.
+\end{trybox}
+
+\hsub{Sets versus logic}
+\begin{key}[{The dictionary (page 92)}]
+With $p$: $a\in X$, $q$: $a\in Y$, $r(i)$: $a\in X_i$:
+\[
+\begin{array}{ll@{\qquad}ll}
+a\notin X & \neg p & a\in\bigcap_{i\in I}X_i & \forall i\in I,\ r(i)\\
+a\in X\cap Y & p\wedge q & a\in\bigcup_{i\in I}X_i & \exists i\in I,\ r(i)\\
+a\in X\cup Y & p\vee q & a\in X\setminus Y & p\wedge(\neg q)
+\end{array}
+\]
+Every set identity in this section is a logical law in disguise; the proof unfolds membership, applies the law, folds back.
+\end{key}
+\begin{result}[{Theorem 2.2.44 \textperiodcentered\ de Morgan's laws for sets}]
+(a) $X\setminus(A\cup B)=(X\setminus A)\cap(X\setminus B)$;\ (b) $X\setminus(A\cap B)=(X\setminus A)\cup(X\setminus B)$;\ (c) $X\setminus\bigcup_{i\in I}A_i=\bigcap_{i\in I}(X\setminus A_i)$;\ (d) $X\setminus\bigcap_{i\in I}A_i=\bigcup_{i\in I}(X\setminus A_i)$. The book proves (a) by double containment, using Theorem 1.3.24 to turn $x\notin A\cup B$ into $x\notin A$ and $x\notin B$.
+\end{result}
+
+\begin{bookex}[recommended]{2.2.45}
+Complete the proof of de Morgan's laws for sets: parts (b), (c), (d).
+\solution
+\emph{(b)} ($\subseteq$) Let $x\in X\setminus(A\cap B)$: $x\in X$ and $x\notin A\cap B$, i.e.\ $\neg(x\in A\wedge x\in B)$. By de Morgan (Theorem 1.3.24(a)), $x\notin A$ or $x\notin B$. If $x\notin A$ then $x\in X\setminus A$; if $x\notin B$ then $x\in X\setminus B$. Either way $x\in(X\setminus A)\cup(X\setminus B)$. ($\supseteq$) Let $x\in(X\setminus A)\cup(X\setminus B)$. If $x\in X\setminus A$: $x\in X$ and $x\notin A$, so $x\notin A\cap B$ (an element of $A\cap B$ would be in $A$), hence $x\in X\setminus(A\cap B)$. The case $x\in X\setminus B$ is the same.\\
+\emph{(c)} For any $x$: $x\in X\setminus\bigcup_iA_i\Leftrightarrow x\in X\wedge\neg(\exists i\in I,\ x\in A_i)\Leftrightarrow x\in X\wedge\forall i\in I,\ x\notin A_i$ \reason{Theorem 1.3.29(b)} $\Leftrightarrow\forall i\in I,\ (x\in X\wedge x\notin A_i)$ \reason{$x\in X$ does not depend on $i$; see note} $\Leftrightarrow\forall i\in I,\ x\in X\setminus A_i\Leftrightarrow x\in\bigcap_i(X\setminus A_i)$. \emph{Note:} the third step needs $I$ non-empty for the direction $\Leftarrow$; for $I=\varnothing$ one reads the conventions of the book for empty intersections.\\
+\emph{(d)} For any $x$: $x\in X\setminus\bigcap_iA_i\Leftrightarrow x\in X\wedge\neg(\forall i\in I,\ x\in A_i)\Leftrightarrow x\in X\wedge\exists i\in I,\ x\notin A_i$ \reason{Theorem 1.3.29(a)} $\Leftrightarrow\exists i\in I,\ (x\in X\wedge x\notin A_i)\Leftrightarrow\exists i\in I,\ x\in X\setminus A_i\Leftrightarrow x\in\bigcup_i(X\setminus A_i)$.\qed
+\end{bookex}
+
+\begin{warn}
+\begin{itemize}
+\item From $x\in A\cup B$ you get a \emph{disjunction}: do cases. From $x\in A\cap B$ you get two facts. From $x\notin A\cup B$ you get $x\notin A$ and $x\notin B$ (de Morgan), not just one of them.
+\item $X\setminus A=X\setminus B$ does not give $A=B$ (aside on page 91): the complement operation does not cancel like subtraction.
+\item An ``express as an interval'' question still deserves the one-line justification ``$x$ is in the set iff \dots''.
+\end{itemize}
+\end{warn}
+
+\begin{key}[{Where the uploaded pages stop}]
+Definition 2.2.46 (ordered lists) begins the part on Cartesian products, $\prod$ and $A^k$, which continues to the end of \S2.2 and is followed by the chapter exercises 2.E (planning: \fE\ 2.2.51; 2.E.6, 33, 38; \fR\ 2.2.53; 2.E.4, 5, 16, 28, 32, 41). Those pages were not in the upload; send them and this workbook can be extended.
+\end{key}

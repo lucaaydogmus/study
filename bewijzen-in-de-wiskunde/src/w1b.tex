@@ -1,0 +1,216 @@
+\hsection{Logical equivalence}
+
+\begin{key}[{Definition 1.3.2 \textperiodcentered\ logically equivalent}]
+Logical formulae $p$ and $q$ are \term{logically equivalent}, $p\equiv q$, if $q$ can be derived from $p$ \emph{and} $p$ can be derived from $q$. Equivalent formulae mean the same thing but suggest different proof strategies (Example 1.3.1: ``every prime $>2$ is odd'' versus ``there is no even prime $>2$'').
+\end{key}
+\begin{strategy}[{Proving $p\equiv q$ from the definition (Examples 1.3.3, 1.3.4)}]
+Two derivations: ``First assume $p$ \dots\ hence $q$.'' then ``Now assume $q$ \dots\ hence $p$.'' Inside each, use the strategies of \S1.1 (cases for $\vee$, assume-and-derive for $\Rightarrow$, LEM and explosion where needed).
+\end{strategy}
+
+\begin{bookex}[essential]{1.3.5}
+Let $p,q,r$ be propositional variables. Prove that $(p\vee q)\Rightarrow r$ is logically equivalent to $(p\Rightarrow r)\wedge(q\Rightarrow r)$.
+\solution
+First assume $(p\vee q)\Rightarrow r$. To prove $p\Rightarrow r$: assume $p$; then $p\vee q$ by ($\vee$I$_1$), so $r$ by modus ponens. To prove $q\Rightarrow r$: assume $q$; then $p\vee q$ by ($\vee$I$_2$), so $r$ by modus ponens. Hence $(p\Rightarrow r)\wedge(q\Rightarrow r)$ by ($\wedge$I).\\
+Now assume $(p\Rightarrow r)\wedge(q\Rightarrow r)$, so $p\Rightarrow r$ and $q\Rightarrow r$ ($\wedge$E). To prove $(p\vee q)\Rightarrow r$, assume $p\vee q$ and split into cases: if $p$, then $r$ by modus ponens; if $q$, then $r$ by modus ponens. In both cases $r$, so $(p\vee q)\Rightarrow r$.\\
+Each formula can be derived from the other, so they are logically equivalent.\qed
+\end{bookex}
+
+\hsub{Truth tables}
+\begin{result}[{Theorem 1.3.6 and Definition 1.3.7}]
+Two \emph{propositional} formulae are logically equivalent iff they have the same truth value under every assignment of truth values to their variables. The \term{truth table} of a formula has one row per assignment ($2^n$ rows for $n$ variables) and one column per subformula. Basic tables: $\neg p$ is $\times$ iff $p$ is $\checkmark$; $p\wedge q$ is $\checkmark$ only in row $\checkmark\checkmark$; $p\vee q$ is $\times$ only in row $\times\times$; $p\Rightarrow q$ is $\times$ only in row $\checkmark\times$.
+\end{result}
+\begin{strategy}[{Strategy 1.3.11}]
+To prove propositional formulae are equivalent, show that their columns in a (combined) truth table are identical. Layout: variables first ($p$: four $\checkmark$ then four $\times$; $q$: two and two; $r$: alternating), then subformulae, then the main formulae.
+\end{strategy}
+
+\begin{bookex}[essential]{1.3.13}
+Use a truth table to prove that $p\Rightarrow q\equiv(\neg p)\vee q$.
+\solution
+\[
+\begin{array}{cc|c|cc}
+p&q&p\Rightarrow q&\neg p&(\neg p)\vee q\\\hline
+\checkmark&\checkmark&\checkmark&\times&\checkmark\\
+\checkmark&\times&\times&\times&\times\\
+\times&\checkmark&\checkmark&\checkmark&\checkmark\\
+\times&\times&\checkmark&\checkmark&\checkmark
+\end{array}
+\]
+The columns for $p\Rightarrow q$ and $(\neg p)\vee q$ are identical, so by Strategy 1.3.11 the formulae are logically equivalent.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{1.3.14}
+Use a truth table to prove that $(p\vee q)\Rightarrow r\equiv(p\Rightarrow r)\wedge(q\Rightarrow r)$.
+\solution
+\[
+\begin{array}{ccc|cc|ccc}
+p&q&r&p\vee q&(p\vee q)\Rightarrow r&p\Rightarrow r&q\Rightarrow r&(p\Rightarrow r)\wedge(q\Rightarrow r)\\\hline
+\checkmark&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark\\
+\checkmark&\checkmark&\times&\checkmark&\times&\times&\times&\times\\
+\checkmark&\times&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark\\
+\checkmark&\times&\times&\checkmark&\times&\times&\checkmark&\times\\
+\times&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark\\
+\times&\checkmark&\times&\checkmark&\times&\checkmark&\times&\times\\
+\times&\times&\checkmark&\times&\checkmark&\checkmark&\checkmark&\checkmark\\
+\times&\times&\times&\times&\checkmark&\checkmark&\checkmark&\checkmark
+\end{array}
+\]
+The fifth and eighth columns agree in every row, so the formulae are logically equivalent.\qed
+\end{bookex}
+
+\begin{trybox}[{1.3.9 \fO}]
+\textbf{1.3.9} Use the definitions of $\wedge$, $\vee$, $\Rightarrow$ to justify the basic truth tables.
+\end{trybox}
+
+\hsub{Strategies from equivalences}
+\begin{result}[{Theorem 1.3.15 and Strategy 1.3.16 \textperiodcentered\ double negation, indirect contradiction}]
+$p\equiv\neg\neg p$ (two-row truth table). Hence \textbf{to prove $p$ is true, you may assume $p$ is false and derive a contradiction.} Compare Strategy 1.1.51 (to prove $\neg p$, assume $p$): that one is direct, this one is indirect. Example 1.3.17: $a,b,c\ge0$ with $a^2+b^2=c^2$ implies $a+b\ge c$; assume $a+b<c$ and square.
+\end{result}
+\begin{result}[{Definition 1.3.18, Theorem 1.3.19, Strategy 1.3.20 \textperiodcentered\ contraposition}]
+The \term{contrapositive} of $p\Rightarrow q$ is $\neg q\Rightarrow\neg p$, and $p\Rightarrow q\equiv(\neg q)\Rightarrow(\neg p)$ (truth table). \textbf{Proof by contraposition:} to prove $p\Rightarrow q$, assume $\neg q$ and derive $\neg p$. Example 1.3.21: $mn>64\Rightarrow(m>8\vee n>8)$; assume $m\le8$ and $n\le8$, get $mn\le64$. Announce it: ``By contraposition, it suffices to \dots''.
+\end{result}
+
+\begin{bookex}[essential]{1.3.22}
+Use the law of contraposition to prove that $p\Leftrightarrow q\equiv(p\Rightarrow q)\wedge((\neg p)\Rightarrow(\neg q))$, and use the technique this suggests to prove that an integer is even if and only if its square is even.
+\solution
+By Definition 1.1.40, $p\Leftrightarrow q$ is $(p\Rightarrow q)\wedge(q\Rightarrow p)$. By the law of contraposition (Theorem 1.3.19 applied to $q\Rightarrow p$), $q\Rightarrow p\equiv(\neg p)\Rightarrow(\neg q)$. Replacing the second conjunct by this equivalent formula gives $p\Leftrightarrow q\equiv(p\Rightarrow q)\wedge((\neg p)\Rightarrow(\neg q))$.\\
+\emph{Technique:} to prove ``$p$ iff $q$'', prove $p\Rightarrow q$ and then prove $\neg p\Rightarrow\neg q$.\\
+\emph{Application.} Let $n\in\Z$. ($p\Rightarrow q$) If $n$ is even, $n=2k$, then $n^2=2(2k^2)$ is even. ($\neg p\Rightarrow\neg q$) If $n$ is odd, then $n^2$ is odd by Proposition 1.2.11. Hence $n$ is even iff $n^2$ is even.\qed
+\end{bookex}
+
+\begin{bookex}{1.3.23}
+Prove that $p\vee q\equiv(\neg p)\Rightarrow q$. Use the strategy this suggests to prove that if two integers sum to an even number, then either both are even or both are odd.
+\solution
+By Exercise 1.3.13 (with $\neg p$ in place of $p$), $(\neg p)\Rightarrow q\equiv(\neg\neg p)\vee q\equiv p\vee q$ by the law of double negation. \emph{Strategy:} to prove $p\vee q$, assume $\neg p$ and derive $q$.\\
+\emph{Application.} Let $a,b\in\Z$ with $a+b$ even, say $a+b=2m$. We prove ``both even $\vee$ both odd'' by assuming they are not both even and deriving that both are odd. So suppose $a$ and $b$ are not both even; then $a$ is odd or $b$ is odd (de Morgan, Theorem 1.3.24). The two cases are symmetric, so suppose $a$ is odd: $a=2k+1$ (Proposition 1.1.58). Then $b=2m-a=2m-2k-1=2(m-k-1)+1$ is odd. So both are odd.\qed
+\end{bookex}
+
+\hsub{Negation: de Morgan's laws and maximal negation}
+\begin{result}[{Theorems 1.3.24 and 1.3.29 \textperiodcentered\ de Morgan's laws}]
+Operators: (a) $\neg(p\wedge q)\equiv(\neg p)\vee(\neg q)$;\ (b) $\neg(p\vee q)\equiv(\neg p)\wedge(\neg q)$.\\
+Quantifiers: (a) $\neg\forall x\in X,\ p(x)\equiv\exists x\in X,\ \neg p(x)$;\ (b) $\neg\exists x\in X,\ p(x)\equiv\forall x\in X,\ \neg p(x)$.\\
+Also $\neg(p\Rightarrow q)\equiv p\wedge(\neg q)$ (Exercise 1.3.27) and $\neg\neg p\equiv p$. Quantifier laws cannot be checked with truth tables; the book derives each side from the other.
+\end{result}
+\begin{strategy}[{Strategy 1.3.30 \textperiodcentered\ proof by counterexample}]
+To prove $\forall x\in X,\ p(x)$ is false, exhibit one $a\in X$ with $p(a)$ false (that is $\exists x,\ \neg p(x)$). Example 1.3.31: not every integer is divisible by a prime; counterexample $1$.
+\end{strategy}
+
+\begin{bookex}[essential]{1.3.27}
+Prove that $\neg(p\Rightarrow q)\equiv p\wedge(\neg q)$ twice: with a truth table, and using Exercise 1.3.13 with de Morgan's laws and double negation.
+\solution
+\emph{Truth table.}
+\[
+\begin{array}{cc|cc|cc}
+p&q&p\Rightarrow q&\neg(p\Rightarrow q)&\neg q&p\wedge(\neg q)\\\hline
+\checkmark&\checkmark&\checkmark&\times&\times&\times\\
+\checkmark&\times&\times&\checkmark&\checkmark&\checkmark\\
+\times&\checkmark&\checkmark&\times&\times&\times\\
+\times&\times&\checkmark&\times&\checkmark&\times
+\end{array}
+\]
+The fourth and sixth columns agree, so the formulae are equivalent.\\
+\emph{Algebraically.} $\neg(p\Rightarrow q)\equiv\neg((\neg p)\vee q)$ \reason{Exercise 1.3.13} $\equiv(\neg\neg p)\wedge(\neg q)$ \reason{de Morgan (b)} $\equiv p\wedge(\neg q)$ \reason{double negation}.\qed
+\end{bookex}
+
+\begin{bookex}{1.3.28}
+Prove that $\neg(p\wedge q)\equiv p\Rightarrow(\neg q)$. What strategy does this suggest for proving a conjunction false, and how does it compare with de Morgan's?
+\solution
+$p\Rightarrow(\neg q)\equiv(\neg p)\vee(\neg q)$ by Exercise 1.3.13, and $(\neg p)\vee(\neg q)\equiv\neg(p\wedge q)$ by de Morgan (a). \\
+\emph{Strategy:} to prove $p\wedge q$ is false, assume $p$ and prove that $q$ is false. De Morgan's law instead asks you to prove $\neg p$ or to prove $\neg q$, which requires deciding which one fails in advance; the new strategy lets you use $p$ as an extra assumption while refuting $q$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{1.3.32}
+Prove by counterexample that not every rational number can be expressed as $\frac ab$ with $a\in\Z$ even and $b\in\Z$ odd.
+\solution
+Counterexample: $\frac13$. Suppose $\frac13=\frac ab$ with $a$ even and $b$ odd. Then $b=3a$, and $3a$ is even (it is $3\cdot2k=2(3k)$), so $b$ is even and odd at once, contradicting Definition 0.41. Hence $\frac13$ has no such expression.\qed
+\end{bookex}
+
+\begin{trybox}[{1.3.25 \fO}]
+\textbf{1.3.25} Prove de Morgan (b) three times: from the definition of $\equiv$, with a truth table, and from (a) plus double negation.
+\end{trybox}
+
+\begin{key}[{Definition 1.3.33 and Theorem 1.3.36 \textperiodcentered\ maximally negated}]
+A formula is \term{maximally negated} if every $\neg$ stands immediately before a predicate (or proposition) that contains no operators or quantifiers. Every formula is equivalent to a maximally negated one: push $\neg$ inwards with the table
+\[
+\begin{array}{l@{\quad}l}
+\neg(p\wedge q)\equiv(\neg p)\vee(\neg q) & \neg\forall x\in X,\ p(x)\equiv\exists x\in X,\ \neg p(x)\\
+\neg(p\vee q)\equiv(\neg p)\wedge(\neg q) & \neg\exists x\in X,\ p(x)\equiv\forall x\in X,\ \neg p(x)\\
+\neg(p\Rightarrow q)\equiv p\wedge(\neg q) & \neg\neg p\equiv p
+\end{array}
+\]
+one step at a time, ignoring the ``stuff'' inside (Example 1.3.37 negates the definition of convergence this way). Finally replace $\neg(x<y)$ by $x\ge y$, $\neg(a=b)$ by $a\ne b$.
+\end{key}
+
+\begin{bookex}[recommended]{1.3.35}
+Which of the following are maximally negated? (a) $\forall x\in X,\ (\neg p(x))\Rightarrow\forall y\in X,\ \neg(r(x,y)\wedge s(x,y))$; (b) $\forall x\in X,\ (\neg p(x))\Rightarrow\forall y\in X,\ (\neg r(x,y))\vee(\neg s(x,y))$; (c) $\forall x\in\R,\ [x>1\Rightarrow(\exists y\in\R,\ [x<y\wedge\neg(x^2\le y)])]$; (d) $\neg\exists x\in\R,\ [x>1\wedge(\forall y\in\R,\ [x<y\Rightarrow x^2\le y])]$.
+\solution
+(a) No: $\neg(r\wedge s)$ has a negation in front of a conjunction. (b) Yes: every $\neg$ is directly before a predicate. (c) Yes: the only negation is $\neg(x^2\le y)$, in front of a predicate without operators (one may still rewrite it as $x^2>y$). (d) No: the negation is in front of a quantified formula.\qed
+\end{bookex}
+
+\begin{bookex}{1.3.39}
+Maximally negate $\exists x\in\R,\ [x>1\wedge(\forall y\in\R,\ [x<y\Rightarrow x^2\le y])]$, then prove it true or prove it false.
+\solution
+Negation: $\forall x\in\R,\ [x\le1\vee(\exists y\in\R,\ [x<y\wedge x^2>y])]$ \reason{$\neg\exists\to\forall\neg$; de Morgan (a); $\neg\forall\to\exists\neg$; $\neg(\Rightarrow)\to\wedge\neg$}.\\
+The original statement is false; we prove the negation. Let $x\in\R$. If $x\le1$, the first disjunct holds. Otherwise $x>1$; define $y=\frac{x+x^2}2$. Since $x>1$ we have $x^2>x$ (multiply $x>1$ by $x>0$), so $y$ is strictly between $x$ and $x^2$: $x<y$ and $x^2>y$. Hence the second disjunct holds. In both cases the negation holds.\qed
+\end{bookex}
+
+\begin{trybox}[{1.3.38 \fO}]
+\textbf{1.3.38} Find a maximally negated formula equivalent to $\neg(p\Leftrightarrow q)$.
+\end{trybox}
+
+\hsub{Tautologies}
+\begin{key}[{Definition 1.3.40, Strategy 1.3.41, Theorem 1.3.45}]
+A \term{tautology} is a formula that is true under every assignment of truth values to its variables and predicates. Any tautology may be assumed at any point of any proof (LEM says $p\vee\neg p$ is one). \textbf{Theorem 1.3.45:} $q$ can be derived from $p$ iff $p\Rightarrow q$ is a tautology; $p\equiv q$ iff $p\Leftrightarrow q$ is a tautology. (So ``$\equiv$'' is a statement \emph{about} formulae; ``$\Leftrightarrow$'' is part of a formula.)
+\end{key}
+\begin{strategy}[{Proving that a formula is a tautology}]
+Either give a derivation from no assumptions (assume the antecedents, derive the consequent), which proves it by Theorem 1.3.45(a); or, for a propositional formula, show that its truth-table column is all $\checkmark$ (Example 1.3.43 does both for $p\Rightarrow(q\Rightarrow p)$).
+\end{strategy}
+
+\begin{bookex}[essential]{1.3.44 (a), (c), (e)}
+Prove that each is a tautology and interpret it: (a) $[(p\Rightarrow q)\wedge(q\Rightarrow r)]\Rightarrow(p\Rightarrow r)$; (c) $\exists y\in Y,\ \forall x\in X,\ p(x,y)\Rightarrow\forall x\in X,\ \exists y\in Y,\ p(x,y)$; (e) $(\neg\forall x\in X,\ p(x))\Leftrightarrow(\exists x\in X,\ \neg p(x))$.
+\solution
+(a) Assume $(p\Rightarrow q)\wedge(q\Rightarrow r)$, so $p\Rightarrow q$ and $q\Rightarrow r$. Assume $p$. Modus ponens gives $q$, then $r$. Hence $p\Rightarrow r$; this derivation from no assumptions shows the formula is a tautology (Theorem 1.3.45(a)). \emph{Meaning:} implications chain; in a proof you may pass from $p$ to $r$ through an intermediate $q$.\\
+(c) This is Theorem 1.2.40, whose proof is a derivation of the consequent from the antecedent; by Theorem 1.3.45(a) the implication is a tautology. \emph{Meaning:} a ``one size fits all'' $y$ gives a $y$ for each $x$.\\
+(e) By Theorem 1.3.29(a), $\neg\forall x\in X,\ p(x)\equiv\exists x\in X,\ \neg p(x)$, so by Theorem 1.3.45(b) the biconditional is a tautology. \emph{Meaning:} to refute a universal statement, give a counterexample (Strategy 1.3.30).\qed
+\end{bookex}
+
+\begin{trybox}[{1.3.44 (b), (d) \fO}]
+\textbf{1.3.44 (b)} $[p\Rightarrow(q\Rightarrow r)]\Rightarrow[(p\Rightarrow q)\Rightarrow(p\Rightarrow r)]$;\quad \textbf{(d)} $[\neg(p\wedge q)]\Leftrightarrow[(\neg p)\vee(\neg q)]$.
+\end{trybox}
+
+\hsection{Chapter 1 exercises (1.E)}
+
+\begin{bookex}[recommended]{1.E.11}
+Prove that $p\Leftrightarrow q\equiv(p\Rightarrow q)\wedge((\neg p)\Rightarrow(\neg q))$. How does this help to prove ``$p$ if and only if $q$''?
+\solution
+This is Exercise 1.3.22: replace $q\Rightarrow p$ in $(p\Rightarrow q)\wedge(q\Rightarrow p)$ by its contrapositive $(\neg p)\Rightarrow(\neg q)$ (Theorem 1.3.19). It helps when $\neg p$ is easier to work with than $q$: prove $p\Rightarrow q$, then assume $\neg p$ and derive $\neg q$ instead of proving $q\Rightarrow p$ (as in ``$n$ even iff $n^2$ even'').\qed
+\end{bookex}
+
+\begin{bookex}[essential]{1.E.18}
+Let $X$ be $\Z$ or $\Q$ and let $p$ be $\forall x\in X,\ \exists y\in X,\ (x<y\wedge[\forall z\in X,\ \neg(x<z\wedge z<y)])$. Write $\neg p$ maximally negated. Prove that $p$ is true for $X=\Z$ and false for $X=\Q$.
+\solution
+$\neg p\equiv\exists x\in X,\ \forall y\in X,\ (x\ge y\vee[\exists z\in X,\ (x<z\wedge z<y)])$. \reason{$\neg\forall\to\exists\neg$, $\neg\exists\to\forall\neg$, de Morgan (a) on the $\wedge$, $\neg\forall\neg\to\exists$, $\neg(x<y)\to x\ge y$}\\
+($p$ says: every $x$ has a ``next'' element $y$ with nothing strictly between.)\\
+\emph{$X=\Z$: $p$ is true.} Let $x\in\Z$ and define $y=x+1\in\Z$. Then $x<y$. Let $z\in\Z$; there is no integer strictly between $x$ and $x+1$ (page 6), so $\neg(x<z\wedge z<y)$. Hence $y$ has the required property.\\
+\emph{$X=\Q$: $p$ is false.} We prove $\neg p$. Take $x=0\in\Q$. Let $y\in\Q$. If $y\le0$ then $x\ge y$. Otherwise $0<y$; define $z=\frac{0+y}2=\frac y2\in\Q$, which satisfies $0<z<y$ (Exercise 1.2.29), so the second disjunct holds. Hence $\neg p$ is true.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{1.E.28, 1.E.29, 1.E.30}
+True or false? Let $\varphi$ be $\neg\forall x\ge0,\ \exists y\in\R,\ y^2=x$. \textbf{1.E.28} $\varphi\equiv\forall x<0,\ \exists y\notin\R,\ y^2\ne x$. \textbf{1.E.29} $\varphi\equiv\exists x\ge0,\ \forall y\in\R,\ y^2\ne x$. \textbf{1.E.30} $\varphi\equiv\exists x<0,\ \forall y\in\R,\ y^2=x$.
+\solution
+Here ``$\forall x\ge0$'' means $\forall x\in\R,\ (x\ge0\Rightarrow\dots)$. Maximally negating: $\varphi\equiv\exists x\in\R,\ (x\ge0\wedge\forall y\in\R,\ y^2\ne x)$, i.e.\ $\exists x\ge0,\ \forall y\in\R,\ y^2\ne x$.\\
+\textbf{1.E.29} True: this is exactly the maximally negated form.\\
+\textbf{1.E.28} False: negation swaps the quantifiers and negates the predicate, but it never changes the domain of a bound variable ($x\ge0$ stays, $y\in\R$ stays). The proposed formula is not obtained by any of the rules; and indeed $\varphi$ is false (every $x\ge0$ has the square root $y=\sqrt x$), while the proposed formula is true (for $x<0$ take $y=2i\notin\R$ if $x\ne-4$, and $y=i$ if $x=-4$). Different truth values, so not equivalent.\\
+\textbf{1.E.30} False: it negates the domain condition ($x<0$) and keeps the predicate un-negated. As formulae they are not equivalent: treat ``$y^2=x$'' as an abstract predicate $q(x,y)$ and the domains as abstract sets; the correct negation is $\exists x\in A,\ \forall y,\ \neg q(x,y)$, which differs from $\exists x\in B,\ \forall y,\ q(x,y)$ (take $A$ non-empty, $B$ empty: then the first may be true while the second is false).\qed
+\end{bookex}
+
+\begin{trybox}[{1.E, the rest \fO}]
+1.E.1--1.E.10, 1.E.12--1.E.17, 1.E.19--1.E.27, 1.E.31--1.E.35.
+\end{trybox}
+
+\begin{warn}[{The three most common losses of marks in this chapter}]
+\begin{itemize}
+\item Picking a value when the goal is $\forall$ (the Common error on page 54).
+\item Rearranging an equation and stopping: the converse must be checked (Examples 1.1.44--45).
+\item Negating by flipping everything: domains of quantifiers never change; $\neg(p\Rightarrow q)$ is $p\wedge\neg q$, not $\neg p\Rightarrow\neg q$.
+\end{itemize}
+\end{warn}
