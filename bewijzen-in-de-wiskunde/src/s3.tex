@@ -1,0 +1,296 @@
+\chapter{Functions}
+\chaptercontents{A & Functions (\S3.1) \\ B & Injections, surjections (\S3.2) \\ C & Chapter 3 exercises (3.E)}%
+{\fE\ 3.1: 11, 15abc, 36 \textperiodcentered\ 3.2: 5, 8, 12, 14, 20, 40, 47 \textperiodcentered\ 3.E: 13, 17, 19, 24, 25, 34, 41, 48\\ \fR\ 3.1: 8, 16, 19, 33, 40, 41 \textperiodcentered\ 3.2: 6, 16, 19, 25, 39ab, 45, 46 \textperiodcentered\ 3.E: 2, 35, 37, 38, 47; later 25e, 26b\\ Bonus: 3.1.21. Tested in \textbf{Quiz 2} (7 Oct).}
+
+\hsection{Functions}
+
+\begin{key}[{What you unfold in this section}]
+\textbf{Function} (Definition 3.1.1): $f:X\to Y$ specifies for each $x\in X$ exactly one $f(x)\in Y$: $\forall x\in X,\ \exists!y\in Y,\ y=f(x)$. \textbf{Well-defined} (page 101): totality (every $x$ gets a value), existence (the value exists and is in $Y$), uniqueness (only one value). \textbf{Graph} (Definition 3.1.6, Theorem 3.1.9): $G\subseteq X\times Y$ is the graph of a function $X\to Y$ iff $\forall x\in X,\ \exists!y\in Y,\ (x,y)\in G$. \textbf{Composite} (Definition 3.1.17): $(g\circ f)(x)=g(f(x))$; $f$ first. \textbf{Image, preimage} (Definitions 3.1.31, 3.1.37): $f[U]=\{f(x)\mid x\in U\}$, so $y\in f[U]\Leftrightarrow\exists x\in U,\ y=f(x)$; $f^{-1}[V]=\{x\in X\mid f(x)\in V\}$, so $x\in f^{-1}[V]\Leftrightarrow f(x)\in V$.
+\end{key}
+
+\begin{bookex}[recommended]{3.1.8}
+Find a function $f:\Z\to\Z$ whose graph is $\{\dots,(-2,-5),(-1,-2),(0,1),(1,4),(2,7),(3,10),\dots\}$.
+\solution
+\given $\mathrm{Gr}(f)=\{(n,f(n))\mid n\in\Z\}$ (Definition 3.1.6): the pair $(n,y)$ is in the graph iff $y=f(n)$.
+\plan Read off a pattern: second coordinates increase by $3$ per unit step; $(0,1)$ gives the constant.
+\begin{steps}
+\item Guess $f(n)=3n+1$. Check: $f(-2)=-5$, $f(-1)=-2$, $f(0)=1$, $f(1)=4$, $f(2)=7$, $f(3)=10$: all listed pairs are $(n,3n+1)$.
+\item Define $f:\Z\to\Z$ by $f(n)=3n+1$. It is well-defined (a formula producing an integer for each integer). Its graph is $\{(n,3n+1)\mid n\in\Z\}$ \why{Definition 3.1.6}, which is the given set (the ``$\dots$'' are understood to continue the pattern).
+\end{steps}
+\answer $f(n)=3n+1$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.1.11}
+For each of the following, determine whether $G$ is the graph of a function from $X$ to $Y$: (a) $X=Y=\R$, $G=\{(a,a^2)\mid a\in\R\}$; (b) $X=Y=\R$, $G=\{(a^2,a)\mid a\in\R\}$; (c) $X=Y=[0,\infty)$, $G=\{(a^2,a)\mid a\in[0,\infty)\}$; (d) $X=Y=\Q$, $G=\{(x,y)\in\Q\times\Q\mid xy=1\}$; (e) $X=Y=\Q$, $G=\{(a,a)\mid a\in\Z\}$.
+\solution
+\given Theorem 3.1.9: $G$ is a graph of a function $X\to Y$ iff for every $x\in X$ there is \emph{exactly one} $y\in Y$ with $(x,y)\in G$.
+\plan For each $x\in X$ count the $y$ with $(x,y)\in G$. ``Yes'' needs the count to be $1$ for all $x$; ``no'' needs one $x$ with count $0$ or count $\ge2$.
+\begin{steps}
+\item \emph{(a) Yes.} Let $x\in\R$. $(x,y)\in G$ iff $y=x^2$ \why{the pair $(a,a^2)$ with $a=x$}. Exactly one such $y$, and $x^2\in\R$. So $G=\mathrm{Gr}(x\mapsto x^2)$.
+\item \emph{(b) No.} For $x=-1\in\R$: $(-1,y)\in G$ would need $-1=a^2$ for some real $a$, impossible. Count $0$. (Also $x=1$: $(1,1)$ and $(1,-1)$ are both in $G$, count $2$.) Either failure suffices.
+\item \emph{(c) Yes.} Let $x\in[0,\infty)$. $(x,y)\in G$ iff $y\in[0,\infty)$ and $y^2=x$. There is exactly one such $y$: $y=\sqrt x$ \why{for $x>0$ by Example 1.2.36; for $x=0$, $y^2=0$ forces $y=0$}. So $G=\mathrm{Gr}(x\mapsto\sqrt x)$.
+\item \emph{(d) No.} For $x=0\in\Q$: $(0,y)\in G$ needs $0\cdot y=1$, impossible. Count $0$.
+\item \emph{(e) No.} For $x=\frac12\in\Q$: every element of $G$ has an \emph{integer} first coordinate, so no $(\frac12,y)\in G$. Count $0$ (totality fails).
+\end{steps}
+\conclusion (a) yes, (b) no, (c) yes, (d) no, (e) no.\qed
+\begin{compare}
+\item Always quote the ``exactly one'' criterion; ``no'' needs a \emph{specific} $x$ with the count stated.
+\item (b) versus (c): same formula, different domain and codomain. Domain and codomain are part of the function.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential (a)--(c)]{3.1.15}
+Which of the following specifications of functions are well-defined? (a) $g:\Q\to\Q$ defined by $(x+1)g(x)=1$ for all $x\in\Q$; (b) $h:\N\to\Q$ defined by $(x+1)h(x)=1$ for all $x\in\N$; (c) $k:\N\to\N$ defined by $(x+1)k(x)=1$ for all $x\in\N$; (d) $\ell:\N\to\N$ defined by $\ell(x)=\ell(x)$ for all $x\in\N$.
+\solution
+\given The three checks: totality, existence (a value \emph{in the codomain}), uniqueness.
+\plan For each $x$ in the domain, solve the defining equation and count its solutions \emph{in the codomain}.
+\begin{steps}
+\item \emph{(a) Not well-defined.} For $x=-1\in\Q$ the condition is $0\cdot g(-1)=1$, i.e.\ $0=1$: no rational number $g(-1)$ satisfies it. Existence fails at $x=-1$.
+\item \emph{(b) Well-defined.} Let $x\in\N$. Then $x+1\ge1$, so $x+1\ne0$ and the equation $(x+1)h(x)=1$ has exactly one solution, $h(x)=\frac1{x+1}$ \why{divide by the non-zero $x+1$}, which is rational \why{Definition 0.15: $1,x+1\in\Z$}. Totality, existence and uniqueness hold.
+\item \emph{(c) Not well-defined.} As in (b) the only candidate is $k(x)=\frac1{x+1}$; for $x=1$ this is $\frac12$, which is not a natural number. Existence of a value in the codomain $\N$ fails at $x=1$.
+\item \emph{(d) Not well-defined.} The equation $\ell(x)=\ell(x)$ holds for every choice of $\ell(x)\in\N$; it does not single out one value. Uniqueness fails (at every $x$).
+\end{steps}
+\conclusion Only (b) is well-defined.\qed
+\begin{compare}
+\item Name the failing check and the failing $x$. For (c), ``the value is in $\Q$, not $\N$'' is the whole point: a value outside the codomain is no value.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{3.1.16}
+Find a condition on sets $X$ and $Y$ such that the specification of $i:X\cup Y\to\{0,1\}$ given by $i(z)=0$ if $z\in X$ and $i(z)=1$ if $z\in Y$ is well-defined.
+\solution
+\given A specification by cases is well-defined iff the cases are exhaustive (totality) and compatible (uniqueness: overlapping cases give the same value), page 101.
+\begin{steps}
+\item \emph{Exhaustive:} every $z\in X\cup Y$ satisfies $z\in X$ or $z\in Y$ \why{Definition 2.2.21}, so each $z$ gets at least one value. Totality and existence hold always.
+\item \emph{Compatible:} if $z\in X$ and $z\in Y$, the cases prescribe $i(z)=0$ and $i(z)=1$, two different values: uniqueness fails. If no $z$ lies in both, every $z$ falls under exactly one case and uniqueness holds.
+\item Hence: well-defined iff no $z$ is in $X\cap Y$, i.e.\ iff $X\cap Y=\varnothing$.
+\end{steps}
+\answer $i$ is well-defined if and only if $X$ and $Y$ are disjoint. (Then $i=\chi_Y$ on $X\cup Y$, Definition 3.1.23.)\qed
+\begin{compare}
+\item Both ``if'' and ``only if'' should be argued: disjoint $\Rightarrow$ well-defined, and an element of $X\cap Y$ $\Rightarrow$ two values.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{3.1.19}
+With $f,g,h,k:\Q\to\Q$ as in Example 3.1.18 ($f(x)=2x$, $g(x)=x+5$, $h(x)=x^2$, $k(x)=\frac x6$), compute equations defining (a) $f\circ g$; (b) $g\circ f$; (c) $((f\circ g)\circ h)\circ k$; (d) $f\circ(g\circ(h\circ k))$; (e) $(g\circ g)\circ(g\circ g)$.
+\solution
+\given $(u\circ v)(x)=u(v(x))$: apply the \emph{right} function first (Definition 3.1.17).
+\begin{steps}
+\item (a) $(f\circ g)(x)=f(g(x))=f(x+5)=2(x+5)=2x+10$.
+\item (b) $(g\circ f)(x)=g(f(x))=g(2x)=2x+5$. (So $f\circ g\ne g\circ f$.)
+\item (c) Apply $k$, then $h$, then $g$, then $f$:
+\[
+x\ \xmapsto{k}\ \frac x6\ \xmapsto{h}\ \frac{x^2}{36}\ \xmapsto{g}\ \frac{x^2}{36}+5\ \xmapsto{f}\ \frac{x^2}{18}+10 .
+\]
+So $(((f\circ g)\circ h)\circ k)(x)=\frac{x^2}{18}+10$.
+\item (d) $(f\circ(g\circ(h\circ k)))(x)=f(g(h(k(x))))$: the same chain, so again $\frac{x^2}{18}+10$ \why{associativity, Exercise 3.1.21}.
+\item (e) $(g\circ g)(x)=g(x+5)=x+10$; then $((g\circ g)\circ(g\circ g))(x)=(g\circ g)(x+10)=x+20$.
+\end{steps}
+\answer (a) $2x+10$; (b) $2x+5$; (c), (d) $\frac{x^2}{18}+10$; (e) $x+20$.\qed
+\begin{compare}
+\item The common error is to apply the left function first; (a) and (b) are there to catch it.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[bonus]{3.1.21}
+Prove that composition is associative: for $f:X\to Y$, $g:Y\to Z$, $h:Z\to W$, $h\circ(g\circ f)=(h\circ g)\circ f$.
+\solution
+\given Strategy 3.1.5: two functions with the same domain and codomain are equal iff they agree at every element.
+\begin{steps}
+\item Both $h\circ(g\circ f)$ and $(h\circ g)\circ f$ have domain $X$ and codomain $W$ \why{Definition 3.1.17 twice}.
+\item Let $x\in X$. Then
+\[
+(h\circ(g\circ f))(x)=h((g\circ f)(x))=h(g(f(x)))=(h\circ g)(f(x))=((h\circ g)\circ f)(x),
+\]
+each equality by Definition 3.1.17.
+\item Since $x$ was arbitrary, the functions are equal \why{Strategy 3.1.5}.
+\end{steps}
+\conclusion $h\circ(g\circ f)=(h\circ g)\circ f$, so brackets may be dropped: $h\circ g\circ f$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{3.1.33}
+Describe the image $f[U]$ in each case: (a) $f:\Z\to\Z$, $f(n)=3n$, $U=\N$; (b) $f:X\to X\times X$, $f(x)=(x,x)$, $U=X$; (c) $f:\{a,b,c\}\to\{1,2,3\}$ with $f(a)=1$, $f(b)=3$, $f(c)=1$, $U=\{a,b,c\}$.
+\solution
+\given $f[U]=\{f(x)\mid x\in U\}$ (Definition 3.1.31).
+\begin{steps}
+\item (a) $f[\N]=\{3n\mid n\in\N\}=\{0,3,6,9,\dots\}$: the natural multiples of $3$.
+\item (b) $f[X]=\{(x,x)\mid x\in X\}$: the ``diagonal'' of $X\times X$.
+\item (c) $f[\{a,b,c\}]=\{f(a),f(b),f(c)\}=\{1,3,1\}=\{1,3\}$ \why{repetition does not matter}.
+\end{steps}
+\answer As above.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.1.36}
+Example 3.1.35 showed that $f[U\cap V]\subseteq f[U]\cap f[V]$. Determine which of the following are true for all sets $U,V,X,Y$ and functions $f:X\to Y$, with a proof or a counterexample: (a) $f[U]\cap f[V]\subseteq f[U\cap V]$; (b) $f[U\cup V]\subseteq f[U]\cup f[V]$; (c) $f[U]\cup f[V]\subseteq f[U\cup V]$.
+\solution
+\given $y\in f[U]$ iff there is $x\in U$ with $y=f(x)$; from $y\in f[U]$ you may \emph{fix} such an $x$, but it is not unique.
+\plan (a) fails when two different inputs, one in $U$ and one in $V$, share a value. (b), (c): ``let $y\in\dots$, fix $x$, case split''.
+\begin{steps}
+\item \emph{(a) False.} $f:\R\to\R$, $f(x)=x^2$, $U=\{1\}$, $V=\{-1\}$. Then $f[U]=\{1\}$ and $f[V]=\{1\}$, so $f[U]\cap f[V]=\{1\}$. But $U\cap V=\varnothing$ and $f[\varnothing]=\varnothing$ \why{no $x\in\varnothing$ to produce a value}. So $1\in f[U]\cap f[V]$ but $1\notin f[U\cap V]$.
+\item \emph{(b) True.} Let $y\in f[U\cup V]$. Fix $x\in U\cup V$ with $y=f(x)$ \why{Definition 3.1.31, Strategy 1.2.30}. Then $x\in U$ or $x\in V$. Case $x\in U$: $y=f(x)\in f[U]$. Case $x\in V$: $y\in f[V]$. Either way $y\in f[U]\cup f[V]$ \why{Definition 2.2.21}.
+\item \emph{(c) True.} Let $y\in f[U]\cup f[V]$. Case $y\in f[U]$: fix $x\in U$ with $y=f(x)$; then $x\in U\cup V$, so $y\in f[U\cup V]$. Case $y\in f[V]$: identical. So $y\in f[U\cup V]$.
+\end{steps}
+\conclusion (a) false; (b), (c) true, so $f[U\cup V]=f[U]\cup f[V]$, while for intersections only $f[U\cap V]\subseteq f[U]\cap f[V]$ holds.\qed
+\begin{compare}
+\item In (a) the witnesses for $y\in f[U]$ and $y\in f[V]$ are \emph{different} elements; that is exactly why the inclusion fails, and your counterexample should make this visible.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{3.1.40}
+Let $f:X\to Y$ and $A,B\subseteq Y$. Prove that $f^{-1}[A\cap B]=f^{-1}[A]\cap f^{-1}[B]$, $f^{-1}[A\cup B]=f^{-1}[A]\cup f^{-1}[B]$ and $f^{-1}[Y\setminus A]=X\setminus f^{-1}[A]$.
+\solution
+\given $x\in f^{-1}[V]\Leftrightarrow x\in X\wedge f(x)\in V$ (Definition 3.1.37). Unlike images, no choice is involved, so membership chains work.
+\begin{steps}
+\item Let $x\in X$ be arbitrary.
+\begin{align*}
+x\in f^{-1}[A\cap B]&\Leftrightarrow f(x)\in A\cap B\Leftrightarrow f(x)\in A\wedge f(x)\in B\why{Definitions 3.1.37, 2.2.1}\\
+&\Leftrightarrow x\in f^{-1}[A]\wedge x\in f^{-1}[B]\Leftrightarrow x\in f^{-1}[A]\cap f^{-1}[B].
+\end{align*}
+\item Likewise
+\[
+x\in f^{-1}[A\cup B]\Leftrightarrow f(x)\in A\vee f(x)\in B\Leftrightarrow x\in f^{-1}[A]\vee x\in f^{-1}[B]\Leftrightarrow x\in f^{-1}[A]\cup f^{-1}[B].
+\]
+\item And
+\[
+x\in f^{-1}[Y\setminus A]\Leftrightarrow f(x)\in Y\wedge f(x)\notin A\Leftrightarrow f(x)\notin A\Leftrightarrow x\notin f^{-1}[A]\Leftrightarrow x\in X\setminus f^{-1}[A],
+\]
+where $f(x)\in Y$ holds automatically (codomain) and $x\in X$ throughout.
+\item Each chain shows that the two sets have the same elements; they are equal by extensionality \why{Axiom 2.1.14}. (All three sets are subsets of $X$, so restricting to $x\in X$ loses nothing.)
+\end{steps}
+\conclusion Preimages commute with $\cap$, $\cup$ and complements.\qed
+\begin{compare}
+\item Compare with 3.1.36: for images only inclusions hold, because of the existential quantifier in $f[U]$; for preimages everything is an ``iff''.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{3.1.41}
+Let $f:X\to Y$. Prove that $f^{-1}[\varnothing]=\varnothing$ and $f^{-1}[Y]=X$.
+\solution
+\begin{steps}
+\item \emph{$f^{-1}[\varnothing]=\varnothing$.} Suppose $x\in f^{-1}[\varnothing]$ \why{Strategy 2.1.20}. Then $f(x)\in\varnothing$ \why{Definition 3.1.37}, impossible. So $f^{-1}[\varnothing]$ is empty \why{Theorem 2.1.25}.
+\item \emph{$f^{-1}[Y]=X$.} ($\subseteq$) $f^{-1}[Y]\subseteq X$ by definition (it is $\{x\in X\mid\dots\}$). ($\supseteq$) Let $x\in X$. Then $f(x)\in Y$ \why{$Y$ is the codomain}, so $x\in f^{-1}[Y]$.
+\end{steps}
+\conclusion Both hold.\qed
+\end{bookex}
+
+\hsection{Injections, surjections}
+
+\begin{key}[{What you unfold in this section}]
+\textbf{Injective} (Definition 3.2.1): $\forall a,b\in X,\ f(a)=f(b)\Rightarrow a=b$; proof: ``let $a,b\in X$ with $f(a)=f(b)$ \dots\ so $a=b$'' (Strategy 3.2.2). Not injective: two specific $a\ne b$ with $f(a)=f(b)$. \textbf{Surjective} (Definition 3.2.9): $\forall y\in Y,\ \exists x\in X,\ f(x)=y$; proof: ``let $y\in Y$; define $x=\dots$; check $x\in X$ and $f(x)=y$'' (Strategy 3.2.10). Not surjective: a specific $y$ with no preimage. \textbf{Bijective}: both. \textbf{Inverses} (Definitions 3.2.23, 3.2.29, 3.2.37): $g$ is a left inverse of $f$ if $g\circ f=\id_X$, a right inverse if $f\circ g=\id_Y$, an inverse if both. Left inverse $\Rightarrow$ injective (3.2.25); right inverse $\Rightarrow$ surjective (3.2.31); inverse $\Leftrightarrow$ bijective (3.2.40, Strategy 3.2.41).
+\end{key}
+
+\begin{bookex}[essential]{3.2.5}
+Let $f:X\to Y$ and $g:Y\to Z$. Prove that if $g\circ f$ is injective then $f$ is injective.
+\solution
+\given $g\circ f$ injective: $\forall a,b\in X,\ g(f(a))=g(f(b))\Rightarrow a=b$.
+\goal $f$ injective: let $a,b\in X$ with $f(a)=f(b)$; show $a=b$.
+\begin{steps}
+\item Suppose $g\circ f$ is injective \why{Strategy 1.1.28}. Let $a,b\in X$ and suppose $f(a)=f(b)$ \why{Strategy 3.2.2}.
+\item Apply $g$ to both sides of $f(a)=f(b)$: $g(f(a))=g(f(b))$ \why{a function gives equal values on equal inputs}, i.e.\ $(g\circ f)(a)=(g\circ f)(b)$ \why{Definition 3.1.17}.
+\item Since $g\circ f$ is injective, $a=b$ \why{Definition 3.2.1 applied to $g\circ f$}.
+\end{steps}
+\conclusion $f$ is injective.\qed
+\begin{compare}
+\item Three lines; the only move is ``apply $g$''. Note that nothing can be said about $g$ (see 3.E.35).
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{3.2.6}
+Write out what it means to say a function $f:X\to Y$ is \emph{not} injective; describe how to prove it; give an example and prove that it is not injective.
+\solution
+\begin{steps}
+\item Negate Definition 3.2.1: $\neg\forall a,b\in X,\ (f(a)=f(b)\Rightarrow a=b)$ $\equiv\exists a,b\in X,\ \neg(f(a)=f(b)\Rightarrow a=b)$ \why{Theorem 1.3.29} $\equiv\exists a,b\in X,\ (f(a)=f(b)\wedge a\ne b)$ \why{Exercise 1.3.27}.
+\item \emph{How to prove it:} exhibit two specific elements $a,b\in X$, check $a\ne b$, and compute $f(a)=f(b)$ \why{Strategy 1.2.24}.
+\item \emph{Example:} $g:\Z\to\Z$, $g(n)=n^2$. Take $a=1$, $b=-1$: $a\ne b$, and $g(1)=1=g(-1)$. So $g$ is not injective.
+\end{steps}
+\conclusion As above.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.2.8}
+Let $a,b\in\R$ with $b\ne0$, and define $f:\R\to\R$ by $f(t)=a+bt$. Prove that $f$ is injective.
+\solution
+\begin{steps}
+\item Let $s,t\in\R$ and suppose $f(s)=f(t)$, i.e.\ $a+bs=a+bt$ \why{Strategy 3.2.2}.
+\item Subtract $a$: $bs=bt$. Since $b\ne0$, divide by $b$: $s=t$ \why{algebra; division needs $b\ne0$}.
+\end{steps}
+\conclusion $f$ is injective.\qed
+\begin{compare}
+\item Say where $b\ne0$ is used; for $b=0$ the function is constant and not injective.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{3.2.12}
+For each pair $(X,Y)$, determine whether the function $f:X\to Y$ defined by $f(x)=2x+1$ is surjective: (a) $X=\Z$, $Y=\{x\in\Z\mid x\text{ is odd}\}$; (b) $X=Y=\Z$; (c) $X=Y=\Q$; (d) $X=Y=\R$.
+\solution
+\plan Solve $2x+1=y$ on scrap paper: $x=\frac{y-1}2$. Then check whether that $x$ lies in the domain for every $y$ in the codomain.
+\begin{steps}
+\item \emph{(a) Surjective.} Let $y\in Y$, so $y$ is odd. Then $y=2k+1$ for some $k\in\Z$ \why{Proposition 1.1.58}. Define $x=k\in\Z$; then $f(x)=2k+1=y$ \why{Strategy 3.2.10}.
+\item \emph{(b) Not surjective.} Take $y=0\in\Z$. If $f(x)=0$ then $2x=-1$, which has no integer solution ($-1$ is odd, not $2\cdot$integer; or $x=-\frac12\notin\Z$). So nothing maps to $0$.
+\item \emph{(c) Surjective.} Let $y\in\Q$. Define $x=\frac{y-1}2$. Then $x\in\Q$ \why{Theorem 0.16} and $f(x)=2\cdot\frac{y-1}2+1=y$.
+\item \emph{(d) Surjective.} Let $y\in\R$; $x=\frac{y-1}2\in\R$ and $f(x)=y$.
+\end{steps}
+\conclusion (a) yes, (b) no, (c) yes, (d) yes.\qed
+\begin{compare}
+\item A surjectivity proof must \emph{check that $x$ is in the domain} (in (b) it is not) and \emph{compute $f(x)=y$}.
+\item In (a) the step from ``odd'' to ``$=2k+1$'' quotes Proposition 1.1.58.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{3.2.14}
+Let $f:X\to Y$. Prove that $f$ is surjective if and only if $Y=f[X]$.
+\solution
+\given $f[X]=\{f(x)\mid x\in X\}\subseteq Y$ always (its elements are values, which lie in $Y$). So $Y=f[X]$ iff $Y\subseteq f[X]$.
+\begin{steps}
+\item \emph{($\Rightarrow$)} Suppose $f$ is surjective. $f[X]\subseteq Y$ holds always. For $Y\subseteq f[X]$: let $y\in Y$; by surjectivity there is $x\in X$ with $f(x)=y$ \why{Definition 3.2.9}; so $y\in f[X]$ \why{Definition 3.1.31}. Hence $Y=f[X]$ \why{Axiom 2.1.14}.
+\item \emph{($\Leftarrow$)} Suppose $Y=f[X]$. Let $y\in Y$. Then $y\in f[X]$, so $y=f(x)$ for some $x\in X$ \why{Definition 3.1.31}. This is exactly $\exists x\in X,\ f(x)=y$; as $y$ was arbitrary, $f$ is surjective.
+\end{steps}
+\conclusion $f$ surjective $\Leftrightarrow$ $f[X]=Y$.\qed
+\begin{compare}
+\item The two definitions say the same thing in different words; the proof is the unfolding, in both directions, plus the remark $f[X]\subseteq Y$.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{3.2.16}
+Let $f:X\to\PS(X)$. By considering the set $B=\{x\in X\mid x\notin f(x)\}$, prove that $f$ is not surjective.
+\solution
+\given $f(x)\subseteq X$ for every $x$ (values lie in $\PS(X)$). $B\subseteq X$, so $B\in\PS(X)$. ``Not surjective'': $\exists V\in\PS(X),\ \forall a\in X,\ f(a)\ne V$.
+\plan Show $B$ is not a value: if $f(a)=B$, ask whether $a\in B$; both answers contradict.
+\begin{steps}
+\item $B\subseteq X$ \why{set-builder with $x\in X$}, so $B\in\PS(X)$: $B$ is an element of the codomain.
+\item Suppose, towards a contradiction, that $a\in X$ and $f(a)=B$ \why{Strategy 1.1.51}.
+\item By LEM, $a\in B$ or $a\notin B$ \why{Strategy 1.1.61}.
+\item \emph{Case $a\in B$:} by definition of $B$, $a\notin f(a)$. But $f(a)=B$, so $a\notin B$: contradiction.
+\item \emph{Case $a\notin B$:} then $a\notin f(a)$ (as $f(a)=B$), so $a$ satisfies the defining condition of $B$, i.e.\ $a\in B$: contradiction.
+\item Both cases are contradictory, so no $a\in X$ has $f(a)=B$ \why{$\neg$I}.
+\end{steps}
+\conclusion $B$ is not in the image of $f$; $f$ is not surjective. (Cantor's theorem: no set surjects onto its power set.)\qed
+\begin{compare}
+\item Both cases must be written; the contradiction in each must name what clashes ($a\in B$ versus $a\notin B$).
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{3.2.19}
+Let $X$ be a set. Prove that $\id_X:X\to X$ is a bijection.
+\solution
+\begin{steps}
+\item \emph{Injective:} let $a,b\in X$ with $\id_X(a)=\id_X(b)$. Since $\id_X(a)=a$ and $\id_X(b)=b$ \why{Definition 3.1.12}, $a=b$.
+\item \emph{Surjective:} let $x\in X$. Define the preimage to be $x$ itself: $x\in X$ and $\id_X(x)=x$.
+\end{steps}
+\conclusion $\id_X$ is injective and surjective, hence bijective \why{Definition 3.2.17}.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{3.2.20}
+Let $f:X\to Y$ and $g:Y\to Z$ be bijections. Prove that $g\circ f$ is a bijection.
+\solution
+\given $f,g$ injective and surjective. Proposition 3.2.4: a composite of injections is injective.
+\begin{steps}
+\item \emph{Injective:} $f$ and $g$ are injective, so $g\circ f$ is injective \why{Proposition 3.2.4}. (Directly: if $g(f(a))=g(f(b))$ then $f(a)=f(b)$ by injectivity of $g$, then $a=b$ by injectivity of $f$.)
+\item \emph{Surjective:} let $z\in Z$. Since $g$ is surjective, fix $y\in Y$ with $g(y)=z$ \why{Definition 3.2.9, Strategy 1.2.30}. Since $f$ is surjective, fix $x\in X$ with $f(x)=y$.
+\item Then $(g\circ f)(x)=g(f(x))=g(y)=z$ \why{Definition 3.1.17}. So $z$ has a preimage; $g\circ f$ is surjective.
+\end{steps}
+\conclusion $g\circ f$ is a bijection \why{Definition 3.2.17}.\qed
+\begin{compare}
+\item For surjectivity work \emph{backwards}: first the preimage under $g$, then under $f$.
+\end{compare}
+\end{bookex}
+\input{s3b}

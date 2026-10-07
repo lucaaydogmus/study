@@ -1,0 +1,426 @@
+\hsection{Variables and quantifiers}
+
+\begin{key}[{The rules you quote in this section (Definitions 1.2.9, 1.2.23, 1.2.32)}]
+\begin{itemize}
+\item \textbf{$\forall$:} to prove $\forall x\in X,\ p(x)$: ``Let $x\in X$ (arbitrary)'' and prove $p(x)$ (Strategy 1.2.10). From $\forall x\in X,\ p(x)$ you may use $p(a)$ for any particular $a\in X$ (Strategy 1.2.19).
+\item \textbf{$\exists$:} to prove $\exists x\in X,\ p(x)$: ``Define $x=\dots$'', check $x\in X$, prove $p(x)$ (Strategy 1.2.24). From $\exists x\in X,\ p(x)$: ``Take $a\in X$ with $p(a)$'' (Strategy 1.2.30).
+\item \textbf{$\exists!$:} existence as above, then uniqueness: ``let $a,b\in X$ with $p(a)$ and $p(b)$ \dots\ so $a=b$'' (Strategy 1.2.35).
+\item Translating: ``$n$ is even'' is $\exists k\in\Z,\ n=2k$; ``$b\mid a$'' is $\exists q\in\Z,\ a=qb$; restrictions inside $\forall$ become implications, inside $\exists$ conjunctions.
+\end{itemize}
+\end{key}
+
+\begin{bookex}[essential]{1.2.6}
+Find logical formulae that represent each of the following English statements: (a) there is an integer that is divisible by every integer; (b) there is no greatest odd integer; (c) between any two distinct rational numbers is a third distinct rational number; (d) if an integer has a rational square root, then that root is an integer.
+\solution
+\given The translation rules of Examples 1.2.5 and 1.2.7, and Definition 0.36 for ``divides''.
+\goal One formula per sentence, all variables bound by a quantifier with a domain.
+\plan Introduce a variable for each noun phrase, decide the quantifier (``there is'' = $\exists$, ``every/any'' = $\forall$, ``no'' = $\neg\exists$), then unfold ``divisible'', ``odd'', ``greatest'', ``between''.
+\begin{steps}
+\item (a) ``There is an integer $n$'' gives $\exists n\in\Z$; ``divisible by every integer $m$'' gives $\forall m\in\Z,\ (m\mid n)$; unfold $m\mid n$ as $\exists q\in\Z,\ n=qm$ \why{Definition 0.36}:
+\[
+\exists n\in\Z,\ \forall m\in\Z,\ \exists q\in\Z,\ n=qm .
+\]
+(It is true: $n=0$ works, Exercise 0.38.)
+\item (b) ``$n$ is a greatest odd integer'' means: $n$ is odd, and every odd $m$ satisfies $m\le n$. ``$n$ is odd'' is $\exists k\in\Z,\ n=2k+1$ \why{Proposition 1.1.58}. So
+\[
+\neg\exists n\in\Z,\ \Big(\big[\exists k\in\Z,\ n=2k+1\big]\wedge\forall m\in\Z,\ \big(\big[\exists\ell\in\Z,\ m=2\ell+1\big]\Rightarrow m\le n\big)\Big).
+\]
+Equivalent positive form (de Morgan): $\forall n\in\Z,\ \big(n\text{ odd}\Rightarrow\exists m\in\Z,\ (m\text{ odd}\wedge m>n)\big)$.
+\item (c) ``Any two distinct rationals $a,b$'' gives $\forall a\in\Q,\ \forall b\in\Q$ with the restriction $a\ne b$ as an implication; ``between'' is $a<c<b$ (or $b<c<a$). Taking $a<b$ without loss of generality:
+\[
+\forall a\in\Q,\ \forall b\in\Q,\ \big(a<b\Rightarrow\exists c\in\Q,\ (a<c\wedge c<b)\big).
+\]
+If you keep ``distinct'' literally: $\forall a,b\in\Q,\ \big(a\ne b\Rightarrow\exists c\in\Q,\ ((a<c\wedge c<b)\vee(b<c\wedge c<a))\big)$.
+\item (d) ``An integer $n$ has a rational square root $x$'': $x\in\Q$ and $x^2=n$. ``That root is an integer'': $x\in\Z$. The ``if \dots\ then'' is an implication under both quantifiers:
+\[
+\forall n\in\Z,\ \forall x\in\Q,\ (x^2=n\Rightarrow x\in\Z).
+\]
+\end{steps}
+\conclusion The four formulae above.\qed
+\begin{compare}
+\item Every variable must be bound and have a domain ($n\in\Z$, $c\in\Q$, \dots).
+\item Inside $\forall$ a restriction is written with $\Rightarrow$ (``$a<b\Rightarrow\dots$''); inside $\exists$ with $\wedge$ (``$a<c\wedge c<b$''). Swapping these is the most common error.
+\item In (d) the quantifier over the root $x$ must be $\forall$ (``that root'' refers to any rational root), not $\exists$.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[bonus]{1.2.14}
+Prove that $\forall x\in\R,\ x=x$.
+\solution
+\given Nothing.
+\goal A universal statement \shape{``let $x$''}.
+\begin{steps}
+\item Let $x\in\R$ be arbitrary \why{Strategy 1.2.10}.
+\item $x=x$ holds, since every object is equal to itself \why{the meaning of $=$; the book treats this as a basic fact}.
+\item Since $x$ was arbitrary, $\forall x\in\R,\ x=x$ \why{$\forall$I}.
+\end{steps}
+\conclusion Done.\qed
+\begin{compare}
+\item The point of this exercise is the \emph{form}: ``let $x$'', then the statement, then ``since $x$ was arbitrary''. Do not pick a value (``say $x=17$''), see the Common error on page 54.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.2.15}
+Prove that for every integer $n$, $n$ is even if and only if $n^2$ is even.
+\solution
+\given Definition 0.41: $n$ even means $2\mid n$, i.e.\ $n=2k$ for some $k\in\Z$; odd means not even. Theorem 0.42: $n=2k$ or $n=2k+1$. Proposition 1.2.11: the square of an odd integer is odd.
+\goal $\forall n\in\Z,\ (n\text{ even}\Leftrightarrow n^2\text{ even})$ \shape{universal, then a biconditional: ``let $n$'', then two implications}.
+\plan ($\Rightarrow$) is direct from the definition. ($\Leftarrow$) is proved by contradiction: if $n$ were odd, $n^2$ would be odd by Proposition 1.2.11.
+\begin{steps}
+\item Let $n\in\Z$ \why{Strategy 1.2.10}. We prove both directions \why{Definition 1.1.40}.
+\item \emph{($\Rightarrow$)} Suppose $n$ is even. Then $n=2k$ for some $k\in\Z$ \why{Definition 0.41 and 0.36; take such a $k$, Strategy 1.2.30}.
+\item $n^2=(2k)^2=4k^2=2(2k^2)$, and $2k^2\in\Z$ \why{closure}. So $2\mid n^2$: $n^2$ is even \why{Definition 0.41}.
+\item \emph{($\Leftarrow$)} Suppose $n^2$ is even. Suppose, towards a contradiction, that $n$ is not even, i.e.\ $n$ is odd \why{Strategy 1.3.16/1.1.51; Definition 0.41}.
+\item Then $n^2$ is odd \why{Proposition 1.2.11}, i.e.\ $n^2$ is not even. This contradicts Step 4 \why{$\neg$E}.
+\item Hence $n$ is even \why{double negation, Theorem 1.3.15: ``not not even'' is ``even''}.
+\item Both implications hold, so $n$ is even iff $n^2$ is even; since $n$ was arbitrary, this holds for every integer \why{$\forall$I}.
+\end{steps}
+\conclusion For every integer $n$: $n$ is even $\Leftrightarrow$ $n^2$ is even.\qed
+\begin{compare}
+\item The ($\Leftarrow$) direction cannot be done directly from ``$n^2=2k$''; it needs contradiction (or contraposition, Exercise 1.3.22) via Proposition 1.2.11. If you re-prove 1.2.11 inline, write $n=2k+1$ and compute $n^2=2(2k^2+2k)+1$.
+\item ``Odd'' may be replaced by ``$n=2k+1$'' only by quoting Proposition 1.1.58 (or Theorem 0.42).
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.2.18}
+Prove that for all real numbers $x$ and $y$, if $x$ is irrational, then $x+y$ and $x-y$ are not both rational.
+\solution
+\given Theorem 0.16 (closure of $\Q$). ``Irrational'' = not rational.
+\goal $\forall x,y\in\R,\ \big(x\notin\Q\Rightarrow\neg(x+y\in\Q\wedge x-y\in\Q)\big)$ \shape{universal, implication, then a negation}.
+\plan Let $x,y$; assume $x$ irrational; to prove the negation assume both sums are rational and derive a contradiction: their sum is $2x$, so $x$ would be rational.
+\begin{steps}
+\item Let $x,y\in\R$ \why{Strategy 1.2.10} and suppose $x$ is irrational \why{Strategy 1.1.28}.
+\item Suppose, towards a contradiction, that $x+y\in\Q$ and $x-y\in\Q$ \why{Strategy 1.1.51, then Strategy 1.1.10 to use both}.
+\item Then $(x+y)+(x-y)\in\Q$ \why{Theorem 0.16, sums of rationals}, and $(x+y)+(x-y)=2x$ \why{algebra}. So $2x\in\Q$.
+\item Then $x=\dfrac{2x}{2}\in\Q$ \why{Theorem 0.16: quotient of rationals, $2=\frac21\in\Q$, $2\ne0$}.
+\item This contradicts ``$x$ is irrational'' \why{$\neg$E}. Hence $x+y$ and $x-y$ are not both rational \why{$\neg$I}.
+\item Since $x,y$ were arbitrary and the implication was derived, the statement holds \why{$\Rightarrow$I, $\forall$I}.
+\end{steps}
+\conclusion For all real $x,y$: if $x$ is irrational then $x+y$, $x-y$ are not both rational.\qed
+\begin{compare}
+\item ``Not both rational'' is $\neg(p\wedge q)$: the natural proof assumes $p\wedge q$ and derives $\bot$. Do not try to prove ``$x+y$ is irrational'' (false in general: $y=-x$ gives $x+y=0$).
+\item Quote Theorem 0.16 for the sum and for the division by $2$.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{1.2.21 and 1.2.22}
+\textbf{1.2.21} Suppose $\forall x\in\R,\ P(x)$ is true. Show that we can conclude $P(21)$.\quad \textbf{1.2.22} Let $P(x)$ and $Q(x)$ be predicates with $x\in\R$. Prove that $(\forall x\in\R,\ (P(x)\Rightarrow Q(x)))\Rightarrow\big((\forall x\in\R,\ P(x))\Rightarrow(\forall x\in\R,\ Q(x))\big)$.
+\solution
+\given The rules for $\forall$ (Definition 1.2.9).
+\begin{steps}
+\item \textbf{1.2.21.} Assumption: $\forall x\in\R,\ P(x)$. Since $21\in\R$, the rule $\forall$E gives $P(21)$ \why{Strategy 1.2.19: a universal statement may be applied to any particular element of the domain}.\qed
+\item \textbf{1.2.22.} Assume $\forall x\in\R,\ (P(x)\Rightarrow Q(x))$ \why{Strategy 1.1.28}. Goal: $(\forall x\in\R,\ P(x))\Rightarrow(\forall x\in\R,\ Q(x))$.
+\item Assume $\forall x\in\R,\ P(x)$ \why{Strategy 1.1.28}. Goal: $\forall x\in\R,\ Q(x)$.
+\item Let $x\in\R$ be arbitrary \why{Strategy 1.2.10}. Goal: $Q(x)$.
+\item From the first assumption, $P(x)\Rightarrow Q(x)$ \why{$\forall$E at this $x$}. From the second, $P(x)$ \why{$\forall$E at this $x$}.
+\item Hence $Q(x)$ \why{modus ponens}. Since $x$ was arbitrary, $\forall x\in\R,\ Q(x)$ \why{$\forall$I}.
+\item Discharge the two assumptions \why{$\Rightarrow$I twice}.
+\end{steps}
+\conclusion Both statements are proved.\qed
+\begin{compare}
+\item In 1.2.22 the two universal assumptions must be specialised to the \emph{same} arbitrary $x$ before modus ponens can be used.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{1.2.28}
+Prove that there is an integer which is divisible by zero.
+\solution
+\given Definition 0.36: $0\mid n$ means $n=q\cdot0$ for some $q\in\Z$.
+\goal $\exists n\in\Z,\ \exists q\in\Z,\ n=q\cdot0$ \shape{existence: define a witness and verify}.
+\begin{steps}
+\item Define $n=0$. Then $n\in\Z$ \why{Strategy 1.2.24: the witness must be in the domain}.
+\item $n=0=0\cdot0$, so $q=0\in\Z$ satisfies $n=q\cdot0$; hence $0\mid n$ \why{Definition 0.36}.
+\item So there is an integer divisible by zero \why{$\exists$I}.
+\end{steps}
+\conclusion $0$ is divisible by $0$ (and it is the only such integer: $q\cdot0=0$ for every $q$).\qed
+\begin{compare}
+\item ``Divisible by zero'' is about multiplication by $0$, not division by $0$; your answer must display $0=0\cdot0$.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{1.2.37 (a), (b)}
+Write each statement as a logical formula using $\exists!$ and prove it: (a) for each real number $a$, the equation $x^2+2ax+a^2=0$ has exactly one real solution $x$; (b) there is a unique real number $a$ for which the equation $x^2+a^2=0$ has a real solution $x$.
+\solution
+\given Definition 1.2.32: $\exists!x\in X,\ p(x)$ means ``$\exists x\in X,\ p(x)$ and $\forall y,z\in X,\ (p(y)\wedge p(z))\Rightarrow y=z$''. Strategy 1.2.35: prove existence, then uniqueness.
+\begin{steps}
+\item \textbf{(a) Formula:} $\forall a\in\R,\ \exists!x\in\R,\ x^2+2ax+a^2=0$.
+\item Let $a\in\R$ \why{Strategy 1.2.10}. \emph{Existence:} define $x=-a\in\R$; then $x^2+2ax+a^2=a^2-2a^2+a^2=0$ \why{Strategy 1.2.24}.
+\item \emph{Uniqueness:} let $y,z\in\R$ with $y^2+2ay+a^2=0$ and $z^2+2az+a^2=0$ \why{Strategy 1.2.35}. Since $y^2+2ay+a^2=(y+a)^2$ \why{algebra}, we get $(y+a)^2=0$, hence $y+a=0$ \why{a real number whose square is $0$ is $0$}, hence $y=-a$. Likewise $z=-a$. So $y=z$.
+\item Existence and uniqueness give $\exists!x\in\R,\ x^2+2ax+a^2=0$; since $a$ was arbitrary, (a) holds.\qed
+\item \textbf{(b) Formula:} $\exists!a\in\R,\ \exists x\in\R,\ x^2+a^2=0$. (Note the inner quantifier is a plain $\exists$.)
+\item \emph{Existence:} define $a=0$; then $x=0$ satisfies $0^2+0^2=0$, so $\exists x\in\R,\ x^2+a^2=0$ holds for $a=0$.
+\item \emph{Uniqueness:} let $a,b\in\R$ both have the property. Take $x\in\R$ with $x^2+a^2=0$ \why{Strategy 1.2.30}. Since $x^2\ge0$ and $a^2\ge0$, their sum is $0$ only if both are $0$ \why{if $a^2>0$ then $x^2+a^2>0$}; so $a^2=0$ and $a=0$. The same argument gives $b=0$. Hence $a=b$.
+\item So $\exists!a\in\R,\ \exists x\in\R,\ x^2+a^2=0$.\qed
+\end{steps}
+\begin{compare}
+\item A unique-existence proof has two labelled parts. In uniqueness you take \emph{two} objects with the property and show they are equal (or show any object with the property equals your witness).
+\item In (a), the uniqueness argument must not just say ``the quadratic has a double root'': show that any solution equals $-a$.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.2.39}
+Let $p(x,y)$ be the statement ``$x+y$ is even'', with $x,y\in\Z$. Prove that $\forall x\in\Z,\ \exists y\in\Z,\ p(x,y)$ is true, and that $\exists y\in\Z,\ \forall x\in\Z,\ p(x,y)$ is false.
+\solution
+\given Definition 0.41 (even). The order of quantifiers matters (Theorem 1.2.40 and the discussion after it): in $\forall x\,\exists y$ the $y$ may depend on $x$; in $\exists y\,\forall x$ one $y$ must work for every $x$.
+\goal (i) prove $\forall x\in\Z,\ \exists y\in\Z,\ (x+y\text{ even})$; (ii) prove $\neg\exists y\in\Z,\ \forall x\in\Z,\ (x+y\text{ even})$.
+\begin{steps}
+\item \emph{(i)} Let $x\in\Z$ \why{Strategy 1.2.10}. Define $y=x$; then $y\in\Z$ \why{Strategy 1.2.24}.
+\item $x+y=2x$ with $x\in\Z$, so $2\mid x+y$: $x+y$ is even \why{Definition 0.36, 0.41}. Hence $\exists y\in\Z,\ p(x,y)$, and as $x$ was arbitrary, (i) holds \why{$\exists$I, $\forall$I}.
+\item \emph{(ii)} Suppose, towards a contradiction, that there is $y\in\Z$ such that $x+y$ is even for every $x\in\Z$ \why{Strategy 1.1.51; fix such a $y$, Strategy 1.2.30}.
+\item Apply the ``for every $x$'' to $x=1-y$, which is an integer \why{Strategy 1.2.19}: then $x+y=1$ is even, i.e.\ $1=2k$ for some $k\in\Z$ \why{Definition 0.41}.
+\item But then $k=\frac12$, which is not an integer \why{no integer between $0$ and $1$}: contradiction.
+\item Hence no such $y$ exists: the second statement is false \why{$\neg$I}.
+\end{steps}
+\conclusion $\forall x\,\exists y,\ p(x,y)$ is true; $\exists y\,\forall x,\ p(x,y)$ is false.\qed
+\begin{compare}
+\item In (i) the chosen $y$ depends on $x$ (``$y=x$'' or ``$y=-x$'' or ``$y=x+2$''); that dependence is exactly what (ii) forbids.
+\item In (ii), after fixing the supposed $y$, you must choose an $x$ \emph{in terms of $y$} that breaks the property; ``$x=1-y$'' or ``$x=y+1$'' both work.
+\end{compare}
+\end{bookex}
+
+\hsection{Logical equivalence}
+
+\begin{key}[{What you quote in this section}]
+\textbf{Definition 1.3.2:} $p\equiv q$ iff each can be derived from the other. \textbf{Strategy 1.3.11:} for propositional formulae, $p\equiv q$ iff their truth-table columns agree. \textbf{Theorem 1.3.15:} $p\equiv\neg\neg p$. \textbf{Theorem 1.3.19:} $p\Rightarrow q\equiv\neg q\Rightarrow\neg p$ (contraposition). \textbf{Theorems 1.3.24, 1.3.29 (de Morgan):} $\neg(p\wedge q)\equiv\neg p\vee\neg q$, $\neg(p\vee q)\equiv\neg p\wedge\neg q$, $\neg\forall x,\ p(x)\equiv\exists x,\ \neg p(x)$, $\neg\exists x,\ p(x)\equiv\forall x,\ \neg p(x)$. \textbf{Exercise 1.3.13:} $p\Rightarrow q\equiv\neg p\vee q$. \textbf{Exercise 1.3.27:} $\neg(p\Rightarrow q)\equiv p\wedge\neg q$. \textbf{Theorem 1.3.45:} $p\equiv q$ iff $p\Leftrightarrow q$ is a tautology; $q$ can be derived from $p$ iff $p\Rightarrow q$ is a tautology.
+\end{key}
+
+\begin{bookex}[essential]{1.3.5}
+Let $p$, $q$ and $r$ be propositional variables. Prove that $(p\vee q)\Rightarrow r$ is logically equivalent to $(p\Rightarrow r)\wedge(q\Rightarrow r)$.
+\solution
+\given Definition 1.3.2 only (no truth tables yet in the book at this point).
+\goal Two derivations: from $(p\vee q)\Rightarrow r$ derive $(p\Rightarrow r)\wedge(q\Rightarrow r)$; and from $(p\Rightarrow r)\wedge(q\Rightarrow r)$ derive $(p\vee q)\Rightarrow r$.
+\begin{steps}
+\item \emph{First derivation.} Assume $(p\vee q)\Rightarrow r$. Goal: $(p\Rightarrow r)\wedge(q\Rightarrow r)$; prove both conjuncts \why{Strategy 1.1.7}.
+\item \emph{$p\Rightarrow r$:} assume $p$ \why{Strategy 1.1.28}. Then $p\vee q$ \why{$\vee$I$_1$}. From $(p\vee q)\Rightarrow r$ and $p\vee q$: $r$ \why{modus ponens}. Hence $p\Rightarrow r$.
+\item \emph{$q\Rightarrow r$:} assume $q$. Then $p\vee q$ \why{$\vee$I$_2$}, so $r$ \why{modus ponens}. Hence $q\Rightarrow r$.
+\item So $(p\Rightarrow r)\wedge(q\Rightarrow r)$ \why{$\wedge$I}.
+\item \emph{Second derivation.} Assume $(p\Rightarrow r)\wedge(q\Rightarrow r)$; so $p\Rightarrow r$ and $q\Rightarrow r$ \why{$\wedge$E}. Goal: $(p\vee q)\Rightarrow r$.
+\item Assume $p\vee q$ \why{Strategy 1.1.28}; split into cases \why{Strategy 1.1.19}. Case $p$: $r$ by modus ponens with $p\Rightarrow r$. Case $q$: $r$ by modus ponens with $q\Rightarrow r$. In both cases $r$.
+\item Hence $(p\vee q)\Rightarrow r$ \why{$\Rightarrow$I}.
+\end{steps}
+\conclusion Each formula is derivable from the other, so they are logically equivalent \why{Definition 1.3.2}.\qed
+\begin{compare}
+\item Two separate derivations, each beginning ``assume \dots'' with the \emph{other} formula as goal.
+\item Exercise 1.3.14 proves the same equivalence with a truth table; here a truth table is not what is asked.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.3.13}
+Use a truth table to prove that $p\Rightarrow q\equiv(\neg p)\vee q$.
+\solution
+\given Basic truth tables (Definition 1.3.7): $p\Rightarrow q$ is $\times$ only in the row $p=\checkmark$, $q=\times$; $\neg p$ flips; $p\vee q$ is $\times$ only when both are $\times$.
+\goal Identical columns for the two formulae \why{Strategy 1.3.11}.
+\begin{steps}
+\item Two variables, so four rows. Columns: $p$, $q$, then $p\Rightarrow q$, then the subformula $\neg p$, then $(\neg p)\vee q$.
+\item Fill in:
+\[
+\begin{array}{cc|c|cc}
+p&q&p\Rightarrow q&\neg p&(\neg p)\vee q\\\hline
+\checkmark&\checkmark&\checkmark&\times&\checkmark\\
+\checkmark&\times&\times&\times&\times\\
+\times&\checkmark&\checkmark&\checkmark&\checkmark\\
+\times&\times&\checkmark&\checkmark&\checkmark
+\end{array}
+\]
+Row 2: $\neg p=\times$ and $q=\times$, so $(\neg p)\vee q=\times$; in rows 3--4 $\neg p=\checkmark$ makes the disjunction $\checkmark$; in row 1 $q=\checkmark$ does.
+\item The columns of $p\Rightarrow q$ and $(\neg p)\vee q$ agree in all four rows.
+\end{steps}
+\conclusion $p\Rightarrow q\equiv(\neg p)\vee q$ \why{Strategy 1.3.11}.\qed
+\begin{compare}
+\item A column for the subformula $\neg p$ and a final sentence ``the columns agree, hence equivalent'' are both required.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.3.14}
+Use a truth table to prove that $(p\vee q)\Rightarrow r\equiv(p\Rightarrow r)\wedge(q\Rightarrow r)$.
+\solution
+\goal Identical columns, now with three variables ($8$ rows).
+\begin{steps}
+\item Layout: $p$ four $\checkmark$ then four $\times$; $q$ alternating in pairs; $r$ alternating. Subformula columns: $p\vee q$, $p\Rightarrow r$, $q\Rightarrow r$.
+\item
+\[
+\begin{array}{ccc|cc|ccc}
+p&q&r&p\vee q&(p\vee q)\Rightarrow r&p\Rightarrow r&q\Rightarrow r&(p\Rightarrow r)\wedge(q\Rightarrow r)\\\hline
+\checkmark&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark\\
+\checkmark&\checkmark&\times&\checkmark&\times&\times&\times&\times\\
+\checkmark&\times&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark\\
+\checkmark&\times&\times&\checkmark&\times&\times&\checkmark&\times\\
+\times&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark&\checkmark\\
+\times&\checkmark&\times&\checkmark&\times&\checkmark&\times&\times\\
+\times&\times&\checkmark&\times&\checkmark&\checkmark&\checkmark&\checkmark\\
+\times&\times&\times&\times&\checkmark&\checkmark&\checkmark&\checkmark
+\end{array}
+\]
+\item The fifth column and the last column agree in every row.
+\end{steps}
+\conclusion The formulae are logically equivalent \why{Strategy 1.3.11}.\qed
+\begin{compare}
+\item Eight rows, no row skipped. The only rows where the formulas are $\times$ are those with $r=\times$ and at least one of $p,q$ true (rows 2, 4, 6).
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.3.22}
+Use the law of contraposition to prove that $p\Leftrightarrow q\equiv(p\Rightarrow q)\wedge((\neg p)\Rightarrow(\neg q))$. Use the technique this suggests to prove that an integer is even if and only if its square is even.
+\solution
+\given Definition 1.1.40; Theorem 1.3.19: $a\Rightarrow b\equiv\neg b\Rightarrow\neg a$; Proposition 1.2.11 (odd squared is odd).
+\begin{steps}
+\item $p\Leftrightarrow q$ is $(p\Rightarrow q)\wedge(q\Rightarrow p)$ \why{Definition 1.1.40}.
+\item Apply contraposition to the second conjunct: $q\Rightarrow p\equiv(\neg p)\Rightarrow(\neg q)$ \why{Theorem 1.3.19 with $a=q$, $b=p$}.
+\item Replacing a subformula by an equivalent one gives an equivalent formula, so $p\Leftrightarrow q\equiv(p\Rightarrow q)\wedge((\neg p)\Rightarrow(\neg q))$.
+\item \emph{Technique.} To prove ``$p$ iff $q$'': prove $p\Rightarrow q$, then prove $\neg p\Rightarrow\neg q$ (instead of $q\Rightarrow p$).
+\item \emph{Application.} Let $n\in\Z$; $p$: ``$n$ is even'', $q$: ``$n^2$ is even''.
+\item \emph{$p\Rightarrow q$:} suppose $n$ is even, $n=2k$ with $k\in\Z$ \why{Definition 0.41}. Then $n^2=2(2k^2)$ is even.
+\item \emph{$\neg p\Rightarrow\neg q$:} suppose $n$ is not even, i.e.\ odd \why{Definition 0.41}. Then $n^2$ is odd \why{Proposition 1.2.11}, i.e.\ not even.
+\item By Step 3, $n$ is even iff $n^2$ is even.
+\end{steps}
+\conclusion Both parts proved.\qed
+\begin{compare}
+\item Compare with Exercise 1.2.15: the same mathematics, but the second half is now a direct proof of $\neg p\Rightarrow\neg q$ instead of a proof by contradiction. Both are acceptable; this one is shorter.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.3.27}
+Prove that $\neg(p\Rightarrow q)\equiv p\wedge(\neg q)$ in two ways: using truth tables, and using Exercise 1.3.13 together with de Morgan's laws and double negation.
+\solution
+\begin{steps}
+\item \emph{Truth table.}
+\[
+\begin{array}{cc|cc|cc}
+p&q&p\Rightarrow q&\neg(p\Rightarrow q)&\neg q&p\wedge(\neg q)\\\hline
+\checkmark&\checkmark&\checkmark&\times&\times&\times\\
+\checkmark&\times&\times&\checkmark&\checkmark&\checkmark\\
+\times&\checkmark&\checkmark&\times&\times&\times\\
+\times&\times&\checkmark&\times&\checkmark&\times
+\end{array}
+\]
+The columns of $\neg(p\Rightarrow q)$ and $p\wedge(\neg q)$ agree, so the formulae are equivalent \why{Strategy 1.3.11}.
+\item \emph{Algebraically.}
+\begin{align*}
+\neg(p\Rightarrow q)&\equiv\neg\big((\neg p)\vee q\big)\why{Exercise 1.3.13}\\
+&\equiv(\neg\neg p)\wedge(\neg q)\why{de Morgan, Theorem 1.3.24(b)}\\
+&\equiv p\wedge(\neg q)\why{double negation, Theorem 1.3.15}.
+\end{align*}
+\end{steps}
+\conclusion $\neg(p\Rightarrow q)\equiv p\wedge(\neg q)$: an implication is false exactly when its antecedent is true and its consequent false.\qed
+\begin{compare}
+\item Every line of the chain must cite the law used; three laws, three citations.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{1.3.32}
+Prove by counterexample that it is not the case that every rational number can be expressed as $\frac ab$, where $a$ is an even integer and $b$ is an odd integer.
+\solution
+\given Strategy 1.3.30: to refute $\forall x\in X,\ p(x)$, give $a\in X$ with $\neg p(a)$. Here $p(x)$ is ``$\exists a,b\in\Z,\ (a\text{ even}\wedge b\text{ odd}\wedge x=\frac ab)$'', so $\neg p(x)$ is ``for all even $a$ and odd $b$, $x\ne\frac ab$''.
+\plan Pick $x=\frac13$ and prove $\neg p(\frac13)$ by contradiction: if $\frac13=\frac ab$ then $b=3a$ is even, but $b$ is odd.
+\begin{steps}
+\item Counterexample candidate: $x=\frac13\in\Q$.
+\item Suppose, towards a contradiction, that $\frac13=\frac ab$ with $a,b\in\Z$, $a$ even, $b$ odd \why{Strategy 1.1.51}.
+\item Cross-multiplying ($b\ne0$ since $b$ is odd): $b=3a$.
+\item $a$ is even, so $a=2k$ for some $k\in\Z$ \why{Definition 0.41}; then $b=3\cdot2k=2(3k)$ is even \why{Definition 0.41}.
+\item But $b$ is odd, i.e.\ not even \why{Definition 0.41}: contradiction. So $\frac13$ has no such expression.
+\end{steps}
+\conclusion $\frac13$ is a counterexample, so not every rational number can be written as (even)/(odd) \why{Strategy 1.3.30}.\qed
+\begin{compare}
+\item A counterexample must come with a \emph{proof} that it fails the property; ``$\frac13$ has odd numerator'' is not enough, because $\frac13=\frac26=\dots$ has many representations.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{1.3.35}
+Which of the following formulae are maximally negated? (a) $\forall x\in X,\ (\neg p(x))\Rightarrow\forall y\in X,\ \neg(r(x,y)\wedge s(x,y))$; (b) $\forall x\in X,\ (\neg p(x))\Rightarrow\forall y\in X,\ (\neg r(x,y))\vee(\neg s(x,y))$; (c) $\forall x\in\R,\ [x>1\Rightarrow(\exists y\in\R,\ [x<y\wedge\neg(x^2\le y)])]$; (d) $\neg\exists x\in\R,\ [x>1\wedge(\forall y\in\R,\ [x<y\Rightarrow x^2\le y])]$.
+\solution
+\given Definition 1.3.33: a formula is maximally negated if every $\neg$ appears immediately before a predicate that contains no logical operators or quantifiers.
+\plan For each formula, locate every $\neg$ and look at what follows it.
+\begin{steps}
+\item (a) \textbf{No.} The second negation is $\neg(r(x,y)\wedge s(x,y))$: it stands in front of a conjunction, not a bare predicate.
+\item (b) \textbf{Yes.} The negations are $\neg p(x)$, $\neg r(x,y)$, $\neg s(x,y)$, each directly before a predicate. (This is (a) after one de Morgan step.)
+\item (c) \textbf{Yes.} The only negation is $\neg(x^2\le y)$, in front of the predicate $x^2\le y$, which contains no operators or quantifiers. (One may also write it as $x^2>y$, but it is already maximally negated.)
+\item (d) \textbf{No.} The negation is in front of $\exists x\in\R,\ \dots$, a quantified formula.
+\end{steps}
+\conclusion (a) no, (b) yes, (c) yes, (d) no.\qed
+\begin{compare}
+\item The test is purely syntactic: ``what stands right after each $\neg$''. The inequality $x^2\le y$ counts as a predicate.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.3.44 (a), (c), (e)}
+Prove that each of the following formulae is a tautology, and say how it can be interpreted: (a) $[(p\Rightarrow q)\wedge(q\Rightarrow r)]\Rightarrow(p\Rightarrow r)$; (c) $\exists y\in Y,\ \forall x\in X,\ p(x,y)\Rightarrow\forall x\in X,\ \exists y\in Y,\ p(x,y)$; (e) $(\neg\forall x\in X,\ p(x))\Leftrightarrow(\exists x\in X,\ \neg p(x))$.
+\solution
+\given Definition 1.3.40 (tautology: true under every assignment); Theorem 1.3.45: (a) $q$ derivable from $p$ iff $p\Rightarrow q$ is a tautology; (b) $p\equiv q$ iff $p\Leftrightarrow q$ is a tautology.
+\plan For an implication, derive the consequent from the antecedent (then Theorem 1.3.45(a)); for a biconditional, show the two sides are equivalent (then Theorem 1.3.45(b)).
+\begin{steps}
+\item \textbf{(a)} Assume $(p\Rightarrow q)\wedge(q\Rightarrow r)$; so $p\Rightarrow q$ and $q\Rightarrow r$ \why{$\wedge$E}. To prove $p\Rightarrow r$, assume $p$. Then $q$ \why{modus ponens}, then $r$ \why{modus ponens}. Hence $p\Rightarrow r$ \why{$\Rightarrow$I}.
+\item This derivation uses no assumptions beyond the antecedent, so the implication is a tautology \why{Theorem 1.3.45(a)}. \emph{Interpretation:} implications chain (transitivity): having proved $p\Rightarrow q$ and $q\Rightarrow r$ you may conclude $p\Rightarrow r$.
+\item \textbf{(c)} The consequent was derived from the antecedent in Theorem 1.2.40: assume $\exists y\in Y,\ \forall x\in X,\ p(x,y)$; take such a $y_0$; let $x\in X$ be arbitrary; then $p(x,y_0)$, so $\exists y\in Y,\ p(x,y)$; since $x$ was arbitrary, $\forall x\in X,\ \exists y\in Y,\ p(x,y)$.
+\item So the implication is a tautology \why{Theorem 1.3.45(a)}. \emph{Interpretation:} a single $y$ that works for all $x$ in particular gives, for each $x$, some $y$ (the converse fails: the $y$ in $\forall x\,\exists y$ may depend on $x$).
+\item \textbf{(e)} $\neg\forall x\in X,\ p(x)\equiv\exists x\in X,\ \neg p(x)$ \why{de Morgan for quantifiers, Theorem 1.3.29(a)}.
+\item Hence the biconditional is a tautology \why{Theorem 1.3.45(b)}. \emph{Interpretation:} to disprove a ``for all'' statement, exhibit a counterexample (Strategy 1.3.30).
+\end{steps}
+\conclusion (a), (c), (e) are tautologies with the stated meanings.\qed
+\begin{compare}
+\item A truth table proves (a) as well ($8$ rows, all $\checkmark$), but (c) and (e) contain quantifiers, so only a derivation or a cited theorem can prove them.
+\item Each part needs the citation of Theorem 1.3.45 turning ``derivable'' into ``tautology''.
+\end{compare}
+\end{bookex}
+
+\hsection{Chapter 1 exercises}
+
+\begin{bookex}[recommended]{1.E.11}
+Prove that $p\Leftrightarrow q\equiv(p\Rightarrow q)\wedge((\neg p)\Rightarrow(\neg q))$. How does this help to prove a statement of the form ``$p$ if and only if $q$''?
+\solution
+\begin{steps}
+\item $p\Leftrightarrow q\equiv(p\Rightarrow q)\wedge(q\Rightarrow p)$ \why{Definition 1.1.40}.
+\item $q\Rightarrow p\equiv(\neg p)\Rightarrow(\neg q)$ \why{contraposition, Theorem 1.3.19}.
+\item Substituting the equivalent second conjunct: $p\Leftrightarrow q\equiv(p\Rightarrow q)\wedge((\neg p)\Rightarrow(\neg q))$.
+\item \emph{Use.} To prove ``$p$ iff $q$'' you may prove $p\Rightarrow q$ and then $\neg p\Rightarrow\neg q$, i.e.\ assume $p$ is false and show $q$ is false. This is convenient when $\neg p$ is a more concrete hypothesis than $q$ (e.g.\ ``$n$ is odd'' is easier to compute with than ``$n^2$ is even'', Exercise 1.3.22).
+\end{steps}
+\conclusion As stated. (Same content as Exercise 1.3.22.)\qed
+\end{bookex}
+
+\begin{bookex}[essential]{1.E.18}
+Let $X$ be $\Z$ or $\Q$, and let $p$ be the statement $\forall x\in X,\ \exists y\in X,\ \big(x<y\wedge[\forall z\in X,\ \neg(x<z\wedge z<y)]\big)$. Write down $\neg p$ in maximally negated form. Prove that $p$ is true when $X=\Z$ and false when $X=\Q$.
+\solution
+\given The negation rules (Theorems 1.3.24, 1.3.29, 1.3.15, Exercise 1.3.27); Exercise 1.2.29 (between two rationals lies a rational); there is no integer strictly between $n$ and $n+1$ (page 6).
+\goal (i) the maximally negated $\neg p$; (ii) a proof of $p$ for $X=\Z$; (iii) a proof of $\neg p$ for $X=\Q$.
+\plan Read $p$ first: ``every $x$ has a next element $y$: something bigger with nothing strictly in between''. True in $\Z$ ($y=x+1$), false in $\Q$ (between $x$ and any $y>x$ lies $\frac{x+y}2$).
+\begin{steps}
+\item \emph{Negation, one operator at a time:}
+\begin{align*}
+\neg p&\equiv\exists x\in X,\ \neg\exists y\in X,\ \big(x<y\wedge[\forall z\in X,\ \neg(x<z\wedge z<y)]\big)\why{$\neg\forall\to\exists\neg$}\\
+&\equiv\exists x\in X,\ \forall y\in X,\ \neg\big(x<y\wedge[\forall z\in X,\ \neg(x<z\wedge z<y)]\big)\why{$\neg\exists\to\forall\neg$}\\
+&\equiv\exists x\in X,\ \forall y\in X,\ \big(\neg(x<y)\vee\neg[\forall z\in X,\ \neg(x<z\wedge z<y)]\big)\why{de Morgan (a)}\\
+&\equiv\exists x\in X,\ \forall y\in X,\ \big(x\ge y\vee[\exists z\in X,\ \neg\neg(x<z\wedge z<y)]\big)\why{$\neg\forall\to\exists\neg$; $\neg(x<y)$ is $x\ge y$}\\
+&\equiv\exists x\in X,\ \forall y\in X,\ \big(x\ge y\vee[\exists z\in X,\ (x<z\wedge z<y)]\big)\why{double negation}.
+\end{align*}
+\item \emph{$X=\Z$: $p$ is true.} Let $x\in\Z$ \why{Strategy 1.2.10}. Define $y=x+1$; then $y\in\Z$ \why{closure} and $x<y$.
+\item Let $z\in\Z$ be arbitrary. If $x<z$ and $z<y=x+1$, then $z$ is an integer strictly between $x$ and $x+1$, which is impossible \why{consecutive integers, page 6}. So $\neg(x<z\wedge z<y)$ \why{$\neg$I}. Since $z$ was arbitrary, $\forall z\in\Z,\ \neg(x<z\wedge z<y)$.
+\item So $y$ satisfies $x<y\wedge[\dots]$ \why{$\wedge$I}; hence $\exists y\in\Z,\ \dots$ \why{$\exists$I}; since $x$ was arbitrary, $p$ holds for $X=\Z$.
+\item \emph{$X=\Q$: $p$ is false.} We prove $\neg p$ in the form of Step 1. Define $x=0\in\Q$ \why{Strategy 1.2.24; any rational works}.
+\item Let $y\in\Q$ be arbitrary \why{Strategy 1.2.10}. We must prove $x\ge y\vee\exists z\in\Q,\ (x<z\wedge z<y)$. Split: either $y\le0$ or $y>0$ \why{LEM}.
+\item If $y\le0$: then $x=0\ge y$, the first disjunct holds \why{$\vee$I$_1$}.
+\item If $y>0$: define $z=\frac{0+y}2=\frac y2$. Then $z\in\Q$ \why{Theorem 0.16} and $0<z<y$ \why{Exercise 1.2.29, or directly: $0<\frac y2$ and $\frac y2<y$ since $y>0$}. So the second disjunct holds \why{$\exists$I, $\vee$I$_2$}.
+\item In both cases the disjunction holds; $y$ was arbitrary; so $\neg p$ holds for $X=\Q$, i.e.\ $p$ is false.
+\end{steps}
+\conclusion $\neg p\equiv\exists x\in X,\ \forall y\in X,\ (x\ge y\vee\exists z\in X,\ (x<z\wedge z<y))$; $p$ is true in $\Z$ and false in $\Q$.\qed
+\begin{compare}
+\item Negate \emph{one} outermost operator per line and name the rule; never change the domains $x\in X$, $y\in X$, $z\in X$.
+\item For $X=\Q$ the proof must follow the shape of $\neg p$: choose $x$, let $y$ be arbitrary, produce $z$ depending on $y$. The case $y\le x$ must not be forgotten.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{1.E.28, 1.E.29, 1.E.30}
+True or false? Let $\varphi$ be the formula $\neg\forall x\ge0,\ \exists y\in\R,\ y^2=x$. \textbf{1.E.28} $\varphi\equiv\forall x<0,\ \exists y\notin\R,\ y^2\ne x$. \textbf{1.E.29} $\varphi\equiv\exists x\ge0,\ \forall y\in\R,\ y^2\ne x$. \textbf{1.E.30} $\varphi\equiv\exists x<0,\ \forall y\in\R,\ y^2=x$.
+\solution
+\given ``$\forall x\ge0,\ \dots$'' abbreviates $\forall x\in\R,\ (x\ge0\Rightarrow\dots)$ and ``$\exists x\ge0,\ \dots$'' abbreviates $\exists x\in\R,\ (x\ge0\wedge\dots)$. The negation rules.
+\plan Compute the maximal negation of $\varphi$ once; compare each proposed formula with it. A proposed formula that is not the maximal negation can still be equivalent by accident, so to say ``false'' we show the two formulae have different truth values (or different logical form in a way that matters).
+\begin{steps}
+\item Maximally negate: $\varphi\equiv\exists x\in\R,\ \neg(x\ge0\Rightarrow\exists y\in\R,\ y^2=x)$ \why{$\neg\forall\to\exists\neg$} $\equiv\exists x\in\R,\ (x\ge0\wedge\neg\exists y\in\R,\ y^2=x)$ \why{Exercise 1.3.27} $\equiv\exists x\in\R,\ (x\ge0\wedge\forall y\in\R,\ y^2\ne x)$ \why{$\neg\exists\to\forall\neg$}, i.e.\ $\exists x\ge0,\ \forall y\in\R,\ y^2\ne x$.
+\item \textbf{1.E.29: true.} The proposed formula is exactly the maximal negation of Step 1.
+\item \textbf{1.E.28: false.} Negation never changes the domain of a bound variable, but the proposed formula has $x<0$ and $y\notin\R$. To be sure they are not equivalent, compare truth values: $\varphi$ is \emph{false} (every $x\ge0$ has the real square root $y=\sqrt x$, so the un-negated statement is true), whereas the proposed formula is \emph{true}: for $x<0$ take $y=2i\notin\R$ if $x\ne-4$ (then $y^2=-4\ne x$) and $y=i$ if $x=-4$ (then $y^2=-1\ne x$). Different truth values, so not equivalent.
+\item \textbf{1.E.30: false.} It negates the domain condition ($x<0$ instead of $x\ge0$) and leaves $y^2=x$ un-negated. Compare truth values: $\varphi$ is false (Step 3). The proposed formula says some negative $x$ equals $y^2$ for \emph{every} real $y$; this is false too (for $y=0$ and $y=1$ we would need $x=0$ and $x=1$). Both false, so here truth values do not separate them; but equivalence of \emph{formulae} must hold for every reading of the predicate (Definition 1.3.2 treats $y^2=x$ as an abstract $q(x,y)$). Reading $q(x,y)$ as ``$y=y$'' (always true) and $x\ge0$ as ``true'', $x<0$ as ``false'': the left side $\exists x,\ (\text{true}\wedge\forall y,\ \neg q)$ is false while the right side $\exists x,\ (\text{false}\wedge\dots)$ is also false; reading $q$ as always false: left side true, right side false. So they are not equivalent.
+\end{steps}
+\conclusion 1.E.28 false, 1.E.29 true, 1.E.30 false.\qed
+\begin{compare}
+\item The maximal negation is computed by three rule applications; write them.
+\item For a ``false'', the cleanest argument is a pair of truth values that differ; when both happen to be false (1.E.30), point to the rule that was violated (domain negated, predicate not negated).
+\end{compare}
+\end{bookex}

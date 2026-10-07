@@ -1,0 +1,292 @@
+\begin{bookex}[essential]{2.2.35}
+Express $\displaystyle\bigcup_{n\ge1}\Big[0,1-\frac1n\Big]$ as an interval.
+\solution
+\given $x\in\bigcup_{n\ge1}A_n$ iff $\exists n\ge1,\ x\in A_n$ \why{Definition 2.2.29}. $\lceil y\rceil$ is the least integer $\ge y$ (Definition 0.10).
+\goal Guess the interval, then prove equality by double containment. The sets $[0,1-\frac1n]$ are $[0,0],[0,\frac12],[0,\frac23],\dots$, growing towards $1$ but never containing $1$: the union should be $[0,1)$.
+\plan ($\subseteq$) an element of some $[0,1-\frac1n]$ is $<1$. ($\supseteq$) given $x\in[0,1)$, build an index $N$ with $1-\frac1N\ge x$, i.e.\ $N\ge\frac1{1-x}$ (the technique of Example 2.2.19).
+\begin{steps}
+\item \emph{Claim:} $\bigcup_{n\ge1}[0,1-\frac1n]=[0,1)$.
+\item \emph{($\subseteq$)} Let $x$ be in the union. Take $n\ge1$ with $x\in[0,1-\frac1n]$ \why{Strategy 1.2.30}. Then $0\le x\le1-\frac1n<1$ \why{$\frac1n>0$}. So $x\in[0,1)$.
+\item \emph{($\supseteq$)} Let $x\in[0,1)$, so $0\le x<1$, hence $1-x>0$ and $\frac1{1-x}\ge1$ \why{$0<1-x\le1$}.
+\item Define $N=\big\lceil\frac1{1-x}\big\rceil$. Then $N\in\Z$ and $N\ge\frac1{1-x}\ge1$ \why{Definition 0.10}, so $N\ge1$ is a valid index.
+\item From $N\ge\frac1{1-x}$ and $N,1-x>0$: $\frac1N\le1-x$, i.e.\ $x\le1-\frac1N$ \why{invert both sides of an inequality between positive numbers}.
+\item So $0\le x\le1-\frac1N$: $x\in[0,1-\frac1N]$, hence $x\in\bigcup_{n\ge1}[0,1-\frac1n]$ \why{$\exists$I with $n=N$}.
+\end{steps}
+\conclusion $\bigcup_{n\ge1}[0,1-\frac1n]=[0,1)$ \why{Axiom 2.1.14}.\qed
+\begin{compare}
+\item The ($\supseteq$) direction must \emph{construct} $N$ from $x$ and check $N\ge1$ and $x\le1-\frac1N$. ``Take $n$ large enough'' is not a proof.
+\item $1$ is not in the union: $1\le1-\frac1n$ fails for every $n$. That is why the answer is $[0,1)$ and not $[0,1]$.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{2.2.36}
+Prove that $\displaystyle\bigcap_{n\in\N}[n]=\varnothing$ and $\displaystyle\bigcup_{n\in\N}[n]=\N$.
+\solution
+\given $[n]=\{k\in\N\mid k<n\}$ (Definition 0.25); $[0]=\varnothing$ (Example 2.1.22). Definitions 2.2.16 and 2.2.29 for $\bigcap$, $\bigcup$ over the index set $\N$.
+\begin{steps}
+\item \emph{Intersection.} Suppose $x\in\bigcap_{n\in\N}[n]$ \why{Strategy 2.1.20}. Then $x\in[n]$ for every $n\in\N$ \why{Definition 2.2.16}; in particular $x\in[0]$ \why{Strategy 1.2.19 with $n=0$}.
+\item But $[0]=\{k\in\N\mid k<0\}$ has no elements \why{no natural number is $<0$}: contradiction. So the intersection is empty, hence equals $\varnothing$ \why{Theorem 2.1.25}.
+\item \emph{Union, ($\subseteq$).} Let $x\in\bigcup_{n\in\N}[n]$; take $n$ with $x\in[n]$ \why{Definition 2.2.29, Strategy 1.2.30}. Then $x\in\N$ \why{Definition 0.25: elements of $[n]$ are natural numbers}.
+\item \emph{Union, ($\supseteq$).} Let $k\in\N$. Then $k+1\in\N$ and $k<k+1$, so $k\in[k+1]$ \why{Definition 0.25}. Hence $k\in\bigcup_{n\in\N}[n]$ \why{$\exists$I with $n=k+1$}.
+\end{steps}
+\conclusion $\bigcap_{n\in\N}[n]=\varnothing$ and $\bigcup_{n\in\N}[n]=\N$.\qed
+\begin{compare}
+\item For the intersection a single index ($n=0$) kills every candidate. For the union each $k$ needs its own index ($n=k+1$; $n=k$ would be wrong since $k\notin[k]$).
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{2.2.37}
+Find a family $\{X_n\mid n\in\N\}$ of sets such that (i) $\bigcup_{n\in\N}X_n=\N$; (ii) $\bigcap_{n\in\N}X_n=\varnothing$; (iii) $X_i\cap X_j\ne\varnothing$ for all $i,j\in\N$.
+\solution
+\goal An example with three verifications. Conditions (ii) and (iii) together say: no number is in all the sets, yet any two sets overlap. So each $X_n$ should omit only a little.
+\plan Let $X_n$ be $\N$ with the single number $n$ removed.
+\begin{steps}
+\item Define $X_n=\{k\in\N\mid k\ne n\}=\N\setminus\{n\}$ for $n\in\N$.
+\item \emph{(i)} ($\subseteq$) each $X_n\subseteq\N$, so the union is $\subseteq\N$. ($\supseteq$) Let $k\in\N$; then $k\ne k+1$, so $k\in X_{k+1}$, hence $k$ is in the union \why{$\exists$I}.
+\item \emph{(ii)} Suppose $k\in\bigcap_{n\in\N}X_n$. Then $k\in X_n$ for all $n$, in particular $k\in X_k$ \why{Strategy 1.2.19}, i.e.\ $k\ne k$: contradiction. So the intersection is empty \why{Strategy 2.1.20, Theorem 2.1.25}.
+\item \emph{(iii)} Let $i,j\in\N$. Define $m=i+j+1$. Then $m\in\N$, $m\ne i$ \why{$m\ge i+1>i$} and $m\ne j$ \why{$m>j$}. So $m\in X_i$ and $m\in X_j$, i.e.\ $m\in X_i\cap X_j$, which is therefore non-empty \why{Strategy 2.1.20}.
+\end{steps}
+\conclusion The family $X_n=\N\setminus\{n\}$ satisfies (i)--(iii).\qed
+\begin{compare}
+\item Any correct family is acceptable, but all three conditions must be verified, (iii) for \emph{arbitrary} $i,j$ (including $i=j$).
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{2.2.40}
+Write down the elements of $\{0,1,4,7\}\setminus\{1,2,3,4,5\}$.
+\solution
+\begin{steps}
+\item Keep the elements of the first set that are \emph{not} in the second \why{Definition 2.2.38}: $0$ (keep), $1$ (remove), $4$ (remove), $7$ (keep).
+\end{steps}
+\answer $\{0,7\}$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.2.41}
+Express $[-2,5)\setminus[4,7)$ and $[4,7)\setminus[-2,5)$ as intervals.
+\solution
+\begin{steps}
+\item $x\in[-2,5)\setminus[4,7)$ iff $-2\le x<5$ and $\neg(4\le x<7)$ \why{Definition 2.2.38}. Within $-2\le x<5$, the condition $4\le x<7$ reduces to $x\ge4$, so its negation is $x<4$. Hence the condition is $-2\le x<4$: the set is $[-2,4)$.
+\item $x\in[4,7)\setminus[-2,5)$ iff $4\le x<7$ and $\neg(-2\le x<5)$. Within $4\le x<7$, the condition $-2\le x<5$ reduces to $x<5$, so its negation is $x\ge5$. Hence $5\le x<7$: the set is $[5,7)$.
+\end{steps}
+\answer $[-2,5)\setminus[4,7)=[-2,4)$ and $[4,7)\setminus[-2,5)=[5,7)$.\qed
+\begin{compare}
+\item Bracket types: $4\notin[-2,4)$ because $4\in[4,7)$ is removed; $5\in[5,7)$ because $5\notin[-2,5)$ is not removed.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{2.2.45}
+Complete the proof of Theorem 2.2.44 (de Morgan's laws for sets): (b) $X\setminus(A\cap B)=(X\setminus A)\cup(X\setminus B)$; (c) $X\setminus\bigcup_{i\in I}A_i=\bigcap_{i\in I}(X\setminus A_i)$; (d) $X\setminus\bigcap_{i\in I}A_i=\bigcup_{i\in I}(X\setminus A_i)$.
+\solution
+\given The membership unfoldings and de Morgan's laws for $\wedge,\vee$ (Theorem 1.3.24) and for $\forall,\exists$ (Theorem 1.3.29). Part (a) is proved in the book by double containment; we follow the same pattern for (b) and use membership chains for (c), (d).
+\begin{steps}
+\item \emph{(b), ($\subseteq$).} Let $x\in X\setminus(A\cap B)$: $x\in X$ and $x\notin A\cap B$, i.e.\ $\neg(x\in A\wedge x\in B)$ \why{Definitions 2.2.38, 2.2.1}. By de Morgan, $x\notin A$ or $x\notin B$ \why{Theorem 1.3.24(a)}. Case $x\notin A$: $x\in X\setminus A$. Case $x\notin B$: $x\in X\setminus B$. Either way $x\in(X\setminus A)\cup(X\setminus B)$ \why{Definition 2.2.21}.
+\item \emph{(b), ($\supseteq$).} Let $x\in(X\setminus A)\cup(X\setminus B)$. Case $x\in X\setminus A$: $x\in X$ and $x\notin A$; then $x\notin A\cap B$ (an element of $A\cap B$ would be in $A$), so $x\in X\setminus(A\cap B)$. Case $x\in X\setminus B$: identical with $B$. Hence (b) \why{Axiom 2.1.14}.
+\item \emph{(c).} For any $x$:
+\begin{align*}
+x\in X\setminus\textstyle\bigcup_{i\in I}A_i&\Leftrightarrow x\in X\wedge\neg(\exists i\in I,\ x\in A_i)\why{Definitions 2.2.38, 2.2.29}\\
+&\Leftrightarrow x\in X\wedge\forall i\in I,\ x\notin A_i\why{Theorem 1.3.29(b)}\\
+&\Leftrightarrow\forall i\in I,\ (x\in X\wedge x\notin A_i)\why{$x\in X$ does not depend on $i$; see note}\\
+&\Leftrightarrow\forall i\in I,\ x\in X\setminus A_i\why{Definition 2.2.38}\\
+&\Leftrightarrow x\in\textstyle\bigcap_{i\in I}(X\setminus A_i)\why{Definition 2.2.16}.
+\end{align*}
+\emph{Note.} The third step needs $I\ne\varnothing$ for the direction $\Leftarrow$ (if $I$ is empty the right side is vacuously true while $x\in X$ may fail); for $I=\varnothing$ the book's conventions on empty intersections apply. Hence (c) by extensionality.
+\item \emph{(d).} For any $x$:
+\begin{align*}
+x\in X\setminus\textstyle\bigcap_{i\in I}A_i&\Leftrightarrow x\in X\wedge\neg(\forall i\in I,\ x\in A_i)\why{Definitions 2.2.38, 2.2.16}\\
+&\Leftrightarrow x\in X\wedge\exists i\in I,\ x\notin A_i\why{Theorem 1.3.29(a)}\\
+&\Leftrightarrow\exists i\in I,\ (x\in X\wedge x\notin A_i)\why{$x\in X$ independent of $i$}\\
+&\Leftrightarrow\exists i\in I,\ x\in X\setminus A_i\Leftrightarrow x\in\textstyle\bigcup_{i\in I}(X\setminus A_i)\why{Definitions 2.2.38, 2.2.29}.
+\end{align*}
+\end{steps}
+\conclusion (b), (c), (d) hold.\qed
+\begin{compare}
+\item Each line of a membership chain must cite the definition or logical law used; the de Morgan step is the heart of each part.
+\item For (b) two directions with cases; for (c)/(d) the quantifier version of de Morgan (Theorem 1.3.29), which cannot be replaced by a truth table.
+\end{compare}
+\end{bookex}
+
+\hsection{Products}
+
+\begin{key}[{What you unfold here}]
+Ordered lists (Definition 2.2.46): $(x_0,\dots,x_{k-1})=(y_0,\dots,y_{\ell-1})$ iff $k=\ell$ and $x_i=y_i$ for all $i\in[k]$. Cartesian product (Definition 2.2.49): $X\times Y=\{(x,y)\mid x\in X,\ y\in Y\}$, so $(x,y)\in X\times Y$ iff $x\in X$ and $y\in Y$.
+\end{key}
+
+\begin{bookex}[essential]{2.2.51}
+Write down the elements of the set $\{1,2\}\times\{3,4,5\}$.
+\solution
+\begin{steps}
+\item The elements are the ordered pairs $(x,y)$ with $x\in\{1,2\}$ and $y\in\{3,4,5\}$ \why{Definition 2.2.49}. For $x=1$: $(1,3),(1,4),(1,5)$; for $x=2$: $(2,3),(2,4),(2,5)$.
+\end{steps}
+\answer $\{1,2\}\times\{3,4,5\}=\{(1,3),(1,4),(1,5),(2,3),(2,4),(2,5)\}$, six pairs ($2\cdot3$).\qed
+\begin{compare}
+\item The elements are pairs, with the element of the \emph{first} set first: $(3,1)$ is not in this product.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{2.2.53}
+Let $X$ and $Y$ be sets. Under what conditions is it true that $X\times Y=Y\times X$?
+\solution
+\goal A condition, with a proof of both directions. Guess: equality holds when $X=Y$, and also when one of the sets is empty (both products are then empty).
+\begin{steps}
+\item \emph{Claim.} $X\times Y=Y\times X$ if and only if $X=Y$ or $X=\varnothing$ or $Y=\varnothing$.
+\item \emph{($\Leftarrow$)} If $X=Y$, both sides are $X\times X$. If $X=\varnothing$: a pair $(x,y)\in X\times Y$ would have $x\in\varnothing$, impossible, so $X\times Y=\varnothing$; likewise $Y\times X=\varnothing$ \why{Exercise 2.2.52}; so both sides are $\varnothing$. The case $Y=\varnothing$ is symmetric.
+\item \emph{($\Rightarrow$)} Suppose $X\times Y=Y\times X$. If $X=\varnothing$ or $Y=\varnothing$ the disjunction holds, so assume $X\ne\varnothing$ and $Y\ne\varnothing$ \why{LEM, Strategy 1.1.61}; we prove $X=Y$ by double containment.
+\item \emph{$X\subseteq Y$:} let $x\in X$. Since $Y\ne\varnothing$, fix $y\in Y$ \why{Strategy 1.2.30}. Then $(x,y)\in X\times Y=Y\times X$ \why{Definition 2.2.49}, so $(x,y)$ is a pair whose first term is in $Y$: $x\in Y$.
+\item \emph{$Y\subseteq X$:} let $y\in Y$; fix $x\in X$; then $(y,x)\in Y\times X=X\times Y$, so $y\in X$.
+\item Hence $X=Y$ \why{Axiom 2.1.14}.
+\end{steps}
+\conclusion $X\times Y=Y\times X$ exactly when $X=Y$ or one of $X,Y$ is empty.\qed
+\begin{compare}
+\item ``$X=Y$'' alone is not the full answer: $\varnothing\times\{1\}=\{1\}\times\varnothing=\varnothing$ with $\varnothing\ne\{1\}$.
+\item In ($\Rightarrow$) the non-emptiness of the \emph{other} set is what supplies the partner $y$ for the pair.
+\end{compare}
+\end{bookex}
+
+\hsection{Chapter 2 exercises}
+
+\begin{strategy}[{How to answer the chapter exercises}]
+\textbf{Prove:} unfold membership, then ``let $a\in\dots$'' for $\subseteq$, double containment for $=$, ``assume $a\in\dots$, contradiction'' for $=\varnothing$. \textbf{True/false:} proof or counterexample. \textbf{Always/sometimes/never:} proof of the conclusion / one example and one counterexample / proof of the negated conclusion. The tiny sets $\varnothing$, $\{0\}$, $\{1\}$, $\{0,1\}$, $\{\varnothing\}$ settle nearly every ``sometimes''.
+\end{strategy}
+
+\begin{bookex}[recommended]{2.E.4}
+Let $X$ be a set and let $U,V\subseteq X$. Prove that $U$ and $V$ are disjoint if and only if $U\subseteq X\setminus V$.
+\solution
+\given $U\subseteq X$, $V\subseteq X$. Disjoint: $U\cap V$ is empty (Definition 2.2.10). $a\in X\setminus V$ iff $a\in X$ and $a\notin V$ (Definition 2.2.38).
+\begin{steps}
+\item \emph{($\Rightarrow$)} Suppose $U\cap V=\varnothing$. Let $a\in U$ \why{Strategy 2.1.7}. Then $a\in X$ \why{$U\subseteq X$}.
+\item If $a\in V$, then $a\in U\cap V$ \why{Definition 2.2.1}, contradicting $U\cap V=\varnothing$; so $a\notin V$ \why{$\neg$I}.
+\item Hence $a\in X\setminus V$ \why{Definition 2.2.38}. So $U\subseteq X\setminus V$.
+\item \emph{($\Leftarrow$)} Suppose $U\subseteq X\setminus V$. To show $U\cap V$ is empty, suppose $a\in U\cap V$ \why{Strategy 2.1.20}. Then $a\in U$ and $a\in V$.
+\item From $a\in U$: $a\in X\setminus V$ \why{hypothesis}, so $a\notin V$. But $a\in V$: contradiction. Hence $U\cap V$ is empty: $U,V$ are disjoint.
+\end{steps}
+\conclusion $U\cap V=\varnothing\Leftrightarrow U\subseteq X\setminus V$.\qed
+\begin{compare}
+\item The hypothesis $U\subseteq X$ is needed exactly once (Step 1), to get $a\in X$; say where.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{2.E.5}
+For each of the following statements, determine whether it is true for all sets $A$ and $X$, and prove your claim: (a) if $X\setminus A=\varnothing$ then $X=A$; (b) if $X\setminus A=X$ then $A=\varnothing$; (c) if $X\setminus A=A$ then $A=\varnothing$; (d) $X\setminus(X\setminus A)=A$.
+\solution
+\plan Test each with tiny sets before trying to prove it. $X\setminus A=\varnothing$ only says $X\subseteq A$; $X\setminus A=X$ only says $X\cap A=\varnothing$; $X\setminus(X\setminus A)=X\cap A$ (Exercise 2.2.43).
+\begin{steps}
+\item \emph{(a) False.} $X=\varnothing$, $A=\{0\}$: $X\setminus A=\varnothing$ but $X\ne A$ ($0\in A$, $0\notin X$).
+\item \emph{(b) False.} $X=\varnothing$, $A=\{0\}$: $X\setminus A=\varnothing=X$ but $A\ne\varnothing$.
+\item \emph{(c) True.} Suppose $X\setminus A=A$. Suppose, towards a contradiction, that $a\in A$ \why{Strategy 2.1.20}. Then $a\in X\setminus A$ \why{$A=X\setminus A$}, so $a\notin A$ \why{Definition 2.2.38}. Contradiction with $a\in A$. Hence $A$ is empty.
+\item \emph{(d) False.} $X=\varnothing$, $A=\{0\}$: $X\setminus A=\varnothing$, so $X\setminus(X\setminus A)=\varnothing\setminus\varnothing=\varnothing\ne A$.
+\end{steps}
+\conclusion Only (c) holds for all sets.\qed
+\begin{compare}
+\item One counterexample per false statement, with the two sides computed explicitly.
+\item For (c) the proof is three lines and uses only the definition of $\setminus$; no cases needed.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{2.E.6}
+For each statement, determine whether it is true for all sets $X,Y$, false for all sets $X,Y$, or true for some and false for others: (a) $\PS(X\cup Y)=\PS(X)\cup\PS(Y)$; (b) $\PS(X\cap Y)=\PS(X)\cap\PS(Y)$; (c) $\PS(X\times Y)=\PS(X)\times\PS(Y)$; (d) $\PS(X\setminus Y)=\PS(X)\setminus\PS(Y)$.
+\solution
+\given $U\in\PS(Z)\Leftrightarrow U\subseteq Z$; $\varnothing\in\PS(Z)$ for every $Z$ (Exercise 2.1.32).
+\begin{steps}
+\item \emph{(a) Sometimes.} \emph{True} for $X=Y=\varnothing$: both sides are $\PS(\varnothing)=\{\varnothing\}$. \emph{False} for $X=\{0\}$, $Y=\{1\}$: $\{0,1\}\subseteq X\cup Y$ so $\{0,1\}\in\PS(X\cup Y)$; but $\{0,1\}\nsubseteq X$ and $\{0,1\}\nsubseteq Y$, so $\{0,1\}\notin\PS(X)\cup\PS(Y)$.
+\item \emph{(b) Always.} Let $U$ be arbitrary. $U\in\PS(X\cap Y)\Leftrightarrow U\subseteq X\cap Y$ \why{Definition 2.1.29}. Now $U\subseteq X\cap Y$ iff ($U\subseteq X$ and $U\subseteq Y$): if $U\subseteq X\cap Y$ and $a\in U$ then $a\in X\cap Y$, so $a\in X$ and $a\in Y$; conversely if $U\subseteq X$, $U\subseteq Y$ and $a\in U$ then $a\in X$ and $a\in Y$, so $a\in X\cap Y$. Finally ($U\subseteq X\wedge U\subseteq Y$) $\Leftrightarrow U\in\PS(X)\wedge U\in\PS(Y)\Leftrightarrow U\in\PS(X)\cap\PS(Y)$. By extensionality the sets are equal.
+\item \emph{(c) Never.} $\varnothing\in\PS(X\times Y)$ \why{Exercise 2.1.32}. The elements of $\PS(X)\times\PS(Y)$ are ordered pairs $(U,V)$ \why{Definition 2.2.49}, and $\varnothing$ is not an ordered pair, so $\varnothing\notin\PS(X)\times\PS(Y)$. The two sets differ in the element $\varnothing$, for every $X,Y$ \why{Axiom 2.1.14}.
+\item \emph{(d) Never.} $\varnothing\in\PS(X\setminus Y)$. But $\varnothing\in\PS(Y)$, so $\varnothing\notin\PS(X)\setminus\PS(Y)$ \why{Definition 2.2.38}. So the sets differ for every $X,Y$.
+\end{steps}
+\conclusion (a) sometimes, (b) always, (c) never, (d) never.\qed
+\begin{compare}
+\item ``Never'' is proved by a \emph{uniform} witness ($\varnothing$) that lies in one side and not the other for all $X,Y$.
+\item In (a) the inclusion $\supseteq$ always holds; the failure is in $\subseteq$, shown by a set that is a subset of the union but of neither part.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{2.E.16}
+For each of the following subsets of $\R$, determine (with proof) whether it is open: (a) $\varnothing$; (b) $(0,1)$; (c) $(0,1]$; (d) $\Z$; (e) $\R\setminus\Z$; (f) $\Q$.
+\solution
+\given Definition 2.E.15: $U\subseteq\R$ is \term{open} if $\forall a\in U,\ \exists\delta>0,\ (a-\delta,a+\delta)\subseteq U$. Its negation (maximally negated): $\exists a\in U,\ \forall\delta>0,\ \exists x\in(a-\delta,a+\delta),\ x\notin U$.
+\plan \textbf{Open:} let $a\in U$; define $\delta$ in terms of $a$; check $\delta>0$; show $(a-\delta,a+\delta)\subseteq U$. \textbf{Not open:} pick a specific $a\in U$; let $\delta>0$ be arbitrary; produce $x$ within $\delta$ of $a$ with $x\notin U$.
+\begin{steps}
+\item \emph{(a) Open.} ``For all $a\in\varnothing$ \dots'' is vacuously true \why{Exercise 2.1.24}.
+\item \emph{(b) Open.} Let $a\in(0,1)$. Define $\delta=\min(a,1-a)$; then $\delta>0$ \why{$a>0$ and $1-a>0$}. Let $x\in(a-\delta,a+\delta)$. Then $x>a-\delta\ge a-a=0$ \why{$\delta\le a$} and $x<a+\delta\le a+(1-a)=1$ \why{$\delta\le1-a$}. So $x\in(0,1)$; hence $(a-\delta,a+\delta)\subseteq(0,1)$.
+\item \emph{(c) Not open.} Take $a=1\in(0,1]$. Let $\delta>0$. Define $x=1+\frac\delta2$. Then $1-\delta<x<1+\delta$ \why{$0<\frac\delta2<\delta$}, so $x\in(a-\delta,a+\delta)$, but $x>1$ so $x\notin(0,1]$. Thus no $\delta$ works for $a=1$.
+\item \emph{(d) Not open.} Take $a=0\in\Z$. Let $\delta>0$. Define $x=\frac12\min(\delta,1)$. Then $0<x<\delta$, so $x\in(-\delta,\delta)$; and $0<x\le\frac12$, so $x$ is strictly between the consecutive integers $0$ and $1$ and is not an integer \why{page 6}.
+\item \emph{(e) Open.} Let $a\in\R\setminus\Z$. Let $n=\lfloor a\rfloor$, so $n\le a<n+1$ \why{Definition 0.10}; since $a\notin\Z$, $a\ne n$, so $n<a<n+1$. Define $\delta=\min(a-n,\ n+1-a)>0$. If $x\in(a-\delta,a+\delta)$ then $n\le a-\delta<x<a+\delta\le n+1$, so $x$ lies strictly between $n$ and $n+1$: $x\notin\Z$, i.e.\ $x\in\R\setminus\Z$.
+\item \emph{(f) Not open.} Take $a=0\in\Q$. Let $\delta>0$. Choose $n\in\N$ with $n>\frac{\sqrt2}\delta$ \why{$\N$ is unbounded in $\R$} and define $x=\frac{\sqrt2}n$. Then $0<x<\delta$, so $x\in(-\delta,\delta)$. And $x\notin\Q$: if $\frac{\sqrt2}n=r\in\Q$ then $\sqrt2=nr\in\Q$ \why{Theorem 0.16}, contradicting Assumption 0.49.
+\end{steps}
+\conclusion Open: (a), (b), (e). Not open: (c), (d), (f).\qed
+\begin{compare}
+\item For ``open'', $\delta$ must depend on $a$ and be checked positive; for ``not open'', $a$ is specific and $\delta$ is arbitrary; the $x$ depends on $\delta$.
+\item In (f) the irrational point near $0$ must be shown irrational (via Assumption 0.49), not just asserted.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[bonus]{2.E.18}
+(a) Let $n\ge1$ and let $U_1,\dots,U_n$ be open subsets of $\R$. Prove that $U_1\cap\dots\cap U_n$ is open. (b) Prove that $(0,1+\frac1n)$ is open for all $n\ge1$, but that $\bigcap_{n\ge1}(0,1+\frac1n)$ is not open.
+\solution
+\begin{steps}
+\item \emph{(a)} Let $a\in U_1\cap\dots\cap U_n$. For each $i$, $a\in U_i$ and $U_i$ is open, so there is $\delta_i>0$ with $(a-\delta_i,a+\delta_i)\subseteq U_i$ \why{Definition 2.E.15, Strategy 1.2.30}. Define $\delta=\min(\delta_1,\dots,\delta_n)$; $\delta>0$ as the minimum of finitely many positive numbers.
+\item Let $x\in(a-\delta,a+\delta)$ and let $i\in\{1,\dots,n\}$. Since $\delta\le\delta_i$: $a-\delta_i\le a-\delta<x<a+\delta\le a+\delta_i$, so $x\in U_i$. As $i$ was arbitrary, $x\in U_1\cap\dots\cap U_n$. Hence $(a-\delta,a+\delta)\subseteq U_1\cap\dots\cap U_n$: open.
+\item \emph{(b), each interval open.} Fix $n\ge1$, let $a\in(0,1+\frac1n)$ and define $\delta=\min(a,1+\frac1n-a)>0$. If $a-\delta<x<a+\delta$ then $x>0$ and $x<1+\frac1n$ \why{as in 2.E.16(b)}, so the interval is open.
+\item \emph{(b), the intersection.} Claim $\bigcap_{n\ge1}(0,1+\frac1n)=(0,1]$. ($\supseteq$) if $0<x\le1$ then $0<x<1+\frac1n$ for all $n\ge1$. ($\subseteq$) let $x$ be in every $(0,1+\frac1n)$; then $x>0$; if $x>1$, choose $n\ge1$ with $n>\frac1{x-1}$, so $\frac1n<x-1$, i.e.\ $1+\frac1n<x$, contradicting $x\in(0,1+\frac1n)$; so $x\le1$.
+\item $(0,1]$ is not open \why{Exercise 2.E.16(c)}. So an intersection of infinitely many open sets need not be open: the proof of (a) fails because infinitely many $\delta_n$ ($\delta_n\to0$ here) need not have a positive minimum.
+\end{steps}
+\conclusion (a) finite intersections of open sets are open; (b) infinite ones need not be.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.E.28}
+Let $a,b,c$ be arbitrary objects. Then $\{a,b\}=\{a,c\}$. (Always, sometimes or never?)
+\solution
+\begin{steps}
+\item \emph{Sometimes.} \emph{Holds:} $a=b=c=0$ (or any $b=c$): both sets are $\{0\}$.
+\item \emph{Fails:} $a=0$, $b=1$, $c=2$: $1\in\{0,1\}$ but $1\notin\{0,2\}$ \why{list notation}, so the sets are different \why{Axiom 2.1.14}.
+\end{steps}
+\conclusion Sometimes (exactly when $b=c$, or $a=b=c$ in disguise, or $b=a=c$).\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.E.32}
+Let $X$ and $Y$ be sets with $X\cap Y=\varnothing$. Then $\forall a,\ (a\in X\Rightarrow a\notin Y)$.
+\solution
+\begin{steps}
+\item \emph{Always.} Let $a$ be arbitrary and suppose $a\in X$ \why{Strategies 1.2.10, 1.1.28}. Goal: $a\notin Y$, a negation.
+\item Suppose $a\in Y$ \why{Strategy 1.1.51}. Then $a\in X\cap Y$ \why{Definition 2.2.1}, but $X\cap Y=\varnothing$ has no elements: contradiction. Hence $a\notin Y$.
+\end{steps}
+\conclusion Always: this is just what ``$X\cap Y$ is empty'' means, unfolded.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{2.E.33}
+Let $X$ and $Y$ be sets with $X\ne Y$. Then $\exists a,\ (a\in X\wedge a\notin Y)$.
+\solution
+\given $X\ne Y$ means, by Axiom 2.1.14, $\neg\forall a,\ (a\in X\Leftrightarrow a\in Y)$, i.e.\ some $a$ lies in exactly one of $X,Y$: $a\in X\setminus Y$ \emph{or} $a\in Y\setminus X$. The hypothesis does not say which.
+\begin{steps}
+\item \emph{Sometimes.} \emph{Holds:} $X=\{0\}$, $Y=\varnothing$. Then $X\ne Y$, and $a=0$ satisfies $a\in X$, $a\notin Y$.
+\item \emph{Fails:} $X=\varnothing$, $Y=\{0\}$. Then $X\ne Y$, but no $a$ satisfies $a\in X$ (there is nothing in $X$), so the conclusion is false.
+\end{steps}
+\conclusion Sometimes. (The conclusion holds exactly when $X\nsubseteq Y$.)\qed
+\begin{compare}
+\item The trap is to read $X\ne Y$ as ``$X$ has something $Y$ lacks''; it may equally be $Y$ that has the extra element. Both examples must be given.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{2.E.38}
+Let $X$ and $Y$ be sets such that $\PS(X)=\PS(Y)$. Then $X=Y$.
+\solution
+\begin{steps}
+\item \emph{Always.} $X\subseteq X$ \why{Example 2.1.8}, so $X\in\PS(X)$ \why{Definition 2.1.29}. Since $\PS(X)=\PS(Y)$, $X\in\PS(Y)$, i.e.\ $X\subseteq Y$.
+\item Symmetrically $Y\in\PS(Y)=\PS(X)$, so $Y\subseteq X$.
+\item Hence $X=Y$ \why{Axiom 2.1.14, double containment}.
+\end{steps}
+\conclusion Always.\qed
+\begin{compare}
+\item The whole proof is: ``$X$ is an element of its own power set''. Two lines plus extensionality.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{2.E.41}
+Let $X$ and $Y$ be sets. Then $X\cup Y=X\cap Y$.
+\solution
+\begin{steps}
+\item \emph{Sometimes.} \emph{Holds:} $X=Y=\{0\}$: $X\cup Y=\{0\}=X\cap Y$ (in general $X\cup X=X=X\cap X$, Exercises 2.2.26 and 2.2.9).
+\item \emph{Fails:} $X=\{0\}$, $Y=\varnothing$: $X\cup Y=\{0\}$ but $X\cap Y=\varnothing$ \why{Exercise 2.2.9}, and $\{0\}\ne\varnothing$.
+\item \emph{Extra (when exactly):} $X\cup Y=X\cap Y$ iff $X=Y$. ($\Leftarrow$) above. ($\Rightarrow$) if $a\in X$ then $a\in X\cup Y=X\cap Y$, so $a\in Y$: $X\subseteq Y$; symmetrically $Y\subseteq X$.
+\end{steps}
+\conclusion Sometimes.\qed
+\end{bookex}

@@ -1,0 +1,346 @@
+\chapter{Relations}
+\chaptercontents{A & Relations (\S5.1) \\ B & Equivalence relations (\S5.2) \\ C & Chapter 5 exercises (5.E)}%
+{\fE\ 5.1: 6, 13, 22, 23, 28, 39, 40, 41 \textperiodcentered\ 5.2: 24, 27, 33 \textperiodcentered\ 5.E: 18, 22, 23\\ \fR\ 5.1: 10, 11, 18, 24, 29, 33, 34 \textperiodcentered\ 5.2: 25, 28, 30, 34, 36\\ Tested in \textbf{Quiz 3} (21 Oct) and the exam.}
+
+\hsection{Relations}
+
+\begin{key}[{What you unfold in this section}]
+\textbf{Relation} (Definition 5.1.1): a formula $R(x,y)$ with $x\in X$, $y\in Y$; $x\mathrel Ry$ means $R(x,y)$ is true. \textbf{Extensionality} (Axiom 5.1.4): $R=S$ iff same domain, same codomain, and $\forall x\in X,\ \forall y\in Y,\ (x\mathrel Ry\Leftrightarrow x\mathrel Sy)$. \textbf{Graph} (Definition 5.1.7): $\mathrm{Gr}(R)=\{(x,y)\in X\times Y\mid x\mathrel Ry\}$. \textbf{Properties} of a relation on $X$ (Definitions 5.1.19--5.1.36): reflexive $\forall a,\ a\mathrel Ra$; symmetric $\forall a,b,\ a\mathrel Rb\Rightarrow b\mathrel Ra$; antisymmetric $\forall a,b,\ (a\mathrel Rb\wedge b\mathrel Ra)\Rightarrow a=b$; transitive $\forall a,b,c,\ (a\mathrel Rb\wedge b\mathrel Rc)\Rightarrow a\mathrel Rc$. Each is proved by ``let $a$ (and $b$, $c$) $\in X$ with \dots'' and unfolding what $a\mathrel Rb$ means; each is disproved by one explicit counterexample.
+\end{key}
+
+\begin{bookex}[essential]{5.1.6}
+Let $R$ and $S$ be the relations on $\R$ defined by $a\mathrel Rb\Leftrightarrow b-a\in\Q$ and $a\mathrel Sb\Leftrightarrow\exists n\in\Z,\ (n\ne0\wedge n(b-a)\in\Z)$. Prove that $R=S$.
+\solution
+\given Both relations have domain and codomain $\R$. Definition 0.15 for $\Q$.
+\goal By Axiom 5.1.4 it suffices to prove $\forall a,b\in\R,\ (a\mathrel Rb\Leftrightarrow a\mathrel Sb)$.
+\begin{steps}
+\item Let $a,b\in\R$ \why{Strategy 1.2.10}. We prove both directions.
+\item \emph{($\Rightarrow$)} Suppose $b-a\in\Q$. Then $b-a=\frac pq$ for some $p,q\in\Z$ with $q\ne0$ \why{Definition 0.15, Strategy 1.2.30}. Define $n=q$: then $n\in\Z$, $n\ne0$ and $n(b-a)=q\cdot\frac pq=p\in\Z$. So $a\mathrel Sb$ \why{$\exists$I}.
+\item \emph{($\Leftarrow$)} Suppose $a\mathrel Sb$: take $n\in\Z$ with $n\ne0$ and $n(b-a)\in\Z$, say $n(b-a)=m\in\Z$. Then $b-a=\frac mn$ with $m,n\in\Z$, $n\ne0$, so $b-a\in\Q$ \why{Definition 0.15}: $a\mathrel Rb$.
+\end{steps}
+\conclusion $a\mathrel Rb\Leftrightarrow a\mathrel Sb$ for all $a,b\in\R$, and the domains and codomains agree, so $R=S$ \why{Axiom 5.1.4}.\qed
+\begin{compare}
+\item Mention domain and codomain explicitly: relation equality needs all three parts.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{5.1.10}
+Let $R$ be the relation on $\Z$ defined by $x\mathrel Ry\Leftrightarrow x^2=y^2$. Describe $\mathrm{Gr}(R)$.
+\solution
+\begin{steps}
+\item $\mathrm{Gr}(R)=\{(x,y)\in\Z\times\Z\mid x^2=y^2\}$ \why{Definition 5.1.7}.
+\item $x^2=y^2$ iff $y^2-x^2=0$ iff $(y-x)(y+x)=0$ iff $y=x$ or $y=-x$ \why{a product of integers is $0$ iff a factor is $0$}.
+\item So $\mathrm{Gr}(R)=\{(x,x)\mid x\in\Z\}\cup\{(x,-x)\mid x\in\Z\}$: the two diagonals of the integer grid, i.e.\ $\Delta_\Z\cup\{(x,-x)\mid x\in\Z\}$.
+\end{steps}
+\answer The pairs $(x,\pm x)$ with $x\in\Z$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{5.1.11}
+Let $f:X\to Y$ and let $R_f$ be the relation from $X$ to $Y$ defined by $x\mathrel{R_f}y\Leftrightarrow f(x)=y$. Prove that $\mathrm{Gr}(R_f)=\mathrm{Gr}(f)$.
+\solution
+\begin{steps}
+\item $\mathrm{Gr}(R_f)=\{(x,y)\in X\times Y\mid x\mathrel{R_f}y\}=\{(x,y)\in X\times Y\mid f(x)=y\}$ \why{Definition 5.1.7; definition of $R_f$}.
+\item $\mathrm{Gr}(f)=\{(x,y)\in X\times Y\mid y=f(x)\}$ \why{Definition 3.1.6}.
+\item The two set-builder expressions have the same defining condition, so the sets are equal \why{Axiom 2.1.14}.
+\end{steps}
+\conclusion $\mathrm{Gr}(R_f)=\mathrm{Gr}(f)$: a function ``is'' the relation $f(x)=y$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{5.1.13}
+Let $X$ and $Y$ be sets. Describe the graphs of the discrete relation $D_{X,Y}$ and the empty relation $\varnothing_{X,Y}$.
+\solution
+\given $D_{X,Y}$ relates every $x\in X$ to every $y\in Y$; $\varnothing_{X,Y}$ relates nothing (Definition 5.1.11).
+\begin{steps}
+\item $\mathrm{Gr}(D_{X,Y})=\{(x,y)\in X\times Y\mid x\mathrel{D_{X,Y}}y\}=\{(x,y)\in X\times Y\mid\text{true}\}=X\times Y$.
+\item $\mathrm{Gr}(\varnothing_{X,Y})=\{(x,y)\in X\times Y\mid\text{false}\}=\varnothing$.
+\end{steps}
+\answer $\mathrm{Gr}(D_{X,Y})=X\times Y$ and $\mathrm{Gr}(\varnothing_{X,Y})=\varnothing$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{5.1.18}
+Let $X$ be a set. Prove that $\Delta_X=\mathrm{Gr}(=)$, where $\Delta_X=\{(x,x)\mid x\in X\}$ and $=$ is the equality relation on $X$.
+\solution
+\begin{steps}
+\item $\mathrm{Gr}(=)=\{(x,y)\in X\times X\mid x=y\}$ \why{Definition 5.1.7}.
+\item \emph{($\subseteq$)} Let $t\in\Delta_X$; then $t=(x,x)$ for some $x\in X$. Since $x=x$, $(x,x)\in\mathrm{Gr}(=)$.
+\item \emph{($\supseteq$)} Let $(x,y)\in\mathrm{Gr}(=)$; then $x=y$, so $(x,y)=(x,x)\in\Delta_X$.
+\end{steps}
+\conclusion $\Delta_X=\mathrm{Gr}(=)$ \why{double containment}.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{5.1.22}
+Let $X$ be a set. Prove that $\subseteq$ is a reflexive relation on $\PS(X)$, but $\subsetneq$ is not.
+\solution
+\given Reflexive: $\forall U\in\PS(X),\ U\subseteq U$. $U\subsetneq V$ means $U\subseteq V$ and $U\ne V$ (Definition 2.1.6). Not reflexive: $\exists U\in\PS(X),\ \neg(U\subsetneq U)$.
+\begin{steps}
+\item \emph{$\subseteq$ reflexive.} Let $U\in\PS(X)$. Let $a\in U$; then $a\in U$. So $U\subseteq U$ \why{Definition 2.1.6, Strategy 2.1.7}.
+\item \emph{$\subsetneq$ not reflexive.} $\PS(X)$ is non-empty: $\varnothing\in\PS(X)$ \why{Exercise 2.1.32}. Take $U=\varnothing$. $U\subsetneq U$ would require $U\ne U$, which is false. So $\neg(\varnothing\subsetneq\varnothing)$, and reflexivity fails at $U=\varnothing$ \why{Strategy 1.3.30}. (In fact it fails at every $U$.)
+\end{steps}
+\conclusion $\subseteq$ is reflexive on $\PS(X)$; $\subsetneq$ is not.\qed
+\begin{compare}
+\item To show ``not reflexive'' you need an \emph{element} of the domain; note that $\PS(X)$ is never empty, so one exists.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{5.1.23}
+Prove that the relation ``$x$ divides $y$'' on $\Z$ is reflexive.
+\solution
+\begin{steps}
+\item Let $x\in\Z$. Then $x=1\cdot x$ with $1\in\Z$, so $x\mid x$ \why{Definition 0.36 with $q=1$}.
+\end{steps}
+\conclusion Divisibility is reflexive on $\Z$ (including $0\mid0$).\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{5.1.24}
+Let $G=\{(0,0),(1,1),(2,2)\}$. Let $R$ be the relation on $[3]$ with graph $G$ and $S$ the relation on $[4]$ with graph $G$. Prove that $R$ is reflexive but $S$ is not.
+\solution
+\begin{steps}
+\item $[3]=\{0,1,2\}$. For each $a\in[3]$, $(a,a)\in G$, so $a\mathrel Ra$ \why{Theorem 5.1.14: $a\mathrel Rb\Leftrightarrow(a,b)\in\mathrm{Gr}(R)$}. Hence $R$ is reflexive.
+\item $[4]=\{0,1,2,3\}$ and $(3,3)\notin G$, so $3\mathrel S3$ is false. Hence $S$ is not reflexive \why{counterexample $a=3$}.
+\end{steps}
+\conclusion Same graph, different domain, different answer: reflexivity depends on the domain.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{5.1.28}
+Find all subsets $U\subseteq\Z$ such that the relation ``$x$ divides $y$'' on $U$ is symmetric.
+\solution
+\goal A characterisation of the sets $U$ with $\forall x,y\in U,\ (x\mid y\Rightarrow y\mid x)$, with proof.
+\plan First a lemma: $x\mid y$ and $y\mid x$ together mean $y=\pm x$. Then symmetry on $U$ means: whenever $x,y\in U$ and $x\mid y$, also $y\mid x$, i.e.\ $y=\pm x$.
+\begin{steps}
+\item \emph{Lemma: for $x,y\in\Z$, ($x\mid y$ and $y\mid x$) iff $y=x$ or $y=-x$.} ($\Leftarrow$) If $y=\pm x$ then $y=(\pm1)x$ and $x=(\pm1)y$, so both divisibilities hold. ($\Rightarrow$) Write $y=qx$ and $x=ry$ with $q,r\in\Z$ \why{Definition 0.36}. Then $x=rqx$. If $x\ne0$: $rq=1$, so $q=r=\pm1$ \why{the only integer factorisations of $1$} and $y=\pm x$. If $x=0$: $y=q\cdot0=0=x$.
+\item \emph{Characterisation.} Divisibility on $U$ is symmetric iff $\forall x,y\in U,\ (x\mid y\Rightarrow y\mid x)$ \why{Definition 5.1.25} iff $\forall x,y\in U,\ (x\mid y\Rightarrow(x\mid y\wedge y\mid x))$ iff, by the Lemma, $\forall x,y\in U,\ (x\mid y\Rightarrow y=\pm x)$.
+\item In words: \textbf{$U$ works iff no element of $U$ divides an element of $U$ with a different absolute value.} Equivalently: for distinct $|x|\ne|y|$ in $U$, neither divides the other.
+\item \emph{Examples:} $\varnothing$; $\{0\}$; $\{a,-a\}$ for any $a\in\Z$; $\{2,3\}$; $\{4,6,9\}$; the set of all primes. \emph{Non-examples:} $\{1,2\}$ ($1\mid2$ but $2\nmid1$); $\{0,5\}$ ($5\mid0$ but $0\nmid5$); $\N$; $\Z$. In particular, if $0\in U$ then every $x\in U$ divides $0$ while $0\mid x$ only for $x=0$, so $U=\{0\}$ is the only such $U$ containing $0$.
+\end{steps}
+\conclusion Divisibility is symmetric on $U$ exactly when $x\mid y$ with $x,y\in U$ forces $y=\pm x$.\qed
+\begin{compare}
+\item ``Find all'' asks for a condition, with a proof that it is necessary and sufficient; examples alone are not an answer, but a few of them show you understand the condition.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{5.1.29}
+Let $R$ and $S$ be relations with $\mathrm{Gr}(R)=\mathrm{Gr}(S)$ (possibly with different domains). Prove that $R$ is symmetric if and only if $S$ is symmetric.
+\solution
+\plan Show that symmetry is a property of the graph alone: $R$ symmetric iff $\forall(a,b)\in\mathrm{Gr}(R),\ (b,a)\in\mathrm{Gr}(R)$.
+\begin{steps}
+\item \emph{Claim:} for a relation $R$ on $X$: $R$ symmetric $\Leftrightarrow\forall(a,b)\in\mathrm{Gr}(R),\ (b,a)\in\mathrm{Gr}(R)$.
+\item ($\Rightarrow$) Let $(a,b)\in\mathrm{Gr}(R)$. Then $a,b\in X$ and $a\mathrel Rb$ \why{Definition 5.1.7}; by symmetry $b\mathrel Ra$, so $(b,a)\in\mathrm{Gr}(R)$.
+\item ($\Leftarrow$) Let $a,b\in X$ with $a\mathrel Rb$. Then $(a,b)\in\mathrm{Gr}(R)$, so $(b,a)\in\mathrm{Gr}(R)$ by the graph condition, i.e.\ $b\mathrel Ra$. So $R$ is symmetric.
+\item The graph condition mentions only $\mathrm{Gr}(R)$. Since $\mathrm{Gr}(R)=\mathrm{Gr}(S)$, the condition holds for $R$ iff it holds for $S$; by the Claim (applied to $R$ and to $S$), $R$ is symmetric iff $S$ is.
+\end{steps}
+\conclusion Symmetry depends only on the graph.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{5.1.33}
+Prove that ``$x$ divides $y$'' is antisymmetric on $\N$ but not on $\Z$.
+\solution
+\begin{steps}
+\item \emph{On $\N$.} Let $x,y\in\N$ with $x\mid y$ and $y\mid x$. By the Lemma of 5.1.28, $y=x$ or $y=-x$. If $y=-x$ with $x,y\ge0$, then $x=y=0$. In both cases $x=y$ \why{Definition 5.1.30}.
+\item \emph{On $\Z$.} Counterexample: $1\mid-1$ (as $-1=(-1)\cdot1$) and $-1\mid1$ (as $1=(-1)(-1)$), but $1\ne-1$.
+\end{steps}
+\conclusion Antisymmetric on $\N$, not on $\Z$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{5.1.34}
+Let $X$ be a set. Prove that $\subseteq$ is antisymmetric on $\PS(X)$.
+\solution
+\begin{steps}
+\item Let $U,V\in\PS(X)$ with $U\subseteq V$ and $V\subseteq U$ \why{Definition 5.1.30}.
+\item Then $U=V$ \why{Axiom 2.1.14: double containment}.
+\end{steps}
+\conclusion $\subseteq$ is antisymmetric: antisymmetry of $\subseteq$ \emph{is} set extensionality.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{5.1.39}
+Let $X$ be a set. Prove that $\subseteq$ is transitive on $\PS(X)$.
+\solution
+\begin{steps}
+\item Let $U,V,W\in\PS(X)$ with $U\subseteq V$ and $V\subseteq W$ \why{Definition 5.1.36}.
+\item Let $a\in U$. Then $a\in V$ \why{$U\subseteq V$}, and then $a\in W$ \why{$V\subseteq W$}. So $U\subseteq W$ \why{Strategy 2.1.7}.
+\end{steps}
+\conclusion $\subseteq$ is transitive (this is Proposition 2.1.12).\qed
+\end{bookex}
+
+\begin{bookex}[essential]{5.1.40}
+Prove that the relation ``$x$ divides $y$'' on $\Z$ is transitive.
+\solution
+\begin{steps}
+\item Let $x,y,z\in\Z$ with $x\mid y$ and $y\mid z$. Then $y=qx$ and $z=ry$ for some $q,r\in\Z$ \why{Definition 0.36, two letters}.
+\item $z=ry=r(qx)=(rq)x$ with $rq\in\Z$ \why{associativity; closure}. So $x\mid z$ \why{Definition 0.36}.
+\end{steps}
+\conclusion Divisibility is transitive (Proposition 0.39).\qed
+\end{bookex}
+
+\begin{bookex}[essential]{5.1.41}
+Let $R$ and $S$ be relations with $\mathrm{Gr}(R)=\mathrm{Gr}(S)$. Prove that $R$ is transitive if and only if $S$ is transitive.
+\solution
+\plan As in 5.1.29: express transitivity through the graph only.
+\begin{steps}
+\item \emph{Claim:} for $R$ on $X$: $R$ transitive $\Leftrightarrow$ for all $(a,b),(b,c)\in\mathrm{Gr}(R)$, $(a,c)\in\mathrm{Gr}(R)$.
+\item ($\Rightarrow$) If $(a,b),(b,c)\in\mathrm{Gr}(R)$ then $a,b,c\in X$ with $a\mathrel Rb$ and $b\mathrel Rc$, so $a\mathrel Rc$ by transitivity, i.e.\ $(a,c)\in\mathrm{Gr}(R)$.
+\item ($\Leftarrow$) If $a,b,c\in X$ with $a\mathrel Rb$, $b\mathrel Rc$, then $(a,b),(b,c)\in\mathrm{Gr}(R)$, so $(a,c)\in\mathrm{Gr}(R)$, i.e.\ $a\mathrel Rc$.
+\item The graph condition involves only $\mathrm{Gr}(R)=\mathrm{Gr}(S)$, so it holds for $R$ iff for $S$; by the Claim, $R$ transitive iff $S$ transitive.
+\end{steps}
+\conclusion Transitivity depends only on the graph (unlike reflexivity, 5.1.24).\qed
+\end{bookex}
+
+\hsection{Equivalence relations}
+
+\begin{key}[{What you unfold in this section}]
+\textbf{Equivalence relation} (Definition 5.2.1): reflexive, symmetric, transitive. \textbf{Congruence} (Definition 5.2.6): $a\equiv b\pmod n$ iff $n\mid b-a$; equivalently (for $n\ne0$) equal remainders (Exercise 5.2.9). \textbf{Class and quotient} (Definition 5.2.12): $[a]_\sim=\{x\in X\mid a\sim x\}$, $X/{\sim}=\{[a]_\sim\mid a\in X\}$; \textbf{Theorem 5.2.17:} $a\sim b\Leftrightarrow[a]_\sim=[b]_\sim$. \textbf{Partition} (Definition 5.2.21): $\mathcal A\subseteq\PS(X)$ with (a) every $A\in\mathcal A$ non-empty; (b) cover: $\forall x\in X,\ \exists A\in\mathcal A,\ x\in A$; (c) pairwise disjoint: $\forall A,B\in\mathcal A,\ A\cap B\ne\varnothing\Rightarrow A=B$. \textbf{Theorem 5.2.26:} $X/{\sim}$ is a partition, and every partition is $X/{\sim}$ for the relation ``lie in a common block''. \textbf{Quotient function} (Definition 5.2.31): $q_\sim(a)=[a]_\sim$.
+\end{key}
+
+\begin{bookex}[essential]{5.2.24}
+Let $f:X\to Y$ be a surjection and let $\mathcal F=\{f^{-1}[\{b\}]\mid b\in Y\}$. Prove that $\mathcal F$ is a partition of $X$. Where is surjectivity used?
+\solution
+\given $f^{-1}[\{b\}]=\{x\in X\mid f(x)=b\}$ (Definition 3.1.37): the set of inputs sent to $b$. Each is a subset of $X$, so $\mathcal F\subseteq\PS(X)$.
+\begin{steps}
+\item \emph{(a) Non-empty.} Let $F\in\mathcal F$, say $F=f^{-1}[\{b\}]$ with $b\in Y$. Since $f$ is \textbf{surjective}, there is $x\in X$ with $f(x)=b$ \why{Definition 3.2.9}; then $x\in F$. So $F\ne\varnothing$.
+\item \emph{(b) Cover.} Let $x\in X$. Then $f(x)\in Y$, and $x\in f^{-1}[\{f(x)\}]$ \why{$f(x)=f(x)$}, which is an element of $\mathcal F$ (take $b=f(x)$).
+\item \emph{(c) Pairwise disjoint.} Let $F=f^{-1}[\{b\}]$ and $F'=f^{-1}[\{b'\}]$ be elements of $\mathcal F$ with $F\cap F'\ne\varnothing$; pick $x\in F\cap F'$. Then $f(x)=b$ and $f(x)=b'$, so $b=b'$ \why{$f$ is a function: one value}, hence $F=F'$.
+\end{steps}
+\conclusion $\mathcal F$ is a partition of $X$ \why{Definition 5.2.21}. Surjectivity is used only in (a): without it, $f^{-1}[\{b\}]=\varnothing$ for $b\notin f[X]$, and a partition may not contain $\varnothing$.\qed
+\begin{compare}
+\item Three labelled parts, (c) in the book's form ``if $A\cap B\ne\varnothing$ then $A=B$''. The answer to ``where'' is a specific part.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{5.2.25}
+Let $\mathcal A$ be a set of non-empty subsets of $X$. Prove that $\mathcal A$ is a partition of $X$ if and only if for each $x\in X$ there is a unique $A\in\mathcal A$ with $x\in A$.
+\solution
+\given Condition (a) holds by assumption. ``Unique $A$'' means existence and uniqueness (Definition 1.2.32).
+\begin{steps}
+\item \emph{($\Rightarrow$)} Suppose $\mathcal A$ is a partition. Let $x\in X$. \emph{Existence} of $A\in\mathcal A$ with $x\in A$ is condition (b). \emph{Uniqueness:} if $x\in A$ and $x\in B$ with $A,B\in\mathcal A$, then $x\in A\cap B$, so $A\cap B\ne\varnothing$, so $A=B$ by (c).
+\item \emph{($\Leftarrow$)} Suppose each $x\in X$ lies in exactly one $A\in\mathcal A$. (a) holds by hypothesis. (b): for $x\in X$ there exists $A\in\mathcal A$ with $x\in A$ (existence part). (c): let $A,B\in\mathcal A$ with $A\cap B\ne\varnothing$; pick $x\in A\cap B$; then $A$ and $B$ are both members of $\mathcal A$ containing $x$, so $A=B$ by uniqueness.
+\end{steps}
+\conclusion $\mathcal A$ is a partition iff every $x\in X$ lies in exactly one block.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{5.2.27}
+Prove Theorem 5.2.26(a): for every equivalence relation $\sim$ on $X$, the quotient $X/{\sim}$ is a partition of $X$.
+\solution
+\given $X/{\sim}=\{[a]_\sim\mid a\in X\}$, each $[a]_\sim\subseteq X$. Reflexivity, symmetry, transitivity of $\sim$; Theorem 5.2.17.
+\begin{steps}
+\item \emph{(a) Non-empty.} Let $E\in X/{\sim}$, say $E=[a]_\sim$ with $a\in X$. Then $a\sim a$ \why{reflexive}, so $a\in[a]_\sim$ \why{Definition 5.2.12}. So $E\ne\varnothing$.
+\item \emph{(b) Cover.} Let $x\in X$. Then $x\in[x]_\sim$ \why{reflexive} and $[x]_\sim\in X/{\sim}$.
+\item \emph{(c) Pairwise disjoint.} Let $[a]_\sim,[b]_\sim\in X/{\sim}$ with $[a]_\sim\cap[b]_\sim\ne\varnothing$; pick $x$ in both. Then $a\sim x$ and $b\sim x$ \why{Definition 5.2.12}. By symmetry $x\sim b$; by transitivity ($a\sim x$, $x\sim b$) $a\sim b$. Hence $[a]_\sim=[b]_\sim$ \why{Theorem 5.2.17}.
+\end{steps}
+\conclusion $X/{\sim}$ is a partition of $X$ \why{Definition 5.2.21}.\qed
+\begin{compare}
+\item Each of the three properties of $\sim$ is used exactly where named: reflexive in (a)/(b), symmetric and transitive in (c). Quote Theorem 5.2.17 for the last step rather than re-proving it.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{5.2.28}
+For $i\in[0,1)$ let $A_i=\{i+n\mid n\in\Z\}$, and let $\mathcal A=\{A_i\mid i\in[0,1)\}$. Prove that $\mathcal A$ is a partition of $\R$ and describe the equivalence relation $\sim$ on $\R$ with $\R/{\sim}=\mathcal A$.
+\solution
+\given $\lfloor x\rfloor$ (Definition 0.10): $x-\lfloor x\rfloor\in[0,1)$. Theorem 5.2.26(b): $x\sim y$ iff $x,y$ lie in a common $A_i$.
+\begin{steps}
+\item \emph{(a) Non-empty.} $i=i+0\in A_i$.
+\item \emph{(b) Cover.} Let $x\in\R$. Define $i=x-\lfloor x\rfloor$; then $0\le i<1$ \why{Definition 0.10} and $x=i+\lfloor x\rfloor$ with $\lfloor x\rfloor\in\Z$, so $x\in A_i$.
+\item \emph{(c) Pairwise disjoint.} Suppose $x\in A_i\cap A_j$: $x=i+n=j+m$ with $n,m\in\Z$. Then $i-j=m-n\in\Z$. But $i,j\in[0,1)$ gives $-1<i-j<1$, and the only integer strictly between $-1$ and $1$ is $0$. So $i=j$ and $A_i=A_j$.
+\item \emph{The relation.} By Theorem 5.2.26(b), $x\sim y$ iff $\exists i,\ (x\in A_i\wedge y\in A_i)$. \emph{Claim:} this holds iff $y-x\in\Z$. ($\Rightarrow$) If $x=i+n$, $y=i+m$ then $y-x=m-n\in\Z$. ($\Leftarrow$) If $y-x=k\in\Z$, let $i=x-\lfloor x\rfloor$; then $x\in A_i$ and $y=x+k=i+(\lfloor x\rfloor+k)\in A_i$.
+\end{steps}
+\conclusion $\mathcal A$ is a partition of $\R$, and $\sim$ is ``$y-x\in\Z$'' (same fractional part); $[x]_\sim=A_{x-\lfloor x\rfloor}$.\qed
+\begin{compare}
+\item The disjointness argument hinges on ``an integer of absolute value $<1$ is $0$''; write it.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{5.2.30}
+Let $\sim$ and $\approx$ be equivalence relations on $X$ and $Y$. Suppose there is a bijection $p:X/{\sim}\to Y/{\approx}$ and, for each class $E\in X/{\sim}$, a bijection $h_E:E\to p(E)$. Prove that there is a bijection $X\to Y$.
+\solution
+\given Lemma 5.2.29 (the book): if $\mathcal A$, $\mathcal B$ are partitions of $X$, $Y$, $F:\mathcal A\to\mathcal B$ is a bijection, and $g_A:A\to F(A)$ is a bijection for each $A\in\mathcal A$, then there is a bijection $h:X\to Y$ (namely $h(x)=g_A(x)$ for the unique $A\ni x$).
+\begin{steps}
+\item $\mathcal A=X/{\sim}$ is a partition of $X$ and $\mathcal B=Y/{\approx}$ is a partition of $Y$ \why{Theorem 5.2.26(a), Exercise 5.2.27}.
+\item $F=p:\mathcal A\to\mathcal B$ is a bijection, and for each $E\in\mathcal A$, $g_E=h_E:E\to F(E)$ is a bijection: exactly the data of Lemma 5.2.29.
+\item By Lemma 5.2.29 there is a bijection $h:X\to Y$, $h(x)=h_{[x]_\sim}(x)$ (well-defined since each $x$ lies in exactly one class, Exercise 5.2.25).
+\end{steps}
+\conclusion There is a bijection $X\to Y$.\qed
+\begin{compare}
+\item If you prove it directly: well-definedness (unique class), injectivity (same class since $p$ is injective, then $h_E$ injective), surjectivity ($p$ onto the classes of $Y$, each $h_E$ onto its class).
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{5.2.33}
+Let $n\in\Z$ with $n\ne0$. Describe the quotient function $q_n:\Z\to\Z/n\Z$ in terms of remainders.
+\solution
+\given $q_n(a)=[a]_n$; Theorem 5.2.17; Exercise 5.2.9 ($a\equiv b\pmod n$ iff equal remainders).
+\begin{steps}
+\item Let $a\in\Z$ and let $r$ be its remainder on division by $n$: $a=qn+r$, $0\le r<|n|$ \why{Theorem 0.42}.
+\item $a-r=qn$, so $n\mid a-r$, i.e.\ $a\equiv r\pmod n$ \why{Definition 5.2.6}. Hence $[a]_n=[r]_n$ \why{Theorem 5.2.17}, i.e.\ $q_n(a)=[r]_n$.
+\item So $q_n$ sends each integer to the class of its remainder. Consequently $q_n(a)=q_n(b)$ iff $a$ and $b$ have the same remainder \why{Exercise 5.2.9}, and $\Z/n\Z=\{[0]_n,[1]_n,\dots,[|n|-1]_n\}$ with these $|n|$ classes distinct \why{Exercise 5.2.20}.
+\end{steps}
+\conclusion $q_n(a)=[r]_n$ where $r$ is the remainder of $a$ modulo $n$: $q_n$ ``is'' the remainder map.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{5.2.34}
+Let $\sim$ be an equivalence relation on $X$. Prove that the quotient function $q_\sim:X\to X/{\sim}$ is surjective.
+\solution
+\begin{steps}
+\item Let $E\in X/{\sim}$. By Definition 5.2.12, $E=[a]_\sim$ for some $a\in X$ \why{Strategy 1.2.30}.
+\item Then $q_\sim(a)=[a]_\sim=E$ \why{Definition 5.2.31}. So $E$ has a preimage.
+\end{steps}
+\conclusion $q_\sim$ is surjective \why{Definition 3.2.9}.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{5.2.36}
+Describe the correspondence between partitions of a set $X$ and surjections with domain $X$.
+\solution
+\given Exercises 5.2.24, 5.2.25 and Theorem 5.2.35 (every surjection $p:X\to Z$ is, up to a unique bijection $X/{\sim}\to Z$, the quotient function of $x\sim y\Leftrightarrow p(x)=p(y)$).
+\begin{steps}
+\item \emph{Partition $\to$ surjection.} Given a partition $\mathcal A$ of $X$, define $q:X\to\mathcal A$ by $q(x)=$ the unique $A\in\mathcal A$ with $x\in A$ \why{well-defined by Exercise 5.2.25}. $q$ is surjective: each $A\in\mathcal A$ is non-empty, so for any $x\in A$, $q(x)=A$. (If $\mathcal A=X/{\sim}$, then $q=q_\sim$.)
+\item \emph{Surjection $\to$ partition.} Given a surjection $p:X\to Z$, define $\mathcal U_p=\{p^{-1}[\{z\}]\mid z\in Z\}$, a partition of $X$ \why{Exercise 5.2.24}. The map $f:\mathcal U_p\to Z$, $f(p^{-1}[\{z\}])=z$ is a bijection (well-defined and injective because $p^{-1}[\{z\}]=p^{-1}[\{z'\}]\ne\varnothing$ forces $z=z'$; surjective by construction), and $p=f\circ q$ where $q$ is the map of Step 1 for $\mathcal U_p$.
+\item \emph{Inverse to each other.} Starting from $\mathcal A$, the surjection $q$ has fibres $q^{-1}[\{A\}]=A$, so $\mathcal U_q=\mathcal A$. Starting from $p$, the surjection built from $\mathcal U_p$ is $q=f^{-1}\circ p$, which is $p$ up to the bijection $f$ of codomains. By Theorem 5.2.35 the partition and bijection are unique.
+\end{steps}
+\conclusion Partitions of $X$, equivalence relations on $X$ and surjections out of $X$ (up to renaming the codomain by a bijection) are three descriptions of the same thing.\qed
+\end{bookex}
+
+\hsection{Chapter 5 exercises}
+
+\begin{bookex}[essential]{5.E.18}
+True or false: every relation that is symmetric and antisymmetric is reflexive.
+\solution
+\given Symmetric and antisymmetric both have the form ``if $a\mathrel Rb$ (and \dots) then \dots'': they are vacuously true for a relation that relates nothing.
+\begin{steps}
+\item \emph{False.} Counterexample: the empty relation $\varnothing_{\N,\N}$ on $\N$ (graph $\varnothing$).
+\item \emph{Symmetric:} $\forall a,b\in\N,\ (a\mathrel Rb\Rightarrow b\mathrel Ra)$; the antecedent is always false, so the implication is always true \why{vacuous}. \emph{Antisymmetric:} likewise, $(a\mathrel Rb\wedge b\mathrel Ra)$ is always false.
+\item \emph{Not reflexive:} $0\in\N$ but $0\mathrel R0$ is false.
+\end{steps}
+\conclusion False. (By Exercise 5.1.35, symmetric $\wedge$ antisymmetric means $\mathrm{Gr}(R)\subseteq\Delta_X$, while reflexive means $\mathrm{Gr}(R)\supseteq\Delta_X$.)\qed
+\begin{compare}
+\item The domain must be non-empty for the counterexample to work; $\N$ is.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{5.E.22}
+Let $\sim$ be an equivalence relation on $X$. Then the relation $\approx$ on $\PS(X)\setminus\{\varnothing\}$ defined by $A\approx B\Leftrightarrow(x\sim y\text{ for all }x\in A\text{ and }y\in B)$ is an equivalence relation. (Always, sometimes, never?)
+\solution
+\plan Test the three properties in general. Symmetry and transitivity hold for every $\sim$; reflexivity $A\approx A$ says all elements of $A$ are pairwise equivalent, which fails when $A$ contains two inequivalent elements. So: sometimes.
+\begin{steps}
+\item \emph{Symmetric, always.} Suppose $A\approx B$. Let $y\in B$, $x\in A$; then $x\sim y$ \why{$A\approx B$}, so $y\sim x$ \why{$\sim$ symmetric}. As $y,x$ were arbitrary, $B\approx A$.
+\item \emph{Transitive, always.} Suppose $A\approx B$ and $B\approx C$. Let $x\in A$, $z\in C$. Since $B\ne\varnothing$, pick $y\in B$. Then $x\sim y$ and $y\sim z$, so $x\sim z$ \why{$\sim$ transitive}. Hence $A\approx C$. (Non-emptiness of $B$ is essential here.)
+\item \emph{Reflexive, not always.} \emph{Fails:} $X=\{0,1\}$, $\sim$ the equality relation, $A=\{0,1\}$. $A\approx A$ would need $0\sim1$, which is false. So $\approx$ is not reflexive, not an equivalence relation.
+\item \emph{Holds:} $X$ any set, $\sim$ the discrete relation ($x\sim y$ for all $x,y$). Then $A\approx B$ for all non-empty $A,B$, so $\approx$ is reflexive, symmetric and transitive.
+\end{steps}
+\conclusion Sometimes.\qed
+\begin{compare}
+\item Prove the two properties that always hold, then give one $\sim$ where reflexivity fails and one where it holds.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{5.E.23}
+Let $\sim$ be an equivalence relation on $X$. Then the relation $\approx$ on $\PS(X)\setminus\{\varnothing\}$ defined by $A\approx B\Leftrightarrow(x\sim y\text{ for some }x\in A\text{ and }y\in B)$ is an equivalence relation. (Always, sometimes, never?)
+\solution
+\plan Now reflexivity and symmetry always hold; transitivity fails when a middle set $B$ meets $A$ and $C$ through different elements.
+\begin{steps}
+\item \emph{Reflexive, always.} Let $A\ne\varnothing$; pick $x\in A$. Then $x\sim x$ \why{$\sim$ reflexive} with $x\in A$, $x\in A$; so $A\approx A$.
+\item \emph{Symmetric, always.} If $A\approx B$ via $x\in A$, $y\in B$ with $x\sim y$, then $y\sim x$ \why{$\sim$ symmetric} with $y\in B$, $x\in A$, so $B\approx A$.
+\item \emph{Transitive, not always.} \emph{Fails:} $X=\{0,1\}$, $\sim$ equality, $A=\{0\}$, $B=\{0,1\}$, $C=\{1\}$. $A\approx B$ (via $0\sim0$), $B\approx C$ (via $1\sim1$), but $A\approx C$ would need $0\sim1$: false.
+\item \emph{Holds:} $\sim$ the discrete relation on any $X$: then $A\approx B$ for all non-empty $A,B$, and $\approx$ is an equivalence relation.
+\end{steps}
+\conclusion Sometimes.\qed
+\begin{compare}
+\item The counterexample to transitivity needs a $B$ with two elements, one equivalent to something in $A$ and another to something in $C$.
+\end{compare}
+\end{bookex}

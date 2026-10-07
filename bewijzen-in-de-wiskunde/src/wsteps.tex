@@ -1,0 +1,31 @@
+\documentclass[11pt,a4paper,openany]{book}
+\usepackage[a4paper,margin=2.1cm,top=2.5cm,bottom=2.3cm,headheight=22pt]{geometry}
+\usepackage{haese}
+\renewcommand{\guidename}{Planning exercises, step by step}
+\hypersetup{pdftitle={Bewijzen in de Wiskunde - Planning exercises worked step by step, Ch. 0-5},pdfauthor={Workbook}}
+
+% ---------- step-by-step solution macros ----------
+\newcommand{\given}{\par\vspace{4pt}\noindent{\sffamily\bfseries\color{hblue}Given.}\ }
+\newcommand{\goal}{\par\vspace{4pt}\noindent{\sffamily\bfseries\color{hblue}To show.}\ }
+\newcommand{\plan}{\par\vspace{4pt}\noindent{\sffamily\bfseries\color{hgreenline}Plan.}\ }
+\newcommand{\conclusion}{\par\vspace{4pt}\noindent{\sffamily\bfseries\color{hblue}Conclusion.}\ }
+\newcommand{\answer}{\par\vspace{4pt}\noindent{\sffamily\bfseries\color{hblue}Answer.}\ }
+\newcommand{\subq}[1]{\par\vspace{5pt}\noindent{\sffamily\bfseries\color{horange}#1}\ }
+\newenvironment{steps}{\par\vspace{2pt}\begin{enumerate}[label={\sffamily\bfseries\color{hblue}Step \arabic*},ref={\arabic*},leftmargin=4.9em,itemsep=3pt,topsep=2pt]}{\end{enumerate}}
+\newcommand{\why}[1]{\ifmmode\quad\text{\color{hgray}\small[#1]}\else\ {\color{hgray}\small[#1]}\fi}
+\newenvironment{compare}{\par\vspace{4pt}\noindent{\sffamily\bfseries\color{hpurple}Compare with your work.}\begin{itemize}[label=\textcolor{hpurple}{$\square$},leftmargin=1.7em,itemsep=1pt,topsep=2pt]}{\end{itemize}}
+\newcommand{\shape}[1]{{\color{hgray}\small(shape: #1)}}
+
+\begin{document}
+\input{sfront}
+\clearpage
+\thispagestyle{plain}
+{\sffamily\bfseries\Large\color{hblue}Contents}\par\vspace{4pt}
+\makeatletter\@starttoc{toc}\makeatother
+\input{s0}
+\input{s1}
+\input{s2}
+\input{s3}
+\input{s4}
+\input{s5}
+\end{document}

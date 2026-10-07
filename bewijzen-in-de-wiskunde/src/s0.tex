@@ -1,0 +1,350 @@
+\setcounter{chapter}{-1}
+\chapter{Getting started}
+\chaptercontents{A & Propositions and number sets \\ B & Sets and set-builder notation \\ C & Division of integers \\ D & Irrational numbers \\ E & Chapter 0 exercises (0.E)}%
+{\fE\ 0.2, 0.21, 0.24, 0.40; 0.E.3, 4, 22, 27, 28\\ \fR\ 0.14, 0.30, 0.38, 0.45, 0.51; 0.E.17, 18, 29, 30\\ Tested in \textbf{Quiz 1} (23 Sep) together with \S1.1.}
+
+\hsection{Propositions and number sets}
+
+\begin{key}[{What you unfold in this section}]
+\textbf{Proposition} (Definition 0.1): a statement that is either true or false. \textbf{Floor and ceiling} (Definition 0.10): for $x\in\R$, $\lfloor x\rfloor$ is \emph{the} integer $n$ with $n\le x<n+1$, and $\lceil x\rceil$ is \emph{the} integer $n$ with $n-1<x\le n$. \textbf{Rational} (Definition 0.15): $x=\frac ab$ with $a,b\in\Z$, $b\ne0$. \textbf{Closure of $\Q$} (Theorem 0.16): sums, differences, products and quotients (by non-zero) of rationals are rational.
+\end{key}
+
+\begin{bookex}[essential]{0.2}
+Think of an example of (a) a true proposition; (b) a false proposition; and (c) a proposition whose truth value you don't know.
+\solution
+\given Nothing but Definition 0.1: a proposition is a statement that is either true or false (not both, not neither).
+\goal Three statements of the required kinds, each with one sentence saying why it is a proposition of that kind.
+\plan Choose statements about numbers, so that the truth value is determined by a definition you can quote. For (c) pick a famous open problem: the statement is certainly true or false, but nobody knows which.
+\begin{steps}
+\item (a) ``$2$ is an even number.'' It is a proposition (it is either true or false), and it is true because $2=1\cdot2$ \why{Definition 0.41: even means divisible by $2$}.
+\item (b) ``$2$ is an odd number.'' A proposition, and false, because $2$ is even and odd means not even \why{Definition 0.41}.
+\item (c) ``Every even integer greater than $2$ is the sum of two prime numbers.'' This is Goldbach's conjecture. It is a proposition: for each even integer the statement is either true or false, so the whole statement is either true or false. Its truth value is unknown (it has been checked for enormous ranges but never proved).
+\end{steps}
+\conclusion Any three examples of these kinds are correct; the book's own answers are exactly (a)--(c) above.\qed
+\begin{compare}
+\item Each example must be a \emph{statement}, not a question (``is $2$ even?''), not a command, and not an expression without a verb (``$x+1$'').
+\item For (c) do not give a statement whose truth value is merely \emph{unknown to you}; the point is that it is unknown to everybody. ``$\pi^\pi$ is rational'' (Exercise 0.21(f)) is another valid example.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{0.14}
+Suppose that $x$ is a real number. Prove that $\lfloor-x\rfloor=-\lceil x\rceil$ and $\lceil-x\rceil=-\lfloor x\rfloor$.
+\solution
+\given $x\in\R$. Nothing else: $x$ may or may not be an integer.
+\goal Two equations between integers. Since $\lfloor y\rfloor$ is \emph{the unique} integer $n$ with $n\le y<n+1$, the equation $\lfloor-x\rfloor=m$ is proved by showing that the integer $m$ satisfies $m\le-x<m+1$ \why{Definition 0.10}. Same for the ceiling with $m-1<y\le m$.
+\plan Give the right-hand side a name, write down the inequality that defines it, multiply by $-1$ (which reverses inequalities), and recognise the inequality defining the left-hand side.
+\begin{steps}
+\item \emph{First equation.} Let $n=\lceil x\rceil$. Then $n\in\Z$ and
+\[
+n-1<x\le n \why{Definition 0.10, ceiling}.
+\]
+\item Multiply the inequalities by $-1$; this reverses them \why{algebra: $a<b\Leftrightarrow-a>-b$}:
+\[
+-n\le-x<-n+1,\qquad\text{i.e.}\qquad (-n)\le-x<(-n)+1 .
+\]
+\item $-n$ is an integer \why{closure of $\Z$ under negation, Assumption 0.9} satisfying $m\le-x<m+1$ with $m=-n$. By Definition 0.10 (floor), the only integer with this property is $\lfloor-x\rfloor$. Hence $\lfloor-x\rfloor=-n=-\lceil x\rceil$.
+\item \emph{Second equation.} Let $k=\lfloor x\rfloor$, so $k\in\Z$ and $k\le x<k+1$ \why{Definition 0.10, floor}.
+\item Multiply by $-1$: $-k-1<-x\le-k$, i.e.\ $(-k)-1<-x\le(-k)$.
+\item $-k$ is an integer satisfying the defining inequality of $\lceil-x\rceil$ \why{Definition 0.10, ceiling, with $m=-k$}, so $\lceil-x\rceil=-k=-\lfloor x\rfloor$.
+\end{steps}
+\conclusion Both equations hold for every real $x$.\qed
+\begin{compare}
+\item The whole proof rests on the word ``the'' in Definition 0.10: you must say that the integer you found \emph{satisfies the defining inequality} and therefore \emph{is} the floor (or ceiling).
+\item Check the direction of every inequality after multiplying by $-1$. The book's solution starts from $n=\lfloor-x\rfloor$ instead and works towards $\lceil x\rceil=-n$; both directions are fine.
+\item Do not split into ``$x$ integer / not integer'': it is not needed.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{0.21}
+Determine, with justification, whether each of the following is true or false: (a) $2\in\N$; (b) $-2\in\N$; (c) $-2\in\Q$; (d) $\frac25\in\Z$; (e) $\dfrac{\sqrt8+\sqrt2}{\sqrt8-\sqrt2}\in\Q$; (f) $\pi^\pi\in\Q$; (g) $\sqrt{-7}\in\R$; (h) $\N\in\Z$.
+\solution
+\given The definitions of the number sets: $\N$ = the numbers $0,1,2,\dots$ reached from $0$ by unit steps to the right (Definition 0.6); $\Z$ = unit steps in both directions (Definition 0.8); $\Q$ = Definition 0.15; $\R$ = the points of the number line (Definition 0.4).
+\goal For each item a truth value and a reason that quotes the relevant definition.
+\plan ``$x\in S$'' is proved by checking the definition of $S$; ``$x\notin S$'' is proved by showing that the definition fails, usually because of a property (sign, size, not being a number at all) that every element of $S$ has and $x$ lacks.
+\begin{steps}
+\item (a) \textbf{True.} $2$ is reached from $0$ by two unit steps to the right \why{Definition 0.6}.
+\item (b) \textbf{False.} Every natural number is $\ge0$, and $-2<0$ \why{Definition 0.6: steps to the right only}.
+\item (c) \textbf{True.} $-2=\dfrac{-2}{1}$ with $-2\in\Z$, $1\in\Z$ and $1\ne0$ \why{Definition 0.15}.
+\item (d) \textbf{False.} $0<\frac25<1$, and there is no integer strictly between the consecutive integers $0$ and $1$ \why{the number line, page 6}.
+\item (e) \textbf{True.} Simplify first: $\sqrt8=\sqrt{4\cdot2}=2\sqrt2$, so
+\[
+\frac{\sqrt8+\sqrt2}{\sqrt8-\sqrt2}=\frac{2\sqrt2+\sqrt2}{2\sqrt2-\sqrt2}=\frac{3\sqrt2}{\sqrt2}=3=\frac31 ,
+\]
+and $3,1\in\Z$ with $1\ne0$ \why{Definition 0.15}.
+\item (f) The statement $\pi^\pi\in\Q$ is a proposition, but its truth value is \textbf{not known}: nobody has proved $\pi^\pi$ rational or irrational. (So the honest answer is ``unknown''; the book asks you to notice this.)
+\item (g) \textbf{False.} $\sqrt{-7}$ is not a point on the real number line: the square of every real number is $\ge0$, so no real number squares to $-7$ \why{Definition 0.4; $\sqrt{-7}=\sqrt7\,i$ is complex, Definition 0.62}.
+\item (h) \textbf{False.} The elements of $\Z$ are numbers; $\N$ is a \emph{set}, not a number, so it is not an element of $\Z$ \why{Definition 0.8; see also page 71 of the book}.
+\end{steps}
+\conclusion (a) T, (b) F, (c) T, (d) F, (e) T, (f) unknown, (g) F, (h) F.\qed
+\begin{compare}
+\item Each ``true'' needs the explicit witness (the fraction in (c) and (e)); each ``false'' needs the property that fails.
+\item In (e) you must simplify: ``the numerator and denominator are irrational'' proves nothing, since a quotient of irrationals can be rational (this is the point of the question).
+\item In (h), confusing $\N\in\Z$ with $\N\subseteq\Z$ (which \emph{is} true) is the standard error.
+\end{compare}
+\end{bookex}
+
+\hsection{Sets and set-builder notation}
+
+\begin{key}[{What you unfold in this section}]
+\textbf{Set-builder notation} (Definition 0.19 and page 12): $a\in\{x\mid p(x)\}$ iff $p(a)$ is true; the two forms are $\{x\in X\mid p(x)\}$ (filter the elements of $X$) and $\{\mathrm{expr}(x)\mid p(x)\}$ (all objects of the form $\mathrm{expr}(x)$). \textbf{Intervals} (Definition 0.28): $[a,b)=\{x\in\R\mid a\le x<b\}$, $(-\infty,b)=\{x\in\R\mid x<b\}$, etc.
+\end{key}
+
+\begin{bookex}[essential]{0.24}
+A dyadic rational is a rational number that can be expressed as an integer divided by a power of $2$. Express the set of all dyadic rationals using set-builder notation in at least two different ways.
+\solution
+\given The definition in the statement: $x$ is a dyadic rational iff $x\in\Q$ and $x=\dfrac a{2^n}$ for some integer $a$ and some power $2^n$ ($n\in\N$).
+\goal Two (or more) correct set-builder expressions, one in each form.
+\plan Translate the definition word by word. ``Can be expressed as'' is an existential quantifier: \emph{there exist} $a\in\Z$ and $n\in\N$ with $x=a/2^n$.
+\begin{steps}
+\item \emph{Filter form.} Take $X=\Q$ and the property ``$x$ can be written as an integer over a power of $2$'':
+\[
+D=\Big\{x\in\Q\ \Big|\ \exists a\in\Z,\ \exists n\in\N,\ x=\frac a{2^n}\Big\} \why{$\{x\in X\mid p(x)\}$ form}.
+\]
+\item \emph{Expression form.} List all numbers of the shape $a/2^n$ directly:
+\[
+D=\Big\{\frac a{2^n}\ \Big|\ a\in\Z,\ n\in\N\Big\} \why{$\{\mathrm{expr}\mid\dots\}$ form}.
+\]
+(The condition $x\in\Q$ is now automatic: $a/2^n$ is an integer over a non-zero integer.)
+\item \emph{A third way.} $x=a/2^n$ with $a\in\Z$ is the same as $2^nx\in\Z$:
+\[
+D=\{x\in\R\mid\exists n\in\N,\ 2^nx\in\Z\}.
+\]
+\end{steps}
+\conclusion Any two of these are a complete answer.\qed
+\begin{compare}
+\item ``An integer divided by a power of $2$'' needs \emph{two} bound variables, $a$ and $n$; writing $\{a/2^n\mid a\in\Z\}$ with $n$ left free is a different set for each $n$.
+\item $n$ ranges over $\N$ (so $2^0=1$ is allowed: every integer is dyadic). Writing $n\in\Z$ would also be acceptable, since $a/2^{-n}=a2^n$ is still an integer over $2^0$.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{0.30}
+Express each of the sets illustrated on the number line using the most appropriate notation. (The pictures show: (a) filled dot at $-2$, hollow dot at $4$, the segment between them shaded; (b) filled dots at $-2$ and $4$, segment shaded; (c) filled dots at $-2,-1,0,1,2,3,4$ only; (d) hollow dot at $4$, shading to the left without end; (e) filled dot at $-2$, shading to the right without end; (f) the whole line shaded.)
+\solution
+\given The conventions of the figures: a filled dot means the endpoint belongs to the set, a hollow dot means it does not, shading means every real number of that stretch belongs to the set, isolated dots mean only those points.
+\goal One expression per picture, using Definition 0.28 for intervals and list notation otherwise.
+\begin{steps}
+\item (a) All reals $x$ with $-2\le x<4$ (endpoint $-2$ in, $4$ out): $[-2,4)$ \why{Definition 0.28}.
+\item (b) Both endpoints in: $[-2,4]$.
+\item (c) Only seven isolated points, so this is \emph{not} an interval: $\{-2,-1,0,1,2,3,4\}$, or in set-builder form $\{n\in\Z\mid-2\le n\le4\}$.
+\item (d) All reals $x<4$, no left end: $(-\infty,4)$.
+\item (e) All reals $x\ge-2$: $[-2,\infty)$.
+\item (f) Every real number: $(-\infty,\infty)=\R$.
+\end{steps}
+\conclusion (a) $[-2,4)$, (b) $[-2,4]$, (c) $\{-2,\dots,4\}$, (d) $(-\infty,4)$, (e) $[-2,\infty)$, (f) $\R$.\qed
+\begin{compare}
+\item Writing $[-2,4]$ for (c) is wrong: an interval contains \emph{all} real numbers between its endpoints (Definition 0.28), and $\frac12$ is not in the pictured set.
+\item Infinity always gets a round bracket: $(-\infty,4)$, never $[-\infty,4)$.
+\end{compare}
+\end{bookex}
+
+\hsection{Division of integers}
+
+\begin{key}[{What you unfold in this section}]
+\textbf{Divides} (Definition 0.36): $b\mid a$ iff $a=qb$ for some $q\in\Z$. \textbf{Division theorem} (Theorem 0.42): for $a,b\in\Z$, $b\ne0$, there are unique $q,r\in\Z$ with $a=qb+r$ and $0\le r<|b|$. \textbf{The two moves:} to \emph{use} $b\mid a$, write ``$a=qb$ for some $q\in\Z$'' with a new letter; to \emph{prove} $b\mid a$, display $a$ as (an integer)$\cdot b$ and say why the factor is an integer.
+\end{key}
+
+\begin{bookex}[recommended]{0.38}
+Prove that $1$ divides every integer, and that every integer divides $0$.
+\solution
+\given Only Definition 0.36.
+\goal Two universal statements: (i) $\forall a\in\Z,\ 1\mid a$; (ii) $\forall b\in\Z,\ b\mid0$. \shape{``for all'': start with ``let''}
+\plan For each, let the integer be arbitrary and exhibit the integer $q$ required by the definition.
+\begin{steps}
+\item \emph{(i)} Let $a\in\Z$ be arbitrary \why{to prove a ``for all'' statement, Strategy 1.2.10}.
+\item $a=a\cdot1$, and the factor $a$ is an integer \why{$a\in\Z$ by assumption}. So there is $q\in\Z$ (namely $q=a$) with $a=q\cdot1$.
+\item Hence $1\mid a$ \why{Definition 0.36 with $b=1$}. Since $a$ was arbitrary, $1$ divides every integer.
+\item \emph{(ii)} Let $b\in\Z$ be arbitrary.
+\item $0=0\cdot b$, and the factor $0$ is an integer. So there is $q\in\Z$ (namely $q=0$) with $0=qb$.
+\item Hence $b\mid0$ \why{Definition 0.36 with $a=0$}. Since $b$ was arbitrary, every integer divides $0$.
+\end{steps}
+\conclusion Both statements hold. In particular $0\mid0$ (take $b=0$ in (ii)), which the book points out is surprising but correct: divisibility is about multiplication, not about the fraction $0/0$.\qed
+\begin{compare}
+\item Your answer must name $q$ explicitly ($q=a$, resp.\ $q=0$) and say it is an integer.
+\item Do not write ``$a/1=a$ is an integer'' or ``$0/b=0$'': the latter is even undefined for $b=0$. The definition never divides.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{0.40}
+Let $a,b,d\in\Z$. Suppose that $d$ divides $a$ and $d$ divides $b$. Given integers $u$ and $v$, prove that $d$ divides $au+bv$.
+\solution
+\given $a,b,d,u,v\in\Z$; $d\mid a$, i.e.\ $a=qd$ for some $q\in\Z$; $d\mid b$, i.e.\ $b=rd$ for some $r\in\Z$ \why{Definition 0.36, unfolded with two \emph{different} new letters}.
+\goal $d\mid au+bv$, i.e.\ $au+bv=(\text{some integer})\cdot d$.
+\plan Substitute the expressions for $a$ and $b$ into $au+bv$ and factor out $d$. Then say why the remaining factor is an integer.
+\begin{steps}
+\item Since $d\mid a$, fix $q\in\Z$ with $a=qd$ \why{Definition 0.36; Strategy 1.2.30 for using an existential}.
+\item Since $d\mid b$, fix $r\in\Z$ with $b=rd$ \why{same; a fresh letter because $r$ may differ from $q$}.
+\item Compute:
+\begin{align*}
+au+bv&=(qd)u+(rd)v \why{Steps 1, 2}\\
+&=qud+rvd \why{commutativity of multiplication}\\
+&=(qu+rv)\,d \why{distributivity}.
+\end{align*}
+\item $qu+rv\in\Z$ \why{$q,u,r,v\in\Z$ and $\Z$ is closed under $\times$ and $+$, Assumption 0.9}.
+\item So $au+bv=kd$ with $k=qu+rv\in\Z$; by Definition 0.36, $d\mid au+bv$.
+\end{steps}
+\conclusion $d$ divides $au+bv$ for all integers $u,v$.\qed
+\begin{compare}
+\item Two \emph{different} letters $q,r$: writing $a=qd$ and $b=qd$ silently assumes $a=b$.
+\item The sentence ``$qu+rv$ is an integer because \dots'' is part of the proof; without it Definition 0.36 has not been verified.
+\item This exercise is quoted in the digit tests (Example 1.1.46, Exercise 1.1.47) and in the Euclidean algorithm; learn its statement: \emph{a common divisor of $a$ and $b$ divides every integer combination of $a$ and $b$}.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{0.45}
+Prove that if an integer $a$ leaves a remainder of $r$ when divided by an integer $b$, then $a$ leaves a remainder of $r$ when divided by $-b$.
+\solution
+\given $a,b\in\Z$ with $b\ne0$ (otherwise remainders are not defined), and ``$a$ leaves remainder $r$ when divided by $b$'' means: $a=qb+r$ for some $q\in\Z$ with $0\le r<|b|$ \why{Theorem 0.42}.
+\goal ``$a$ leaves remainder $r$ when divided by $-b$'': there is $q'\in\Z$ with $a=q'(-b)+r$ and $0\le r<|-b|$. \shape{an implication: suppose the hypothesis, derive the goal}
+\plan The uniqueness clause of Theorem 0.42 says that \emph{any} way of writing $a=q'(-b)+r'$ with $0\le r'<|-b|$ gives the remainder. So it suffices to produce one such way with $r'=r$.
+\begin{steps}
+\item Suppose $a=qb+r$ with $q\in\Z$ and $0\le r<|b|$ \why{Strategy 1.1.28: assume the hypothesis, in unfolded form}.
+\item Rewrite: $qb=(-q)(-b)$ \why{$(-q)(-b)=qb$, algebra}, so $a=(-q)(-b)+r$.
+\item $-q\in\Z$ \why{closure of $\Z$}, and $0\le r<|b|=|-b|$ \why{$|b|=|-b|$}.
+\item So $a=q'(-b)+r$ with $q'=-q\in\Z$ and $0\le r<|-b|$. By the \emph{uniqueness} part of Theorem 0.42 (applied with divisor $-b\ne0$), $q'$ is the quotient and $r$ is the remainder of $a$ on division by $-b$.
+\end{steps}
+\conclusion $a$ leaves remainder $r$ when divided by $-b$.\qed
+\begin{compare}
+\item The key sentence is the appeal to \emph{uniqueness} in Theorem 0.42: finding \emph{some} expression $a=q'(-b)+r$ is not enough unless you check $0\le r<|-b|$ and then say that the remainder is therefore $r$.
+\item The quotient changes sign ($-q$); the remainder does not. Example: $7=2\cdot3+1$ and $7=(-2)(-3)+1$.
+\end{compare}
+\end{bookex}
+
+\hsection{Irrational numbers}
+
+\begin{bookex}[recommended]{0.51}
+Let $r$ be a rational number and $a$ an irrational number. Prove that it is possible that $ra$ be rational, and possible that $ra$ be irrational.
+\solution
+\given $\sqrt2$ is irrational (Assumption 0.49); Definition 0.48: irrational means real and not rational.
+\goal Two existence statements: (i) there exist $r\in\Q$ and $a\notin\Q$ with $ra\in\Q$; (ii) there exist $r\in\Q$ and $a\notin\Q$ with $ra\notin\Q$. \shape{``it is possible that'' = ``there exist''}
+\plan For an existence statement, exhibit one example and verify it (Strategy 1.2.24).
+\begin{steps}
+\item \emph{(i)} Define $r=0$ and $a=\sqrt2$. Then $r=\frac01\in\Q$ \why{Definition 0.15} and $a$ is irrational \why{Assumption 0.49}.
+\item $ra=0\cdot\sqrt2=0=\frac01\in\Q$. So $ra$ is rational: (i) holds.
+\item \emph{(ii)} Define $r=1$ and $a=\sqrt2$. Then $r=\frac11\in\Q$ and $a$ is irrational.
+\item $ra=1\cdot\sqrt2=\sqrt2$, which is irrational \why{Assumption 0.49}. So (ii) holds.
+\end{steps}
+\conclusion Both possibilities occur.\qed
+\begin{compare}
+\item ``It is possible'' asks for \emph{examples}, not for a proof that $ra$ is always this or that. Two concrete pairs $(r,a)$ with the verification are a complete answer.
+\item You may only call a number irrational if the book has established it: $\sqrt2$ (Assumption 0.49) is the safe choice.
+\end{compare}
+\end{bookex}
+
+\hsection{Chapter 0 exercises}
+
+\begin{strategy}[{The three answer formats of the chapter exercises}]
+\textbf{Prove:} a complete proof. \textbf{True or false:} decide, then either a proof (true) or one counterexample (false). \textbf{Always, sometimes or never:} \emph{always} needs a proof for all cases; \emph{never} needs a proof that the conclusion fails for all cases; \emph{sometimes} needs one example where it holds \emph{and} one where it fails.
+\end{strategy}
+
+\begin{bookex}[essential]{0.E.3}
+Suppose an integer $m$ leaves a remainder of $i$ when divided by $3$, and an integer $n$ leaves a remainder of $j$ when divided by $3$, where $0\le i,j<3$. Prove that $m+n$ and $i+j$ leave the same remainder when divided by $3$.
+\solution
+\given $m,n\in\Z$; $m=3q+i$ for some $q\in\Z$, and $n=3q'+j$ for some $q'\in\Z$, with $0\le i<3$ and $0\le j<3$ \why{Theorem 0.42, unfolded}.
+\goal The remainder of $m+n$ on division by $3$ equals the remainder of $i+j$ on division by $3$. Note that $i+j$ can be up to $4$, so $i+j$ is \emph{not} in general its own remainder.
+\plan Let $t$ be the remainder of $i+j$. Show that $m+n$ can be written as $3\cdot(\text{integer})+t$ with $0\le t<3$; the uniqueness in Theorem 0.42 then says that the remainder of $m+n$ is $t$.
+\begin{steps}
+\item Fix $q,q'\in\Z$ with $m=3q+i$ and $n=3q'+j$ \why{Theorem 0.42 applied to $m$ and to $n$}.
+\item Divide $i+j$ by $3$: there are $s,t\in\Z$ with $i+j=3s+t$ and $0\le t<3$ \why{Theorem 0.42 applied to $i+j$}. By definition, $t$ is the remainder of $i+j$.
+\item Compute:
+\[
+m+n=(3q+i)+(3q'+j)=3q+3q'+(i+j)=3q+3q'+3s+t=3(q+q'+s)+t .
+\]
+\item $q+q'+s\in\Z$ \why{closure of $\Z$} and $0\le t<3$ \why{Step 2}. So $m+n=3k+t$ with $k\in\Z$ and $0\le t<3$.
+\item By the uniqueness clause of Theorem 0.42, the remainder of $m+n$ on division by $3$ is $t$, which is also the remainder of $i+j$ \why{Step 2}.
+\end{steps}
+\conclusion $m+n$ and $i+j$ leave the same remainder when divided by $3$.\qed
+\begin{compare}
+\item Many attempts stop at $m+n=3(q+q')+(i+j)$ and declare $i+j$ the remainder. That is only valid when $i+j<3$. The extra division of $i+j$ (Step 2) is what makes the proof complete.
+\item Name the uniqueness in Theorem 0.42 explicitly: that is the theorem that identifies a remainder.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{0.E.4}
+What are the possible remainders of $n^2$ when divided by $3$, where $n\in\Z$?
+\solution
+\given $n\in\Z$. By Theorem 0.42 (divisor $3$), $n=3k+r$ with $k\in\Z$ and $r\in\{0,1,2\}$.
+\goal The set of remainders that $n^2$ can leave, with a proof that no other remainder occurs and that each listed one does occur.
+\plan Proof by cases on $r$ (Strategy 1.1.19, the cases come from the division theorem). In each case write $n^2=3\cdot(\text{integer})+r'$ with $r'\in\{0,1,2\}$.
+\begin{steps}
+\item Fix $k\in\Z$ and $r\in\{0,1,2\}$ with $n=3k+r$ \why{Theorem 0.42}.
+\item \emph{Case $r=0$:} $n=3k$, so $n^2=9k^2=3(3k^2)$ with $3k^2\in\Z$; remainder $0$ \why{uniqueness in Theorem 0.42, since $0\le0<3$}.
+\item \emph{Case $r=1$:} $n^2=(3k+1)^2=9k^2+6k+1=3(3k^2+2k)+1$; remainder $1$.
+\item \emph{Case $r=2$:} $n^2=(3k+2)^2=9k^2+12k+4=3(3k^2+4k+1)+1$ \why{$4=3+1$}; remainder $1$.
+\item These cases are exhaustive \why{$r$ must be $0$, $1$ or $2$}. So the remainder is always $0$ or $1$; it is never $2$.
+\item Both do occur: $n=0$ gives $n^2=0$ (remainder $0$), $n=1$ gives $n^2=1$ (remainder $1$).
+\end{steps}
+\answer The possible remainders are exactly $0$ and $1$. (This is Proposition 1.1.24 in the book.)\qed
+\begin{compare}
+\item All three cases must be written out; in the case $r=2$ the constant $4$ must be split as $3+1$ to read off the remainder.
+\item ``Possible remainders'' asks for both halves: no remainder outside $\{0,1\}$, and each of $0,1$ actually occurs.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{0.E.17 and 0.E.18}
+True or false? \textbf{0.E.17} Every integer is a natural number. \textbf{0.E.18} Every integer is a rational number.
+\solution
+\given Definitions 0.6 ($\N$), 0.8 ($\Z$), 0.15 ($\Q$).
+\goal 0.E.17 is $\forall n\in\Z,\ n\in\N$; 0.E.18 is $\forall n\in\Z,\ n\in\Q$. A ``for all'' is refuted by one counterexample (Strategy 1.3.30) and proved by ``let $n\in\Z$''.
+\begin{steps}
+\item \textbf{0.E.17 is false.} Counterexample: $-1\in\Z$ \why{one unit step to the left of $0$, Definition 0.8} but $-1\notin\N$ \why{natural numbers are $\ge0$, Definition 0.6}.
+\item \textbf{0.E.18 is true.} Let $n\in\Z$ be arbitrary.
+\item $n=\dfrac n1$ with $n\in\Z$, $1\in\Z$ and $1\ne0$; so $n\in\Q$ \why{Definition 0.15}.
+\item Since $n$ was arbitrary, every integer is rational.
+\end{steps}
+\conclusion 0.E.17 false, 0.E.18 true.\qed
+\begin{compare}
+\item A false ``for all'' needs one explicit element and the reason it fails; a true one needs an arbitrary element, never a specific one.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{0.E.22}
+True or false? The square root of every positive rational number is a rational number.
+\solution
+\given Assumption 0.49: $\sqrt2$ is irrational.
+\goal The statement is $\forall x\in\Q,\ (x>0\Rightarrow\sqrt x\in\Q)$. To refute it, one counterexample suffices \why{Strategy 1.3.30}.
+\begin{steps}
+\item \textbf{False.} Take $x=2$. Then $x\in\Q$ \why{$2=\frac21$} and $x>0$, so $x$ satisfies the hypothesis.
+\item $\sqrt x=\sqrt2$, which is not rational \why{Assumption 0.49}. So the conclusion fails for $x=2$.
+\end{steps}
+\conclusion The statement is false.\qed
+\begin{compare}
+\item The counterexample must satisfy \emph{both} conditions (rational and positive) and must have a square root the book has shown to be irrational.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{0.E.27 and 0.E.28}
+Let $a,b,c\in\Z$ and suppose that $a$ divides $c$ and $b$ divides $c$. Always, sometimes or never: \textbf{0.E.27} $ab$ divides $c$; \textbf{0.E.28} $ab$ divides $c^2$.
+\solution
+\given $a,b,c\in\Z$; $c=qa$ for some $q\in\Z$; $c=rb$ for some $r\in\Z$ \why{Definition 0.36}.
+\goal Decide for each conclusion: always (prove it), never (prove its negation), or sometimes (one example, one counterexample).
+\begin{steps}
+\item \textbf{0.E.27: sometimes.} \emph{Example where it holds:} $a=b=c=1$. Then $a\mid c$ and $b\mid c$ ($1=1\cdot1$), and $ab=1$ divides $c=1$.
+\item \emph{Example where it fails:} $a=b=c=2$. Then $2\mid2$ \why{$2=1\cdot2$}, so the hypotheses hold, but $ab=4$ does not divide $2$: if $2=4q$ with $q\in\Z$ then $4q=2$ forces $q=\frac12\notin\Z$ \why{no integer between $0$ and $1$}.
+\item \textbf{0.E.28: always.} Fix $q,r\in\Z$ with $c=qa$ and $c=rb$ \why{Definition 0.36 twice, two letters}.
+\item Compute: $c^2=c\cdot c=(qa)(rb)=(qr)(ab)$ \why{commutativity and associativity of multiplication}.
+\item $qr\in\Z$ \why{closure}, so $c^2=k\cdot(ab)$ with $k=qr\in\Z$; hence $ab\mid c^2$ \why{Definition 0.36}.
+\end{steps}
+\conclusion 0.E.27 sometimes; 0.E.28 always.\qed
+\begin{compare}
+\item ``Sometimes'' needs \emph{two} explicit triples $(a,b,c)$, each checked against the hypotheses, one making the conclusion true and one making it false.
+\item In 0.E.28 the trick is to use the \emph{two different} expressions for $c$, one for each factor of $c\cdot c$.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{0.E.29 and 0.E.30}
+\textbf{0.E.29} Let $x,y\in\Q$ and let $a,b,c,d\in\Z$ with $cy+d\ne0$. Then $\dfrac{ax+b}{cy+d}\in\Q$. \quad \textbf{0.E.30} Let $\dfrac ab$ be a rational number. Then $a\in\Z$ and $b\in\Z$. \quad (Always, sometimes or never?)
+\solution
+\given Theorem 0.16 (closure of $\Q$ under $+,-,\times$ and $\div$ by non-zero) and 0.E.18 (integers are rational).
+\begin{steps}
+\item \textbf{0.E.29: always.} $a,b,c,d\in\Q$ \why{0.E.18}. $ax\in\Q$ \why{Theorem 0.16, product}, so $ax+b\in\Q$ \why{Theorem 0.16, sum}.
+\item Likewise $cy+d\in\Q$, and $cy+d\ne0$ by hypothesis.
+\item So $\dfrac{ax+b}{cy+d}$ is a quotient of rationals with non-zero denominator, hence rational \why{Theorem 0.16, quotient}.
+\item \textbf{0.E.30: sometimes.} \emph{Holds:} $\frac12$ is rational and $a=1$, $b=2$ are integers.
+\item \emph{Fails:} $\dfrac{\sqrt2}{\sqrt2}=1$ is a rational number written as $\frac ab$ with $a=b=\sqrt2$, and $\sqrt2\notin\Z$ \why{it is not even rational, Assumption 0.49}. (Or $\frac{1/2}{1/4}=2$.)
+\end{steps}
+\conclusion 0.E.29 always; 0.E.30 sometimes.\qed
+\begin{compare}
+\item 0.E.30 tests reading: Definition 0.15 says a rational number \emph{can be} written as an integer over an integer, not that every way of writing it as a fraction has integer parts.
+\item In 0.E.29 each use of Theorem 0.16 should be named (sum, product, quotient), and the hypothesis $cy+d\ne0$ must be quoted where the quotient is formed.
+\end{compare}
+\end{bookex}

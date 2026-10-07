@@ -1,0 +1,211 @@
+\begin{bookex}[essential]{4.E.18}
+Prove that $\dfrac{d^n}{dx^n}(xe^x)=(n+x)e^x$ for all $n\in\N$.
+\solution
+\given The $0$-th derivative of a function is the function itself; the product rule $(uv)'=u'v+uv'$; $(e^x)'=e^x$.
+\begin{steps}
+\item We proceed by induction on $n\ge0$ with $p(n)$: $\frac{d^n}{dx^n}(xe^x)=(n+x)e^x$.
+\item \emph{(Base case.)} $\frac{d^0}{dx^0}(xe^x)=xe^x=(0+x)e^x$.
+\item \emph{(Induction step.)} Let $n\ge0$ and suppose $\frac{d^n}{dx^n}(xe^x)=(n+x)e^x$. Differentiating once more:
+\[
+\frac{d^{n+1}}{dx^{n+1}}(xe^x)=\frac d{dx}\big((n+x)e^x\big)=1\cdot e^x+(n+x)e^x=(n+1+x)e^x \why{product rule; hypothesis}.
+\]
+\end{steps}
+\conclusion By induction the formula holds for all $n\in\N$.\qed
+\begin{compare}
+\item ``Differentiating the hypothesis'' is the step; write the product rule out.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{4.E.19}
+Find and prove an expression for $\dfrac{d^n}{dx^n}(x^2e^x)$ for all $n\in\N$.
+\solution
+\plan Compute the first few derivatives, guess a formula, prove it by induction.
+\begin{steps}
+\item $n=0$: $x^2e^x$. $n=1$: $(x^2+2x)e^x$. $n=2$: $(2x+2)e^x+(x^2+2x)e^x=(x^2+4x+2)e^x$. $n=3$: $(2x+4)e^x+(x^2+4x+2)e^x=(x^2+6x+6)e^x$.
+\item Pattern: $(x^2+2nx+c_n)e^x$ with $c_0,c_1,c_2,c_3=0,0,2,6$, i.e.\ $c_n=n(n-1)$. \emph{Claim:} $\frac{d^n}{dx^n}(x^2e^x)=\big(x^2+2nx+n(n-1)\big)e^x$.
+\item \emph{(Base case.)} $n=0$: $(x^2+0+0)e^x=x^2e^x$.
+\item \emph{(Induction step.)} Suppose the claim for $n$. Then
+\begin{align*}
+\frac{d^{n+1}}{dx^{n+1}}(x^2e^x)&=\frac d{dx}\Big(\big(x^2+2nx+n(n-1)\big)e^x\Big)\why{hypothesis}\\
+&=(2x+2n)e^x+\big(x^2+2nx+n(n-1)\big)e^x\why{product rule}\\
+&=\big(x^2+(2n+2)x+n(n-1)+2n\big)e^x=\big(x^2+2(n+1)x+(n+1)n\big)e^x,
+\end{align*}
+since $n(n-1)+2n=n^2+n=(n+1)n$. This is the claim for $n+1$.
+\end{steps}
+\conclusion $\dfrac{d^n}{dx^n}(x^2e^x)=\big(x^2+2nx+n(n-1)\big)e^x$ for all $n\in\N$.\qed
+\begin{compare}
+\item Show the computations that led to the guess; the proof is the induction, the guess is not.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{4.E.20}
+Let $f,g$ be functions that can be differentiated as often as needed. Prove that for all $n\in\N$,
+$\dfrac{d^n}{dx^n}\big(f(x)g(x)\big)=\displaystyle\sum_{k=0}^n\binom nkf^{(k)}(x)g^{(n-k)}(x)$.
+\solution
+\given Product rule; Pascal's rule $\binom n{k-1}+\binom nk=\binom{n+1}k$ (Definition 4.1.15); $\binom nn=1=\binom{n+1}{n+1}$, $\binom n0=1=\binom{n+1}0$. The proof has the same shape as that of the binomial theorem (Theorem 4.2.18).
+\begin{steps}
+\item Induction on $n\ge0$. \emph{(Base case.)} $n=0$: the right side is $\binom00f^{(0)}g^{(0)}=fg$, the $0$-th derivative of $fg$.
+\item \emph{(Induction step.)} Suppose the formula for $n$. Differentiate it term by term with the product rule:
+\begin{align*}
+\frac{d^{n+1}}{dx^{n+1}}(fg)&=\sum_{k=0}^n\binom nk\Big(f^{(k+1)}g^{(n-k)}+f^{(k)}g^{(n+1-k)}\Big)\\
+&=\sum_{k=0}^n\binom nkf^{(k+1)}g^{(n-k)}+\sum_{k=0}^n\binom nkf^{(k)}g^{(n+1-k)} .
+\end{align*}
+\item Reindex the first sum with $j=k+1$ (so $k=j-1$, $j$ from $1$ to $n+1$): $\sum_{j=1}^{n+1}\binom n{j-1}f^{(j)}g^{(n+1-j)}$. Rename $j$ back to $k$.
+\item Split off the extreme terms: from the first sum the term $k=n+1$, namely $\binom nnf^{(n+1)}g^{(0)}$; from the second the term $k=0$, namely $\binom n0f^{(0)}g^{(n+1)}$. The remaining terms, for $1\le k\le n$, combine:
+\[
+\sum_{k=1}^n\Big(\binom n{k-1}+\binom nk\Big)f^{(k)}g^{(n+1-k)}=\sum_{k=1}^n\binom{n+1}kf^{(k)}g^{(n+1-k)} \why{Pascal's rule}.
+\]
+\item Since $\binom nn=1=\binom{n+1}{n+1}$ and $\binom n0=1=\binom{n+1}0$, the two extreme terms are the $k=n+1$ and $k=0$ terms of $\sum_{k=0}^{n+1}\binom{n+1}kf^{(k)}g^{(n+1-k)}$. Altogether $\frac{d^{n+1}}{dx^{n+1}}(fg)=\sum_{k=0}^{n+1}\binom{n+1}kf^{(k)}g^{(n+1-k)}$.
+\end{steps}
+\conclusion By induction, the Leibniz rule holds for all $n\in\N$.\qed
+\begin{compare}
+\item The three moves are: product rule inside the sum, reindex, Pascal. Each must be visible; the reindexing is where errors hide.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{4.E.21}
+Find and prove an expression for $\dfrac{d^n}{dx^n}\log x$ (for $x>0$) for all $n\in\N$.
+\solution
+\begin{steps}
+\item $n=0$: $\log x$. $n=1$: $x^{-1}$. $n=2$: $-x^{-2}$. $n=3$: $2x^{-3}$. $n=4$: $-6x^{-4}$. Pattern for $n\ge1$: sign $(-1)^{n-1}$, coefficient $(n-1)!$, power $x^{-n}$.
+\item \emph{Claim:} for all $n\ge1$, $\frac{d^n}{dx^n}\log x=(-1)^{n-1}(n-1)!\,x^{-n}$. Induction on $n\ge1$.
+\item \emph{(Base case.)} $n=1$: $(-1)^0\cdot0!\cdot x^{-1}=\frac1x=\frac d{dx}\log x$.
+\item \emph{(Induction step.)} Let $n\ge1$ and suppose the claim for $n$. Then
+\[
+\frac{d^{n+1}}{dx^{n+1}}\log x=\frac d{dx}\big((-1)^{n-1}(n-1)!\,x^{-n}\big)=(-1)^{n-1}(n-1)!\cdot(-n)x^{-n-1}=(-1)^nn!\,x^{-(n+1)},
+\]
+which is the claim for $n+1$ \why{$(n-1)!\cdot n=n!$; $(-1)^{n-1}\cdot(-1)=(-1)^n$}.
+\end{steps}
+\conclusion For $n\ge1$, $\frac{d^n}{dx^n}\log x=(-1)^{n-1}(n-1)!\,x^{-n}$; for $n=0$ it is $\log x$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{4.E.24}
+True or false: every factorial is positive.
+\solution
+\begin{steps}
+\item \emph{True.} Induction on $n$ with $p(n)$: $n!>0$. \emph{Base:} $0!=1>0$ \why{Definition 4.1.14}. \emph{Step:} if $n!>0$ then $(n+1)!=(n+1)\cdot n!>0$ as a product of the positive numbers $n+1\ge1$ and $n!$.
+\end{steps}
+\conclusion $n!>0$ for all $n\in\N$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{4.E.25}
+True or false: every binomial coefficient is positive.
+\solution
+\begin{steps}
+\item \emph{False.} $\binom01=0$ by the clause $\binom0{k+1}=0$ of Definition 4.1.15 (with $k=0$). In general $\binom nk=0$ whenever $k>n$ \why{Theorem 4.2.15}.
+\end{steps}
+\conclusion False (binomial coefficients are non-negative, not positive).\qed
+\end{bookex}
+
+\begin{bookex}[essential]{4.E.26}
+True or false: every proof by strong induction can be turned into a proof by weak induction by changing only the induction hypothesis.
+\solution
+\begin{steps}
+\item \emph{False.} A strong-induction step may use $p(k)$ for $k<n$: Example 4.3.7 uses $a_{n-1}$, Example 4.3.4 uses all of $b_0,\dots,b_n$. If the hypothesis is replaced by just $p(n)$, those uses are no longer justified, so the step no longer proves $p(n+1)$: the rest of the argument must change too (for instance by proving the stronger statement $q(n)$: ``$p(k)$ for all $k\le n$'', as in the proof of Theorem 4.3.2).
+\end{steps}
+\conclusion False. (Every statement provable by strong induction is provable by weak induction, but not by the same proof with only the hypothesis changed.)\qed
+\end{bookex}
+
+\begin{bookex}[essential]{4.E.27}
+True or false: every proof by weak induction can be turned into a proof by strong induction by changing only the induction hypothesis.
+\solution
+\begin{steps}
+\item \emph{True.} Take a proof by weak induction of $\forall n\ge n_0,\ p(n)$. Replace the hypothesis ``$p(n)$'' by ``$p(k)$ for all $n_0\le k\le n$''.
+\item The new hypothesis contains the old one (take $k=n$), so every line of the original step remains valid and still derives $p(n+1)$; the base case is unchanged. This is a valid proof by strong induction \why{Strategy 4.3.3}.
+\end{steps}
+\conclusion True.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{4.E.28}
+True or false: let $f:\N\to X$ be a surjection and $p(x)$ a logical formula with free variable $x\in X$. If $p(f(0))$ is true and $\forall n\in\N,\ (p(f(n))\Rightarrow p(f(n+1)))$, then $\forall x\in X,\ p(x)$.
+\solution
+\begin{steps}
+\item \emph{True.} Define $q(n)$: $p(f(n))$, a formula with free variable $n\in\N$. The hypotheses say $q(0)$ and $\forall n,\ (q(n)\Rightarrow q(n+1))$.
+\item By weak induction, $q(n)$ holds for all $n\in\N$ \why{Theorem 4.2.1}.
+\item Let $x\in X$. Since $f$ is surjective, $x=f(n)$ for some $n\in\N$ \why{Definition 3.2.9}. Then $p(x)$ is $p(f(n))=q(n)$, which is true.
+\end{steps}
+\conclusion True: induction transports along a surjection.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{4.E.29}
+True or false: if for all $x\in\N$ there is some $y\le x$ such that $p(y)$ is false, then $p(x)$ is false for all $x\in\N$.
+\solution
+\begin{steps}
+\item \emph{False.} Counterexample: $p(x)$: ``$x\ge1$''.
+\item \emph{Hypothesis holds:} for every $x\in\N$, $y=0$ satisfies $y\le x$ and $p(0)$ (``$0\ge1$'') is false.
+\item \emph{Conclusion fails:} $p(1)$ is true.
+\end{steps}
+\conclusion False. (The hypothesis only guarantees that $p(0)$ is false; it is not an induction principle.)\qed
+\end{bookex}
+
+\begin{bookex}[essential]{4.E.30}
+True or false: every non-empty subset of $\Q_{\ge0}$ has a least element.
+\solution
+\begin{steps}
+\item \emph{False.} Let $X=\{\frac1n\mid n\in\N,\ n\ge1\}\subseteq\Q_{\ge0}$; it is non-empty ($1\in X$).
+\item $X$ has infinite descent: for $\frac1n\in X$, the element $\frac1{n+1}\in X$ satisfies $\frac1{n+1}<\frac1n$ \why{Definition 4.3.16}. A set with infinite descent has no least element (a least element $m$ would have some $y\in X$ with $y<m$).
+\end{steps}
+\conclusion False: well-ordering is special to $\N$.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{4.E.31}
+True or false: every non-empty subset of $\Z$ has a least element.
+\solution
+\begin{steps}
+\item \emph{False.} $\Z$ itself is a non-empty subset of $\Z$, and it has infinite descent: for $n\in\Z$, $n-1\in\Z$ and $n-1<n$ \why{Example 4.3.17}. So $\Z$ has no least element.
+\end{steps}
+\conclusion False.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{4.E.32}
+True or false: every non-empty subset of $\Z^-$ (the set of negative integers) has a greatest element.
+\solution
+\plan Flip the set into $\N$ and use the well-ordering principle.
+\begin{steps}
+\item \emph{True.} Let $X\subseteq\Z^-$ be non-empty. Define $Y=\{-x-1\mid x\in X\}$. For $x\le-1$ we have $-x-1\ge0$, so $Y\subseteq\N$; and $Y\ne\varnothing$ since $X\ne\varnothing$.
+\item By the well-ordering principle \why{Theorem 4.3.11}, $Y$ has a least element, say $-x_0-1$ with $x_0\in X$.
+\item Let $x\in X$. Then $-x-1\in Y$, so $-x-1\ge-x_0-1$, hence $x\le x_0$ \why{multiply by $-1$}. So $x_0$ is the greatest element of $X$.
+\end{steps}
+\conclusion True.\qed
+\begin{compare}
+\item The map $x\mapsto-x-1$ (or $x\mapsto-x$, landing in $\N\setminus\{0\}$) must be shown to land in $\N$, and ``least'' must be translated back to ``greatest''.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{4.E.33}
+Let $n,k,\ell\in\N$. Then $\binom n{k+\ell}=\binom nk+\binom n\ell$. (Always, sometimes, never? The book writes $n,k,\ell\in\Z$; binomial coefficients are defined for natural numbers, so we take $\N$.)
+\solution
+\begin{steps}
+\item \emph{Holds:} $n=0$, $k=\ell=1$: $\binom02=0$ and $\binom01+\binom01=0+0=0$ \why{Theorem 4.2.15}.
+\item \emph{Fails:} $n=1$, $k=0$, $\ell=1$: $\binom11=1$ but $\binom10+\binom11=1+1=2$.
+\end{steps}
+\conclusion Sometimes.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{4.E.34}
+Let $m,n\ge2$. Then $(m+n)!=m!+n!$. (Always, sometimes, never?)
+\solution
+\plan Show $(m+n)!>m!+n!$ always: $(m+n)!$ contains both $m!$ and $n!$ as factors of a much larger product.
+\begin{steps}
+\item \emph{Never.} First, if $j\le\ell$ then $j!\le\ell!$ \why{$\ell!=j!\cdot(j+1)\cdots\ell$ and each extra factor is $\ge1$; induction on $\ell-j$}.
+\item Since $m+n-1\ge m$ and $m+n-1\ge n$ \why{$m,n\ge2$, so $n-1\ge1$ and $m-1\ge1$}, Step 1 gives $(m+n-1)!\ge m!$ and $(m+n-1)!\ge n!$, so $(m+n-1)!\ge\max(m!,n!)$.
+\item Then $(m+n)!=(m+n)(m+n-1)!\ge4\max(m!,n!)>2\max(m!,n!)\ge m!+n!$ \why{$m+n\ge4$; $\max(m!,n!)>0$ by 4.E.24}.
+\end{steps}
+\conclusion $(m+n)!>m!+n!$ for all $m,n\ge2$: never.\qed
+\begin{compare}
+\item ``Never'' needs an argument valid for \emph{all} $m,n\ge2$, not a few numerical checks.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{4.E.35}
+Let $p(x)$ be a logical formula with free variable $x\in\Z$. Suppose $p(0)$ is true and, for all $n\in\Z$, $p(n)\Rightarrow p(n+1)$ and $p(n)\Rightarrow p(n-2)$. Then $\forall n\in\Z,\ p(n)$. (Always, sometimes, never?)
+\solution
+\plan Non-negative integers by weak induction; negative ones by strong induction on $m$ for $q(m)$: $p(-m)$, using $p(n)\Rightarrow p(n-2)$ to go from $-(m-1)$ to $-(m+1)$.
+\begin{steps}
+\item \emph{Always.} \emph{Non-negative:} $p(0)$ holds and $p(n)\Rightarrow p(n+1)$ for all $n$, so $p(n)$ for all $n\in\N$ by weak induction \why{Theorem 4.2.1}.
+\item \emph{Negative:} let $q(m)$ be $p(-m)$ for $m\in\N$. Strong induction with base cases $m=0,1$: $q(0)=p(0)$ holds; $q(1)=p(-1)$ follows from $p(1)$ (Step 1) via $p(1)\Rightarrow p(1-2)$.
+\item \emph{Step:} fix $m\ge1$ and assume $q(k)$ for all $0\le k\le m$. Then $q(m-1)=p(-(m-1))$ holds, and $p(-(m-1))\Rightarrow p(-(m-1)-2)=p(-(m+1))=q(m+1)$. So $q(m+1)$.
+\item Hence $p(-m)$ for all $m\in\N$. Every integer is $n\in\N$ or $-m$ with $m\in\N$, so $p$ holds on all of $\Z$.
+\end{steps}
+\conclusion Always.\qed
+\end{bookex}

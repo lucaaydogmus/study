@@ -1,0 +1,281 @@
+\chapter{Sets}
+\chaptercontents{A & Sets (\S2.1) \\ B & Set operations (\S2.2) \\ C & Products (\S2.2) \\ D & Chapter 2 exercises (2.E)}%
+{\fE\ 2.1: 10, 27, 31, 35 \textperiodcentered\ 2.2: 5, 24, 26, 28, 35, 36, 37, 40, 51 \textperiodcentered\ 2.E: 6, 33, 38\\ \fR\ 2.1: 17, 18, 23, 24, 32, 36 \textperiodcentered\ 2.2: 4, 6, 9, 25, 41, 45, 53 \textperiodcentered\ 2.E: 4, 5, 16, 28, 32, 41\\ Bonus: 2.E.18. Tested in \textbf{Quiz 2} (7 Oct).}
+
+\hsection{Sets}
+
+\begin{key}[{What you unfold in this section}]
+\textbf{Membership in set-builder notation} (Definition 2.1.4): $a\in\{x\in X\mid p(x)\}$ iff $a\in X$ and $p(a)$. \textbf{Subset} (Definition 2.1.6): $U\subseteq X$ iff $\forall a\in U,\ a\in X$; proved by ``let $a\in U$ \dots\ so $a\in X$'' (Strategy 2.1.7). \textbf{Equality} (Axiom 2.1.14): $X=Y$ iff $X\subseteq Y$ and $Y\subseteq X$ (double containment, Strategy 2.1.15), equivalently $\forall a,\ (a\in X\Leftrightarrow a\in Y)$. \textbf{Empty} (Definition 2.1.19, Strategy 2.1.20): to prove $X$ empty, assume $a\in X$ and derive a contradiction; to prove non-empty, exhibit an element. \textbf{Power set} (Definition 2.1.29): $U\in\PS(X)\Leftrightarrow U\subseteq X$.
+\end{key}
+
+\begin{bookex}[essential]{2.1.10}
+Let $a,b,c,d\in\R$ with $a<b$ and $c<d$. Prove that $[a,b)\subseteq(c,d]$ if and only if $a>c$ and $b\le d$.
+\solution
+\given $a<b$, $c<d$ (so both intervals are non-empty). $x\in[a,b)$ iff $a\le x<b$; $x\in(c,d]$ iff $c<x\le d$ \why{Definition 0.28}.
+\goal A biconditional. ($\Leftarrow$): from $a>c$, $b\le d$ prove the containment by Strategy 2.1.7. ($\Rightarrow$): from the containment prove $a>c$ (test the element $a$) and $b\le d$ (by contradiction, test an element just below $b$).
+\begin{steps}
+\item \emph{($\Leftarrow$)} Suppose $a>c$ and $b\le d$ \why{Strategy 1.1.28}. Let $x\in[a,b)$, so $a\le x<b$ \why{Strategy 2.1.7, Definition 0.28}.
+\item $c<a\le x$ gives $c<x$; $x<b\le d$ gives $x<d$, hence $x\le d$ \why{transitivity of $<$, $\le$}. So $c<x\le d$, i.e.\ $x\in(c,d]$.
+\item Since $x$ was arbitrary, $[a,b)\subseteq(c,d]$ \why{Definition 2.1.6}.
+\item \emph{($\Rightarrow$)} Suppose $[a,b)\subseteq(c,d]$. \emph{First $a>c$:} since $a\le a<b$, $a\in[a,b)$ \why{here $a<b$ is used}. By the containment, $a\in(c,d]$, so $c<a\le d$; in particular $a>c$.
+\item \emph{Then $b\le d$:} suppose, towards a contradiction, that $b>d$ \why{Strategy 1.3.16}. Define $x=\frac{d+b}2$. Then $d<x<b$ \why{midpoint of $d<b$}.
+\item $x\ge a$: because $x>d\ge a$ \why{$a\le d$ from Step 4}. So $a\le x<b$: $x\in[a,b)$. By the containment, $x\in(c,d]$, so $x\le d$. But $x>d$ \why{Step 5}: contradiction.
+\item Hence $b\le d$ \why{$\neg$I and double negation}. Both $a>c$ and $b\le d$ hold \why{$\wedge$I}.
+\end{steps}
+\conclusion $[a,b)\subseteq(c,d]$ iff $a>c$ and $b\le d$.\qed
+\begin{compare}
+\item ($\Rightarrow$) cannot be done by ``let $x\in[a,b)$'': you must \emph{apply} the containment to well-chosen elements ($a$ itself; a point between $d$ and $b$).
+\item Note where $a<b$ is used (Step 4: so that $a\in[a,b)$). Without it, $[a,b)=\varnothing$ is contained in everything and the statement fails.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{2.1.17}
+Prove that $\{x\in\R\mid x^2<x\}=(0,1)$.
+\solution
+\given $a\in\{x\in\R\mid x^2<x\}$ iff $a\in\R$ and $a^2<a$ \why{Definition 2.1.4}; $a\in(0,1)$ iff $0<a<1$.
+\goal Set equality: double containment \why{Strategy 2.1.15}.
+\plan ($\subseteq$) $a^2<a$ means $a(a-1)<0$: a product is negative iff the factors have opposite signs. ($\supseteq$) multiply $a<1$ by the positive number $a$.
+\begin{steps}
+\item \emph{($\subseteq$)} Let $a\in\{x\in\R\mid x^2<x\}$: so $a\in\R$ and $a^2<a$. Then $a^2-a<0$, i.e.\ $a(a-1)<0$ \why{algebra}.
+\item A product of two reals is negative only if one factor is positive and the other negative. \emph{Case 1:} $a>0$ and $a-1<0$; then $0<a<1$. \emph{Case 2:} $a<0$ and $a-1>0$; then $a<0$ and $a>1$, impossible. So $0<a<1$, i.e.\ $a\in(0,1)$.
+\item \emph{($\supseteq$)} Let $a\in(0,1)$, so $0<a<1$. Multiplying $a<1$ by $a>0$ preserves the inequality: $a\cdot a<1\cdot a$, i.e.\ $a^2<a$ \why{inequalities and positive factors}. Also $a\in\R$. So $a\in\{x\in\R\mid x^2<x\}$.
+\end{steps}
+\conclusion The two sets are equal \why{Axiom 2.1.14}.\qed
+\begin{compare}
+\item Two labelled containments, each starting with ``let $a\in\dots$''.
+\item Dividing $a^2<a$ by $a$ requires knowing $a>0$ first; the factorisation $a(a-1)<0$ avoids the circularity.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{2.1.18}
+Prove by double containment that $\{0,1\}=\{1,0\}$ and $\{0,0\}=\{0\}$.
+\solution
+\given $a\in\{x_1,\dots,x_n\}$ iff $a=x_1$ or \dots\ or $a=x_n$ (list notation).
+\begin{steps}
+\item \emph{$\{0,1\}\subseteq\{1,0\}$:} let $a\in\{0,1\}$; then $a=0$ or $a=1$ \why{list notation}. In either case $a$ is one of the listed elements $1,0$, so $a\in\{1,0\}$.
+\item \emph{$\{1,0\}\subseteq\{0,1\}$:} let $a\in\{1,0\}$; then $a=1$ or $a=0$, so $a\in\{0,1\}$. Hence $\{0,1\}=\{1,0\}$ \why{Axiom 2.1.14}.
+\item \emph{$\{0,0\}\subseteq\{0\}$:} let $a\in\{0,0\}$; then $a=0$ or $a=0$, so $a=0$ \why{$p\vee p$ gives $p$ by cases}, so $a\in\{0\}$.
+\item \emph{$\{0\}\subseteq\{0,0\}$:} let $a\in\{0\}$; then $a=0$, so $a\in\{0,0\}$. Hence $\{0,0\}=\{0\}$.
+\end{steps}
+\conclusion Order and repetition in list notation do not matter, as a consequence of extensionality.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.1.23}
+Let $a,b\in\R$. Prove that $[a,b]$ is empty if and only if $a>b$, and that $(a,b)$ is empty if and only if $a\ge b$.
+\solution
+\given Strategy 2.1.20; Definition 0.28; Exercise 1.2.29 (a midpoint lies strictly between).
+\goal Two biconditionals. For ``empty $\Rightarrow$ inequality'' we argue by contraposition: if the inequality fails, exhibit an element.
+\begin{steps}
+\item \emph{$[a,b]$, ($\Leftarrow$):} suppose $a>b$. Suppose $x\in[a,b]$; then $a\le x\le b$, so $a\le b$ \why{transitivity}, contradicting $a>b$. Hence $[a,b]$ has no element: it is empty \why{Strategy 2.1.20}.
+\item \emph{$[a,b]$, ($\Rightarrow$):} by contraposition \why{Strategy 1.3.20} suppose $a\le b$ (the negation of $a>b$). Then $a\le a\le b$, so $a\in[a,b]$, and $[a,b]$ is non-empty. Hence if $[a,b]$ is empty then $a>b$.
+\item \emph{$(a,b)$, ($\Leftarrow$):} suppose $a\ge b$. If $x\in(a,b)$ then $a<x<b$, so $a<b$, contradicting $a\ge b$. So $(a,b)$ is empty.
+\item \emph{$(a,b)$, ($\Rightarrow$):} by contraposition suppose $a<b$. Define $x=\frac{a+b}2$; then $a<x<b$ \why{Exercise 1.2.29's computation: $2a<a+b<2b$}, so $x\in(a,b)$ and $(a,b)$ is non-empty.
+\end{steps}
+\conclusion $[a,b]=\varnothing\Leftrightarrow a>b$ and $(a,b)=\varnothing\Leftrightarrow a\ge b$.\qed
+\begin{compare}
+\item Four parts. The two ``$\Rightarrow$'' parts are easiest by contraposition; say ``by contraposition'' and negate correctly ($\neg(a>b)$ is $a\le b$; $\neg(a\ge b)$ is $a<b$).
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{2.1.24}
+Let $E$ be an empty set and let $p(x)$ be a predicate with domain $E$. Show that $\forall x\in E,\ p(x)$ is true and $\exists x\in E,\ p(x)$ is false. What does $\forall x\in E,\ x\ne x$ mean? Is it true?
+\solution
+\given Definition 2.1.2: $\forall x\in E,\ p(x)$ means $\forall x,\ (x\in E\Rightarrow p(x))$ and $\exists x\in E,\ p(x)$ means $\exists x,\ (x\in E\wedge p(x))$. $E$ empty: $\neg\exists a,\ a\in E$. Principle of explosion (Axiom 1.1.67).
+\begin{steps}
+\item \emph{$\forall x\in E,\ p(x)$ is true.} Let $x$ be arbitrary \why{Strategy 1.2.10}; we prove $x\in E\Rightarrow p(x)$. Assume $x\in E$ \why{Strategy 1.1.28}.
+\item Since $E$ is empty, $x\in E$ is a contradiction \why{$\neg$E with $\neg\exists a,\ a\in E$}. From a contradiction, $p(x)$ follows \why{explosion}. Hence $x\in E\Rightarrow p(x)$ \why{$\Rightarrow$I}; since $x$ was arbitrary, the universal statement is true (``vacuously'').
+\item \emph{$\exists x\in E,\ p(x)$ is false.} Suppose it were true; take $x$ with $x\in E\wedge p(x)$ \why{Strategy 1.2.30}. Then $x\in E$ \why{$\wedge$E}, contradicting emptiness. So the statement is false \why{$\neg$I}.
+\item \emph{$\forall x\in E,\ x\ne x$} means: every element of the empty set is different from itself. By Step 2 with $p(x)$: ``$x\ne x$'', it is \textbf{true}.
+\end{steps}
+\conclusion Universal statements over the empty set are true, existential ones false.\qed
+\begin{compare}
+\item The proof of the universal statement must go through the implication form and explosion; ``there is nothing to check'' is the idea, not the proof.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{2.1.27}
+Is it true that $\varnothing\in X$ for all sets $X$? Is it true that $\varnothing\subseteq X$ for all sets $X$?
+\solution
+\given Definition 2.1.6 and Exercise 2.1.24.
+\begin{steps}
+\item \emph{$\varnothing\in X$ for all $X$: \textbf{false}.} Counterexample $X=\varnothing$ \why{Strategy 1.3.30}: $\varnothing$ has no elements, so $\varnothing\notin\varnothing$. (Also $X=\{1\}$: its only element is $1\ne\varnothing$.)
+\item \emph{$\varnothing\subseteq X$ for all $X$: \textbf{true}.} Let $X$ be any set. $\varnothing\subseteq X$ means $\forall a\in\varnothing,\ a\in X$ \why{Definition 2.1.6}, a universal statement over the empty set, which is true \why{Exercise 2.1.24}.
+\end{steps}
+\conclusion $\varnothing\in X$ fails for some $X$; $\varnothing\subseteq X$ holds for every $X$.\qed
+\begin{compare}
+\item $\in$ and $\subseteq$ are different relations; this exercise is the standard test of that distinction.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{2.1.31}
+Write out the elements of $\PS(\{1,2,3\})$.
+\solution
+\given $\PS(X)=\{U\mid U\subseteq X\}$ \why{Definition 2.1.29}.
+\plan List subsets by size: $0$, $1$, $2$, $3$ elements.
+\begin{steps}
+\item Size $0$: $\varnothing$ \why{Exercise 2.1.27}. Size $1$: $\{1\},\{2\},\{3\}$. Size $2$: $\{1,2\},\{1,3\},\{2,3\}$. Size $3$: $\{1,2,3\}$ \why{$X\subseteq X$, Example 2.1.8}.
+\item So
+\[
+\PS(\{1,2,3\})=\big\{\varnothing,\{1\},\{2\},\{3\},\{1,2\},\{1,3\},\{2,3\},\{1,2,3\}\big\}.
+\]
+\end{steps}
+\conclusion Eight subsets ($2^3$: each of $1,2,3$ is in or out).\qed
+\begin{compare}
+\item $\varnothing$ and $\{1,2,3\}$ itself are the two most often forgotten; the elements are \emph{sets}, so $1\in\PS(\{1,2,3\})$ is wrong, $\{1\}\in\PS(\{1,2,3\})$ is right.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{2.1.32}
+Let $X$ be a set. Show that $\varnothing\in\PS(X)$ and $X\in\PS(X)$.
+\solution
+\begin{steps}
+\item $\varnothing\subseteq X$ \why{Exercise 2.1.27}, so $\varnothing\in\PS(X)$ \why{Definition 2.1.29: $U\in\PS(X)\Leftrightarrow U\subseteq X$}.
+\item $X\subseteq X$ \why{Example 2.1.8: let $a\in X$; then $a\in X$}, so $X\in\PS(X)$ \why{Definition 2.1.29}.
+\end{steps}
+\conclusion Every power set contains $\varnothing$ and $X$; in particular $\PS(X)$ is never empty.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{2.1.35}
+Let $X$ and $Y$ be sets. Prove that if $X\subseteq Y$, then $\PS(X)\subseteq\PS(Y)$.
+\solution
+\given $X\subseteq Y$. Transitivity of $\subseteq$ (Proposition 2.1.12).
+\goal $\PS(X)\subseteq\PS(Y)$ \shape{a subset statement about sets of sets: ``let $U\in\PS(X)$ \dots\ so $U\in\PS(Y)$''}.
+\begin{steps}
+\item Suppose $X\subseteq Y$ \why{Strategy 1.1.28}. Let $U\in\PS(X)$ \why{Strategy 2.1.7}.
+\item Then $U\subseteq X$ \why{Definition 2.1.29}.
+\item From $U\subseteq X$ and $X\subseteq Y$: $U\subseteq Y$ \why{Proposition 2.1.12; or directly: let $a\in U$, then $a\in X$, then $a\in Y$}.
+\item Hence $U\in\PS(Y)$ \why{Definition 2.1.29}. Since $U$ was arbitrary, $\PS(X)\subseteq\PS(Y)$.
+\end{steps}
+\conclusion If $X\subseteq Y$ then $\PS(X)\subseteq\PS(Y)$.\qed
+\begin{compare}
+\item The element of $\PS(X)$ is a \emph{set} $U$; the proof unfolds $\in\PS$ into $\subseteq$ twice (Steps 2 and 4).
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{2.1.36}
+Determine whether each is true or false: (a) $\PS(\varnothing)\in\{\varnothing\}$; (b) $\PS(\varnothing)\in\PS(\PS(\varnothing))$; (c) $\PS(\PS(\varnothing))\in\{\varnothing,\{\varnothing,\{\varnothing\}\}\}$. Then repeat with $\in$ replaced by $\subseteq$.
+\solution
+\plan Compute the power sets first, then test each membership/containment against list notation.
+\begin{steps}
+\item $\PS(\varnothing)=\{\varnothing\}$ \why{the only subset of $\varnothing$ is $\varnothing$}. $\PS(\PS(\varnothing))=\PS(\{\varnothing\})=\{\varnothing,\{\varnothing\}\}$ \why{subsets of a one-element set: $\varnothing$ and the set itself}.
+\item (a) \textbf{False.} Is $\{\varnothing\}$ an element of $\{\varnothing\}$? The only element of $\{\varnothing\}$ is $\varnothing$, and $\{\varnothing\}\ne\varnothing$ (one has an element, the other none) \why{Axiom 2.1.14}.
+\item (b) \textbf{True.} $\PS(\varnothing)\subseteq\PS(\varnothing)$ \why{Example 2.1.8}, so $\PS(\varnothing)\in\PS(\PS(\varnothing))$ \why{Definition 2.1.29}.
+\item (c) \textbf{True.} $\PS(\PS(\varnothing))=\{\varnothing,\{\varnothing\}\}$ is literally the second listed element of $\{\varnothing,\{\varnothing,\{\varnothing\}\}\}$.
+\item (a$'$) $\{\varnothing\}\subseteq\{\varnothing\}$: \textbf{true} \why{Example 2.1.8}.
+\item (b$'$) $\{\varnothing\}\subseteq\{\varnothing,\{\varnothing\}\}$: \textbf{true}; the only element $\varnothing$ of the left set is listed on the right.
+\item (c$'$) $\{\varnothing,\{\varnothing\}\}\subseteq\{\varnothing,\{\varnothing,\{\varnothing\}\}\}$: \textbf{false}; $\{\varnothing\}$ is an element of the left set, but the right set's elements are $\varnothing$ and $\{\varnothing,\{\varnothing\}\}$, and $\{\varnothing\}$ equals neither ($\{\varnothing\}\ne\varnothing$ as it has an element; $\{\varnothing\}\ne\{\varnothing,\{\varnothing\}\}$ since $\{\varnothing\}$ is an element of the latter but not of the former).
+\end{steps}
+\conclusion (a) F, (b) T, (c) T; (a$'$) T, (b$'$) T, (c$'$) F.\qed
+\begin{compare}
+\item Always compute $\PS(\varnothing)=\{\varnothing\}$ and $\PS(\{\varnothing\})=\{\varnothing,\{\varnothing\}\}$ first; then every question is a comparison of lists. ``Different'' must be justified by an element in one set and not the other.
+\end{compare}
+\end{bookex}
+
+\hsection{Set operations}
+
+\begin{key}[{What you unfold in this section}]
+$x\in A\cap B\Leftrightarrow x\in A\wedge x\in B$ (Definition 2.2.1); $x\in A\cup B\Leftrightarrow x\in A\vee x\in B$ (Definition 2.2.21); $x\in X\setminus A\Leftrightarrow x\in X\wedge x\notin A$ (Definition 2.2.38); $x\in\bigcap_{i\in I}A_i\Leftrightarrow\forall i\in I,\ x\in A_i$ (Definition 2.2.16); $x\in\bigcup_{i\in I}A_i\Leftrightarrow\exists i\in I,\ x\in A_i$ (Definition 2.2.29). Every identity is proved by double containment or by a chain of ``iff''s on membership, each justified by one of these and a logical law.
+\end{key}
+
+\begin{bookex}[recommended]{2.2.4}
+Prove that $[0,\infty)\cap\Z=\N$.
+\solution
+\given $x\in[0,\infty)$ iff $x\in\R$ and $x\ge0$; $\N$ = the non-negative integers (Definitions 0.6, 0.8: natural numbers are the integers reached by steps to the right from $0$).
+\begin{steps}
+\item \emph{($\subseteq$)} Let $x\in[0,\infty)\cap\Z$. Then $x\in[0,\infty)$ and $x\in\Z$ \why{Definition 2.2.1}: $x$ is an integer with $x\ge0$. An integer $\ge0$ is reached from $0$ by unit steps to the right, so $x\in\N$ \why{Definitions 0.6, 0.8}.
+\item \emph{($\supseteq$)} Let $n\in\N$. Then $n$ is an integer \why{$\N\subseteq\Z$, Definition 0.8} and $n\ge0$ \why{Definition 0.6}, so $n\in[0,\infty)$. Hence $n\in[0,\infty)\cap\Z$ \why{Definition 2.2.1}.
+\end{steps}
+\conclusion $[0,\infty)\cap\Z=\N$ \why{Axiom 2.1.14}.\qed
+\end{bookex}
+
+\begin{bookex}[essential]{2.2.5}
+Write down the elements of $\{0,1,4,7\}\cap\{1,2,3,4,5\}$.
+\solution
+\begin{steps}
+\item An element of the intersection must be in both lists \why{Definition 2.2.1}. Go through the first list: $0$ (not in the second), $1$ (yes), $4$ (yes), $7$ (no).
+\end{steps}
+\answer $\{0,1,4,7\}\cap\{1,2,3,4,5\}=\{1,4\}$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.2.6}
+Express $[-2,5)\cap[4,7)$ as a single interval.
+\solution
+\begin{steps}
+\item $x\in[-2,5)\cap[4,7)$ iff ($-2\le x<5$ and $4\le x<7$) \why{Definitions 2.2.1, 0.28}.
+\item Both lower bounds must hold: $x\ge-2$ and $x\ge4$, i.e.\ $x\ge4$. Both upper bounds: $x<5$ and $x<7$, i.e.\ $x<5$. So the condition is $4\le x<5$.
+\end{steps}
+\answer $[-2,5)\cap[4,7)=[4,5)$ \why{Axiom 2.1.14: same membership condition}.\qed
+\begin{compare}
+\item Include the one-line justification ``$x$ is in the set iff \dots''; the bracket at $5$ is round because $5\notin[-2,5)$.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{2.2.9}
+Let $X$ be a set. Prove that $X\cap\varnothing=\varnothing$ and $X\cap X=X$.
+\solution
+\begin{steps}
+\item \emph{$X\cap\varnothing=\varnothing$.} Suppose, towards a contradiction, that $a\in X\cap\varnothing$ \why{Strategy 2.1.20}. Then $a\in\varnothing$ \why{Definition 2.2.1, $\wedge$E$_2$}, contradicting that $\varnothing$ has no elements. So $X\cap\varnothing$ is empty, and any two empty sets are equal \why{Theorem 2.1.25}: $X\cap\varnothing=\varnothing$.
+\item \emph{$X\cap X=X$.} Let $a$ be arbitrary. $a\in X\cap X\Leftrightarrow(a\in X\wedge a\in X)\Leftrightarrow a\in X$ \why{Definition 2.2.1; $p\wedge p\equiv p$}. So the sets are equal \why{Axiom 2.1.14}.
+\end{steps}
+\conclusion Both identities hold.\qed
+\begin{compare}
+\item For the first, the clean route is ``assume an element, contradiction, hence empty, hence $=\varnothing$ by Theorem 2.1.25''.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{2.2.24}
+Write down the elements of $\{0,1,4,7\}\cup\{1,2,3,4,5\}$.
+\solution
+\begin{steps}
+\item An element of the union is in at least one of the lists \why{Definition 2.2.21}. Merge the two lists and write each element once \why{repetition does not matter, Exercise 2.1.18}.
+\end{steps}
+\answer $\{0,1,2,3,4,5,7\}$.\qed
+\end{bookex}
+
+\begin{bookex}[recommended]{2.2.25}
+Express $[-2,5)\cup[4,7)$ as a single interval.
+\solution
+\begin{steps}
+\item $x$ is in the union iff $-2\le x<5$ or $4\le x<7$ \why{Definitions 2.2.21, 0.28}.
+\item If $-2\le x<5$ then $-2\le x<7$; if $4\le x<7$ then $-2\le x<7$. Conversely if $-2\le x<7$: either $x<5$ (then $x\in[-2,5)$) or $x\ge5$ (then $4\le x<7$, so $x\in[4,7)$). So the condition is $-2\le x<7$.
+\end{steps}
+\answer $[-2,5)\cup[4,7)=[-2,7)$.\qed
+\begin{compare}
+\item The ``conversely'' half needs the overlap: the two ranges together cover $[-2,7)$ without a gap because $4<5$.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{2.2.26}
+Let $X$ and $Y$ be sets. Prove that $X\subseteq Y$ if and only if $X\cup Y=Y$.
+\solution
+\goal Two implications; the first contains a set equality (double containment).
+\begin{steps}
+\item \emph{($\Rightarrow$)} Suppose $X\subseteq Y$. \emph{$X\cup Y\subseteq Y$:} let $a\in X\cup Y$; then $a\in X$ or $a\in Y$ \why{Definition 2.2.21}. Case $a\in X$: then $a\in Y$ \why{$X\subseteq Y$}. Case $a\in Y$: done. In both cases $a\in Y$ \why{Strategy 1.1.19}.
+\item \emph{$Y\subseteq X\cup Y$:} let $a\in Y$; then $a\in X\vee a\in Y$ \why{$\vee$I$_2$}, so $a\in X\cup Y$. Hence $X\cup Y=Y$ \why{Axiom 2.1.14}.
+\item \emph{($\Leftarrow$)} Suppose $X\cup Y=Y$. Let $a\in X$ \why{Strategy 2.1.7}. Then $a\in X\cup Y$ \why{$\vee$I$_1$}, and $X\cup Y=Y$, so $a\in Y$. Hence $X\subseteq Y$.
+\end{steps}
+\conclusion $X\subseteq Y\Leftrightarrow X\cup Y=Y$.\qed
+\begin{compare}
+\item Three containments in total; the case split in Step 1 is where the hypothesis $X\subseteq Y$ is used.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{2.2.28}
+Let $X$, $Y$ and $Z$ be sets. Prove that $X\cup(Y\cap Z)=(X\cup Y)\cap(X\cup Z)$.
+\solution
+\plan Double containment. ($\subseteq$) cases on the union. ($\supseteq$) LEM on ``$x\in X$'' (Strategy 1.1.61): if $x\notin X$, both memberships $x\in X\cup Y$, $x\in X\cup Z$ force $x\in Y$ and $x\in Z$.
+\begin{steps}
+\item \emph{($\subseteq$)} Let $x\in X\cup(Y\cap Z)$. Then $x\in X$ or $x\in Y\cap Z$ \why{Definition 2.2.21}.
+\item \emph{Case $x\in X$:} then $x\in X\cup Y$ and $x\in X\cup Z$ \why{$\vee$I$_1$ twice}, so $x\in(X\cup Y)\cap(X\cup Z)$ \why{Definition 2.2.1}.
+\item \emph{Case $x\in Y\cap Z$:} then $x\in Y$ and $x\in Z$ \why{Definition 2.2.1}, so $x\in X\cup Y$ and $x\in X\cup Z$ \why{$\vee$I$_2$ twice}, so $x\in(X\cup Y)\cap(X\cup Z)$. Both cases done.
+\item \emph{($\supseteq$)} Let $x\in(X\cup Y)\cap(X\cup Z)$, so $x\in X\cup Y$ and $x\in X\cup Z$ \why{Definition 2.2.1}. By LEM, $x\in X$ or $x\notin X$ \why{Strategy 1.1.61}.
+\item \emph{Case $x\in X$:} then $x\in X\cup(Y\cap Z)$ \why{$\vee$I$_1$}.
+\item \emph{Case $x\notin X$:} from $x\in X\cup Y$, i.e.\ $x\in X\vee x\in Y$, and $x\notin X$ we get $x\in Y$ \why{cases: the first disjunct contradicts $x\notin X$}. Likewise from $x\in X\cup Z$ we get $x\in Z$. So $x\in Y\cap Z$, hence $x\in X\cup(Y\cap Z)$ \why{$\vee$I$_2$}.
+\end{steps}
+\conclusion $X\cup(Y\cap Z)=(X\cup Y)\cap(X\cup Z)$ \why{Axiom 2.1.14}.\qed
+\begin{compare}
+\item The ($\supseteq$) direction is the one that needs an idea; the case split on $x\in X$ must be announced (``either $x\in X$ or not'').
+\item Alternatively prove the membership equivalence as the logical law $p\vee(q\wedge r)\equiv(p\vee q)\wedge(p\vee r)$ with a truth table (Strategy 1.3.11), then cite extensionality.
+\end{compare}
+\end{bookex}
+\input{s2b}

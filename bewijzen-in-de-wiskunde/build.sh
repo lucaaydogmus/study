@@ -1,11 +1,12 @@
 #!/bin/bash
-# Usage: bewijzen-in-de-wiskunde/build.sh — compiles the documents (pdflatex x2 each) into pdf/
+# Usage: bewijzen-in-de-wiskunde/build.sh — compiles the three documents (pdflatex x2 each) into pdf/
 #   src/wb05.tex  -> pdf/BiW-workbook-ch0-5.pdf     (main document: chapters 0-5, built from the book)
+#   src/wsteps.tex -> pdf/BiW-planning-exercises-steps.pdf (every essential/recommended exercise, step by step)
 #   src/guide.tex -> pdf/BiW-study-guide-ch0-5.pdf  (older guide written without the book)
 # Needs TeX Live with tcolorbox, tikz, needspace, mathptmx/helvet (texlive-latex-extra + texlive-fonts-recommended).
 set -e
 cd "$(dirname "$0")/src"
-for pair in "wb05:BiW-workbook-ch0-5" "guide:BiW-study-guide-ch0-5"; do
+for pair in "wb05:BiW-workbook-ch0-5" "wsteps:BiW-planning-exercises-steps" "guide:BiW-study-guide-ch0-5"; do
   tex="${pair%%:*}"; out="${pair##*:}"
   pdflatex -interaction=nonstopmode -halt-on-error "$tex.tex" >/dev/null
   pdflatex -interaction=nonstopmode -halt-on-error "$tex.tex" >/dev/null

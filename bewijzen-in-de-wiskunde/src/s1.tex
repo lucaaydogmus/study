@@ -1,0 +1,316 @@
+\chapter{Logical structure}
+\chaptercontents{A & Propositional logic (\S1.1) \\ B & Variables and quantifiers (\S1.2) \\ C & Logical equivalence (\S1.3) \\ D & Chapter 1 exercises (1.E)}%
+{\fE\ 1.1: 21, 25, 32, 33, 38, 47, 56, 57 \textperiodcentered\ 1.2: 6, 15, 18, 39 \textperiodcentered\ 1.3: 5, 13, 14, 22, 27, 44ace \textperiodcentered\ 1.E: 18\\ \fR\ 1.1: 37, 43, 54, 55, 65, 66 \textperiodcentered\ 1.2: 21, 22, 28, 37ab \textperiodcentered\ 1.3: 32, 35 \textperiodcentered\ 1.E: 11, 28, 29, 30\\ Bonus: 1.2.14. \S1.1 is in \textbf{Quiz 1}.}
+
+\hsection{Propositional logic}
+
+\begin{key}[{The rules you quote in this section (Definitions 1.1.4, 1.1.15, 1.1.27, 1.1.50)}]
+\begin{itemize}
+\item \textbf{$\wedge$:} to prove $p\wedge q$, prove $p$ and prove $q$ (Strategy 1.1.7); from $p\wedge q$ you may use $p$ and use $q$ (Strategy 1.1.10).
+\item \textbf{$\vee$:} to prove $p\vee q$, prove one of them (Strategy 1.1.16); from $p\vee q$, argue by cases: derive the goal from $p$, then from $q$ (Strategy 1.1.19).
+\item \textbf{$\Rightarrow$:} to prove $p\Rightarrow q$, assume $p$ and derive $q$ (Strategy 1.1.28); from $p\Rightarrow q$ and $p$, conclude $q$ (modus ponens, Strategy 1.1.34).
+\item \textbf{$\neg$:} to prove $\neg p$, assume $p$ and derive a contradiction (Strategy 1.1.51); from $\neg p$ and $p$ you have a contradiction (rule $\neg$E, Strategy 1.1.59).
+\item \textbf{$\Leftrightarrow$:} $p\Leftrightarrow q$ means $(p\Rightarrow q)\wedge(q\Rightarrow p)$ (Definition 1.1.40).
+\item \textbf{LEM} (Axiom 1.1.60): $p\vee\neg p$ may always be assumed; \textbf{explosion} (Axiom 1.1.67): from a contradiction anything follows.
+\end{itemize}
+In the solutions below, each step records the current \emph{assumptions} and \emph{goal}, as in Example 1.1.1.
+\end{key}
+
+\begin{bookex}[essential]{1.1.21}
+Let $p$, $q$ and $r$ be propositions, and suppose $q\vee r$ is true. Prove that $(p\vee q)\vee(p\vee r)$ is true, using Strategy 1.1.19 and Strategy 1.1.16.
+\solution
+\given $q\vee r$ is true. (Nothing is known about $p$.)
+\goal $(p\vee q)\vee(p\vee r)$. \shape{a disjunction whose two halves are disjunctions}
+\plan The only assumption is a disjunction, so split into cases (Strategy 1.1.19). In each case the goal is a disjunction, so it suffices to prove one half (Strategy 1.1.16), possibly twice.
+\begin{steps}
+\item Assumption: $q\vee r$. By Strategy 1.1.19 it suffices to derive the goal in Case 1 ($q$ true) and in Case 2 ($r$ true).
+\item \emph{Case 1.} Assume $q$. Then $p\vee q$ is true \why{Strategy 1.1.16, rule $\vee$I$_2$: the second disjunct $q$ holds}.
+\item Since $p\vee q$ is true, $(p\vee q)\vee(p\vee r)$ is true \why{Strategy 1.1.16, $\vee$I$_1$: the first disjunct holds}. Case 1 is done.
+\item \emph{Case 2.} Assume $r$. Then $p\vee r$ is true \why{$\vee$I$_2$}.
+\item Hence $(p\vee q)\vee(p\vee r)$ is true \why{$\vee$I$_2$: the second disjunct $p\vee r$ holds}. Case 2 is done.
+\item The goal holds in both cases, so it follows from $q\vee r$ \why{Strategy 1.1.19}.
+\end{steps}
+\conclusion $(p\vee q)\vee(p\vee r)$ is true.\qed
+\begin{compare}
+\item Both cases must be written; each must end with the full goal $(p\vee q)\vee(p\vee r)$, not just with $p\vee q$.
+\item Never try to decide whether $p$ is true: nothing is known about $p$, and nothing needs to be.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.1.25}
+Let $n$ be an integer. Prove that $n^2$ leaves a remainder of $0$, $1$ or $4$ when divided by $5$.
+\solution
+\given $n\in\Z$. Theorem 0.42 with $b=5$: $n=5k+r$ for some $k\in\Z$ and $r\in\{0,1,2,3,4\}$.
+\goal The remainder of $n^2$ on division by $5$ is $0$, $1$ or $4$. \shape{a disjunction with three options; one of them must be proved in each case}
+\plan Proof by cases on the five possible values of $r$ (Strategy 1.1.19). In each case write $n^2=5\cdot(\text{integer})+r'$ with $r'\in\{0,1,4\}$ and invoke uniqueness of the remainder.
+\begin{steps}
+\item Fix $k\in\Z$ and $r\in\{0,1,2,3,4\}$ with $n=5k+r$ \why{Theorem 0.42}.
+\item Expand once for all cases:
+\[
+n^2=(5k+r)^2=25k^2+10kr+r^2=5(5k^2+2kr)+r^2 \why{algebra}.
+\]
+So the remainder of $n^2$ equals the remainder of $r^2$ \why{as in 0.E.3: $5(5k^2+2kr)$ is a multiple of $5$}.
+\item \emph{Case $r=0$:} $r^2=0$, so $n^2=5(5k^2)+0$: remainder $0$.
+\item \emph{Case $r=1$:} $r^2=1$, so $n^2=5(5k^2+2k)+1$: remainder $1$.
+\item \emph{Case $r=2$:} $r^2=4$, so $n^2=5(5k^2+4k)+4$: remainder $4$.
+\item \emph{Case $r=3$:} $r^2=9=5+4$, so $n^2=5(5k^2+6k+1)+4$: remainder $4$.
+\item \emph{Case $r=4$:} $r^2=16=15+1$, so $n^2=5(5k^2+8k+3)+1$: remainder $1$.
+\item In every case the bracket is an integer and the remainder satisfies $0\le r'<5$, so it \emph{is} the remainder \why{uniqueness in Theorem 0.42}; and $r'\in\{0,1,4\}$. The cases are exhaustive \why{Step 1}.
+\end{steps}
+\conclusion $n^2$ leaves remainder $0$, $1$ or $4$ when divided by $5$.\qed
+\begin{compare}
+\item Five cases, each with the explicit integer in the bracket. The cases $r=3,4$ need the constant rewritten ($9=5+4$, $16=15+1$) before the remainder can be read off.
+\item Say why the cases are exhaustive (the division theorem) and why the number you read off is the remainder (uniqueness).
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.1.32}
+Let $r$ and $s$ be propositions. Prove that $r\Rightarrow(s\Rightarrow s)$ is true, using the strategies for implications.
+\solution
+\given Nothing: no proposition is assumed true.
+\goal $r\Rightarrow(s\Rightarrow s)$ \shape{an implication whose consequent is an implication}.
+\plan Strategy 1.1.28 twice: assume the antecedent, the goal becomes the consequent.
+\begin{steps}
+\item To prove $r\Rightarrow(s\Rightarrow s)$ it suffices to assume $r$ and derive $s\Rightarrow s$ \why{Strategy 1.1.28}. So: assume $r$. Goal: $s\Rightarrow s$.
+\item To prove $s\Rightarrow s$ it suffices to assume $s$ and derive $s$ \why{Strategy 1.1.28}. So: assume $s$. Goal: $s$.
+\item $s$ is true, because it is among the assumptions \why{Step 2}.
+\item Hence $s\Rightarrow s$ is true \why{rule $\Rightarrow$I: $s$ was derived from the assumption $s$}.
+\item Hence $r\Rightarrow(s\Rightarrow s)$ is true \why{$\Rightarrow$I: $s\Rightarrow s$ was derived from the assumption $r$}.
+\end{steps}
+\conclusion $r\Rightarrow(s\Rightarrow s)$ is true for all propositions $r,s$.\qed
+\begin{compare}
+\item The assumption $r$ is never used; that is fine. An implication with a true consequent is true.
+\item Each ``assume'' must be matched by a ``hence \dots $\Rightarrow$ \dots'' that discharges it (Steps 4 and 5).
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.1.33}
+Let $a$, $b$ and $c$ be propositions. Prove that $(a\vee b)\Rightarrow\big(c\Rightarrow((c\wedge a)\vee b)\big)$ is true.
+\solution
+\given Nothing.
+\goal $(a\vee b)\Rightarrow(c\Rightarrow((c\wedge a)\vee b))$ \shape{implication, then implication, then a disjunction}.
+\plan Assume the two antecedents (Strategy 1.1.28 twice), then use the disjunction $a\vee b$ by cases (Strategy 1.1.19); in each case prove one half of the goal disjunction (Strategy 1.1.16).
+\begin{steps}
+\item Assume $a\vee b$ \why{Strategy 1.1.28}. Goal: $c\Rightarrow((c\wedge a)\vee b)$.
+\item Assume $c$ \why{Strategy 1.1.28}. Goal: $(c\wedge a)\vee b$. Assumptions now: $a\vee b$, $c$.
+\item Split into cases on $a\vee b$ \why{Strategy 1.1.19}.
+\item \emph{Case 1.} Assume $a$. With $c$ (Step 2) and $a$ both true, $c\wedge a$ is true \why{Strategy 1.1.7, $\wedge$I}. Hence $(c\wedge a)\vee b$ \why{Strategy 1.1.16, $\vee$I$_1$}.
+\item \emph{Case 2.} Assume $b$. Then $(c\wedge a)\vee b$ \why{$\vee$I$_2$}.
+\item In both cases $(c\wedge a)\vee b$, so it follows from $a\vee b$ and $c$ \why{Strategy 1.1.19}.
+\item Hence $c\Rightarrow((c\wedge a)\vee b)$ \why{$\Rightarrow$I, discharging $c$}, and hence $(a\vee b)\Rightarrow(c\Rightarrow((c\wedge a)\vee b))$ \why{$\Rightarrow$I, discharging $a\vee b$}.
+\end{steps}
+\conclusion The formula is true.\qed
+\begin{compare}
+\item Do the ``assume'' steps \emph{before} the case split: in Case 1 you need $c$ available to build $c\wedge a$.
+\item In Case 2 the assumption $c$ is not needed; say so or just ignore it.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{1.1.37}
+Let $p$, $q$ and $r$ be propositions. Prove that $(p\Rightarrow(q\Rightarrow r))\Rightarrow(q\Rightarrow(p\Rightarrow r))$ is true.
+\solution
+\given Nothing.
+\goal An implication whose consequent is $q\Rightarrow(p\Rightarrow r)$, again nested implications.
+\plan Assume all three antecedents in turn (Strategy 1.1.28 three times), then use modus ponens (Strategy 1.1.34) twice on the first assumption.
+\begin{steps}
+\item Assume $p\Rightarrow(q\Rightarrow r)$. Goal: $q\Rightarrow(p\Rightarrow r)$.
+\item Assume $q$. Goal: $p\Rightarrow r$.
+\item Assume $p$. Goal: $r$. Assumptions: $p\Rightarrow(q\Rightarrow r)$, $q$, $p$.
+\item From $p\Rightarrow(q\Rightarrow r)$ and $p$, conclude $q\Rightarrow r$ \why{modus ponens, Strategy 1.1.34}.
+\item From $q\Rightarrow r$ and $q$, conclude $r$ \why{modus ponens}. The goal is reached.
+\item Discharge the assumptions in reverse order: $p\Rightarrow r$ \why{$\Rightarrow$I}; then $q\Rightarrow(p\Rightarrow r)$; then the whole formula.
+\end{steps}
+\conclusion $(p\Rightarrow(q\Rightarrow r))\Rightarrow(q\Rightarrow(p\Rightarrow r))$ is true.\qed
+\begin{compare}
+\item Three ``assume''s, two modus ponens, three discharges. Nothing else is available, so nothing else should appear.
+\item The order of the assumptions $q$ and $p$ is dictated by the goal, not by the first assumption.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.1.38}
+Let $p$, $q$ and $r$ be propositions. Prove that $(p\Rightarrow p\wedge q)\Rightarrow((p\vee q)\Rightarrow q)$ is true.
+\solution
+\given Nothing.
+\goal $(p\Rightarrow(p\wedge q))\Rightarrow((p\vee q)\Rightarrow q)$.
+\plan Assume both antecedents; the second is a disjunction, so split into cases; in the case $p$, modus ponens gives $p\wedge q$, from which $q$ follows.
+\begin{steps}
+\item Assume $p\Rightarrow(p\wedge q)$ \why{Strategy 1.1.28}. Goal: $(p\vee q)\Rightarrow q$.
+\item Assume $p\vee q$ \why{Strategy 1.1.28}. Goal: $q$.
+\item Split into cases on $p\vee q$ \why{Strategy 1.1.19}.
+\item \emph{Case 1.} Assume $p$. From $p\Rightarrow(p\wedge q)$ and $p$, $p\wedge q$ is true \why{modus ponens}. Hence $q$ is true \why{Strategy 1.1.10, $\wedge$E$_2$}.
+\item \emph{Case 2.} Assume $q$. Then $q$ is true \why{it is assumed}.
+\item In both cases $q$; so $q$ follows from the assumptions \why{Strategy 1.1.19}.
+\item Hence $(p\vee q)\Rightarrow q$ \why{$\Rightarrow$I}, and hence the whole formula \why{$\Rightarrow$I}.
+\end{steps}
+\conclusion The formula is true.\qed
+\begin{compare}
+\item Case 2 is one line, but it must be present: a proof by cases with a missing case proves nothing.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{1.1.43}
+Let $p$ and $q$ be propositions. Prove that $(p\Leftrightarrow q)\Leftrightarrow(q\Leftrightarrow p)$ is true.
+\solution
+\given Definition 1.1.40: $x\Leftrightarrow y$ is $(x\Rightarrow y)\wedge(y\Rightarrow x)$.
+\goal A biconditional: by Definition 1.1.40 we must prove ($\Rightarrow$) $(p\Leftrightarrow q)\Rightarrow(q\Leftrightarrow p)$ and ($\Leftarrow$) $(q\Leftrightarrow p)\Rightarrow(p\Leftrightarrow q)$.
+\plan Unfold everything into conjunctions of implications; then the two halves of the conjunction only need to be swapped (Strategies 1.1.10 and 1.1.7).
+\begin{steps}
+\item \emph{($\Rightarrow$)} Assume $p\Leftrightarrow q$, i.e.\ $(p\Rightarrow q)\wedge(q\Rightarrow p)$ \why{Definition 1.1.40}. Goal: $q\Leftrightarrow p$, i.e.\ $(q\Rightarrow p)\wedge(p\Rightarrow q)$.
+\item From the assumed conjunction we may use $p\Rightarrow q$ and $q\Rightarrow p$ separately \why{Strategy 1.1.10}.
+\item To prove $(q\Rightarrow p)\wedge(p\Rightarrow q)$ we prove each conjunct \why{Strategy 1.1.7}: $q\Rightarrow p$ holds by Step 2, and $p\Rightarrow q$ holds by Step 2. So $q\Leftrightarrow p$.
+\item Hence $(p\Leftrightarrow q)\Rightarrow(q\Leftrightarrow p)$ \why{$\Rightarrow$I}.
+\item \emph{($\Leftarrow$)} Assume $q\Leftrightarrow p$, i.e.\ $(q\Rightarrow p)\wedge(p\Rightarrow q)$. Goal: $(p\Rightarrow q)\wedge(q\Rightarrow p)$. Exactly as in Steps 2--3, both conjuncts are available, so $p\Leftrightarrow q$. Hence $(q\Leftrightarrow p)\Rightarrow(p\Leftrightarrow q)$.
+\item Both implications hold, so the biconditional holds \why{Definition 1.1.40, Strategy 1.1.7}.
+\end{steps}
+\conclusion $(p\Leftrightarrow q)\Leftrightarrow(q\Leftrightarrow p)$ is true.\qed
+\begin{compare}
+\item ``Obviously symmetric'' is not a proof. The proof is the unfolding of Definition 1.1.40 and the two conjunction rules, written out in both directions.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.1.47}
+Prove that a natural number $n$ is divisible by $3$ if and only if the sum of its base-10 digits is divisible by $3$.
+\solution
+\given $n\in\N$ with base-10 expansion $d_rd_{r-1}\dots d_0$, so $n=\sum_{i=0}^rd_i10^i$ with $0\le d_i\le9$ \why{Definition 0.31}. Let $s=\sum_{i=0}^rd_i$ be the digit sum. Exercise 0.40: a common divisor of two integers divides every integer combination of them.
+\goal $3\mid n\ \Leftrightarrow\ 3\mid s$: two implications.
+\plan As in Example 1.1.46 (divisibility by $8$): split $n=s+n''$ where $n''=n-s$ is always divisible by $3$. Then $n$ and $s$ are integer combinations of each other and $n''$, and Exercise 0.40 transfers divisibility both ways.
+\begin{steps}
+\item Define $n''=n-s=\sum_{i=0}^rd_i10^i-\sum_{i=0}^rd_i=\sum_{i=0}^rd_i(10^i-1)$ \why{algebra}.
+\item \emph{Claim: $3\mid10^i-1$ for every $i\in\N$.} For $i=0$: $10^0-1=0=3\cdot0$. For $i\ge1$: $10^i-1=(10-1)(10^{i-1}+10^{i-2}+\dots+10+1)=9m_i$ with $m_i=10^{i-1}+\dots+1\in\N$ \why{the factorisation $x^i-1=(x-1)(x^{i-1}+\dots+1)$}, so $10^i-1=3\cdot(3m_i)$ with $3m_i\in\Z$. Hence $3\mid10^i-1$ \why{Definition 0.36}.
+\item \emph{Claim: $3\mid n''$.} By Step 2 write $10^i-1=3c_i$ with $c_i\in\Z$. Then $n''=\sum_id_i\cdot3c_i=3\sum_id_ic_i$, and $\sum_id_ic_i\in\Z$ \why{closure}. So $3\mid n''$.
+\item \emph{($\Rightarrow$)} Assume $3\mid n$ \why{Strategy 1.1.28}. Since also $3\mid n''$ (Step 3), $3$ divides $1\cdot n+(-1)\cdot n''$ \why{Exercise 0.40 with $u=1$, $v=-1$}. But $n-n''=s$ \why{Step 1}. So $3\mid s$.
+\item \emph{($\Leftarrow$)} Assume $3\mid s$. Since $3\mid n''$, $3$ divides $1\cdot s+1\cdot n''=n$ \why{Exercise 0.40 with $u=v=1$; $s+n''=n$ by Step 1}. So $3\mid n$.
+\end{steps}
+\conclusion $3\mid n$ if and only if $3\mid s$ \why{Definition 1.1.40}.\qed
+\begin{compare}
+\item The proof has two labelled directions, and both quote Exercise 0.40 with explicit $u,v$.
+\item The fact $3\mid10^i-1$ needs an argument (Step 2); ``$10^i-1=99\dots9$'' is the idea, the factorisation is the proof.
+\item Do not use congruences ($10\equiv1\pmod3$): they appear only in Chapter 5.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{1.1.54}
+Let $p$ and $q$ be propositions. Prove that $(p\Rightarrow\neg q)\Rightarrow(q\Rightarrow\neg p)$ is true.
+\solution
+\given Nothing.
+\goal Nested implications ending in the negation $\neg p$.
+\plan Assume the antecedents; to prove $\neg p$, assume $p$ and derive a contradiction (Strategy 1.1.51); the contradiction comes from $\neg q$ (by modus ponens) against $q$ (rule $\neg$E).
+\begin{steps}
+\item Assume $p\Rightarrow\neg q$ \why{Strategy 1.1.28}. Goal: $q\Rightarrow\neg p$.
+\item Assume $q$ \why{Strategy 1.1.28}. Goal: $\neg p$.
+\item To prove $\neg p$, assume $p$ and aim for a contradiction \why{Strategy 1.1.51}. Assumptions: $p\Rightarrow\neg q$, $q$, $p$. Goal: $\bot$.
+\item From $p\Rightarrow\neg q$ and $p$: $\neg q$ \why{modus ponens}.
+\item $\neg q$ and $q$ are both assumed/derived: contradiction \why{rule $\neg$E, Strategy 1.1.59}.
+\item Hence $\neg p$ \why{$\neg$I: a contradiction was derived from $p$}. Hence $q\Rightarrow\neg p$ \why{$\Rightarrow$I}, hence the whole formula \why{$\Rightarrow$I}.
+\end{steps}
+\conclusion $(p\Rightarrow\neg q)\Rightarrow(q\Rightarrow\neg p)$ is true.\qed
+\begin{compare}
+\item State explicitly which two formulae contradict each other (``$\neg q$ and $q$''); ``contradiction'' alone is not enough.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{1.1.55}
+Let $p$ and $q$ be propositions. Prove that $\neg p\Rightarrow(\neg q\Rightarrow\neg(p\vee q))$ is true.
+\solution
+\given Nothing.
+\goal Two implications, then the negation of a disjunction.
+\plan Assume $\neg p$ and $\neg q$; to prove $\neg(p\vee q)$ assume $p\vee q$ and derive a contradiction by cases.
+\begin{steps}
+\item Assume $\neg p$. Goal: $\neg q\Rightarrow\neg(p\vee q)$.
+\item Assume $\neg q$. Goal: $\neg(p\vee q)$.
+\item Assume $p\vee q$, aiming for a contradiction \why{Strategy 1.1.51}. Split into cases \why{Strategy 1.1.19}.
+\item \emph{Case 1.} Assume $p$. Together with $\neg p$ (Step 1) this is a contradiction \why{$\neg$E}.
+\item \emph{Case 2.} Assume $q$. Together with $\neg q$ (Step 2) this is a contradiction \why{$\neg$E}.
+\item In both cases a contradiction follows, so a contradiction follows from $p\vee q$ \why{Strategy 1.1.19 with goal $\bot$}. Hence $\neg(p\vee q)$ \why{$\neg$I}.
+\item Discharge: $\neg q\Rightarrow\neg(p\vee q)$, then $\neg p\Rightarrow(\neg q\Rightarrow\neg(p\vee q))$ \why{$\Rightarrow$I twice}.
+\end{steps}
+\conclusion The formula is true. (It is one half of de Morgan's law $\neg(p\vee q)\equiv\neg p\wedge\neg q$.)\qed
+\begin{compare}
+\item Proof by cases may have $\bot$ as its goal; each case must actually reach $\bot$ and name the clashing pair.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.1.56}
+Let $x$ be a real number. Prove by contradiction that if $x$ is irrational then $-x$ and $\dfrac1x$ are irrational.
+\solution
+\given $x\in\R$. ``Irrational'' = real and not rational (Definition 0.48), so ``$x$ is irrational'' is the negation $\neg(x\in\Q)$. Definition 0.15 for rational.
+\goal $x\text{ irrational}\Rightarrow(-x\text{ irrational}\wedge\tfrac1x\text{ irrational})$ \shape{implication, then a conjunction of two negations}.
+\plan Assume $x$ irrational. Prove each conjunct by Strategy 1.1.51: assume it is rational, write it as a fraction, and manufacture a fraction for $x$, contradicting the assumption.
+\begin{steps}
+\item Assume $x$ is irrational \why{Strategy 1.1.28}. Note $x\ne0$, because $0=\frac01\in\Q$. Goal: $-x$ irrational and $\frac1x$ irrational \why{Strategy 1.1.7: prove both}.
+\item \emph{$-x$ is irrational.} Suppose, towards a contradiction, that $-x$ is rational \why{Strategy 1.1.51}. Then $-x=\frac ab$ for some $a,b\in\Z$ with $b\ne0$ \why{Definition 0.15}.
+\item Multiply by $-1$: $x=\dfrac{-a}{b}$, and $-a\in\Z$, $b\in\Z$, $b\ne0$. So $x\in\Q$ \why{Definition 0.15}.
+\item This contradicts Step 1 ($x$ irrational) \why{$\neg$E}. Hence $-x$ is irrational \why{$\neg$I}.
+\item \emph{$\frac1x$ is irrational.} Suppose, towards a contradiction, that $\frac1x=\frac ab$ with $a,b\in\Z$, $b\ne0$.
+\item Then $a\ne0$: otherwise $\frac1x=0$, but $\frac1x\cdot x=1\ne0$ \why{algebra}. Hence we may invert: $x=\dfrac ba$ with $b,a\in\Z$ and $a\ne0$, so $x\in\Q$ \why{Definition 0.15}.
+\item Contradiction with Step 1. Hence $\frac1x$ is irrational.
+\item Both conjuncts hold \why{Strategy 1.1.7}, and the implication follows \why{$\Rightarrow$I}.
+\end{steps}
+\conclusion If $x$ is irrational then $-x$ and $\frac1x$ are irrational.\qed
+\begin{compare}
+\item Each half starts with ``suppose \dots is rational, say $=\frac ab$'' and ends with ``so $x$ is rational, contradiction''.
+\item The check $a\ne0$ before inverting the fraction is a step markers look for; it is also why $x\ne0$ must be noted.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[essential]{1.1.57}
+Prove by contradiction that there is no least positive real number: that is, there is no positive real number $a$ such that $a\le b$ for all positive real numbers $b$.
+\solution
+\given Only the arithmetic of real numbers.
+\goal $\neg\exists a\in\R,\ \big(a>0\wedge\forall b\in\R,\ (b>0\Rightarrow a\le b)\big)$ \shape{a negation: assume the inside and derive a contradiction}.
+\plan Assume such an $a$ exists. The ``for all $b$'' lets us choose any positive $b$ we like (Strategy 1.2.19); choose $b=\frac a2$, which is positive and smaller than $a$.
+\begin{steps}
+\item Suppose, towards a contradiction, that there is a positive real number $a$ such that $a\le b$ for all positive real $b$ \why{Strategy 1.1.51}.
+\item Define $b=\frac a2$. Then $b\in\R$ and $b>0$ \why{$a>0$ and $\frac12>0$}.
+\item By the assumed property applied to this $b$ \why{Strategy 1.2.19: $\forall$ may be specialised}, $a\le\frac a2$.
+\item Multiply by $2>0$: $2a\le a$; subtract $a$: $a\le0$ \why{algebra, inequalities preserved by positive factors}.
+\item $a\le0$ contradicts $a>0$ \why{$\neg$E}.
+\end{steps}
+\conclusion The assumption is impossible, so no least positive real number exists \why{$\neg$I}.\qed
+\begin{compare}
+\item The proof must say what the contradiction is: $a\le0$ versus $a>0$.
+\item Any $b$ with $0<b<a$ works ($b=\frac a2$, $b=\frac a3$, \dots); you must check \emph{both} $b>0$ (so the property applies) and $b<a$ (so it contradicts).
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{1.1.65}
+Let $p$ and $q$ be propositions. Prove that $(\neg q\Rightarrow\neg p)\Rightarrow(p\Rightarrow q)$ is true.
+\solution
+\given Nothing. Available: LEM (Axiom 1.1.60, Strategy 1.1.61) and the principle of explosion (Axiom 1.1.67).
+\goal Nested implications ending in $q$, which has no logical structure of its own, so no introduction rule applies: this is where LEM comes in.
+\plan Assume $\neg q\Rightarrow\neg p$ and $p$. Split on $q\vee\neg q$. In the case $\neg q$, modus ponens gives $\neg p$, contradicting $p$; explosion then yields $q$.
+\begin{steps}
+\item Assume $\neg q\Rightarrow\neg p$. Goal: $p\Rightarrow q$.
+\item Assume $p$. Goal: $q$.
+\item By the law of excluded middle, $q\vee\neg q$ is true \why{Axiom 1.1.60}; split into cases \why{Strategy 1.1.61}.
+\item \emph{Case 1.} $q$ is true. The goal holds.
+\item \emph{Case 2.} $\neg q$ is true. From $\neg q\Rightarrow\neg p$ and $\neg q$: $\neg p$ \why{modus ponens}. With $p$ (Step 2) this is a contradiction \why{$\neg$E}. From a contradiction, $q$ follows \why{principle of explosion, Axiom 1.1.67}.
+\item In both cases $q$, so $q$ holds \why{Strategy 1.1.19}. Discharge: $p\Rightarrow q$, then the whole formula \why{$\Rightarrow$I twice}.
+\end{steps}
+\conclusion $(\neg q\Rightarrow\neg p)\Rightarrow(p\Rightarrow q)$ is true. (This is the law of contraposition in one direction; see Theorem 1.3.19.)\qed
+\begin{compare}
+\item Without LEM there is no way to start on the goal $q$: say explicitly ``by LEM, $q$ or $\neg q$''.
+\item In Case 2 the final move is explosion, not ``so $q$ must be true''; name the axiom.
+\end{compare}
+\end{bookex}
+
+\begin{bookex}[recommended]{1.1.66}
+Let $a$ and $b$ be irrational numbers. By considering $\sqrt2^{\sqrt2}$, prove that it is possible that $a^b$ be rational.
+\solution
+\given $\sqrt2$ is irrational (Assumption 0.49). The exponent rule $(x^y)^z=x^{yz}$ for positive $x$.
+\goal $\exists a,b\in\R,\ (a\notin\Q\wedge b\notin\Q\wedge a^b\in\Q)$ \shape{an existence statement}, but we cannot decide whether $\sqrt2^{\sqrt2}$ is rational, so we use LEM instead of exhibiting a definite pair.
+\plan Case split on ``$\sqrt2^{\sqrt2}\in\Q$'' (Strategy 1.1.61). In each case exhibit a suitable pair.
+\begin{steps}
+\item By LEM, either $\sqrt2^{\sqrt2}$ is rational or it is not \why{Axiom 1.1.60}.
+\item \emph{Case 1: $\sqrt2^{\sqrt2}\in\Q$.} Define $a=b=\sqrt2$. Both are irrational \why{Assumption 0.49}, and $a^b=\sqrt2^{\sqrt2}$ is rational by the case assumption. So the required pair exists.
+\item \emph{Case 2: $\sqrt2^{\sqrt2}\notin\Q$.} Define $a=\sqrt2^{\sqrt2}$ and $b=\sqrt2$. Both are irrational \why{case assumption; Assumption 0.49}.
+\item Compute $a^b=\big(\sqrt2^{\sqrt2}\big)^{\sqrt2}=\sqrt2^{\sqrt2\cdot\sqrt2}=\sqrt2^{\,2}=2$ \why{exponent rule; $\sqrt2\cdot\sqrt2=2$}, and $2=\frac21\in\Q$. So the required pair exists.
+\item In both cases there are irrational $a,b$ with $a^b$ rational \why{Strategy 1.1.19}.
+\end{steps}
+\conclusion It is possible that $a^b$ is rational for irrational $a,b$. We do not learn which case holds: the proof is \emph{non-constructive}.\qed
+\begin{compare}
+\item A correct answer has two cases and never claims to know whether $\sqrt2^{\sqrt2}$ is rational.
+\item Check that \emph{both} numbers of the pair are irrational in each case; in Case 2 that is exactly the case assumption.
+\end{compare}
+\end{bookex}
+\input{s1b}
