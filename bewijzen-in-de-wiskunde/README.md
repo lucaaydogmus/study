@@ -1,34 +1,22 @@
 # Bewijzen in de Wiskunde — study material
 
-Two documents, same Haese-style layout, built from the LaTeX sources in `src/`.
+## Main document: Workbook, chapters 0–5
 
-## 1. Workbook, chapters 0–2 (built from the book) — use this one
+**PDF:** [`pdf/BiW-workbook-ch0-5.pdf`](pdf/BiW-workbook-ch0-5.pdf) (71 pages, Haese-style layout)
 
-**PDF:** [`pdf/BiW-workbook-ch0-2-from-book.pdf`](pdf/BiW-workbook-ch0-2-from-book.pdf) (42 pages)
+Book: C. Newstead, *An Infinite Descent into Pure Mathematics*, Utrecht adaptation
+(29 July 2026).
 
-Built strictly from the uploaded pages of C. Newstead, *An Infinite Descent into
-Pure Mathematics* (Utrecht adaptation, 29 July 2026): Chapter 0 with 0.E, Chapter 1
-with 1.E, §2.1 and §2.2 up to Definition 2.2.46. Minimal theory (the book's own
-definitions, strategies and results, with the book's numbers), each piece followed
-immediately by the book's exercises on it. Every exercise in those pages is either
-worked in the text (all essential ★ and recommended ☆ ones from the planning) or
-solved in Appendix S. The rest of §2.2 (tuples, Cartesian products), 2.E and
-chapters 3–5 were not in the upload and are not covered.
-
-## 2. Study guide, chapters 0–5 (written without the book)
-
-**PDF:** [`pdf/BiW-study-guide-ch0-5.pdf`](pdf/BiW-study-guide-ch0-5.pdf) (58 pages)
-
-Written before the book was available, from the planning and memory of the standard
-edition. Its chapters 0–2 are superseded by the workbook; its chapters 3–5 remain
-useful as theory and practice but their numbering and examples are not checked
-against the Utrecht edition.
-
-| Guide chapter | Book sections | Planning |
+| Part | Status | Content |
 |---|---|---|
-| 3 Functions | §3.1, §3.2 | 23 & 28 Sep, Quiz 2 |
-| 4 Mathematical induction | §4.2, §4.3 | 30 Sep & 5 Oct |
-| 5 Relations | §5.1, §5.2 | 7 Oct, Quiz 3 |
+| Chapters 0, 1, 2 (to Def. 2.2.46) | **built from the book pages** | Minimal theory in the book's own words and numbers, each piece followed by the book's exercises on it. Essential ★ and recommended ☆ exercises (per the planning) worked in the text; every other exercise in those pages solved in Appendix S. |
+| Rest of §2.2, 2.E, chapters 3, 4, 5 | provisional (book pages not uploaded yet) | Theory, Level 1 and book-level worked examples, stretch exercises (solutions in Appendix T), one-page proof toolbox (Appendix U). Numbering and examples not verified against the Utrecht edition; a red notice at the start of chapter 3 says so. |
+
+Upload book pages 94–180 and chapters 3–5 will be rebuilt the same way as chapters 0–2.
+
+## Older document
+
+[`pdf/BiW-study-guide-ch0-5.pdf`](pdf/BiW-study-guide-ch0-5.pdf): the earlier 58-page guide written without the book; fully superseded by the workbook.
 
 ## Build
 
@@ -36,6 +24,6 @@ against the Utrecht edition.
 ./build.sh        # builds both PDFs into pdf/
 ```
 
-Sources: `src/haese.sty` (layout); workbook `src/wb.tex`, `src/wfront.tex`, `src/w0.tex`,
-`src/w1a.tex`, `src/w1b.tex`, `src/w2.tex`, `src/wsol.tex`; study guide `src/guide.tex`
-and the files it inputs.
+Sources in `src/`: `haese.sty` (layout); workbook `wb05.tex` (main), `wfront05.tex`, `w0.tex`,
+`w1a.tex`, `w1b.tex`, `w2.tex`, `wsol.tex` (chapters 0–2 from the book), `m3.tex`, `m4.tex`,
+`m5.tex` with `lvl3.tex`–`lvl5.tex`, `msol345.tex`, `mtoolbox.tex` (chapters 3–5, provisional).
