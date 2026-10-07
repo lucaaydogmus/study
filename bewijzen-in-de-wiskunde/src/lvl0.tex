@@ -1,0 +1,77 @@
+\hsection{Book-level examples}
+The examples in Sections A--D each show \emph{one} proof shape. The hardest exercises in the book's Chapter 0 combine two or three shapes and ask you to \emph{invent} something: a witness, a factorisation, the right remainder to look at. Each example below names its invention step. Cover the solution, find the invention yourself, then compare.
+
+\begin{bexample}[$\sqrt2+\sqrt3$ is irrational]
+Prove that $\sqrt2+\sqrt3$ is irrational.
+\solution
+\emph{Invention: isolate a number you already know is irrational.}\\
+Suppose, for a contradiction, that $x=\sqrt2+\sqrt3$ is rational. Note $x>0$, so $x\ne0$. Then $x-\sqrt2=\sqrt3$; squaring both sides,
+\[
+x^2-2\sqrt2\,x+2=3,\qquad\text{so}\qquad \sqrt2=\frac{x^2-1}{2x}.
+\]
+Since $x\in\Q$ and $x\ne0$, the right-hand side is rational (sums, differences, products and quotients by non-zero numbers of rationals are rational). Hence $\sqrt2\in\Q$, contradicting the Theorem in Section D. So $\sqrt2+\sqrt3$ is irrational.\qed
+\end{bexample}
+
+\begin{bexample}[sums of two squares]
+Prove that no integer of the form $4k+3$ (with $k\in\Z$) is a sum of two squares of integers.
+\solution
+\emph{Invention: compare remainders on division by $4$, using the uniqueness clause of the division theorem.}\\
+Suppose, for a contradiction, that $4k+3=a^2+b^2$ with $a,b,k\in\Z$. By Example~\ref{ex:sqmod4}, $a^2=4s+r$ and $b^2=4t+r'$ for some $s,t\in\Z$ and $r,r'\in\{0,1\}$. Then
+\[
+a^2+b^2=4(s+t)+(r+r'),\qquad 0\le r+r'\le2<4,
+\]
+so by uniqueness of quotient and remainder, the remainder of $a^2+b^2$ on division by $4$ is $r+r'\in\{0,1,2\}$. But $4k+3$ has remainder $3$. Contradiction.\qed
+\end{bexample}
+
+\begin{bexample}[divisibility by 9 and digit sums]
+For $n\in\N$ let $s(n)$ be the sum of the decimal digits of $n$. Prove that $9\mid n$ if and only if $9\mid s(n)$.
+\solution
+\emph{Invention: prove the stronger fact $9\mid n-s(n)$; then both directions are one line each.}\\
+\emph{Step 1: $9\mid10^k-1$ for every $k\in\N$.} For $k=0$, $10^0-1=0=9\cdot0$. For $k\ge1$, expanding the right-hand side of
+\[
+10^k-1=(10-1)\,(10^{k-1}+10^{k-2}+\dots+10+1)
+\]
+shows the identity (all middle terms cancel), so $10^k-1=9m_k$ with $m_k\in\N$.\\
+\emph{Step 2.} Write $n=\sum_{i=0}^rd_i10^i$ with digits $d_i$. Then
+\[
+n-s(n)=\sum_{i=0}^rd_i10^i-\sum_{i=0}^rd_i=\sum_{i=0}^rd_i\,(10^i-1)=9\sum_{i=0}^rd_im_i ,
+\]
+so $9\mid n-s(n)$.\\
+\emph{Step 3.} If $9\mid n$ then $9\mid n-(n-s(n))=s(n)$ by Example~\ref{ex:lincomb}. If $9\mid s(n)$ then $9\mid s(n)+(n-s(n))=n$.\qed\\
+\emph{Since $3\mid9m_k$, the same proof gives the rule for $3$. Replacing $10^k-1$ by $10^k-(-1)^k$ gives the alternating-sum rule for $11$.}
+\end{bexample}
+
+\begin{bexample}[an irrational between any two rationals]
+Let $p,q\in\Q$ with $p<q$. Prove that there is an irrational number $x$ with $p<x<q$.
+\solution
+\emph{Invention: scale a known irrational so that it fits in the gap.}\\
+Put $x=p+\dfrac{q-p}{\sqrt2}$.\\
+\emph{$x$ is irrational.} $\frac1{\sqrt2}=\frac12\cdot\sqrt2$ is irrational by Example~\ref{ex:irrplus} (non-zero rational times irrational). Then $(q-p)\cdot\frac1{\sqrt2}$ is irrational by the same example, since $q-p$ is a non-zero rational. Then $x=p+(\text{irrational})$ is irrational, again by that example.\\
+\emph{$x$ lies between $p$ and $q$.} Since $q-p>0$ and $0<\frac1{\sqrt2}<1$, we have $0<\frac{q-p}{\sqrt2}<q-p$, hence $p<x<q$.\qed
+\end{bexample}
+
+\begin{bexample}[uniqueness of base-$b$ expansions]
+Let $b\ge2$ and suppose $\sum_{i=0}^rd_ib^i=\sum_{i=0}^re_ib^i$ with all $d_i,e_i\in\{0,\dots,b-1\}$. Prove that $d_0=e_0$, and explain how $d_i=e_i$ for all $i$ follows.
+\solution
+\emph{Invention: the uniqueness half of the division theorem, the half people forget exists.}\\
+Let $n$ be the common value and put $q=\sum_{i=1}^rd_ib^{i-1}$, $q'=\sum_{i=1}^re_ib^{i-1}$, both in $\N$. Then
+\[
+n=qb+d_0=q'b+e_0,\qquad 0\le d_0<b,\quad 0\le e_0<b .
+\]
+So $(q,d_0)$ and $(q',e_0)$ are both quotient-remainder pairs for $n$ on division by $b$. By uniqueness in the division theorem, $d_0=e_0$ and $q=q'$.\\
+The equation $q=q'$ reads $\sum_{i=1}^rd_ib^{i-1}=\sum_{i=1}^re_ib^{i-1}$: the same kind of equality with one digit fewer. The same argument gives $d_1=e_1$, then $d_2=e_2$, and so on. To make ``and so on'' rigorous, prove by induction on $r$ (Chapter 4) the statement ``two expansions with at most $r+1$ digits that have the same value have the same digits''.\qed
+\end{bexample}
+
+\hsection{Stretch exercises}
+Attempt these before reading Appendix S. They are pitched at the hardest Chapter 0 exercises.
+\begin{stretchbox}[0]
+\begin{enumerate}[label=\textbf{S0.\arabic*}, leftmargin=3em]
+\item Prove that $\log_{10}2$ is irrational. \hint{write $2^b=10^a=2^a5^a$ and compare parities after cancelling}
+\item Prove that there is no integer $n$ with $3\mid n^2+1$. \hint{remainders of $n^2$ on division by $3$}
+\item Let $n\in\N$. Prove that $n$ is even if and only if the sum of its base-$3$ digits is even. \hint{$3^i$ is odd, so $3^i=2m_i+1$}
+\item Prove that for all $a,b\in\Z$, if $a\mid b$ and $b\mid a$, then $a=b$ or $a=-b$. \hint{$a=lka$; treat $a=0$ separately; then $kl=1$ in $\Z$}
+\item Prove or disprove: (i) the product of two irrational numbers is irrational; (ii) if $x$ is irrational then $x^2$ is irrational; (iii) if $x$ is irrational then $1/x$ is irrational.
+\item Prove that for every rational $q>0$ there exists $n\in\N$ with $n\ge1$ and $\frac1n<q$. \hint{write $q=\frac ab$ with $a,b\ge1$ and build $n$ from $b$}
+\item Prove that there are no integers $x,y$ with $x^2-y^2=2$. \hint{$x^2-y^2=(x-y)(x+y)$, and $x-y$, $x+y$ have the same parity}
+\end{enumerate}
+\end{stretchbox}

@@ -1,0 +1,82 @@
+\hsection{Book-level examples}
+The hardest Chapter 2 exercises are ``iff'' statements about sets, families indexed by $\N$, and identities you must first decide are true or false. Each example names its invention step.
+
+\begin{bexample}[an empty product]
+Prove that $X\times Y=\varnothing$ if and only if $X=\varnothing$ or $Y=\varnothing$.
+\solution
+\emph{Invention: prove $\Rightarrow$ by contraposition, so that the disjunction becomes a conjunction you can use.}\\
+($\Leftarrow$) Suppose $X=\varnothing$ or $Y=\varnothing$. Suppose, for a contradiction, that $(a,b)\in X\times Y$. Then $a\in X$ and $b\in Y$, so $X$ and $Y$ are both inhabited, contradicting the assumption. Hence $X\times Y=\varnothing$.\\
+($\Rightarrow$) We prove the contrapositive: if $X\ne\varnothing$ and $Y\ne\varnothing$, then $X\times Y\ne\varnothing$. Fix $a\in X$ and $b\in Y$. Then $(a,b)\in X\times Y$.\qed
+\end{bexample}
+
+\begin{bexample}[power sets detect inclusion]
+Prove that $X\subseteq Y$ if and only if $\PS(X)\subseteq\PS(Y)$.
+\solution
+\emph{Invention: $X$ is itself an element of $\PS(X)$.}\\
+($\Rightarrow$) is Example~\ref{ex:powinc}. ($\Leftarrow$) Suppose $\PS(X)\subseteq\PS(Y)$. Since $X\subseteq X$, we have $X\in\PS(X)$, hence $X\in\PS(Y)$, which means $X\subseteq Y$.\qed
+\end{bexample}
+
+\begin{bexample}[intersections and unions of intervals]
+Prove that $\displaystyle\bigcap_{n\ge1}\Big(-\frac1n,\frac1n\Big)=\{0\}$ and $\displaystyle\bigcup_{n\ge1}\Big[\frac1n,1\Big]=(0,1]$.
+\solution
+\emph{Invention: given $x\ne0$, choose $n$ larger than $1/|x|$; there is a natural number larger than any given real number.}\\
+\emph{Intersection.} ($\supseteq$) For every $n\ge1$, $-\frac1n<0<\frac1n$, so $0$ lies in every set. ($\subseteq$) Let $x$ lie in the intersection and suppose, for a contradiction, that $x\ne0$. Then $|x|>0$; choose $n\in\N$ with $n>1/|x|$. Then $\frac1n<|x|$, so $x\notin(-\frac1n,\frac1n)$, contradicting the choice of $x$. Hence $x=0$.\\
+\emph{Union.} ($\subseteq$) If $x\in[\frac1n,1]$ for some $n\ge1$, then $0<\frac1n\le x\le1$, so $x\in(0,1]$. ($\supseteq$) Let $x\in(0,1]$. Choose $n\ge1$ with $n\ge1/x$, i.e.\ $\frac1n\le x$. Then $x\in[\frac1n,1]$.\qed
+\end{bexample}
+
+\begin{bexample}[symmetric difference]
+Define $X\symdiff Y=(X\setminus Y)\cup(Y\setminus X)$. Prove that $X\symdiff Y=(X\cup Y)\setminus(X\cap Y)$.
+\solution
+\emph{Invention: both sides say ``$a$ is in exactly one of $X$, $Y$''; check that with a truth table.}\\
+Write $P$ for $a\in X$ and $Q$ for $a\in Y$. By the membership rules,
+\[
+a\in X\symdiff Y\Leftrightarrow(P\wedge\neg Q)\vee(Q\wedge\neg P),\qquad a\in(X\cup Y)\setminus(X\cap Y)\Leftrightarrow(P\vee Q)\wedge\neg(P\wedge Q),
+\]
+and the truth table
+\[
+\begin{array}{cc|cc}
+P&Q&(P\wedge\neg Q)\vee(Q\wedge\neg P)&(P\vee Q)\wedge\neg(P\wedge Q)\\\hline
+\mathrm T&\mathrm T&\mathrm F&\mathrm F\\ \mathrm T&\mathrm F&\mathrm T&\mathrm T\\ \mathrm F&\mathrm T&\mathrm T&\mathrm T\\ \mathrm F&\mathrm F&\mathrm F&\mathrm F
+\end{array}
+\]
+shows the two formulas are logically equivalent. Hence the two sets have the same elements.\qed
+\end{bexample}
+
+\begin{bexample}[no set contains every set]
+Prove that for every set $X$ there is a set $R$ with $R\notin X$.
+\solution
+\emph{Invention: Russell's set $R=\{x\in X\mid x\notin x\}$.}\\
+Let $X$ be a set and put $R=\{x\in X\mid x\notin x\}$. Suppose, for a contradiction, that $R\in X$. By the reading rule for set-builder notation, for every $x$: $x\in R\Leftrightarrow(x\in X\wedge x\notin x)$. Apply this with $x=R$; since $R\in X$, it becomes $R\in R\Leftrightarrow R\notin R$. If $R\in R$ then $R\notin R$, a contradiction; if $R\notin R$ then $R\in R$, a contradiction. Either way we have a contradiction, so $R\notin X$.\qed
+\end{bexample}
+
+\begin{bexample}[intersection distributes over a union of a family]
+Let $X$ be a set and $\{Y_i\mid i\in I\}$ a family of sets. Prove that $X\cap\bigcup_{i\in I}Y_i=\bigcup_{i\in I}(X\cap Y_i)$.
+\solution
+For any $a$:
+\begin{align*}
+a\in X\cap\textstyle\bigcup_{i\in I}Y_i&\Leftrightarrow a\in X\wedge\exists i\in I,\ a\in Y_i\reason{definitions}\\
+&\Leftrightarrow\exists i\in I,\ (a\in X\wedge a\in Y_i)\reason{$P\wedge\exists i\,Q(i)\equiv\exists i\,(P\wedge Q(i))$ when $P$ does not involve $i$}\\
+&\Leftrightarrow\exists i\in I,\ a\in X\cap Y_i\Leftrightarrow a\in\textstyle\bigcup_{i\in I}(X\cap Y_i).\qquad\square
+\end{align*}
+\end{bexample}
+
+\begin{bexample}[when the power set of a union splits]
+Prove that $\PS(X\cup Y)=\PS(X)\cup\PS(Y)$ if and only if $X\subseteq Y$ or $Y\subseteq X$.
+\solution
+\emph{Invention: in the hard direction, build a two-element subset that straddles $X$ and $Y$.}\\
+($\Leftarrow$) If $X\subseteq Y$ then $X\cup Y=Y$ and $\PS(X)\subseteq\PS(Y)$ (Example~\ref{ex:powinc}), so both sides equal $\PS(Y)$. The case $Y\subseteq X$ is the same with the roles swapped.\\
+($\Rightarrow$) We prove the contrapositive. Suppose $X\not\subseteq Y$ and $Y\not\subseteq X$; fix $a\in X\setminus Y$ and $b\in Y\setminus X$. Then $\{a,b\}\subseteq X\cup Y$, so $\{a,b\}\in\PS(X\cup Y)$. But $b\notin X$ gives $\{a,b\}\not\subseteq X$, and $a\notin Y$ gives $\{a,b\}\not\subseteq Y$; so $\{a,b\}\notin\PS(X)\cup\PS(Y)$. Hence $\PS(X\cup Y)\ne\PS(X)\cup\PS(Y)$.\qed
+\end{bexample}
+
+\hsection{Stretch exercises}
+\begin{stretchbox}[2]
+\begin{enumerate}[label=\textbf{S2.\arabic*}, leftmargin=3em]
+\item Prove that $(X\cup Y)\times Z=(X\times Z)\cup(Y\times Z)$.
+\item Prove that $X\subseteq Y$ if and only if $X\setminus Y=\varnothing$.
+\item Prove that $X\setminus(Y\setminus Z)=(X\setminus Y)\cup(X\cap Z)$.
+\item Prove that the sets $[n,n+1)$, $n\in\N$, are pairwise disjoint and that their union is $[0,\infty)$. \hint{for the union use $n=\lfloor x\rfloor$}
+\item Let $I$ be inhabited. Prove that $\bigcap_{i\in I}\PS(X_i)=\PS\big(\bigcap_{i\in I}X_i\big)$. \hint{two $\forall$'s may be swapped}
+\item Prove that $(X\symdiff Y)\symdiff Z=X\symdiff(Y\symdiff Z)$. \hint{show each side is $\{a\mid a\text{ lies in an odd number of }X,Y,Z\}$}
+\item Prove or disprove: (i) $(X\setminus Y)\cup Y=X$ for all sets $X,Y$; (ii) $(X\cup Y)\setminus Y=X$ if and only if $X\cap Y=\varnothing$.
+\end{enumerate}
+\end{stretchbox}

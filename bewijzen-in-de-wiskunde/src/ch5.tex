@@ -1,5 +1,5 @@
 \chapter{Relations}
-\chaptercontents{A & Relations and their properties (\S5.1) \\ B & Equivalence relations and partitions (\S5.2) \\ C & Review set 5}%
+\chaptercontents{A & Relations and their properties (\S5.1) \\ B & Equivalence relations and partitions (\S5.2) \\ C & Book-level examples \\ D & Stretch exercises \\ E & Review set 5}%
 {\ess{5.1: 6, 13, 22, 23, 28, 39, 40, 41; 5.2: 24, 27, 33; 5.E: 18, 22, 23}\\ \rec{5.1: 10, 11, 18, 24, 29, 33, 34; 5.2: 25, 28, 30, 34, 36}\\ Tested in \textbf{Quiz 3} (21 Oct) together with modular arithmetic (\S7.3).}
 
 \hsection{Relations and their properties}
@@ -179,7 +179,7 @@ For $\equiv\pmod n$: $q_n:\Z\to\Z/n\Z$ sends $a$ to $[r]_n$ where $r$ is the rem
 Let $p:X\to Z$ be a surjection. Define $a\sim b\Leftrightarrow p(a)=p(b)$. Then $\sim$ is an equivalence relation on $X$, and $f:X/{\sim}\to Z$, $f([a])=p(a)$, is a well-defined bijection with $f\circ q_\sim=p$. The relation $\sim$ is the only equivalence relation on $X$ for which such a bijection exists.
 \end{result}
 
-\begin{hexample}[the induced bijection (proof of the core of Theorem 5.2.35)]
+\begin{hexample}[the induced bijection (proof of the core of Theorem 5.2.35)]\label{ex:induced}
 Let $p:X\to Z$ be surjective and $a\sim b\Leftrightarrow p(a)=p(b)$. Prove that $\sim$ is an equivalence relation and that $f([a])=p(a)$ defines a bijection $X/{\sim}\to Z$.
 \solution
 \emph{Equivalence relation.} Reflexive: $p(a)=p(a)$. Symmetric: $p(a)=p(b)\Rightarrow p(b)=p(a)$. Transitive: $p(a)=p(b)$ and $p(b)=p(c)$ give $p(a)=p(c)$.\\
@@ -214,6 +214,7 @@ Otherwise the ``function'' assigns two values to one class. This check is mandat
 Skills: proving a relation is an equivalence relation; computing and describing equivalence classes and quotients ($\Z/n\Z$, $\R/\Z$-type examples, fractions, functions grouped by a value); converting between partitions and equivalence relations; the quotient function and Theorem 5.2.35 (surjections $\leftrightarrow$ quotients, Exercise 5.2.33 on remainders); proving well-definedness of functions and operations on quotients; using Lemma 5.2.29-type bijections class by class (Exercise 5.2.30).
 \end{planning}
 
+\input{lvl5}
 \hsection{Review set 5}
 \begin{multicols}{2}\small
 \begin{itemize}

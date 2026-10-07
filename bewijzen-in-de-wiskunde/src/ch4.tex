@@ -1,5 +1,5 @@
 \chapter{Mathematical induction}
-\chaptercontents{A & Weak induction (\S4.2) \\ B & Strong induction and well-ordering (\S4.3) \\ C & Review set 4}%
+\chaptercontents{A & Weak induction (\S4.2) \\ B & Strong induction and well-ordering (\S4.3) \\ C & Book-level examples \\ D & Stretch exercises \\ E & Review set 4}%
 {\ess{4.2: 5, 11; 4.E: 10, 11, 16, 17, 18, 20, 25}\\ \ess{4.3: 8, 9, 14, 15; 4.E: 13, 19, 26, 27, 29, 30, 31, 32}\\ \rec{4.2: 8, 17, 20; 4.E: 12, 14, 15, 21, 24, 33; 4.3: 10, 18; 4.E: 28, 34, 35}\\ (\S4.1, Peano's axioms, is not in the planning.)}
 
 \hsection{Weak induction}
@@ -131,7 +131,7 @@ Weak and strong induction are equivalent principles, but strong induction is the
 \end{enumerate}
 \end{strategy}
 
-\begin{hexample}[prime factorisation exists]
+\begin{hexample}[prime factorisation exists]\label{ex:primefactor}
 Prove that every natural number $n\ge2$ is a product of (one or more) primes.
 \solution
 Let $p(n)$: ``$n$ is a product of primes''. Let $n\ge2$ and suppose $p(k)$ for all $2\le k<n$ (IH).\\
@@ -198,6 +198,7 @@ Suppose, for a contradiction, that $S=\{n\in\Z\mid 0<n<1\}$ is inhabited. Then $
 Skills: recognising when weak induction is not enough; proofs with several base cases (Fibonacci-type recurrences, $n-d$ steps); existence of factorisations/expansions; proofs via the well-ordering principle and minimal counterexamples.
 \end{planning}
 
+\input{lvl4}
 \hsection{Review set 4}
 \begin{multicols}{2}\small
 \begin{itemize}

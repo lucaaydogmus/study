@@ -1,0 +1,88 @@
+\hsection{Book-level examples}
+The hardest Chapter 1 exercises hide a second connective inside the first (a disjunction inside a contrapositive, three quantifiers deep), or ask you to prove a statement whose truth value you must first decide. Each example names its invention step.
+
+\begin{bexample}[contrapositive of a disjunction]
+Let $a,b\in\Z$. Prove that if $ab$ is even, then $a$ is even or $b$ is even.
+\solution
+\emph{Invention: negate the disjunction with De Morgan before contraposing.}\\
+The contrapositive is: if $\neg(a\text{ is even}\vee b\text{ is even})$, then $ab$ is odd. By De Morgan this reads: if $a$ is odd and $b$ is odd, then $ab$ is odd. We prove that. Suppose $a=2k+1$ and $b=2l+1$ with $k,l\in\Z$. Then
+\[
+ab=4kl+2k+2l+1=2(2kl+k+l)+1,
+\]
+which is odd. This proves the contrapositive, hence the statement.\qed
+\end{bexample}
+
+\begin{bexample}[a proof that does not tell you the answer]
+Prove that there exist irrational numbers $a,b$ such that $a^b$ is rational.
+\solution
+\emph{Invention: split into cases on a statement you cannot decide.}\\
+Let $t=\sqrt2^{\sqrt2}$. By the law of excluded middle, $t$ is rational or $t$ is irrational.\\
+\emph{Case 1: $t$ is rational.} Take $a=b=\sqrt2$, both irrational. Then $a^b=t$ is rational.\\
+\emph{Case 2: $t$ is irrational.} Take $a=t$ and $b=\sqrt2$, both irrational. Then
+$a^b=\big(\sqrt2^{\sqrt2}\big)^{\sqrt2}=\sqrt2^{\,\sqrt2\cdot\sqrt2}=\sqrt2^{\,2}=2$, which is rational.\\
+In either case the required $a,b$ exist.\qed\\
+\emph{The proof establishes the $\exists$ without telling us which case holds. Such a proof is called non-constructive.}
+\end{bexample}
+
+\begin{bexample}[three quantifiers: prove one, disprove one]
+Decide, with proof, whether each statement is true:\\
+(a) $\forall x\in\R,\ \exists y\in\R,\ \forall z\in\R,\ (z>y\Rightarrow z^2>x)$;\qquad
+(b) $\exists y\in\R,\ \forall x\in\R,\ \exists z\in\R,\ (z>y\wedge z^2<x)$.
+\solution
+\emph{Invention: in (a) the witness $y$ may depend on $x$ but must beat every $z$; in (b) prove the negation.}\\
+(a) True. Let $x\in\R$. Put $y=|x|+1$. Let $z\in\R$ with $z>y$. Then $z>1$, so $z^2>z$ (multiply $z>1$ by $z>0$); and $z>|x|+1>|x|\ge x$. Hence $z^2>z>x$.\qed\\
+(b) False. The negation is $\forall y\in\R,\ \exists x\in\R,\ \forall z\in\R,\ (z\le y\vee z^2\ge x)$. Let $y\in\R$ and put $x=0$. Let $z\in\R$. Then $z^2\ge0=x$, so the disjunction holds.\qed
+\end{bexample}
+
+\begin{bexample}[unique existence with a side condition]
+Let $x\in\R$ with $x\ge0$. Taking for granted that $x$ has a square root, prove that there is a \emph{unique} $y\in\R$ with $y\ge0$ and $y^2=x$.
+\solution
+\emph{Invention: for uniqueness, subtract and factorise; then use the side condition $y,y'\ge0$.}\\
+\emph{Existence} is the granted fact (the book proves it in Chapter 9).\\
+\emph{Uniqueness.} Suppose $y,y'\ge0$ satisfy $y^2=x=y'^2$. Then $0=y^2-y'^2=(y-y')(y+y')$, so $y-y'=0$ or $y+y'=0$. In the first case $y=y'$. In the second, $y+y'=0$ with $y,y'\ge0$ forces $y=y'=0$, so again $y=y'$.\qed
+\end{bexample}
+
+\begin{bexample}[negating a definition, then using the negation]
+A function $f:\R\to\R$ is \emph{continuous at} $a\in\R$ if
+\[
+\forall\varepsilon>0,\ \exists\delta>0,\ \forall x\in\R,\ \big(|x-a|<\delta\Rightarrow|f(x)-f(a)|<\varepsilon\big).
+\]
+Write down what it means for $f$ \emph{not} to be continuous at $a$. Then prove that $H:\R\to\R$, with $H(x)=0$ for $x<0$ and $H(x)=1$ for $x\ge0$, is not continuous at $0$.
+\solution
+\emph{Invention: after negating, the $\exists\varepsilon$ and $\exists x$ are yours to choose; the $\forall\delta$ is not.}\\
+Not continuous at $a$:\quad $\exists\varepsilon>0,\ \forall\delta>0,\ \exists x\in\R,\ \big(|x-a|<\delta\wedge|f(x)-f(a)|\ge\varepsilon\big)$.\\
+For $H$ at $a=0$: take $\varepsilon=\tfrac12$. Let $\delta>0$ be arbitrary. Put $x=-\delta/2$. Then $|x-0|=\delta/2<\delta$, while $|H(x)-H(0)|=|0-1|=1\ge\tfrac12$. So the negation holds, and $H$ is not continuous at $0$.\qed
+\end{bexample}
+
+\begin{bexample}[a law proved from other laws]
+Prove that $(P\wedge Q)\Rightarrow R\ \equiv\ P\Rightarrow(Q\Rightarrow R)$, and say what it means for proofs.
+\solution
+\begin{align*}
+(P\wedge Q)\Rightarrow R&\equiv\neg(P\wedge Q)\vee R\reason{implication law}\\
+&\equiv(\neg P\vee\neg Q)\vee R\reason{De Morgan}\\
+&\equiv\neg P\vee(\neg Q\vee R)\reason{associativity of $\vee$}\\
+&\equiv\neg P\vee(Q\Rightarrow R)\reason{implication law}\\
+&\equiv P\Rightarrow(Q\Rightarrow R).\reason{implication law}\qquad\square
+\end{align*}
+For proofs: to prove ``if $P$ and $Q$, then $R$'' you may assume $P$ and then assume $Q$, one at a time. And from a hypothesis $P\Rightarrow(Q\Rightarrow R)$ together with $P$ and $Q$ you may conclude $R$.
+\end{bexample}
+
+\begin{bexample}[infinitely many primes]
+Prove that for every $n\in\N$ there is a prime number $p$ with $p>n$.
+\solution
+\emph{Invention: the number $n!+1$.}\\
+Let $n\in\N$ and put $N=n!+1$, where $n!=1\cdot2\cdots n$ and $0!=1$. Then $N\ge2$, so $N$ has a prime factor $p$ (Example~\ref{ex:primefactor} in Chapter 4 shows every natural number $\ge2$ is a product of primes). We claim $p>n$. Suppose, for a contradiction, that $p\le n$. Then $p$ is one of the factors $1,2,\dots,n$ of $n!$, so $p\mid n!$. Also $p\mid N$. Hence $p\mid N-n!=1$ by Example~\ref{ex:lincomb}, which is impossible since $p\ge2$. So $p>n$.\qed
+\end{bexample}
+
+\hsection{Stretch exercises}
+\begin{stretchbox}[1]
+\begin{enumerate}[label=\textbf{S1.\arabic*}, leftmargin=3em]
+\item Let $a,b\in\Z$. Prove that if $a^2+b^2$ is odd, then exactly one of $a,b$ is odd. \hint{prove the contrapositive; ``not exactly one'' means both even or both odd}
+\item Prove or disprove: (i) $\forall x\in\R,\ \exists y\in\R,\ xy=1$;\ (ii) $\forall x\in\R,\ \exists y\in\R,\ (x\ne0\Rightarrow xy=1)$;\ (iii) $\exists y\in\R,\ \forall x\in\R,\ (x\ne0\Rightarrow xy=1)$.
+\item Show that $P\Rightarrow(Q\Rightarrow P)$, \ $\big((P\Rightarrow Q)\Rightarrow P\big)\Rightarrow P$ \ and \ $(P\Rightarrow Q)\vee(Q\Rightarrow P)$ are tautologies. \hint{for each, ask which row could make it false}
+\item Write the negation of each statement and decide which of the two is true: (a) $\forall x\in\R,\ \exists n\in\N,\ n>x$;\ (b) $\exists n\in\N,\ \forall x\in\R,\ n>x$.
+\item Prove that for all $x,y\in\R$, if $x\ne y$ then there exists $z\in\R$ strictly between $x$ and $y$. \hint{cases $x<y$ and $y<x$; use the average}
+\item Let $n\in\Z$. Prove that if $n^2+2n$ is odd, then $n$ is odd.
+\item Let $p(x,y)$ be a predicate on a set $X$. Prove that $\big(\exists x\in X,\ \forall y\in X,\ p(x,y)\big)\Rightarrow\big(\forall y\in X,\ \exists x\in X,\ p(x,y)\big)$, and give an example showing the converse can fail.
+\end{enumerate}
+\end{stretchbox}

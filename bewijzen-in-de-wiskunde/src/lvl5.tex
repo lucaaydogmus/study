@@ -1,0 +1,79 @@
+\hsection{Book-level examples}
+The hardest Chapter 5 exercises ask you to count, to combine relations, to recognise a quotient as the kernel of a function, or to build a function out of a quotient and prove it is well-defined. The exercise from the book page you have (5.2.30) is worked in full below.
+
+\begin{bexample}[counting relations]
+Let $X$ be a set with $n$ elements. How many relations on $X$ are there? How many of them are reflexive? How many are symmetric? Justify your answers.
+\solution
+\emph{Invention: a relation is a subset of $X\times X$, so count subsets with constraints.}\\
+$X\times X$ has $n^2$ elements, so it has $2^{n^2}$ subsets; every subset is the graph of exactly one relation, so there are $2^{n^2}$ relations.\\
+\emph{Reflexive:} the $n$ pairs $(a,a)$ must be in the graph; the other $n^2-n$ pairs are free. So $2^{n^2-n}$.\\
+\emph{Symmetric:} the graph is determined by which of the $n$ pairs $(a,a)$ it contains and which of the $\binom n2=\frac{n(n-1)}2$ unordered pairs $\{a,b\}$ with $a\ne b$ it contains (it contains $(a,b)$ iff it contains $(b,a)$). So $2^{\,n+n(n-1)/2}=2^{n(n+1)/2}$.\qed
+\end{bexample}
+
+\begin{bexample}[combining equivalence relations]
+Let $\sim$ and $\approx$ be equivalence relations on $X$. Define $a\mathrel Rb$ to mean $a\sim b$ \emph{and} $a\approx b$. Prove that $R$ is an equivalence relation. Show by example that ``$a\sim b$ \emph{or} $a\approx b$'' need not be one.
+\solution
+\emph{Reflexive:} $a\sim a$ and $a\approx a$, so $aRa$. \emph{Symmetric:} if $a\sim b$ and $a\approx b$, then $b\sim a$ and $b\approx a$. \emph{Transitive:} if $aRb$ and $bRc$, then $a\sim b$, $b\sim c$ give $a\sim c$, and $a\approx b$, $b\approx c$ give $a\approx c$; so $aRc$.\qed\\
+\emph{The ``or'' relation can fail transitivity.} On $X=\{1,2,3\}$ let $\sim$ have classes $\{1,2\},\{3\}$ and $\approx$ have classes $\{1\},\{2,3\}$. Then $1\sim2$ and $2\approx3$, so $1$ and $2$ are related, and so are $2$ and $3$; but $1\not\sim3$ and $1\not\approx3$, so $1$ and $3$ are not.
+\end{bexample}
+
+\begin{bexample}[a quotient of the plane]
+On $\R^2$ define $(x,y)\sim(x',y')$ iff $x^2+y^2=x'^2+y'^2$. Prove that $\sim$ is an equivalence relation, describe its classes, and show that $\R^2/{\sim}$ is in bijection with $[0,\infty)$.
+\solution
+\emph{Invention: recognise $\sim$ as ``same value under $p(x,y)=x^2+y^2$'' and use Theorem 5.2.35.}\\
+Let $p:\R^2\to[0,\infty)$, $p(x,y)=x^2+y^2$. Then $(x,y)\sim(x',y')$ iff $p(x,y)=p(x',y')$, which is an equivalence relation by the first part of Example~\ref{ex:induced}.\\
+The class of $(x,y)$ is $\{(x',y')\mid x'^2+y'^2=r^2\}$ with $r=\sqrt{x^2+y^2}$: the circle of radius $r$ about the origin, or $\{(0,0)\}$ when $r=0$.\\
+$p$ is surjective: for $t\ge0$, $p(\sqrt t,0)=t$. By Theorem 5.2.35, $[(x,y)]\mapsto x^2+y^2$ is a well-defined bijection $\R^2/{\sim}\to[0,\infty)$.\qed
+\end{bexample}
+
+\begin{bexample}[pulling back an equivalence relation]
+Let $f:X\to Y$ be a function and $\sim$ an equivalence relation on $Y$. Define $a\approx b$ iff $f(a)\sim f(b)$. Prove that $\approx$ is an equivalence relation on $X$.
+\solution
+\emph{Reflexive:} $f(a)\sim f(a)$ by reflexivity of $\sim$. \emph{Symmetric:} if $f(a)\sim f(b)$ then $f(b)\sim f(a)$. \emph{Transitive:} if $f(a)\sim f(b)$ and $f(b)\sim f(c)$ then $f(a)\sim f(c)$.\qed\\
+\emph{With $\sim$ equal to $=$ on $Y$ this is the kernel relation of Theorem 5.2.35; the previous example is the case $f=p$.}
+\end{bexample}
+
+\begin{bexample}[Exercise 5.2.30: gluing bijections class by class]
+Let $\sim$ and $\approx$ be equivalence relations on $X$ and $Y$. Suppose $p:X/{\sim}\to Y/{\approx}$ is a bijection, and that for each class $E\in X/{\sim}$ a bijection $h_E:E\to p(E)$ is given. Prove that there is a bijection $h:X\to Y$.
+\solution
+\emph{Invention: define $h$ piecewise, $h(a)=h_{[a]}(a)$, and use that distinct classes are disjoint.}\\
+Define $h:X\to Y$ by $h(a)=h_{[a]}(a)$. This makes sense: $a\in[a]$, $h_{[a]}$ is a function $[a]\to p([a])$, and $p([a])\subseteq Y$.\\
+\emph{Injective.} Let $a,b\in X$ with $h(a)=h(b)$, i.e.\ $h_{[a]}(a)=h_{[b]}(b)$; call this element $y$. Then $y\in p([a])$ and $y\in p([b])$, so these two classes of $\approx$ intersect, hence are equal (Lemma). Since $p$ is injective, $[a]=[b]$. Now $h_{[a]}(a)=h_{[a]}(b)$ with $h_{[a]}$ injective, so $a=b$.\\
+\emph{Surjective.} Let $y\in Y$ and put $F=[y]_\approx\in Y/{\approx}$. Since $p$ is surjective, fix $E\in X/{\sim}$ with $p(E)=F$. Since $h_E:E\to F$ is surjective and $y\in F$, fix $a\in E$ with $h_E(a)=y$. As $a\in E$ and $E$ is a class, $E=[a]$; so $h(a)=h_{[a]}(a)=h_E(a)=y$.\qed
+\end{bexample}
+
+\begin{bexample}[well-defined or not, with a twist]
+Let $n\ge1$. (a) Prove that $[a]_n\cdot[b]_n:=[ab]_n$ is a well-defined operation on $\Z/n\Z$. (b) Deduce that $S([a]_n)=[a^2]_n$ is a well-defined function $\Z/n\Z\to\Z/n\Z$. (c) Show that $T([a]_3)=[2^a]_3$ is \emph{not} well-defined on $\Z/3\Z$.
+\solution
+\emph{Invention: write the difference of the two candidate outputs as a multiple of $n$.}\\
+(a) Suppose $[a]=[a']$ and $[b]=[b']$, so $a-a'=nk$ and $b-b'=nl$ for some $k,l\in\Z$. Then $ab-a'b'=a(b-b')+b'(a-a')=n(al+b'k)$, so $[ab]=[a'b']$.\\
+(b) Take $b=a$ and $b'=a'$ in (a): if $[a]=[a']$ then $[a^2]=[a'^2]$.\\
+(c) $[0]_3=[3]_3$, but $2^0=1$ and $2^3=8$, and $8-1=7$ is not a multiple of $3$, so $[2^0]_3\ne[2^3]_3$. The rule assigns two different values to one class.\qed
+\end{bexample}
+
+\begin{bexample}[functions out of a quotient]
+Let $\sim$ be an equivalence relation on $X$ with quotient function $q:X\to X/{\sim}$, and let $Y$ be a set. Let $C$ be the set of functions $h:X\to Y$ such that $a\sim b\Rightarrow h(a)=h(b)$ for all $a,b\in X$. Prove that
+\[
+\Phi:\{\text{functions }X/{\sim}\to Y\}\to C,\qquad\Phi(g)=g\circ q,
+\]
+is a bijection.
+\solution
+\emph{Invention: injectivity is cancellation by the surjection $q$; surjectivity is the well-definedness check.}\\
+First, $\Phi(g)\in C$: if $a\sim b$ then $[a]=[b]$, so $g(q(a))=g([a])=g([b])=g(q(b))$.\\
+\emph{Injective.} Suppose $g\circ q=g'\circ q$. Let $E\in X/{\sim}$; since $q$ is surjective fix $a$ with $q(a)=E$. Then $g(E)=g(q(a))=g'(q(a))=g'(E)$. So $g=g'$.\\
+\emph{Surjective.} Let $h\in C$. Define $g:X/{\sim}\to Y$ by $g([a])=h(a)$; this is well-defined because $[a]=[b]$ implies $a\sim b$, which implies $h(a)=h(b)$. Then $(g\circ q)(a)=g([a])=h(a)$ for all $a$, so $\Phi(g)=h$.\qed
+\end{bexample}
+
+\hsection{Stretch exercises}
+\begin{stretchbox}[5]
+\begin{enumerate}[label=\textbf{S5.\arabic*}, leftmargin=3em]
+\item On $\Z$ define $a\mathrel Rb$ iff $a\mid b$. Decide, with proof or counterexample, which of reflexive, symmetric, transitive, antisymmetric hold.
+\item Let $R$ be a symmetric and transitive relation on $X$ such that for every $a\in X$ there is some $b\in X$ with $aRb$. Prove that $R$ is reflexive.
+\item On $\R$ define $x\sim y$ iff $x-y\in\Q$. Prove that $\sim$ is an equivalence relation, show that $[0]=\Q$ and $[\sqrt2]=\{\sqrt2+r\mid r\in\Q\}$, and prove that $[\sqrt2]\ne[\sqrt3]$. \hint{$(\sqrt3-\sqrt2)(\sqrt3+\sqrt2)=1$}
+\item How many equivalence relations are there on a set with $4$ elements? \hint{count partitions by shape}
+\item On $\PS(\N)$ define $U\sim V$ iff $U\symdiff V$ is finite. Prove that $\sim$ is an equivalence relation. \hint{$U\symdiff W\subseteq(U\symdiff V)\cup(V\symdiff W)$}
+\item Let $\sim$ be an equivalence relation on $X$ and $f:X\to Y$ a function with $a\sim b\Rightarrow f(a)=f(b)$. Let $g:X/{\sim}\to Y$ be the induced function $g([a])=f(a)$. Prove that $g[X/{\sim}]=f[X]$ and that $g$ is injective if and only if $f(a)=f(b)\Rightarrow a\sim b$ for all $a,b$.
+\item Let $m,n\ge1$. Prove that $[a]_n\mapsto[a]_m$ is a well-defined function $\Z/n\Z\to\Z/m\Z$ if and only if $m\mid n$.
+\item Prove that a relation $R$ on $X$ is an equivalence relation if and only if $R$ is reflexive and satisfies: for all $a,b,c\in X$, if $aRb$ and $aRc$ then $bRc$.
+\end{enumerate}
+\end{stretchbox}

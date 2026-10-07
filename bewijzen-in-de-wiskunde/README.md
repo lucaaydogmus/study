@@ -5,7 +5,7 @@ built around the **essential** and **recommended** exercises of the course plann
 Book: C. Newstead, *An Infinite Descent into Pure Mathematics* (section and exercise
 numbers in the guide refer to that book).
 
-**PDF:** [`pdf/BiW-study-guide-ch0-5.pdf`](pdf/BiW-study-guide-ch0-5.pdf) (41 pages, A4)
+**PDF:** [`pdf/BiW-study-guide-ch0-5.pdf`](pdf/BiW-study-guide-ch0-5.pdf) (58 pages, A4)
 
 | Guide chapter | Book sections | Planning | Quiz |
 |---|---|---|---|
@@ -15,7 +15,13 @@ numbers in the guide refer to that book).
 | 3 Functions | §3.1, §3.2 | 23 & 28 Sep | Quiz 2 (7 Oct) |
 | 4 Mathematical induction | §4.2, §4.3 | 30 Sep & 5 Oct | — |
 | 5 Relations | §5.1, §5.2 | 7 Oct | Quiz 3 (21 Oct) |
-| Appendix | One-page proof toolbox | — | — |
+| Appendix T | One-page proof toolbox | — | — |
+| Appendix S | Solutions to the stretch exercises | — | — |
+
+Each chapter climbs three levels: **Level 1** worked examples (one proof shape at a
+time, quiz style), **Level 2 "book level"** examples at the difficulty of the hardest
+essential/recommended exercises, each with its invention step named, and **stretch
+exercises** with hints and full solutions in Appendix S.
 
 Layout follows the Haese Mathematics textbook style: lettered sections, yellow
 definition boxes, blue theorem boxes, green proof-strategy templates,
@@ -29,4 +35,4 @@ planning's essential/recommended numbers, and red “Watch out” boxes.
 ```
 
 Sources: `src/guide.tex` (main), `src/haese.sty` (layout), `src/front.tex`,
-`src/ch0.tex` … `src/ch5.tex`, `src/toolbox.tex`.
+`src/ch0.tex` … `src/ch5.tex` (theory and Level 1), `src/lvl0.tex` … `src/lvl5.tex` (book-level examples and stretch exercises), `src/toolbox.tex`, `src/solutions.tex`.

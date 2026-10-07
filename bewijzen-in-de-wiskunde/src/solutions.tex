@@ -1,0 +1,101 @@
+\renewcommand{\chapterprefix}{Appendix}\renewcommand{\thechapter}{S}
+\chapter{Solutions to the stretch exercises}
+\chaptercontents{A & Chapter 0 \\ B & Chapter 1 \\ C & Chapter 2 \\ D & Chapter 3 \\ E & Chapter 4 \\ F & Chapter 5}{Compare your own attempt line by line: did you introduce every variable, unfold every definition, and say which strategy you were using?}
+
+\hsection{Chapter 0}
+\sol{S0.1} Since $1<2<10$, $0<\log_{10}2<1$. Suppose $\log_{10}2=\frac ab$ with $a,b\in\Z$, $b\ge1$; then $a\ge1$. By definition of $\log$, $10^{a/b}=2$, so $2^b=10^a=2^a5^a$. If $b\le a$, cancelling $2^b$ gives $1=2^{a-b}5^a\ge5$, impossible. If $b>a$, cancelling $2^a$ gives $2^{b-a}=5^a$: the left side is even ($b-a\ge1$) and the right side is odd (a product of odd numbers). Contradiction either way.
+
+\sol{S0.2} By the division theorem $n=3k$, $3k+1$ or $3k+2$. Then $n^2+1$ equals $3(3k^2)+1$, $3(3k^2+2k)+2$ or $3(3k^2+4k+1)+2$ respectively, so its remainder on division by $3$ is $1$ or $2$, never $0$.
+
+\sol{S0.3} Write $n=\sum_id_i3^i$ and $s=\sum_id_i$. Each $3^i$ is odd (a product of odd numbers), say $3^i=2m_i+1$. Then $n-s=\sum_id_i(3^i-1)=2\sum_id_im_i$ is even. So $n=s+2M$ with $M\in\Z$: if $s=2j$ then $n=2(j+M)$; if $n=2j$ then $s=2(j-M)$. Hence $n$ is even iff $s$ is even.
+
+\sol{S0.4} Fix $k,l\in\Z$ with $b=ka$ and $a=lb$. Then $a=lka$. If $a=0$ then $b=k\cdot0=0=a$. Otherwise $lk=1$. The only integers whose product is $1$ are $k=l=1$ or $k=l=-1$: if $|k|\ge2$ then $|kl|\ge2|l|\ne1$ unless $l=0$, which gives $0=1$. So $b=a$ or $b=-a$.
+
+\sol{S0.5} (i) False: $\sqrt2\cdot\sqrt2=2$. (ii) False: $(\sqrt2)^2=2$. (iii) True. Let $x$ be irrational; then $x\ne0$ (as $0\in\Q$). Suppose $1/x=\frac ab$ with $a,b\in\Z$, $b\ne0$; then $a\ne0$ (as $1/x\ne0$) and $x=\frac ba\in\Q$, a contradiction.
+
+\sol{S0.6} Write $q=\frac ab$ with $a,b\in\Z$, $b\ge1$; since $q>0$, $a\ge1$. Put $n=b+1$. Then $\frac1n=\frac1{b+1}<\frac1b\le\frac ab=q$, using $a\ge1$.
+
+\sol{S0.7} Suppose $x^2-y^2=2$, i.e.\ $(x-y)(x+y)=2$. Since $(x+y)-(x-y)=2y$ is even, $x-y$ and $x+y$ are both even or both odd. If both are odd, their product is odd, not $2$. If both are even, say $x-y=2u$, $x+y=2v$, then $4uv=2$, so $uv=\frac12\notin\Z$. Contradiction.
+
+\hsection{Chapter 1}
+\sol{S1.1} Contrapositive: if it is not the case that exactly one of $a,b$ is odd, then $a^2+b^2$ is even. ``Not exactly one odd'' means both even or both odd. If $a=2k$, $b=2l$: $a^2+b^2=4(k^2+l^2)$, even. If $a=2k+1$, $b=2l+1$: $a^2+b^2=4(k^2+k+l^2+l)+2$, even.
+
+\sol{S1.2} (i) False: for $x=0$, $xy=0\ne1$ for every $y$. (ii) True: let $x\in\R$. If $x=0$ take $y=0$; the implication is vacuously true. If $x\ne0$ take $y=1/x$. (iii) False. Its negation is $\forall y\in\R,\ \exists x\in\R,\ (x\ne0\wedge xy\ne1)$. Let $y\in\R$. If $y=0$ take $x=1$: $xy=0\ne1$. If $y\ne0$ take $x=2/y$: $x\ne0$ and $xy=2\ne1$.
+
+\sol{S1.3} $P\Rightarrow(Q\Rightarrow P)$ could only be false with $P$ true and $Q\Rightarrow P$ false; but $Q\Rightarrow P$ is true whenever $P$ is true. $\big((P\Rightarrow Q)\Rightarrow P\big)\Rightarrow P$ could only be false with $P$ false and $(P\Rightarrow Q)\Rightarrow P$ true; but if $P$ is false then $P\Rightarrow Q$ is true, so $(P\Rightarrow Q)\Rightarrow P$ is $\mathrm T\Rightarrow\mathrm F$, false. $(P\Rightarrow Q)\vee(Q\Rightarrow P)$: if $P$ is false the first disjunct is true; if $P$ is true the second is.
+
+\sol{S1.4} (a) Negation: $\exists x\in\R,\ \forall n\in\N,\ n\le x$. The original is true: let $x\in\R$; if $x<0$ take $n=0$; otherwise take $n=\lfloor x\rfloor+1\in\N$, and $n>x$ since $x<\lfloor x\rfloor+1$. (b) Negation: $\forall n\in\N,\ \exists x\in\R,\ x\ge n$. The original is false: given $n$, take $x=n$.
+
+\sol{S1.5} Let $x\ne y$. By trichotomy, $x<y$ or $y<x$. If $x<y$, put $z=\frac{x+y}2$: then $x<z$ since $2x<x+y$, and $z<y$ since $x+y<2y$. If $y<x$, the same $z$ satisfies $y<z<x$.
+
+\sol{S1.6} Contrapositive: if $n$ is even then $n^2+2n$ is even. Let $n=2k$. Then $n^2+2n=4k^2+4k=2(2k^2+2k)$.
+
+\sol{S1.7} Suppose $\exists x\,\forall y\,p(x,y)$ and fix $x_0$ with $\forall y\,p(x_0,y)$. Let $y\in X$ be arbitrary. Then $p(x_0,y)$ holds, so $\exists x\,p(x,y)$ with witness $x_0$. Since $y$ was arbitrary, $\forall y\,\exists x\,p(x,y)$. The converse fails for $p(x,y)$: ``$x>y$'' on $\Z$: every $y$ has some $x>y$, but no $x$ exceeds every $y$.
+
+\hsection{Chapter 2}
+\sol{S2.1} For any pair $(a,b)$: $(a,b)\in(X\cup Y)\times Z\Leftrightarrow(a\in X\vee a\in Y)\wedge b\in Z\Leftrightarrow(a\in X\wedge b\in Z)\vee(a\in Y\wedge b\in Z)\Leftrightarrow(a,b)\in X\times Z\vee(a,b)\in Y\times Z\Leftrightarrow(a,b)\in(X\times Z)\cup(Y\times Z)$, using distributivity of $\wedge$ over $\vee$.
+
+\sol{S2.2} ($\Rightarrow$) Suppose $X\subseteq Y$, and suppose $a\in X\setminus Y$. Then $a\in X$, so $a\in Y$, contradicting $a\notin Y$. So $X\setminus Y=\varnothing$. ($\Leftarrow$) Suppose $X\setminus Y=\varnothing$ and let $a\in X$. If $a\notin Y$ then $a\in X\setminus Y=\varnothing$, impossible. So $a\in Y$.
+
+\sol{S2.3} $a\in X\setminus(Y\setminus Z)\Leftrightarrow a\in X\wedge\neg(a\in Y\wedge a\notin Z)\Leftrightarrow a\in X\wedge(a\notin Y\vee a\in Z)\Leftrightarrow(a\in X\wedge a\notin Y)\vee(a\in X\wedge a\in Z)\Leftrightarrow a\in(X\setminus Y)\cup(X\cap Z)$, by De Morgan and distributivity.
+
+\sol{S2.4} Disjointness: let $m<n$ in $\N$ and suppose $x\in[m,m+1)\cap[n,n+1)$. Then $x<m+1\le n\le x$, a contradiction. Union: ($\subseteq$) each $[n,n+1)\subseteq[0,\infty)$ as $n\ge0$. ($\supseteq$) let $x\ge0$ and $n=\lfloor x\rfloor\in\N$; then $n\le x<n+1$, so $x\in[n,n+1)$.
+
+\sol{S2.5} For any set $U$: $U\in\bigcap_i\PS(X_i)\Leftrightarrow\forall i\in I,\ U\subseteq X_i\Leftrightarrow\forall i\in I,\ \forall a\in U,\ a\in X_i\Leftrightarrow\forall a\in U,\ \forall i\in I,\ a\in X_i\Leftrightarrow\forall a\in U,\ a\in\bigcap_iX_i\Leftrightarrow U\subseteq\bigcap_iX_i\Leftrightarrow U\in\PS(\bigcap_iX_i)$.
+
+\sol{S2.6} For an element $a$ let $c(a)$ be the number of the sets $X,Y,Z$ containing $a$. Now $a\in X\symdiff Y$ iff $a$ lies in exactly one of $X,Y$. So $a\in(X\symdiff Y)\symdiff Z$ iff exactly one of ``$a\in X\symdiff Y$'' and ``$a\in Z$'' holds. If $a\in Z$ this requires $a$ to be in both or neither of $X,Y$, so $c(a)=3$ or $1$. If $a\notin Z$ it requires $a$ to be in exactly one of $X,Y$, so $c(a)=1$. Thus $a\in(X\symdiff Y)\symdiff Z$ iff $c(a)$ is odd. The same argument with the roles of $X$ and $Z$ swapped (and $\symdiff$ commutative) shows $a\in X\symdiff(Y\symdiff Z)$ iff $c(a)$ is odd. Hence the sets are equal.
+
+\sol{S2.7} (i) False: $X=\varnothing$, $Y=\{1\}$ gives $(X\setminus Y)\cup Y=\{1\}\ne X$. (In general $(X\setminus Y)\cup Y=X\cup Y$, which equals $X$ iff $Y\subseteq X$.) (ii) True. Note $(X\cup Y)\setminus Y=X\setminus Y$. ($\Rightarrow$) If $X\setminus Y=X$ and $a\in X\cap Y$, then $a\in X=X\setminus Y$, so $a\notin Y$, contradiction; so $X\cap Y=\varnothing$. ($\Leftarrow$) If $X\cap Y=\varnothing$: $X\setminus Y\subseteq X$ always, and if $a\in X$ then $a\notin Y$ (else $a\in X\cap Y$), so $a\in X\setminus Y$.
+
+\hsection{Chapter 3}
+\sol{S3.1} ($\subseteq$) Let $b\in f[f^{-1}[V]]$; fix $a\in f^{-1}[V]$ with $f(a)=b$. Then $b=f(a)\in V$ and $b\in f[X]$. ($\supseteq$) Let $b\in V\cap f[X]$; fix $a\in X$ with $f(a)=b$. Since $f(a)\in V$, $a\in f^{-1}[V]$, so $b\in f[f^{-1}[V]]$.
+
+\sol{S3.2} $(f^{-1}\circ g^{-1})\circ(g\circ f)=f^{-1}\circ(g^{-1}\circ g)\circ f=f^{-1}\circ\id_Y\circ f=\id_X$ and $(g\circ f)\circ(f^{-1}\circ g^{-1})=g\circ(f\circ f^{-1})\circ g^{-1}=\id_Z$. So $f^{-1}\circ g^{-1}$ is an inverse of $g\circ f$, and inverses are unique.
+
+\sol{S3.3} ($\Rightarrow$) Let $f$ be injective, $U\subseteq X$, and $b\in f[X\setminus U]$: $b=f(a)$ with $a\notin U$. If $b\in f[U]$ then $b=f(u)$ with $u\in U$, and injectivity gives $a=u\in U$, a contradiction. So $b\in Y\setminus f[U]$. ($\Leftarrow$) Suppose the inclusion holds for every $U$. Let $f(a)=f(a')$ and suppose $a\ne a'$. Take $U=\{a'\}$. Then $a\in X\setminus U$, so $f(a)\in f[X\setminus U]\subseteq Y\setminus f[U]=Y\setminus\{f(a')\}$, so $f(a)\ne f(a')$: contradiction. Hence $a=a'$.
+
+\sol{S3.4} If $n$ is even, $f(n)=n+1$ is odd, so $f(f(n))=(n+1)-1=n$. If $n$ is odd, $f(n)=n-1$ is even, so $f(f(n))=(n-1)+1=n$. Thus $f\circ f=\id_\Z$, so $f$ is its own two-sided inverse, hence a bijection.
+
+\sol{S3.5} $g=g\circ\id_Y=g\circ(f\circ h)=(g\circ f)\circ h=\id_X\circ h=h$.
+
+\sol{S3.6} ($\Rightarrow$) Suppose $f$ surjective and $g\circ f=h\circ f$. Let $b\in Y$; fix $a$ with $f(a)=b$. Then $g(b)=g(f(a))=h(f(a))=h(b)$. So $g=h$. ($\Leftarrow$) Contrapositive. Suppose $f$ is not surjective; fix $b\in Y\setminus f[X]$. Define $g,h:Y\to\{0,1\}$ by $g(y)=0$ for all $y$, and $h(b)=1$, $h(y)=0$ for $y\ne b$. For every $a\in X$, $f(a)\ne b$, so $h(f(a))=0=g(f(a))$; thus $g\circ f=h\circ f$. But $g(b)=0\ne1=h(b)$, so $g\ne h$. Cancellation fails.
+
+\sol{S3.7} Let $f:X\to\PS(X)$ and $D=\{a\in X\mid a\notin f(a)\}\in\PS(X)$. Suppose $f$ is surjective; fix $d\in X$ with $f(d)=D$. Then $d\in D\Leftrightarrow d\notin f(d)\Leftrightarrow d\notin D$, which is impossible. So $f$ is not surjective.
+
+\sol{S3.8} Let $g(x)=a+(b-a)x$. If $0<x<1$ then $a<g(x)<b$ as $b-a>0$, so $g:(0,1)\to(a,b)$ is well-defined. Define $k:(a,b)\to(0,1)$ by $k(y)=\frac{y-a}{b-a}$; for $a<y<b$ this lies in $(0,1)$. Then $k(g(x))=\frac{(b-a)x}{b-a}=x$ and $g(k(y))=a+(y-a)=y$. So $g$ is a bijection with inverse $k$.
+
+\hsection{Chapter 4}
+\sol{S4.1} Base $n=0$: empty sum $0=1!-1$. Step: $\sum_{k=1}^{n+1}k\cdot k!=(n+1)!-1+(n+1)(n+1)!=(n+1)!\,(n+2)-1=(n+2)!-1$.
+
+\sol{S4.2} Base $n=0$: $6\mid0$. Step: $(n+1)^3-(n+1)=(n^3-n)+3n^2+3n=(n^3-n)+3n(n+1)$. By the IH $n^3-n=6k$; and $n(n+1)$ is even (Example~\ref{ex:kk1}), say $2m$, so $3n(n+1)=6m$. Hence $(n+1)^3-(n+1)=6(k+m)$.
+
+\sol{S4.3} For $0\le k<n$: $\binom nk+\binom n{k+1}=\frac{n!}{k!(n-k)!}+\frac{n!}{(k+1)!(n-k-1)!}=\frac{n!\,[(k+1)+(n-k)]}{(k+1)!(n-k)!}=\frac{(n+1)!}{(k+1)!(n-k)!}=\binom{n+1}{k+1}$. For $k=n$: $\binom nn+\binom n{n+1}=1+0=\binom{n+1}{n+1}$; for $k>n$ both sides are $0$. Induction on $n$ for $p(n)$: ``$\binom nk\in\N$ for all $k\in\N$''. $p(0)$: $\binom00=1$ and $\binom0k=0$ for $k\ge1$. Step: $\binom{n+1}0=1$, and for $k\ge0$, $\binom{n+1}{k+1}=\binom nk+\binom n{k+1}\in\N$ by the IH.
+
+\sol{S4.4} Let $p(n)$ be the claim for $2^n\times2^n$ boards. $p(1)$: a $2\times2$ board minus one square is exactly one L-piece. Step: given a $2^{n+1}\times2^{n+1}$ board with one square removed, cut it into four $2^n\times2^n$ quadrants. The removed square lies in one quadrant. Place one L-piece at the centre of the board covering one square from each of the other three quadrants. Now every quadrant is a $2^n\times2^n$ board with exactly one square missing; tile each by $p(n)$.
+
+\sol{S4.5} Let $p(n)$: no $d\ge2$ divides both $f_n$ and $f_{n+1}$. $p(0)$: $f_1=1$ has no divisor $\ge2$. Step: suppose $d\ge2$ divides $f_{n+1}$ and $f_{n+2}$. Then $d\mid f_{n+2}-f_{n+1}=f_n$, so $d$ divides both $f_n$ and $f_{n+1}$, contradicting $p(n)$. Hence $p(n+1)$.
+
+\sol{S4.6} Base $n=1$: $1\ge1$. Step: by the IH the sum up to $n+1$ is at least $\sqrt n+\frac1{\sqrt{n+1}}$, so it suffices that $\sqrt n+\frac1{\sqrt{n+1}}\ge\sqrt{n+1}$. Multiplying by $\sqrt{n+1}>0$ this is $\sqrt{n(n+1)}+1\ge n+1$, i.e.\ $\sqrt{n(n+1)}\ge n$, which holds since $n(n+1)\ge n^2$ and both sides are non-negative.
+
+\sol{S4.7} Strong induction on $n\ge1$. Since $2^0\le n$ and $2^n>n$, there is a largest $k\in\N$ with $2^k\le n$. Then $n-2^k<2^k$ (otherwise $2^{k+1}\le n$). If $n-2^k=0$, then $n=2^k$. Otherwise $1\le n-2^k<n$, so by the IH $n-2^k$ is a sum of distinct powers of $2$, each at most $n-2^k<2^k$; adding $2^k$ keeps the powers distinct.
+
+\sol{S4.8} Base $n=1$: $f_1=1=f_3-1$. Step: $\sum_{k=1}^{n+1}f_k=(f_{n+2}-1)+f_{n+1}=f_{n+3}-1$.
+
+\sol{S4.9} Base cases $8=3+5$, $9=3\cdot3$, $10=5\cdot2$. Step: let $n\ge11$ and assume the claim for all $8\le k<n$. Then $8\le n-3<n$, so $n-3=3a+5b$ and $n=3(a+1)+5b$. Three base cases are needed because the step reaches back by $3$.
+
+\hsection{Chapter 5}
+\sol{S5.1} Reflexive: $a=1\cdot a$. Transitive: Example~\ref{ex:lincomb}-style: $b=ka$, $c=lb$ give $c=(lk)a$. Not symmetric: $1\mid2$ but $2\nmid1$. Not antisymmetric: $2\mid-2$ and $-2\mid2$ but $2\ne-2$.
+
+\sol{S5.2} Let $a\in X$; fix $b$ with $aRb$. By symmetry $bRa$. By transitivity applied to $aRb$ and $bRa$, $aRa$.
+
+\sol{S5.3} Reflexive: $x-x=0\in\Q$. Symmetric: $y-x=-(x-y)\in\Q$. Transitive: $x-z=(x-y)+(y-z)\in\Q$. $[0]=\{y\mid 0-y\in\Q\}=\Q$. $[\sqrt2]=\{y\mid\sqrt2-y\in\Q\}=\{\sqrt2-r\mid r\in\Q\}=\{\sqrt2+r\mid r\in\Q\}$. If $[\sqrt2]=[\sqrt3]$ then $r=\sqrt3-\sqrt2\in\Q$, and $r\ne0$; then $\sqrt3+\sqrt2=1/r\in\Q$, contradicting the Chapter 0 book-level example. So $[\sqrt2]\ne[\sqrt3]$.
+
+\sol{S5.4} Equivalence relations correspond to partitions. Partitions of a $4$-element set by block sizes: one block of $4$: $1$; sizes $3+1$: $4$ (choose the singleton); $2+2$: $3$ (choose the partner of element $1$); $2+1+1$: $6$ (choose the pair); $1+1+1+1$: $1$. Total $15$.
+
+\sol{S5.5} Reflexive: $U\symdiff U=\varnothing$ is finite. Symmetric: $U\symdiff V=V\symdiff U$. Transitive: suppose $U\symdiff V$ and $V\symdiff W$ are finite. If $a\in U\symdiff W$, say $a\in U$, $a\notin W$ (the other case is symmetric): if $a\in V$ then $a\in V\symdiff W$; if $a\notin V$ then $a\in U\symdiff V$. So $U\symdiff W\subseteq(U\symdiff V)\cup(V\symdiff W)$, a subset of a union of two finite sets, hence finite.
+
+\sol{S5.6} $g[X/{\sim}]=\{g([a])\mid a\in X\}=\{f(a)\mid a\in X\}=f[X]$. For injectivity: $g$ injective iff for all $a,b$, $g([a])=g([b])\Rightarrow[a]=[b]$, i.e.\ $f(a)=f(b)\Rightarrow a\sim b$, using $[a]=[b]\Leftrightarrow a\sim b$.
+
+\sol{S5.7} ($\Leftarrow$) Suppose $m\mid n$ and $[a]_n=[a']_n$. Then $n\mid a-a'$, and $m\mid n$, so $m\mid a-a'$ by transitivity of $\mid$; thus $[a]_m=[a']_m$. ($\Rightarrow$) If the rule is well-defined, then since $[0]_n=[n]_n$ we must have $[0]_m=[n]_m$, i.e.\ $m\mid n-0=n$.
+
+\sol{S5.8} ($\Rightarrow$) An equivalence relation is reflexive; and if $aRb$ and $aRc$, then $bRa$ by symmetry, and $bRa$, $aRc$ give $bRc$ by transitivity. ($\Leftarrow$) Suppose $R$ is reflexive and has the stated property. Symmetric: let $aRb$. Also $aRa$. Applying the property to $aRb$ and $aRa$ gives $bRa$. Transitive: let $aRb$ and $bRc$. By symmetry $bRa$. Applying the property to $bRa$ and $bRc$ gives $aRc$.

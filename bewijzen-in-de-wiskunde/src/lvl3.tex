@@ -1,0 +1,68 @@
+\hsection{Book-level examples}
+The hardest Chapter 3 exercises characterise injectivity or surjectivity by a property of \emph{all} images, preimages or compositions, or ask for a bijection between two sets that look different. The invention is usually ``apply the hypothesis to a cleverly chosen small set''.
+
+\begin{bexample}[surjectivity through preimages]
+Let $f:X\to Y$. Prove that $f$ is surjective if and only if $f[f^{-1}[V]]=V$ for every $V\subseteq Y$.
+\solution
+\emph{Invention: in the $\Leftarrow$ direction, apply the hypothesis to $V=\{b\}$.}\\
+($\Rightarrow$) Suppose $f$ is surjective and let $V\subseteq Y$. The inclusion $f[f^{-1}[V]]\subseteq V$ holds for every $f$: if $b\in f[f^{-1}[V]]$, fix $a\in f^{-1}[V]$ with $f(a)=b$; then $b=f(a)\in V$. For $\supseteq$: let $b\in V$. By surjectivity fix $a\in X$ with $f(a)=b$. Then $f(a)\in V$, so $a\in f^{-1}[V]$, so $b=f(a)\in f[f^{-1}[V]]$.\\
+($\Leftarrow$) Suppose $f[f^{-1}[V]]=V$ for all $V\subseteq Y$, and let $b\in Y$. Apply the hypothesis to $V=\{b\}$: then $b\in f[f^{-1}[\{b\}]]$, so there is $a\in f^{-1}[\{b\}]$ with $f(a)=b$. This $a$ witnesses surjectivity at $b$.\qed
+\end{bexample}
+
+\begin{bexample}[injectivity through images]
+Let $f:X\to Y$. Prove that $f$ is injective if and only if $f^{-1}[f[U]]=U$ for every $U\subseteq X$.
+\solution
+\emph{Invention: apply the hypothesis to a one-element set.}\\
+($\Rightarrow$) Suppose $f$ is injective and $U\subseteq X$. $U\subseteq f^{-1}[f[U]]$ holds always (Example~\ref{ex:preimg}). Conversely let $a\in f^{-1}[f[U]]$, so $f(a)\in f[U]$; fix $u\in U$ with $f(u)=f(a)$. By injectivity $a=u\in U$.\\
+($\Leftarrow$) Suppose $f^{-1}[f[U]]=U$ for all $U$. Let $a,a'\in X$ with $f(a)=f(a')$. Then $f(a')\in f[\{a\}]$, so $a'\in f^{-1}[f[\{a\}]]=\{a\}$, hence $a'=a$.\qed
+\end{bexample}
+
+\begin{bexample}[a bijection $\N\times\N\to\N$]\label{ex:nnbij}
+Define $g:\N\times\N\to\N$ by $g(m,n)=2^m(2n+1)-1$. Prove that $g$ is a bijection.
+\solution
+\emph{Invention: a lemma about the shape of positive integers, proved by strong induction.}\\
+\emph{Lemma.} Every integer $k\ge1$ can be written as $k=2^m(2n+1)$ with $m,n\in\N$, and $m,n$ are unique. \emph{Existence} is Example~\ref{ex:twoadic} (Chapter 4). \emph{Uniqueness:} suppose $2^m(2n+1)=2^{m'}(2n'+1)$ and, without loss of generality, $m\le m'$. Dividing by $2^m$ gives $2n+1=2^{m'-m}(2n'+1)$. If $m'>m$, the right-hand side is even and the left-hand side is odd, impossible; so $m'=m$, and then $2n+1=2n'+1$ gives $n=n'$.\\
+\emph{Injective.} If $g(m,n)=g(m',n')$ then $2^m(2n+1)=2^{m'}(2n'+1)$, so $(m,n)=(m',n')$ by uniqueness.\\
+\emph{Surjective.} Let $k\in\N$. Then $k+1\ge1$, so $k+1=2^m(2n+1)$ for some $m,n\in\N$ by existence, i.e.\ $g(m,n)=k$.\qed
+\end{bexample}
+
+\begin{bexample}[subsets are the same as $\{0,1\}$-valued functions]
+Let $X$ be a set and write $\{0,1\}^X$ for the set of all functions $X\to\{0,1\}$. Prove that $\chi:\PS(X)\to\{0,1\}^X$, $U\mapsto\chi_U$, is a bijection.
+\solution
+\emph{Invention: write down the inverse, $g\mapsto g^{-1}[\{1\}]$, and check both composites.}\\
+Define $\psi:\{0,1\}^X\to\PS(X)$ by $\psi(g)=g^{-1}[\{1\}]=\{a\in X\mid g(a)=1\}$.\\
+\emph{$\psi\circ\chi=\id$:} for $U\subseteq X$, $\psi(\chi_U)=\{a\in X\mid\chi_U(a)=1\}=\{a\in X\mid a\in U\}=U$.\\
+\emph{$\chi\circ\psi=\id$:} let $g:X\to\{0,1\}$ and $a\in X$. If $g(a)=1$ then $a\in\psi(g)$, so $\chi_{\psi(g)}(a)=1=g(a)$. If $g(a)=0$ then $a\notin\psi(g)$, so $\chi_{\psi(g)}(a)=0=g(a)$. Thus $\chi_{\psi(g)}=g$ (same domain, codomain and values).\\
+So $\chi$ has an inverse and is a bijection.\qed\\
+\emph{Consequence: a set with $n$ elements has $2^n$ subsets, because there are $2^n$ functions from it to $\{0,1\}$ (two choices per element).}
+\end{bexample}
+
+\begin{bexample}[injective means left-cancellable]
+Let $f:X\to Y$. Prove that $f$ is injective if and only if for every set $Z$ and all functions $g,h:Z\to X$: if $f\circ g=f\circ h$ then $g=h$.
+\solution
+\emph{Invention: in the $\Leftarrow$ direction, use a one-point set $Z$.}\\
+($\Rightarrow$) Suppose $f$ is injective and $f\circ g=f\circ h$ with $g,h:Z\to X$. Let $z\in Z$. Then $f(g(z))=f(h(z))$, so $g(z)=h(z)$. Since $z$ was arbitrary and $g,h$ share domain and codomain, $g=h$.\\
+($\Leftarrow$) Suppose the cancellation property holds. Let $a,a'\in X$ with $f(a)=f(a')$. Let $Z=\{\ast\}$ and define $g,h:Z\to X$ by $g(\ast)=a$ and $h(\ast)=a'$. Then $(f\circ g)(\ast)=f(a)=f(a')=(f\circ h)(\ast)$, so $f\circ g=f\circ h$, so $g=h$ by hypothesis, so $a=g(\ast)=h(\ast)=a'$.\qed
+\end{bexample}
+
+\begin{bexample}[one-sided inverses that meet in the middle]
+Let $f:X\to Y$. Suppose $g:Y\to X$ satisfies $g\circ f=\id_X$ and $h:Y\to X$ satisfies $f\circ h=\id_Y$. Prove that $g=h$, and deduce that $f$ is a bijection with inverse $g$.
+\solution
+\emph{Invention: insert an identity and re-bracket.}\\
+$g=g\circ\id_Y=g\circ(f\circ h)=(g\circ f)\circ h=\id_X\circ h=h$, using associativity of composition.\\
+Hence $g\circ f=\id_X$ and $f\circ g=f\circ h=\id_Y$, so $g$ is a two-sided inverse of $f$; thus $f$ is a bijection and $f^{-1}=g$. The same computation shows that inverses are unique: if $g$ and $g'$ are both inverses of $f$, run the argument with $h=g'$.\qed
+\end{bexample}
+
+\hsection{Stretch exercises}
+\begin{stretchbox}[3]
+\begin{enumerate}[label=\textbf{S3.\arabic*}, leftmargin=3em]
+\item Let $f:X\to Y$ and $V\subseteq Y$. Prove that $f[f^{-1}[V]]=V\cap f[X]$.
+\item Let $f:X\to Y$ and $g:Y\to Z$ be bijections. Prove that $(g\circ f)^{-1}=f^{-1}\circ g^{-1}$. \hint{check both composites and use uniqueness of inverses}
+\item Let $f:X\to Y$. Prove that $f$ is injective if and only if $f[X\setminus U]\subseteq Y\setminus f[U]$ for every $U\subseteq X$. \hint{for $\Leftarrow$, take $U=\{a'\}$}
+\item Define $f:\Z\to\Z$ by $f(n)=n+1$ if $n$ is even and $f(n)=n-1$ if $n$ is odd. Prove that $f\circ f=\id_\Z$ and deduce that $f$ is a bijection.
+\item Let $f:X\to Y$ have a left inverse $g$ and a right inverse $h$. Prove that $g=h$.
+\item Prove that $f:X\to Y$ is surjective if and only if for every set $Z$ and all $g,h:Y\to Z$: $g\circ f=h\circ f$ implies $g=h$. \hint{for $\Leftarrow$, suppose $b\notin f[X]$ and build $g,h:Y\to\{0,1\}$ that differ only at $b$}
+\item Prove that for every set $X$ there is no surjection $f:X\to\PS(X)$. \hint{consider $D=\{a\in X\mid a\notin f(a)\}$}
+\item Let $a<b$ be real numbers. Prove that $x\mapsto a+(b-a)x$ is a bijection $(0,1)\to(a,b)$ by exhibiting its inverse.
+\end{enumerate}
+\end{stretchbox}

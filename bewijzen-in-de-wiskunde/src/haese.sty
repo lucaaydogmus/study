@@ -159,6 +159,30 @@
 \renewcommand{\qed}{\hfill$\square$}
 \newenvironment{hexample}[1][]{\refstepcounter{hex}\begin{example}[{#1}]}{\end{example}}
 
+
+% ---------- book-level worked example (purple tab, "Book level" badge) ----------
+\newtcolorbox{examplebook}[1][]{enhanced, breakable, colback=white, colframe=hpurple,
+  boxrule=0.8pt, arc=2pt, left=8pt, right=8pt, top=8pt, bottom=6pt,
+  before={\par\needspace{6\baselineskip}\vskip 9pt}, after skip=9pt,
+  overlay unbroken and first={%
+    \node[anchor=west, fill=hpurple, text=white, font=\sffamily\bfseries\small, inner xsep=7pt, inner ysep=2.5pt, rounded corners=1pt]
+      at ([xshift=8pt]frame.north west) {Example \arabic{hex}};
+    \node[anchor=east, fill=hpurple, text=white, font=\sffamily\bfseries\scriptsize, inner xsep=6pt, inner ysep=2pt, rounded corners=1pt]
+      at ([xshift=-8pt]frame.north east) {Book level};
+    \ifstrempty{#1}{}{\node[anchor=west, fill=white, text=hpurple, font=\sffamily\bfseries\small, inner xsep=4pt, inner ysep=1.5pt] at ([xshift=78pt]frame.north west) {#1};}
+  }}
+\newenvironment{bexample}[1][]{\refstepcounter{hex}\begin{examplebook}[{#1}]}{\end{examplebook}}
+% stretch exercises box
+\newtcolorbox{stretchbox}[1][]{enhanced, breakable, colback=white, colframe=hpurple,
+  boxrule=0.8pt, arc=2pt, left=8pt, right=8pt, top=8pt, bottom=6pt,
+  before={\par\needspace{5\baselineskip}\vskip 7pt}, after skip=7pt, fonttitle=\sffamily\bfseries\small,
+  coltitle=white, colbacktitle=hpurple, attach boxed title to top left={xshift=6pt, yshift=-\tcboxedtitleheight/2},
+  boxed title style={boxrule=0pt, arc=1pt, left=4pt, right=4pt, top=1.5pt, bottom=1.5pt},
+  title={STRETCH EXERCISES #1 \textperiodcentered\ solutions in Appendix S}}
+\newcommand{\hint}[1]{{\small\color{hgray}[Hint: #1]}}
+\newcommand{\symdiff}{\mathbin{\triangle}}
+\newcommand{\sol}[1]{\par\vspace{4pt}\noindent{\sffamily\bfseries\color{hpurple}#1}\quad}
+
 % ---------- misc macros ----------
 \newcommand{\N}{\mathbb{N}}
 \newcommand{\Z}{\mathbb{Z}}

@@ -1,0 +1,89 @@
+\hsection{Book-level examples}
+The hardest Chapter 4 exercises need algebra that must be \emph{aimed} at the induction hypothesis, a recurrence that reaches back two steps, or a statement about pictures or sets rather than formulas. The invention is usually the choice of $p(n)$ or the rearrangement that exposes the hypothesis.
+
+\begin{bexample}[sum of squares]
+Prove that $\displaystyle\sum_{k=1}^nk^2=\frac{n(n+1)(2n+1)}6$ for all $n\in\N$.
+\solution
+\emph{Technique: factor out what the target contains, here $(n+1)$, before expanding.}\\
+Base case $n=0$: both sides are $0$. Induction step: let $n\in\N$ and assume the formula for $n$. Then
+\begin{align*}
+\sum_{k=1}^{n+1}k^2&=\frac{n(n+1)(2n+1)}6+(n+1)^2=\frac{(n+1)\big[n(2n+1)+6(n+1)\big]}6\\
+&=\frac{(n+1)(2n^2+7n+6)}6=\frac{(n+1)(n+2)(2n+3)}6,
+\end{align*}
+which is the formula for $n+1$, since $2(n+1)+1=2n+3$. By induction the formula holds for all $n\in\N$.\qed
+\end{bexample}
+
+\begin{bexample}[Cassini's identity: rearranging to expose the hypothesis]
+With $f_0=0$, $f_1=1$ and $f_{n+2}=f_{n+1}+f_n$, prove that $f_{n+1}f_{n-1}-f_n^2=(-1)^n$ for all $n\ge1$.
+\solution
+Base case $n=1$: $f_2f_0-f_1^2=0-1=-1=(-1)^1$.\\
+Induction step: let $n\ge1$ and assume $f_{n+1}f_{n-1}-f_n^2=(-1)^n$. Then
+\begin{align*}
+f_{n+2}f_n-f_{n+1}^2&=(f_{n+1}+f_n)f_n-f_{n+1}^2\reason{recurrence}\\
+&=f_n^2-f_{n+1}(f_{n+1}-f_n)=f_n^2-f_{n+1}f_{n-1}\reason{$f_{n+1}-f_n=f_{n-1}$ since $n\ge1$}\\
+&=-\big(f_{n+1}f_{n-1}-f_n^2\big)=-(-1)^n=(-1)^{n+1}.\reason{IH}
+\end{align*}
+By induction the identity holds for all $n\ge1$.\qed
+\end{bexample}
+
+\begin{bexample}[Binet's formula by strong induction]
+Let $\varphi=\frac{1+\sqrt5}2$ and $\psi=\frac{1-\sqrt5}2$. Prove that $f_n=\dfrac{\varphi^n-\psi^n}{\sqrt5}$ for all $n\in\N$.
+\solution
+\emph{Invention: $\varphi$ and $\psi$ are the roots of $x^2=x+1$, so their powers satisfy the Fibonacci recurrence.}\\
+First, $\varphi^2=\frac{6+2\sqrt5}4=\frac{3+\sqrt5}2=\varphi+1$, and similarly $\psi^2=\psi+1$. Multiplying by $\varphi^n$: $\varphi^{n+2}=\varphi^{n+1}+\varphi^n$; likewise for $\psi$.\\
+\emph{Base cases.} $n=0$: $(1-1)/\sqrt5=0=f_0$. \ $n=1$: $(\varphi-\psi)/\sqrt5=\sqrt5/\sqrt5=1=f_1$.\\
+\emph{Step.} Let $n\ge2$ and assume the formula for all $k<n$, in particular for $n-1$ and $n-2$ (both $\ge0$). Then
+\[
+f_n=f_{n-1}+f_{n-2}=\frac{(\varphi^{n-1}+\varphi^{n-2})-(\psi^{n-1}+\psi^{n-2})}{\sqrt5}=\frac{\varphi^n-\psi^n}{\sqrt5}.
+\]
+By strong induction the formula holds for all $n\in\N$.\qed
+\end{bexample}
+
+\begin{bexample}[a power of two times an odd number]\label{ex:twoadic}
+Prove that every integer $k\ge1$ can be written as $k=2^m(2n+1)$ with $m,n\in\N$.
+\solution
+\emph{Invention: strong induction, because the smaller case is $k/2$, not $k-1$.}\\
+Let $k\ge1$ and assume the claim for all $j$ with $1\le j<k$. If $k$ is odd, then $k=2n+1$ for some $n\in\N$, and $k=2^0(2n+1)$. If $k$ is even, then $k=2j$ with $1\le j<k$; by the hypothesis $j=2^m(2n+1)$, so $k=2^{m+1}(2n+1)$. By strong induction the claim holds for all $k\ge1$.\qed\ (Uniqueness of $m,n$: Example~\ref{ex:nnbij}.)
+\end{bexample}
+
+\begin{bexample}[a statement about pictures]
+Say $n$ lines in the plane are in \emph{general position} if no two are parallel and no three pass through one point. Prove that $n$ lines in general position divide the plane into $\frac{n^2+n+2}2$ regions.
+\solution
+\emph{Invention: find the recurrence $R(n+1)=R(n)+(n+1)$ and prove that in the step.}\\
+Let $p(n)$ be: ``any $n$ lines in general position cut the plane into $\frac{n^2+n+2}2$ regions''. Base case $n=0$: no lines, one region, and $\frac{0+0+2}2=1$.\\
+Step: let $n\in\N$, assume $p(n)$, and take $n+1$ lines in general position. Remove one of them, $\ell$. The remaining $n$ lines are in general position, so by $p(n)$ they give $\frac{n^2+n+2}2$ regions. Now put $\ell$ back: it meets each of the other $n$ lines in exactly one point (no two parallel), and these $n$ points are distinct (no three concurrent), so they cut $\ell$ into $n+1$ pieces. Each piece splits one existing region into two, adding exactly $n+1$ regions. Hence the count is
+\[
+\frac{n^2+n+2}2+(n+1)=\frac{n^2+3n+4}2=\frac{(n+1)^2+(n+1)+2}2,
+\]
+which is $p(n+1)$. By induction $p(n)$ holds for all $n\in\N$.\qed
+\end{bexample}
+
+\begin{bexample}[well-ordering implies induction]
+Assume the well-ordering principle. Let $p(n)$ be a statement with $p(0)$ true and $p(n)\Rightarrow p(n+1)$ for all $n\in\N$. Prove that $p(n)$ holds for all $n\in\N$.
+\solution
+\emph{Invention: look at the least counterexample.}\\
+Suppose, for a contradiction, that $S=\{n\in\N\mid\neg p(n)\}$ is inhabited. By well-ordering $S$ has a least element $m$. Since $p(0)$ holds, $m\ne0$, so $m-1\in\N$. As $m-1<m$ and $m$ is least in $S$, $m-1\notin S$, i.e.\ $p(m-1)$ holds. By the induction step $p(m)$ holds, contradicting $m\in S$. Hence $S=\varnothing$.\qed
+\end{bexample}
+
+\begin{bexample}[infinite descent]
+Use the well-ordering principle to prove that there are no integers $a,b\ge1$ with $a^2=2b^2$.
+\solution
+\emph{Invention: among all solutions pick one with the smallest $b$, then build a smaller one.}\\
+Suppose solutions exist, and let $S=\{b\ge1\mid\exists a\ge1,\ a^2=2b^2\}$, an inhabited subset of $\N$. Let $b$ be its least element and fix $a\ge1$ with $a^2=2b^2$. Then $a^2$ is even, so $a$ is even by the Lemma in Chapter 0; write $a=2c$ with $c\ge1$. Then $4c^2=2b^2$, so $b^2=2c^2$. Thus $(b,c)$ is again a solution, so $c\in S$. But $c^2=b^2/2<b^2$ gives $c<b$, contradicting the minimality of $b$.\qed\\
+\emph{This is the ``infinite descent'' of the book's title, and a second proof that $\sqrt2$ is irrational.}
+\end{bexample}
+
+\hsection{Stretch exercises}
+\begin{stretchbox}[4]
+\begin{enumerate}[label=\textbf{S4.\arabic*}, leftmargin=3em]
+\item Prove that $\sum_{k=1}^nk\cdot k!=(n+1)!-1$ for all $n\in\N$.
+\item Prove that $6\mid n^3-n$ for all $n\in\N$. \hint{$(n+1)^3-(n+1)=(n^3-n)+3n(n+1)$}
+\item Define $\binom nk=\frac{n!}{k!(n-k)!}$ for $0\le k\le n$ and $\binom nk=0$ for $k>n$. Prove Pascal's rule $\binom{n+1}{k+1}=\binom nk+\binom n{k+1}$ from this formula, and then prove by induction on $n$ that $\binom nk\in\N$ for all $k$.
+\item Prove that for every $n\ge1$, a $2^n\times2^n$ board with one square removed can be tiled by L-shaped pieces of three squares. \hint{split into four quadrants and place one piece at the centre}
+\item Prove that for all $n\in\N$ there is no integer $d\ge2$ dividing both $f_n$ and $f_{n+1}$. \hint{if $d\mid f_{n+1}$ and $d\mid f_{n+2}$ then $d\mid f_n$}
+\item Prove that $\frac1{\sqrt1}+\frac1{\sqrt2}+\dots+\frac1{\sqrt n}\ge\sqrt n$ for all $n\ge1$. \hint{the gap inequality is $\sqrt n+\frac1{\sqrt{n+1}}\ge\sqrt{n+1}$}
+\item Prove that every $n\ge1$ is a sum of distinct powers of $2$. \hint{strong induction; subtract the largest power of $2$ not exceeding $n$}
+\item Prove that $\sum_{k=1}^nf_k=f_{n+2}-1$ for all $n\ge1$.
+\item Prove that every $n\ge8$ can be written as $3a+5b$ with $a,b\in\N$. \hint{how many base cases does a step of size $3$ need?}
+\end{enumerate}
+\end{stretchbox}
