@@ -8,6 +8,10 @@ export interface Variation {
   blockRoad?: number;
   /** Only occurs in these districts. */
   districts?: DistrictId[];
+  /** Never drawn at random; only scripted events use it. */
+  eventOnly?: boolean;
+  /** Longer scenes and more patience before failing (major incidents). */
+  durationMult?: number; failMult?: number;
 }
 export interface Template {
   id: string; title: string; districtWeights: Partial<Record<DistrictId, number>>;
@@ -47,6 +51,9 @@ export const TEMPLATES: Template[] = [
         openings: ['"Thick smoke in the stairwell, a man is coughing badly!"', '"The building is filling with smoke, a woman can\'t breathe!"'] },
       { id: 'trapped', risk: 0.5, label: 'Residents trapped', severity: 3, caps: ['FIRE', 'RESCUE', 'MEDICAL'], weight: 1.2,
         openings: ['"My neighbors are on the third floor, they can\'t get out!"', '"Fire at the apartment block, people are at the windows!"'] },
+      { id: 'inferno', risk: 0.6, districts: ['industrial'], eventOnly: true, durationMult: 2.2, failMult: 2.2, label: 'Major industrial fire', severity: 4,
+        caps: ['FIRE', 'FIRE', 'FIRE', 'RESCUE', 'MEDICAL'], weight: 1,
+        openings: ['"The whole warehouse is on fire! There are drums exploding and thick black smoke!"', '"Massive fire at the depot, workers are running out, you can see it from across town!"'] },
       { id: 'access', risk: 0.5, districts: ['oldtown'], label: 'Difficult access, spreading', severity: 3, caps: ['FIRE', 'FIRE'], weight: 1.5,
         openings: ['"The street is so narrow nobody can get near the burning house!"', '"Fire in the old row houses and cars are parked right up to the doors!"'] },
     ],

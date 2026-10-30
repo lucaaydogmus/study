@@ -6,6 +6,8 @@ import { DECISIONS, type DecisionOption } from '../sim/decisions';
 import { CAP_LABEL, VEHICLES, type Unit } from '../sim/units';
 import { coverers, currentRisk, decisionOptions, modActive, optionBlocked, matchSlots, planRoute, shownCaps, shownSeverity, slotStates, trafficAt, type Incident, type World } from '../sim/world';
 import { totalUpkeep } from '../sim/fleet';
+import { EVENTS } from '../sim/events';
+import { getCity } from '../sim/city';
 import { EQUIPMENT } from '../sim/equipment';
 import { Bar, CapChip, NoteList, SevChip, StatusChip, money } from './common';
 import { SERVICE_COLOR } from './MapCanvas';
@@ -58,9 +60,15 @@ function Briefing() {
       <label>Difficulty</label>
       <div className="seg">{diffs.map((d) => <button key={d} className={cfg.difficulty === d ? 'on' : ''} onClick={() => g.setConfig({ difficulty: d })} title={{ easy: 'Fewer calls, more time before incidents fail', normal: 'Balanced', hard: 'More calls, less time before incidents fail' }[d]}>{d}</button>)}</div>
       <label>Weather</label>
-      <div className="seg">{(['clear', 'rain'] as const).map((x) => <button key={x} className={cfg.weather === x ? 'on' : ''} onClick={() => g.setConfig({ weather: x })} title={x === 'rain' ? 'All vehicles travel 15% slower' : 'Normal road conditions'}>{x}</button>)}</div>
+      <div className="seg">{(['clear', 'rain'] as const).map((x) => <button key={x} disabled={!!cfg.event} className={cfg.weather === x && !cfg.event ? 'on' : ''} onClick={() => g.setConfig({ weather: x })} title={x === 'rain' ? 'All vehicles travel 15% slower' : 'Normal road conditions'}>{x}</button>)}</div>
+      <label>Scenario</label>
+      <div className="scen">
+        <b>{cfg.event ? EVENTS.find((e) => e.id === cfg.event)!.name : cfg.challenge ? `${getCity().districts.find((d) => d.id === cfg.challenge)!.name} challenge` : 'Standard shift'}</b>
+        <button className="link" onClick={() => g.openCareer(true)}>change</button>
+      </div>
       <label>Seed <span className="muted mono">{cfg.seed}</span> <button className="link" onClick={g.rerollSeed}>reroll</button></label>
       <p className="muted small">Click districts, stations and units on the map to review coverage. Toggle the coverage overlay (radar icon) to see 25-second reach.</p>
+      <button className="big" onClick={() => g.openCareer(true)} title="Level, objectives, special events and district challenges">Career &amp; scenarios</button>
       <div className="row"><span className="muted small">{useGame.getState().save.fleet.length} units · upkeep {money(totalUpkeep(useGame.getState().save.fleet))}/shift</span></div>
       <button className="big" onClick={() => g.openDepot(true)} title="Move units, equip vehicles, buy vehicles, review coverage">Open depot</button>
       <button className="primary big" onClick={g.startShift}>Start shift</button>

@@ -159,6 +159,14 @@ export const SCRIPTS: Record<string, VarScript> = {
       SYMPTOMS: info('No warning. She just dropped.', 'Sudden collapse.'),
     },
   },
+  'fire.inferno': {
+    hint: ['FIRE'], describe: info('The whole warehouse is burning and drums are exploding.', 'Major warehouse fire with explosions.', 4),
+    answers: {
+      INSIDE: A('Some workers are still inside, we can\'t reach them!', 'Workers trapped inside: rescue needed.', ['RESCUE']),
+      SPREAD: A('It\'s spreading across the whole yard, it needs a lot of engines!', 'Rapid spread: at least three engines needed.', ['FIRE', 'FIRE', 'FIRE'], undefined, 4),
+      HURT: A('Several people are coughing and burned.', 'Multiple casualties likely.', ['MEDICAL']),
+    },
+  },
   'fire.access': {
     hint: ['FIRE'], describe: info('Fire in an old row house and the street is far too narrow.', 'Fire in a row house; narrow street.', 3),
     answers: {

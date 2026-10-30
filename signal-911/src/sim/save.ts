@@ -1,12 +1,14 @@
 /** Versioned local save. Every storage access is guarded; failures never throw. */
 export const SAVE_KEY = 'signal911.save';
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 import type { Difficulty } from './types';
 import { defaultFleet, STATION_CAPACITY, type FleetUnit } from './fleet';
 import { EQUIPMENT, MAX_UPGRADES } from './equipment';
 import { VEHICLES } from './units';
 import { getCity } from './city';
+import { OBJECTIVES, defaultCareer, type Career } from './career';
+import { EVENTS } from './events';
 
 export interface Settings {
   difficulty: Difficulty;
@@ -23,6 +25,7 @@ export interface SaveData {
   completedShifts: number;
   settings: Settings;
   fleet: FleetUnit[];
+  career: Career;
 }
 
 export const defaultSave = (): SaveData => ({
@@ -33,6 +36,7 @@ export const defaultSave = (): SaveData => ({
   completedShifts: 0,
   settings: { difficulty: 'normal', volume: 0.6, muted: false, shiftMinutes: 10 },
   fleet: defaultFleet(),
+  career: defaultCareer(),
 });
 
 export interface StorageLike {
@@ -68,6 +72,28 @@ export function sanitizeFleet(raw: unknown): FleetUnit[] {
   return out.length >= 3 ? out : defaultFleet();
 }
 
+export function sanitizeCareer(raw: unknown): Career {
+  const d = defaultCareer();
+  if (!raw || typeof raw !== 'object') return d;
+  const r = raw as Partial<Career>;
+  const ids = new Set(OBJECTIVES.map((o) => o.id));
+  const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && ids.has(x)) : []);
+  const counts = (v: unknown, valid: Set<string>) => {
+    const out: Record<string, number> = {};
+    if (v && typeof v === 'object') for (const [k, n] of Object.entries(v)) if (valid.has(k) && typeof n === 'number' && n > 0 && Number.isFinite(n)) out[k] = Math.floor(n);
+    return out;
+  };
+  let active = [...new Set(list(r.active))].slice(0, 3);
+  for (const o of OBJECTIVES) { if (active.length >= 3) break; if (!active.includes(o.id)) active.push(o.id); }
+  active = active.slice(0, 3);
+  return {
+    active, completed: list(r.completed),
+    events: counts(r.events, new Set(EVENTS.map((e) => e.id))),
+    challenges: counts(r.challenges, new Set(getCity().districts.map((x) => x.id))),
+    bestGrade: typeof r.bestGrade === 'string' && ['S', 'A', 'B', 'C', 'D', 'F', '-'].includes(r.bestGrade) ? r.bestGrade : '-',
+  };
+}
+
 /** Fill missing fields from defaults; upgrade older versions here as the format grows. */
 export function migrate(raw: unknown): SaveData {
   const d = defaultSave();
@@ -81,6 +107,7 @@ export function migrate(raw: unknown): SaveData {
     reputation: num(r.reputation, d.reputation),
     completedShifts: num(r.completedShifts, d.completedShifts),
     fleet: sanitizeFleet(r.fleet),
+    career: sanitizeCareer(r.career),
     settings: {
       difficulty: r.settings?.difficulty === 'easy' || r.settings?.difficulty === 'hard' ? r.settings.difficulty : 'normal',
       volume: Math.min(1, Math.max(0, num(r.settings?.volume, d.settings.volume))),

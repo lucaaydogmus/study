@@ -7,6 +7,9 @@ import {
 import { ask, endCall } from '../sim/calls';
 import * as fleetOps from '../sim/fleet';
 import type { Result } from '../sim/fleet';
+import { CHALLENGE_LEVEL, evaluateCareer, levelOf, type CareerOutcome } from '../sim/career';
+import { EVENTS } from '../sim/events';
+import type { EventId } from '../sim/events';
 import { configureAudio, sfx, unlockAudio } from '../audio';
 import type { DistrictId, Difficulty, VehicleId, Weather } from '../sim/types';
 
@@ -25,6 +28,8 @@ interface GameState {
   sel: Selection;
   filters: Filters;
   summary: Summary | null;
+  outcome: CareerOutcome | null;
+  careerOpen: boolean;
   focus: { x: number; y: number; nonce: number } | null;
   toast: string | null;
   depotOpen: boolean;
@@ -44,6 +49,8 @@ interface GameState {
   askQuestion(key: string): void;
   decide(optionId: string): void;
   openDepot(open: boolean): void;
+  openCareer(open: boolean): void;
+  setScenario(kind: 'standard' | 'event' | 'challenge', id?: string): void;
   buyVehicle(vehicle: VehicleId, stationId: string): void;
   sellUnit(id: string): void;
   moveUnitTo(id: string, stationId: string): void;
@@ -105,6 +112,8 @@ export const useGame = create<GameState>((set, get) => {
     sel: emptySel(),
     filters: { police: true, fire: true, medical: true, coverage: false, traffic: false },
     summary: null,
+    outcome: null,
+    careerOpen: false,
     focus: null,
     toast: null,
     depotOpen: false,
@@ -162,19 +171,21 @@ export const useGame = create<GameState>((set, get) => {
       if (st.phase !== 'shift') return;
       const summary = buildSummary(st.world);
       const s = st.save;
+      const outcome = evaluateCareer(s.career, st.world, summary, s.xp);
       const save: SaveData = {
         ...s,
-        money: s.money + summary.net,
-        xp: s.xp + summary.xp,
+        money: s.money + summary.net + outcome.money,
+        xp: s.xp + outcome.xp,
         reputation: Math.max(0, Math.min(100, s.reputation + summary.reputation)),
         completedShifts: s.completedShifts + 1,
         fleet: fleetAfterShift(st.world),
+        career: outcome.career,
       };
-      set({ phase: 'summary', summary, save, saveOk: writeSave(save), clock: { ...st.clock, paused: true }, sel: emptySel() });
+      set({ phase: 'summary', summary, outcome, save, saveOk: writeSave(save), clock: { ...st.clock, paused: true }, sel: emptySel() });
     },
     nextShift: () => {
-      const config = { ...get().config, seed: newSeed() };
-      set({ phase: 'preshift', config, world: createWorld(config, get().save.fleet), summary: null, sel: emptySel(), clock: initialClock(), rev: get().rev + 1 });
+      const config: Config = { ...get().config, seed: newSeed() };
+      set({ phase: 'preshift', config, world: createWorld(config, get().save.fleet), summary: null, outcome: null, sel: emptySel(), clock: initialClock(), rev: get().rev + 1 });
     },
 
     answer: (callId) => {
@@ -199,6 +210,18 @@ export const useGame = create<GameState>((set, get) => {
       const r = decide(st.world, st.sel.incidentId, optionId);
       if (r.ok) sfx.dispatch(); else { set({ toast: r.error ?? 'Not available.' }); setTimeout(() => set({ toast: null }), 2500); }
       bump();
+    },
+    openCareer: (open) => set({ careerOpen: open && get().phase === 'preshift' }),
+    setScenario: (kind, id) => {
+      const cur = get().config;
+      const level = levelOf(get().save.xp);
+      const ev = id ? EVENTS.find((e) => e.id === id) : undefined;
+      if ((kind === 'event' && (!ev || ev.level > level)) || (kind === 'challenge' && level < CHALLENGE_LEVEL)) {
+        set({ toast: 'That scenario is still locked.' }); setTimeout(() => set({ toast: null }), 2500); return;
+      }
+      const config: Config = { ...cur, event: kind === 'event' ? (id as EventId) : null, challenge: kind === 'challenge' ? (id as DistrictId) : null };
+      if (kind === 'event' && config.event) config.weather = 'clear'; // the event decides its own weather
+      set({ config, world: createWorld(config, get().save.fleet), sel: emptySel(), rev: get().rev + 1 });
     },
     openDepot: (open) => set({ depotOpen: open && get().phase === 'preshift' }),
     buyVehicle: (v, st) => fleetAction((f, m) => fleetOps.buyVehicle(f, m, v, st)),

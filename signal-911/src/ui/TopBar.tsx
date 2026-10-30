@@ -9,10 +9,10 @@ export function TopBar() {
   const speed = useGame((s) => s.clock.speed);
   const save = useGame((s) => s.save);
   const saveOk = useGame((s) => s.saveOk);
-  const weather = useGame((s) => s.config.weather);
   useGame((s) => s.rev);
   const w = useGame.getState().world;
   const g = useGame.getState();
+  const weather = w.weather;
   const { muted, volume } = save.settings;
   return (
     <header className="topbar">
@@ -24,9 +24,11 @@ export function TopBar() {
       </div>
       <div className="stat" title="Department budget"><Wallet size={14} /> {money(save.money)}</div>
       <div className="stat" title="Reputation (0-100)"><Star size={14} /> {save.reputation}</div>
-      <div className="stat" title="Weather: rain slows all vehicles by 15%">
-        {weather === 'rain' ? <CloudRain size={14} /> : <Sun size={14} />} {weather === 'rain' ? 'Rain' : 'Clear'}
+      <div className="stat" title="Weather: rain slows vehicles by 15%, heavy rain by 25%">
+        {weather === 'clear' ? <Sun size={14} /> : <CloudRain size={14} />} {{ clear: 'Clear', rain: 'Rain', storm: 'Heavy rain' }[weather]}
       </div>
+      {w.event && <div className="stat evt" title={w.event.blurb}>{w.event.name}</div>}
+      {!w.event && w.config.challenge && <div className="stat evt" title="District challenge">{w.city.districts.find((d) => d.id === w.config.challenge)!.name} challenge</div>}
       <div className="spacer" />
       {!saveOk && <div className="stat warn" title="Browser storage unavailable; progress will not persist">Save failed</div>}
       <div className="controls">

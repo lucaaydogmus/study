@@ -49,3 +49,12 @@ Known/deferred: closure is activated when reported, not when the crash happens; 
 - **Tests**: 51 total (new `fleet.test.ts`: buy/sell/move/equip/service rules and limits, coverage, save round-trip + v1 migration + hostile data, fleet-in-sim, equipment effects, comms ETA, forced breakdown flow, workshop start, upkeep in summary).
 
 Known/deferred: no mid-shift reposition (units only move pre-shift); upgrade/vehicle prices untuned for pacing (Stage 5 will tie unlocks and income to career); spec’s “maintenance costs” are upkeep + optional servicing.
+
+## Stage 5 — Career and scenarios (done)
+- **Career** (`sim/career.ts`, save v3): XP levels (thresholds 0/120/300/550/850/1200/1650), 3 active **objectives** drawn from a pool of 10 (Downtown/Northside response times, finish a rainy shift, clear a collision that closed a road, resolve 3 linked incidents, clean shift, decisions, swift responses, dispatch accuracy, steady line). Objectives are checked against real shift stats; completing one pays money + XP and is replaced. Level-ups pay $2,000 and unlock content. All content unlocks by level 5 (about 6 normal shifts).
+- **Special events** (`sim/events.ts`, data-driven): *Heavy rain* (storm weather −25% speed, more collisions/water rescues), *Rush hour* (traffic ×1.35, Downtown/Northside surge), *City festival* (crowds in Downtown/Riverside), *Power outage* (two scripted waves of three simultaneous linked emergencies), *Industrial fire* (scripted major incident: 3 engines + rescue + medical, 2.2× duration/patience, event-only variation with its own dialogue). Each has an unlock level, a goal, and a one-time bonus (smaller on repeats).
+- **District challenges** (level 2): 75% of calls land in the chosen district; goal is 5 resolutions there with at most 1 failure.
+- Weather gained a *storm* level; the scripted-wave system generalises to future events.
+- **UI**: Career modal (objectives, scenarios, record), scenario picker in the briefing, event/challenge tag in the top bar, career section in the shift summary.
+- **Fixes**: district-restricted variations (e.g. difficult-access fire = Old Town only) were not enforced in Stage 3; now they are, including for the caller's first impression.
+- **Tests**: 68 total (new `career.test.ts`: levels, save v3 migration + sanitising, weather/traffic effects, outage waves and linking, event-only variation, district restriction, challenge concentration, a full shift for every event, objective/reward evaluation).

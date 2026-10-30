@@ -5,6 +5,7 @@ import { COMPLICATION_TEXT, CONTINUE, DECISIONS, DECISION_SECONDS, LINKED, SUPER
 import { VEHICLES, type Leg, type Unit } from './units';
 import { BASE_SPEED, CLASS_MULT } from './constants';
 import { EQUIPMENT } from './equipment';
+import { eventById, type EventDef, type EventId, type Scripted } from './events';
 import { defaultFleet, totalUpkeep, type FleetUnit } from './fleet';
 import { TEMPLATES, type Template } from './incidents';
 import { PERSONALITIES, scriptFor, type Personality, type Twist } from './dialogueData';
@@ -13,13 +14,14 @@ import type {
   Capability, City, DistrictId, Difficulty, Edge, IncidentStatus, Weather,
 } from './types';
 
-export interface Config { seed: number; shiftMinutes: number; difficulty: Difficulty; weather: Weather }
+export interface Config { seed: number; shiftMinutes: number; difficulty: Difficulty; weather: Weather; event?: EventId | null; challenge?: DistrictId | null }
 export interface LogEntry { t: number; text: string; kind: 'info' | 'call' | 'dispatch' | 'arrive' | 'warn' | 'good' | 'bad' }
 
 export interface Spec {
   templateId: string; variationId: string; district: DistrictId; nodeId: number; address: string; opening: string;
   personality: Personality; twist: Twist; perceivedVariationId: string;
   wrongNodeId: number | null; wrongAddress: string | null; discAfter: number | null;
+  cluster?: string;
 }
 export interface Note { text: string; kind: 'confirmed' | 'unconfirmed' | 'warning' | 'info'; t: number }
 export interface Turn { who: 'caller' | 'dispatcher' | 'system'; text: string; t: number }
@@ -45,6 +47,7 @@ export interface Incident {
 export interface Stats {
   answered: number; missed: number; resolved: number; failed: number; dispatched: number; unnecessary: number;
   responseTimes: number[]; spent: number; reward: number; fastResponses: number; hungUp: number; breakdowns: number;
+  districtResp: Record<string, number[]>; districtResolved: Record<string, number>; majorTraffic: number; linkedResolved: number;
   decisions: number; complications: number; linked: number; supervisorsLeft: number;
 }
 
@@ -55,6 +58,7 @@ export interface World {
   recentTemplates: string[]; recentOpenings: string[]; finalSpawned: boolean;
   blocked: Set<number>; trafficPhase: Record<DistrictId, number>;
   activeCall: number | null; recentPersonalities: Personality[]; logSeq: number; mrng: Rng;
+  event: EventDef | null; weather: Weather; firedScripts: number[]; clusters: Record<string, number>;
 }
 
 export { BASE_SPEED };
@@ -84,15 +88,17 @@ export function createWorld(config: Config, fleet: FleetUnit[] = defaultFleet())
       upgrades: [...f.upgrades], condition: f.condition, oosUntil: broken ? 45 : 0,
     };
   });
+  const event = eventById(config.event);
   const phase = {} as Record<DistrictId, number>;
   for (const d of city.districts) phase[d.id] = rng.next() * Math.PI * 2;
   return {
     config, rng, city, time: 0, length: config.shiftMinutes * 60, over: false, units, incidents: [], calls: [],
-    log: [{ t: 0, kind: 'info', text: 'Shift briefing complete. Ravenport dispatch is online.' }],
-    stats: { answered: 0, missed: 0, resolved: 0, failed: 0, dispatched: 0, unnecessary: 0, responseTimes: [], spent: 0, reward: 0, fastResponses: 0, hungUp: 0, breakdowns: 0, decisions: 0, complications: 0, linked: 0, supervisorsLeft: SUPERVISORS_PER_SHIFT },
+    log: [{ t: 0, kind: 'info', text: event ? `Shift briefing complete. Scenario: ${event.name}.` : 'Shift briefing complete. Ravenport dispatch is online.' }],
+    stats: { answered: 0, missed: 0, resolved: 0, failed: 0, dispatched: 0, unnecessary: 0, responseTimes: [], spent: 0, reward: 0, fastResponses: 0, hungUp: 0, breakdowns: 0, districtResp: {}, districtResolved: {}, majorTraffic: 0, linkedResolved: 0, decisions: 0, complications: 0, linked: 0, supervisorsLeft: SUPERVISORS_PER_SHIFT },
     nextIncidentId: 1, nextCallId: 1, nextCallAt: 6 + rng.next() * 6,
     recentTemplates: [], recentOpenings: [], finalSpawned: false, blocked: new Set(), trafficPhase: phase,
     activeCall: null, recentPersonalities: [], logSeq: 0, mrng: createRng(config.seed ^ 0x5bd1e995),
+    event, weather: event?.weather ?? config.weather, firedScripts: [], clusters: {},
   };
 }
 
@@ -100,7 +106,7 @@ export function createWorld(config: Config, fleet: FleetUnit[] = defaultFleet())
 
 export function trafficAt(w: World, d: DistrictId): number {
   const base = w.city.districts.find((x) => x.id === d)!.traffic;
-  return base * (1 + 0.2 * Math.sin(w.time / 90 + w.trafficPhase[d]));
+  return base * (w.event?.traffic ?? 1) * (1 + 0.2 * Math.sin(w.time / 90 + w.trafficPhase[d]));
 }
 
 /** Units/second for a unit on an edge: road class, vehicle, weather and local traffic. */
@@ -108,7 +114,7 @@ export function edgeSpeed(w: World, u: Unit, edge: Edge | null): number {
   const cls = edge ? CLASS_MULT[edge.cls] : 0.7;
   const t = trafficAt(w, edge ? edge.district : w.city.nodes[u.node].district);
   const penalty = 1 + (t - 1) * 0.5; // emergency vehicles are only partly slowed by traffic
-  return (BASE_SPEED * VEHICLES[u.vehicle].speed * cls * (w.config.weather === 'rain' ? 0.85 : 1) * (u.upgrades.includes('comms') ? EQUIPMENT.comms.travel! : 1)) / penalty;
+  return (BASE_SPEED * VEHICLES[u.vehicle].speed * cls * ({ clear: 1, rain: 0.85, storm: 0.75 }[w.weather]) * (u.upgrades.includes('comms') ? EQUIPMENT.comms.travel! : 1)) / penalty;
 }
 
 interface Plan { legs: Leg[]; eta: number }
@@ -227,23 +233,30 @@ export function traceLocation(w: World, inc: Incident) {
 
 const tplOf = (id: string): Template => TEMPLATES.find((t) => t.id === id)!;
 
-function makeSpec(w: World, severe: boolean): Spec {
+interface Force { templateId: string; variationId: string; district: DistrictId }
+
+function makeSpec(w: World, severe: boolean, force?: Force): Spec {
   const { rng, city } = w;
+  const ev = w.event, challenge = w.config.challenge ?? null;
   const wt = TEMPLATES.map((t) => {
-    if (severe && !t.variations.some((v) => v.severity >= 3)) return 0;
+    if (severe && !t.variations.some((v) => v.severity >= 3 && !v.eventOnly)) return 0;
     const recent = w.recentTemplates.includes(t.id) ? 0.25 : 1;
-    return recent * Object.values(t.districtWeights).reduce((a, b) => a + b, 0);
+    const dsum = (Object.keys(t.districtWeights) as DistrictId[]).reduce((a, d) => a + t.districtWeights[d]! * (ev?.districtMult?.[d] ?? 1), 0);
+    return recent * dsum * (ev?.templateMult?.[t.id] ?? 1);
   });
-  const tpl = TEMPLATES[weighted(rng, wt)];
+  const tpl = force ? tplOf(force.templateId) : TEMPLATES[weighted(rng, wt)];
   const dIds = Object.keys(tpl.districtWeights) as DistrictId[];
-  const district = dIds[weighted(rng, dIds.map((d) => tpl.districtWeights[d]!))];
+  let district = force ? force.district : dIds[weighted(rng, dIds.map((d) => tpl.districtWeights[d]! * (ev?.districtMult?.[d] ?? 1)))];
+  // District challenge: most calls land in the challenge district.
+  if (!force && challenge && (tpl.districtWeights[challenge] ?? 0) >= 0.2 && rng.next() < 0.75) district = challenge;
   const nodeId = rng.pick(city.nodesByDistrict[district]);
-  const vars = tpl.variations.filter((v) => !severe || v.severity >= 3);
+  const allowed = (v: Template['variations'][number]) => !v.eventOnly && (!v.districts || v.districts.includes(district));
+  const vars = force ? tpl.variations.filter((v) => v.id === force.variationId) : tpl.variations.filter((v) => allowed(v) && (!severe || v.severity >= 3));
   const variation = vars[weighted(rng, vars.map((v) => v.weight))];
   // Misunderstandings: the caller's first impression can differ from the truth, or the address can be wrong.
   const twistChance = { easy: 0.25, normal: 0.35, hard: 0.45 }[w.config.difficulty];
-  const higher = tpl.variations.filter((v) => v.severity > variation.severity);
-  const lower = tpl.variations.filter((v) => v.severity < variation.severity);
+  const higher = tpl.variations.filter((v) => allowed(v) && v.severity > variation.severity);
+  const lower = tpl.variations.filter((v) => allowed(v) && v.severity < variation.severity);
   let twist: Twist = 'none';
   if (rng.next() < twistChance) {
     const opts: Twist[] = ['wrong_location', 'wrong_location', 'disconnect'];
@@ -294,7 +307,30 @@ function phaseFactor(p: number): number {
   return 1.1;
 }
 
+/** Put a new call on the line. */
+function ringCall(w: World, spec: Spec) {
+  const call: Call = { id: w.nextCallId++, ringAt: w.time, deadline: w.time + CALL_RING_SECONDS, status: 'ringing', spec };
+  w.calls.push(call);
+  log(w, 'call', `Incoming call from ${w.city.districts.find((d) => d.id === spec.district)!.name}.`);
+}
+
+/** Scripted event waves: bursts of linked calls at set points in the shift. */
+function fireScripts(w: World) {
+  const sc: Scripted[] = w.event?.scripted ?? [];
+  sc.forEach((s, i) => {
+    if (w.firedScripts.includes(i) || w.time < s.at * w.length) return;
+    w.firedScripts.push(i);
+    log(w, 'warn', s.text);
+    for (const f of s.specs) {
+      const spec = makeSpec(w, false, f);
+      if (s.cluster) spec.cluster = s.cluster;
+      ringCall(w, spec);
+    }
+  });
+}
+
 function directorStep(w: World) {
+  fireScripts(w);
   if (w.time < w.nextCallAt || w.time > w.length - 40) return;
   const ringing = w.calls.filter((c) => c.status === 'ringing').length;
   const load = activeIncidents(w).length + ringing;
@@ -302,13 +338,10 @@ function directorStep(w: World) {
   const p = w.time / w.length;
   const severe = p >= 0.88 && !w.finalSpawned;
   if (severe) w.finalSpawned = true;
-  const spec = makeSpec(w, severe);
-  const call: Call = { id: w.nextCallId++, ringAt: w.time, deadline: w.time + CALL_RING_SECONDS, status: 'ringing', spec };
-  w.calls.push(call);
-  log(w, 'call', `Incoming call from ${w.city.districts.find((d) => d.id === spec.district)!.name}.`);
+  ringCall(w, makeSpec(w, severe));
   const free = w.units.filter((u) => u.status === 'AVAILABLE').length;
   const base = 18 + w.rng.next() * 14;
-  w.nextCallAt = w.time + base * phaseFactor(p) * DIFF[w.config.difficulty].interval * (1 + 0.35 * Math.max(0, load - 2)) * (free === 0 ? 1.5 : 1) * Math.sqrt(11 / Math.max(6, w.units.length));
+  w.nextCallAt = w.time + base * phaseFactor(p) * DIFF[w.config.difficulty].interval * (w.event?.interval ?? 1) * (1 + 0.35 * Math.max(0, load - 2)) * (free === 0 ? 1.5 : 1) * Math.sqrt(11 / Math.max(6, w.units.length));
 }
 
 function createIncident(w: World, spec: Spec, callAt: number, kind: 'call' | 'late' | 'linked', linkedTo: number | null = null): Incident {
@@ -325,11 +358,16 @@ function createIncident(w: World, spec: Spec, callAt: number, kind: 'call' | 'la
     transcript: [], session: null, callEndedAt: null, callAt, notes: [],
     risk: v.risk, mods: [], decision: null, decided: false, complications: 0,
     blockEdge: null, blockActive: false, linkedTo, linkSpawned: false, rng,
-    assigned: [], firstArrival: null, pressure: 0, failAfter: tpl.failAfter * DIFF[w.config.difficulty].fail,
-    workProgress: 0, duration: tpl.duration * (0.8 + 0.2 * v.severity), escalations: 0, complication: false,
+    assigned: [], firstArrival: null, pressure: 0, failAfter: tpl.failAfter * (v.failMult ?? 1) * DIFF[w.config.difficulty].fail,
+    workProgress: 0, duration: tpl.duration * (v.durationMult ?? 1) * (0.8 + 0.2 * v.severity), escalations: 0, complication: false,
     resolvedAt: null, outcome: '', surplus: 0,
   };
   if (v.blockRoad && rng.next() < v.blockRoad) inc.blockEdge = pickBlockEdge(w, inc);
+  if (spec.cluster) {
+    const first = w.clusters[spec.cluster];
+    if (first === undefined) w.clusters[spec.cluster] = id;
+    else { inc.linkedTo = first; addNote(w, inc, `Linked to #${first}: part of the same ${w.event?.name.toLowerCase() ?? 'major'} event.`, 'info'); }
+  }
   w.incidents.push(inc);
   if (kind !== 'call') {
     setBelieved(w, inc, spec.nodeId, spec.address);
@@ -568,6 +606,7 @@ function arrive(w: World, u: Unit) {
       inc.firstArrival = w.time;
       const rt = w.time - inc.callAt;
       w.stats.responseTimes.push(rt);
+      (w.stats.districtResp[inc.district] ??= []).push(rt);
       if (rt <= 45) w.stats.fastResponses++;
     }
     log(w, 'arrive', `${u.callsign} on scene at #${inc.id} ${inc.address}.`);
@@ -649,6 +688,9 @@ function finishIncident(w: World, inc: Incident, status: 'RESOLVED' | 'FAILED', 
   inc.assigned = [];
   if (status === 'RESOLVED') {
     w.stats.resolved++;
+    w.stats.districtResolved[inc.district] = (w.stats.districtResolved[inc.district] ?? 0) + 1;
+    if (inc.templateId === 'collision' && inc.blockEdge !== null) w.stats.majorTraffic++;
+    if (inc.linkedTo !== null || w.incidents.some((i) => i.linkedTo === inc.id)) w.stats.linkedResolved++;
     const tpl = tplOf(inc.templateId);
     const fast = inc.firstArrival !== null && inc.firstArrival - inc.callAt <= 45 ? 1.25 : 1;
     const clean = Math.max(0.4, 1 - 0.15 * inc.complications);
