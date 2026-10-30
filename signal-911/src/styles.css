@@ -552,3 +552,39 @@ h3 { font-weight: 700; font-size: 12.5px; letter-spacing: .14em; color: #a9bacb;
 .hr-name { display: flex; flex-direction: column; } .hr-er { display: flex; align-items: center; gap: 6px; } .hr-in { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .rline.chatter { opacity: .85; } .rline.chatter .rfrom { color: #c58bd6; } .rline.hospital .rfrom { color: #f0a0b0; } .rto { color: var(--text3); font-weight: 500; }
 .listhead .warn { color: var(--amber); }
+
+/* ── map context menu (remaster 5) ── */
+.mapmenu { position: absolute; z-index: 25; width: 268px; background: rgba(9,14,21,.94); border: 1px solid rgba(120,150,180,.26); border-radius: 10px; box-shadow: 0 16px 40px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.4); backdrop-filter: blur(12px); overflow: hidden; animation: mm-in .12s ease-out; }
+@keyframes mm-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
+.mm-head { padding: 10px 12px 8px; border-bottom: 1px solid rgba(120,150,180,.16); background: linear-gradient(180deg, rgba(74,156,214,.08), transparent); }
+.mm-title { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 13px; color: var(--text); line-height: 1.25; }
+.mm-title .mm-ico { display: inline-flex; }
+.mm-tag { margin-left: auto; font-size: 9.5px; font-weight: 800; letter-spacing: .08em; padding: 2px 6px; border-radius: 3px; background: rgba(120,150,180,.14); color: var(--text2); white-space: nowrap; }
+.mm-tag.red { background: rgba(255,77,94,.16); color: #ffb3b3; }
+.mm-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 8px currentColor; }
+.mm-meta { font-size: 11px; color: var(--text3); margin-top: 3px; line-height: 1.35; }
+.mm-body { padding: 5px; display: flex; flex-direction: column; max-height: 360px; overflow-y: auto; }
+.mm-body > .mm-meta { padding: 2px 8px 6px; }
+.mm-item { display: flex; align-items: center; gap: 9px; width: 100%; background: none; border: none; text-align: left; padding: 7px 8px; border-radius: 6px; font-size: 12.5px; color: var(--text); }
+.mm-item:hover:not(:disabled) { background: rgba(74,156,214,.14); }
+.mm-item:disabled { opacity: .42; cursor: default; }
+.mm-item.primary { background: rgba(74,156,214,.16); color: #cfe7fa; font-weight: 600; } .mm-item.primary:hover { background: rgba(74,156,214,.28); }
+.mm-item.danger .mm-txt { color: #ffb3b3; }
+.mm-ico { width: 16px; display: inline-flex; justify-content: center; color: var(--text2); flex: none; }
+.mm-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mm-txt .muted { color: var(--text3); font-size: 11px; }
+.mm-sub { font-size: 11px; color: var(--text3); white-space: nowrap; }
+.mm-sep { height: 1px; background: rgba(120,150,180,.14); margin: 4px 6px; }
+.mm-empty { font-size: 11.5px; color: var(--text3); padding: 6px 8px; }
+.mm-hosp { padding: 4px 8px 8px; display: flex; flex-direction: column; gap: 6px; }
+.mm-er { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text2); } .mm-er b { font-size: 11px; color: var(--text); }
+.mm-bar { flex: 1; height: 6px; border-radius: 3px; background: rgba(120,150,180,.16); overflow: hidden; } .mm-bar i { display: block; height: 100%; border-radius: 3px; transition: width .3s; }
+.mm-depts { display: flex; flex-wrap: wrap; gap: 3px; }
+/* BOLO chips (remaster 5) */
+.bolodock { position: absolute; left: 12px; bottom: 52px; z-index: 7; display: flex; flex-direction: column; gap: 6px; max-width: 360px; }
+.bolo { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(24,18,6,.9); border: 1px solid rgba(240,192,64,.55); color: #ffe39a; text-align: left; box-shadow: 0 6px 18px rgba(0,0,0,.4); backdrop-filter: blur(8px); animation: incomingIn .25s ease-out; }
+.bolo:hover { background: rgba(36,27,8,.95); }
+.bolo.found { border-color: rgba(84,184,137,.8); color: #a7f0c8; background: rgba(8,24,15,.92); }
+.bolo-tag { font-size: 9.5px; font-weight: 900; letter-spacing: .12em; padding: 2px 6px; border-radius: 3px; background: rgba(240,192,64,.18); flex: none; }
+.bolo.found .bolo-tag { background: rgba(84,184,137,.2); }
+.bolo-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text); }

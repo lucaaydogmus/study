@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { audio } from '../audio/audioManager';
 import { addressOf } from '../sim/city';
-import { gameClock, type GameEngine } from '../sim/engine';
+import { gameClock, recommendFor, type GameEngine } from '../sim/engine';
 import { WEATHER_LABEL } from '../sim/events';
 import { fmtMoneyShort } from './util';
 import { updateAmbience, useApp } from '../store';
@@ -12,12 +12,13 @@ import { RightPanel, StatusBadge } from './RightPanel';
 import { Coach, coachHint } from './Coach';
 import type { Preview } from './DispatchConsole';
 import { PauseMenu } from './PauseMenu';
-import { SERVICE_META } from '../sim/fleet';
+import { SERVICE_META, isAir } from '../sim/fleet';
 import { computeScore } from '../sim/scoring';
 import { contractProgress, MODIFIER_BY_ID } from '../sim/extras';
 import { GRADE_COLOR } from './common';
 import { RecordsDock, RecordsTerminal, threatKnown } from './Ops';
-import { CctvViewer, DecisionCards, NewsTicker, useCctvSink } from './Field';
+import { BoloDock, CctvViewer, DecisionCards, NewsTicker, useCctvSink } from './Field';
+import { MapMenu, handleDrop, type MenuState } from './MapMenu';
 
 const CAT_ICON: Record<string, string> = { medical: 'cross', fire: 'flame', police: 'shield', unusual: 'help' };
 
@@ -46,6 +47,8 @@ export function GameScreen() {
   const [collapsed, setCollapsed] = useState({ l: false, r: false, b: false });
   const [terminal, setTerminal] = useState(false);
   const [cctv, setCctv] = useState<Parameters<typeof CctvViewer>[0]['view'] | null>(null);
+  const [menu, setMenu] = useState<MenuState | null>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
   useCctvSink(setCctv);
   const st = engine.state;
   const focusKey = useRef(0);
@@ -88,9 +91,27 @@ export function GameScreen() {
       else if (e.key === 'e' || e.key === 'E') { if (s.activeCallId) { eng.endCall(s.activeCallId); bump(); } }
       else if (e.key === 'm' || e.key === 'M') { const i = LAYERS.findIndex((l) => l.id === layer); setLayer(LAYERS[(i + 1) % LAYERS.length].id); }
       else if (e.key === 'd' || e.key === 'D') { const c = s.activeCallId ? s.calls[s.activeCallId] : null; if (c) { eng.select('incident', c.incidentId); bump(); } }
-      else if (e.key === 'Escape') { if (target) setTarget(null); else if (s.selected.kind) { eng.select(null, null); bump(); } else useApp.getState().setPauseMenu(true); }
+      else if (e.key === 'Escape') { if (menu) setMenu(null); else if (target) setTarget(null); else if (s.selected.kind) { eng.select(null, null); bump(); } else useApp.getState().setPauseMenu(true); }
       else if (e.key === '?' ) setShowHelp(true);
       else if (e.key === 't' || e.key === 'T') setTerminal((v) => !v);
+      else if (e.key === 'f' || e.key === 'F') {
+        const sel = s.selected;
+        const at = sel.kind === 'unit' && sel.id && s.units[sel.id] ? { x: s.units[sel.id].x, y: s.units[sel.id].y } : sel.kind === 'incident' && sel.id && s.incidents[sel.id]?.reportedNode != null ? eng.city.nodes[s.incidents[sel.id].reportedNode!] : sel.kind === 'station' && sel.id && s.stations[sel.id] ? eng.city.nodes[s.stations[sel.id].nodeId] : null;
+        if (at) doFocus(at.x, at.y, 2.6);
+      }
+      else if (e.key === 'b' || e.key === 'B') {
+        const id = s.selected.kind === 'incident' ? s.selected.id : s.activeCallId ? s.calls[s.activeCallId]?.incidentId : null;
+        if (id) { const r = eng.broadcastBolo(id); if (r.ok) { audio.dispatchConfirm(); useApp.getState().showToast('BOLO broadcast to all units', 'info'); } else { audio.error(); useApp.getState().showToast(r.reason ?? '', 'warn'); } bump(); }
+      }
+      else if (e.key === 'Enter' && el?.tagName !== 'BUTTON') {
+        const inc = s.selected.kind === 'incident' && s.selected.id ? s.incidents[s.selected.id] : null;
+        if (inc && inc.reportedNode !== null && !['RESOLVED', 'CLOSED'].includes(inc.status)) {
+          const plan = eng.buildPlan(inc.id, recommendFor(inc, s.rank));
+          let ok = 0; for (const x of plan.units) if (eng.dispatch(x.unit.id, inc.id, { code: inc.severity >= 3 ? 3 : 2 }).ok) ok++;
+          if (ok) { audio.dispatchConfirm(); useApp.getState().showToast(`Response plan dispatched · ${ok} unit${ok > 1 ? 's' : ''}`, 'info'); } else useApp.getState().showToast(plan.uncovered.length ? 'No free units for the response plan' : 'Response already covered', 'warn');
+          bump();
+        }
+      }
       else if (e.key === 'r' || e.key === 'R') {
         const sel = s.selected.kind === 'incident' && s.selected.id ? s.incidents[s.selected.id] : null;
         const target = sel?.mover?.heliId ? sel : Object.values(s.incidents).find((i) => i.mover?.heliId && !['RESOLVED', 'CLOSED'].includes(i.status));
@@ -99,7 +120,7 @@ export function GameScreen() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [engine, layer, target, pauseMenu]);
+  }, [engine, layer, target, pauseMenu, menu]);
 
   const heardForMap = (() => {
     if (st.selected.kind !== 'incident' || !st.selected.id) return undefined;
@@ -115,14 +136,12 @@ export function GameScreen() {
     else { if (engine.reposition(target.id, node)) audio.dispatchConfirm(); }
     setTarget(null); bump();
   };
-  const onContext = (node: number, hit: { kind: string; id: string } | null) => {
+  const onContext = (node: number, hit: { kind: string; id: string } | null, at: { x: number; y: number }) => {
     const s = engine.state;
-    if (s.selected.kind === 'unit' && s.selected.id) {
-      const u = s.units[s.selected.id];
-      if (hit?.kind === 'incident') { const r = engine.dispatch(u.id, hit.id); if (!r.ok) useApp.getState().showToast(r.reason ?? 'Cannot dispatch', 'warn'); }
-      else if (['AVAILABLE', 'RETURNING'].includes(u.status)) engine.reposition(u.id, node);
-    } else if (s.selected.kind === 'incident' && s.selected.id && !hit) { engine.setIncidentLocation(s.selected.id, node, 'map'); }
-    bump();
+    // quick orders: with a unit selected, right-click an incident to send it or a street to move it there
+    const u = s.selected.kind === 'unit' && s.selected.id ? s.units[s.selected.id] : null;
+    if (u && (hit?.kind === 'incident' || (!hit && ['AVAILABLE', 'RETURNING'].includes(u.status) && !isAir(u)))) { handleDrop(engine, { kind: 'unit', id: u.id }, hit, node); return; }
+    setMenu({ x: at.x, y: at.y, node, hit, key: performance.now() });
   };
 
   const style = { ['--left' as string]: collapsed.l ? '34px' : `${sizes.l}px`, ['--right' as string]: collapsed.r ? '34px' : `${sizes.r}px`, ['--bottom' as string]: collapsed.b ? '34px' : `${sizes.b}px` } as React.CSSProperties;
@@ -153,7 +172,7 @@ export function GameScreen() {
         <div className="center">
           <MapView engine={engine} layer={layer} mode={target ? 'pickLocation' : 'select'} selected={st.selected}
             onSelect={(k, id) => { engine.select(k, id); setCollapsed((c) => ({ ...c, r: false })); bump(); }}
-            onPickNode={onPickNode} onContext={onContext} heard={heardForMap}
+            onPickNode={onPickNode} onContext={onContext} onDrop={(src, t, node) => handleDrop(engine, src, t, node)} heard={heardForMap}
             onPickHeard={(h) => { const s = engine.state; if (s.selected.kind === 'incident' && s.selected.id) { engine.setIncidentLocation(s.selected.id, h.nodeId, 'candidate'); audio.dispatchConfirm(); bump(); } }}
             focus={focus} reduceMotion={settings.reduceMotion} minimap preview={preview} sounds />
           <div className="maptools">
@@ -165,8 +184,10 @@ export function GameScreen() {
           </div>
           <IncomingBanner engine={engine} />
           <RecordsDock engine={engine} onOpen={() => setTerminal(true)} />
+          <BoloDock engine={engine} />
           <DecisionCards engine={engine} />
           <NewsTicker engine={engine} />
+          {menu && <MapMenu engine={engine} menu={menu} onClose={closeMenu} focus={doFocus} startReposition={(id) => setTarget({ kind: 'repos', id })} openTab={(t) => { setTab(t as BottomTab); setCollapsed((c) => ({ ...c, b: false })); }} />}
           {cctv && <CctvViewer engine={engine} view={cctv} onClose={() => setCctv(null)} />}
           {terminal && <RecordsTerminal engine={engine} onClose={() => setTerminal(false)} />}
           <GoalsCard engine={engine} />
@@ -294,7 +315,7 @@ function Legend({ layer }: { layer: LayerId }) {
 }
 
 export function HelpModal({ onClose }: { onClose: () => void }) {
-  const rows: Array<[string, string]> = [['Space', 'Pause / resume'], ['1 / 2 / 3', 'Set game speed'], ['A', 'Answer the next ringing call'], ['H', 'Hold / resume a call'], ['E', 'End the active call'], ['D', 'Open the active call’s incident'], ['T', 'Records terminal (officer ID / warrant / plate checks)'], ['R', 'Relay the helicopter’s position to ground units'], ['M', 'Cycle map layers'], ['Esc', 'Cancel / deselect / menu'], ['Right-click', 'Unit selected: dispatch to incident or reposition'], ['Scroll / drag', 'Zoom / pan the map'], ['?', 'This help']];
+  const rows: Array<[string, string]> = [['Space', 'Pause / resume'], ['1 / 2 / 3', 'Set game speed'], ['A', 'Answer the next ringing call'], ['H', 'Hold / resume a call'], ['E', 'End the active call'], ['D', 'Open the active call’s incident'], ['T', 'Records terminal (officer ID / warrant / plate checks)'], ['R', 'Relay the helicopter’s position to ground units'], ['M', 'Cycle map layers'], ['Esc', 'Cancel / deselect / menu'], ['Enter', 'Dispatch the response plan for the selected incident'], ['F', 'Fly the camera to the selection'], ['B', 'Broadcast a BOLO for the selected incident'], ['Drag a pin', 'Move an incident, or drop it on another to link duplicates'], ['Right-click', 'Quick-order menu (incidents, units, stations, hospitals, streets)'], ['Drag unit → incident', 'Dispatch it (drag a station to send its next free unit)'], ['Scroll / drag', 'Zoom / pan the map'], ['?', 'This help']];
   return (
     <Modal title="Controls & shortcuts" onClose={onClose}>
       <table className="tbl"><tbody>{rows.map(([k, v]) => <tr key={k}><td><kbd>{k}</kbd></td><td>{v}</td></tr>)}</tbody></table>

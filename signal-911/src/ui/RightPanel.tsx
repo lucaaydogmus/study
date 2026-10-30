@@ -72,7 +72,7 @@ function CityPanel({ engine }: PanelCtx) {
         <ul className="hints">
           <li>Click a ringing call, then <b>ANSWER</b>. Ask questions; the caller only knows what they can see.</li>
           <li>Set a location from what the caller says, then verify it with them if you’re unsure.</li>
-          <li>Right-click an available unit on the map, then right-click a destination to reposition it.</li>
+          <li>Drag a unit — or a whole station — onto an incident to dispatch it. Right-click anything on the map for quick orders.</li>
           <li>Keep at least one unit of each service free for the next call.</li>
         </ul>
       </Section>
@@ -194,6 +194,7 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
           {call && (call.state === 'active' || call.state === 'hold') && <Btn size="sm" icon="phone" onClick={openCall}>Go to call</Btn>}
           {!done && call && !['active', 'hold', 'ringing'].includes(call.state) && !inc.onView && <Btn size="sm" icon="phone" onClick={() => { const r = engine.redial(inc.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); else openCall(); bump(); }} title="Call the caller back on their number">Call back</Btn>}
           {!done && !inc.truth.outside && <Btn size="sm" icon="map" onClick={() => { openCctv(engine, inc.id); bump(); }} title="Check the nearest city camera">CCTV</Btn>}
+          {inc.category === 'police' && inc.status !== 'CLOSED' && (() => { const b = engine.boloInfo(inc.id); const out = (st.bolos ?? []).find((x) => x.incId === inc.id && x.status === 'active'); return <Btn size="sm" icon="search" kind={out ? 'primary' : 'default'} disabled={!b.ok} onClick={() => { const r = engine.broadcastBolo(inc.id); if (r.ok) audio.dispatchConfirm(); else useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }} title={b.ok ? 'Broadcast the suspect description to every patrol (B)' : b.reason}>{out ? 'BOLO out' : 'BOLO'}</Btn>; })()}
         </div>
         {inc.truth.outside && <div className="note-line warn"><Icon n="alert" size={12} /> Caller is outside Ravenport. Use <b>TRANSFER</b> to hand them to the neighbouring agency.</div>}
         {inc.parentId && st.incidents[inc.parentId] && <div className="note-line"><Icon n="layers" size={12} /> Broke out of INC-{String(st.incidents[inc.parentId].num).padStart(4, '0')} {st.incidents[inc.parentId].label} — crews there can be sent straight here.</div>}

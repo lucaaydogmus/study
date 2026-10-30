@@ -6,6 +6,8 @@ type Bus = 'effects' | 'radio' | 'music' | 'ambience' | 'sirens';
 export type SirenKind = 'police' | 'fire' | 'medical' | 'rotor';
 export interface SirenVoice { id: string; kind: SirenKind; pan: number; vol: number; variant?: number }
 interface LiveVoice { kind: SirenKind; gain: GainNode; pan: StereoPannerNode; sources: Array<OscillatorNode | AudioBufferSourceNode> }
+/** loudness of each kind of voice at full volume (comparable to the phone ring) */
+const SIREN_PEAK: Record<SirenKind, number> = { police: 0.2, fire: 0.22, medical: 0.17, rotor: 0.55 };
 
 class AudioManager {
   private ctx: AudioContext | null = null;
@@ -53,7 +55,7 @@ class AudioManager {
     this.buses.radio!.gain.value = s.radio;
     this.buses.music!.gain.value = s.music * 0.5;
     this.buses.ambience!.gain.value = s.ambience * 0.6;
-    this.buses.sirens!.gain.value = (s.sirens ?? 0.55) * 0.7;
+    this.buses.sirens!.gain.value = (s.sirens ?? 0.7) * 1.1;
     if (s.music > 0.01 && !this.musicTimer) this.startMusic(); else if (s.music <= 0.01) this.stopMusic();
   }
 
@@ -96,7 +98,7 @@ class AudioManager {
   good() { this.tone(523, 0.1, { type: 'triangle', gain: 0.1 }); this.tone(659, 0.1, { type: 'triangle', gain: 0.1, at: 0.09 }); this.tone(784, 0.18, { type: 'triangle', gain: 0.1, at: 0.18 }); }
   alert() { this.tone(440, 0.16, { type: 'sawtooth', gain: 0.07 }); this.tone(330, 0.22, { type: 'sawtooth', gain: 0.07, at: 0.17 }); }
   error() { this.tone(220, 0.14, { type: 'square', gain: 0.06 }); }
-  siren() { this.tone(700, 0.5, { type: 'sine', gain: 0.03, slide: 950 }); }
+  siren() { this.sirenBurst('police', 1.6, 0.9); }
   radioBlip() {
     this.noise(0.09, { gain: 0.12, bus: 'radio', bp: 2400 });
     this.tone(1800, 0.05, { type: 'sine', gain: 0.05, bus: 'radio', at: 0.09 });
@@ -177,7 +179,19 @@ class AudioManager {
   private stopMusic() { if (this.musicTimer) { clearInterval(this.musicTimer); this.musicTimer = null; } }
 
   // ── positional sirens & rotors ────────────────────────────────────────────
-  /** create one continuous siren (or rotor) voice: an oscillator swept by an LFO, panned in the stereo field */
+  private sirenCurve: Float32Array | null = null;
+  /** soft clipping: gives the synthesised siren the gritty horn character of a real speaker */
+  private shaper(): WaveShaperNode {
+    const ctx = this.ctx!;
+    if (!this.sirenCurve) {
+      const n = 1024, c = new Float32Array(n);
+      for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; c[i] = Math.tanh(x * 2.4) / Math.tanh(2.4); }
+      this.sirenCurve = c;
+    }
+    const w = ctx.createWaveShaper(); w.curve = this.sirenCurve; w.oversample = '2x';
+    return w;
+  }
+  /** create one continuous siren (or rotor) voice: two detuned oscillators swept by an LFO, through a horn filter, panned */
   private makeVoice(kind: SirenKind, variant: number): LiveVoice | null {
     const ctx = this.ctx;
     if (!ctx || !this.buses.sirens || !this.noiseBuf) return null;
@@ -186,49 +200,88 @@ class AudioManager {
     gain.connect(pan); pan.connect(this.buses.sirens);
     const sources: LiveVoice['sources'] = [];
     if (kind === 'rotor') {
+      // blade slap: low-passed noise chopped at the blade-pass rate, plus a low turbine whine
       const src = ctx.createBufferSource(); src.buffer = this.noiseBuf; src.loop = true;
-      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260;
-      const amp = ctx.createGain(); amp.gain.value = 0.5;
-      const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 12.5;
-      const depth = ctx.createGain(); depth.gain.value = 0.5;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420;
+      const amp = ctx.createGain(); amp.gain.value = 0.35;
+      const lfo = ctx.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 11.5;
+      const depth = ctx.createGain(); depth.gain.value = 0.35;
       lfo.connect(depth); depth.connect(amp.gain);
       src.connect(lp); lp.connect(amp); amp.connect(gain);
-      src.start(); lfo.start(); sources.push(src, lfo);
+      const whine = ctx.createOscillator(); whine.type = 'sawtooth'; whine.frequency.value = 182;
+      const wg = ctx.createGain(); wg.gain.value = 0.05; const wl = ctx.createBiquadFilter(); wl.type = 'lowpass'; wl.frequency.value = 600;
+      whine.connect(wl); wl.connect(wg); wg.connect(gain);
+      src.start(); lfo.start(); whine.start(); sources.push(src, lfo, whine);
       return { kind, gain, pan, sources };
     }
-    const osc = ctx.createOscillator();
-    osc.type = kind === 'medical' ? 'square' : 'sawtooth';
+    const base = kind === 'police' ? 1000 : kind === 'fire' ? 720 : 860;
     const lfo = ctx.createOscillator();
     const depth = ctx.createGain();
-    if (kind === 'police') { const yelp = variant % 2 === 1; osc.frequency.value = 1020; lfo.type = yelp ? 'triangle' : 'sine'; lfo.frequency.value = yelp ? 3.1 : 0.24; depth.gain.value = yelp ? 330 : 380; }
-    else if (kind === 'fire') { osc.frequency.value = 760; lfo.type = 'sine'; lfo.frequency.value = 0.13; depth.gain.value = 360; }
-    else { osc.frequency.value = 865; lfo.type = 'square'; lfo.frequency.value = 0.8; depth.gain.value = 96; }
-    lfo.connect(depth); depth.connect(osc.frequency);
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = kind === 'fire' ? 1500 : 2300; lp.Q.value = 0.6;
-    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 380;
-    osc.connect(lp); lp.connect(hp); hp.connect(gain);
-    osc.start(); lfo.start(); sources.push(osc, lfo);
+    if (kind === 'police') { const yelp = variant % 2 === 1; lfo.type = yelp ? 'sawtooth' : 'triangle'; lfo.frequency.value = yelp ? 3.2 : 0.22; depth.gain.value = yelp ? 340 : 420; }
+    else if (kind === 'fire') { lfo.type = 'triangle'; lfo.frequency.value = 0.12; depth.gain.value = 380; }
+    else { lfo.type = 'square'; lfo.frequency.value = 0.75; depth.gain.value = 95; }
+    const shaper = this.shaper();
+    const horn = ctx.createBiquadFilter(); horn.type = 'bandpass'; horn.frequency.value = kind === 'fire' ? 1100 : 1500; horn.Q.value = 0.55;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3800;
+    for (const det of [0, 9]) {
+      const osc = ctx.createOscillator();
+      osc.type = kind === 'fire' ? 'sawtooth' : 'square';
+      osc.frequency.value = base; osc.detune.value = det;
+      lfo.connect(depth);
+      depth.connect(osc.frequency);
+      const og = ctx.createGain(); og.gain.value = 0.5;
+      osc.connect(og); og.connect(shaper);
+      osc.start(); sources.push(osc);
+    }
+    shaper.connect(horn); horn.connect(lp); lp.connect(gain);
+    lfo.start(); sources.push(lfo);
     return { kind, gain, pan, sources };
   }
   /** called by the map every few frames with the emergency vehicles that should be audible right now */
   updateSirens(list: SirenVoice[]) {
     if (!this.ctx) { if (!list.length) return; if (!this.ensure()) return; }
     const ctx = this.ctx!;
+    if (ctx.state === 'suspended') void ctx.resume();
     const now = ctx.currentTime;
     const want = new Set(list.map((v) => v.id));
     for (const [id, v] of this.voices) {
       if (want.has(id)) continue;
-      v.gain.gain.setTargetAtTime(0.0001, now, 0.25);
-      for (const src of v.sources) { try { src.stop(now + 1.2); } catch { /* ignore */ } }
+      v.gain.gain.setTargetAtTime(0.0001, now, 0.35);
+      for (const src of v.sources) { try { src.stop(now + 1.6); } catch { /* ignore */ } }
       this.voices.delete(id);
     }
     for (const v of list) {
       let live = this.voices.get(v.id);
       if (!live) { const made = this.makeVoice(v.kind, v.variant ?? 0); if (!made) continue; live = made; this.voices.set(v.id, live); }
-      const peak = v.kind === 'rotor' ? 0.5 : v.kind === 'medical' ? 0.045 : 0.06;
-      live.gain.gain.setTargetAtTime(Math.max(0.0001, v.vol * peak), now, 0.2);
-      live.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, v.pan)), now, 0.1);
+      live.gain.gain.setTargetAtTime(Math.max(0.0001, v.vol * SIREN_PEAK[v.kind]), now, 0.25);
+      live.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, v.pan)), now, 0.12);
     }
+  }
+  private analyser: AnalyserNode | null = null;
+  /** RMS level of everything the game is playing right now (0..1) — used by QA to prove sirens are audible */
+  outputLevel(): number {
+    const ctx = this.ctx;
+    if (!ctx || !this.master) return 0;
+    if (!this.analyser) { this.analyser = ctx.createAnalyser(); this.analyser.fftSize = 2048; this.master.connect(this.analyser); }
+    const buf = new Float32Array(this.analyser.fftSize);
+    this.analyser.getFloatTimeDomainData(buf);
+    let sum = 0; for (const x of buf) sum += x * x;
+    return Math.sqrt(sum / buf.length);
+  }
+  /** what the sirens are doing right now (for the settings readout and tests) */
+  sirenLevels(): Array<{ kind: SirenKind; gain: number }> { return [...this.voices.values()].map((v) => ({ kind: v.kind, gain: v.gain.gain.value })); }
+  /** a short demonstration burst: the settings test button and the moment a unit goes Code 3 */
+  sirenBurst(kind: Exclude<SirenKind, 'rotor'> = 'police', seconds = 1.8, level = 0.8) {
+    const ctx = this.ensure();
+    if (!ctx) return;
+    const v = this.makeVoice(kind, 1);
+    if (!v) return;
+    const t = ctx.currentTime;
+    v.gain.gain.setValueAtTime(0.0001, t);
+    v.gain.gain.linearRampToValueAtTime(level * SIREN_PEAK[kind], t + 0.08);
+    v.gain.gain.setValueAtTime(level * SIREN_PEAK[kind], t + seconds - 0.3);
+    v.gain.gain.linearRampToValueAtTime(0.0001, t + seconds);
+    for (const src of v.sources) { try { src.stop(t + seconds + 0.05); } catch { /* ignore */ } }
   }
 
   shutdown() { this.updateSirens([]); this.stopAllRings(); this.stopOffice(); this.stopMusic(); this.setCallAmbience(null); }

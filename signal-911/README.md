@@ -76,9 +76,40 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 | `M` | Cycle map layer | `D` | Open the active call’s incident |
 | `T` | Records terminal (officer ID / warrant / plate checks) | `R` | Relay the helicopter's position to ground units |
 | `Esc` | Cancel / deselect / menu | `?` | Help |
-| Right-click | With a unit selected: dispatch to incident or reposition | Wheel / drag | Zoom / pan |
+| `Enter` | Dispatch the response plan for the selected incident | `F` | Fly the camera to the selection |
+| `B` | Broadcast a BOLO for the selected incident | Wheel / drag | Zoom / pan |
+| Right-click | Quick-order menu for incidents, units, stations, hospitals and streets | Drag a unit | Drop it on an incident to dispatch, or on a street to move it |
+| Drag a station | Sends its next free unit to the incident you drop it on | Drag a pin | Move an incident, or drop it on another to link duplicates |
 
 ## What is in the game
+
+### Remaster 5: map, sirens and hands-on dispatching
+
+- **Sirens you can hear**: rebuilt siren synthesis (two detuned horns through a soft-clip driver) at a proper
+  level, with distance falloff from the camera. Settings → *Sirens & rotors* plays a test burst; click the page once
+  so the browser allows audio.
+- **New map look**: a bright daylight palette with warm-toned houses and slate roofs, cooler towers and coloured road
+  casings; golden hour at dawn and dusk; at night the colour drains out, buildings darken and their windows glow.
+  Street names appear along the roads when you zoom in.
+- **Tidy vehicles**: zoomed out, every unit is a clean marker with a heading notch, a flashing ring when it runs
+  lights and sirens, and a dashed ring on patrol. Crews sharing a scene park nose-first in a neat bay under the pin
+  with one caption, instead of overlapping badges.
+- **Right-click anything**: incidents (send the response plan or the nearest police/fire/EMS unit with ETAs, request
+  air support, brief crews, check CCTV, broadcast a BOLO), units (divert, Code 2/3, staging, sitrep, traffic stop,
+  patrol, move to cover, recall), stations (their vehicles and status), hospitals (live bed board, specialties,
+  diversion, inbound ambulances) and streets (move the nearest free unit there to cover, set an incident's location,
+  lay spikes during a pursuit).
+- **Drag to dispatch**: drag a unit onto an incident to send it (with the ETA shown while you drag), drag a whole
+  station to send the next free unit that fits the call, drag an ambulance onto a hospital to change its destination,
+  drag an incident pin to correct its location, or drop it on another incident to link duplicates.
+- **BOLOs**: once the caller has described the suspect, broadcast a be-on-the-lookout to every patrol. Patrolling cars
+  may spot them later: a vehicle starts a new pursuit, a person on foot becomes a stop with a records check. Vague
+  descriptions bring wrong stops; suspects caught on scene are not out there to find.
+- **Spike strips**: during a pursuit, right-click a street ahead of the suspect to send the nearest police car to lay
+  stop sticks. If the car drives over them its tyres are shredded and the chase is nearly over; the spike car joins in.
+- **Code 7 meal breaks**: tired crews radio in for a meal break. Approve it (out of service for a while, back fresh),
+  put them off (they keep tiring) or deny it (morale drops).
+- New achievements: *Be On the Look-Out*, *Stop Sticks* and *Fed and Rested*.
 
 ### Remaster 4: a living city
 

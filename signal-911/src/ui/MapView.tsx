@@ -18,7 +18,9 @@ export type MapMode = 'select' | 'pickLocation' | 'reposition';
 export interface MapProps {
   engine: GameEngine; layer: LayerId; mode: MapMode; selected: { kind: string | null; id: string | null };
   onSelect: (kind: 'incident' | 'unit' | 'station' | 'district' | null, id: string | null) => void;
-  onPickNode?: (node: number) => void; onContext?: (node: number, hit: { kind: string; id: string } | null) => void;
+  onPickNode?: (node: number) => void; onContext?: (node: number, hit: { kind: string; id: string } | null, at: { x: number; y: number }) => void;
+  /** a unit (or a station's next free unit) was dragged onto an incident or a spot on the map */
+  onDrop?: (src: { kind: 'unit' | 'station' | 'incident'; id: string }, target: { kind: string; id: string } | null, node: number) => void;
   heard?: HeardLocation[]; onPickHeard?: (h: HeardLocation) => void; focus?: { x: number; y: number; zoom?: number; key: number } | null;
   showIncidents?: boolean; reduceMotion?: boolean; lockedLabel?: boolean; minimap?: boolean; ambient?: boolean;
   preview?: { unitId: string; path: number[] } | null;
@@ -38,7 +40,7 @@ function cityCanvas(scale: number, active: Set<string>, key: string): HTMLCanvas
   const c = document.createElement('canvas');
   c.width = Math.round((WORLD_W + PAD * 2) * scale); c.height = Math.round((WORLD_H + PAD * 2) * scale);
   const ctx = c.getContext('2d')!;
-  ctx.fillStyle = '#0b2133'; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.fillStyle = '#7fbfe3'; ctx.fillRect(0, 0, c.width, c.height);
   ctx.setTransform(scale, 0, 0, scale, PAD * scale, PAD * scale);
   // buildings always stand up a little: the overview is rendered with the base camera tilt
   drawCity(ctx, scale >= 1.5 ? 1 : 0, null, active, scale, { skipRoofs: true, tilt: BASE_TILT });
@@ -80,7 +82,7 @@ export function MapView(props: MapProps) {
   const wrap = useRef<HTMLDivElement>(null);
   const P = useRef(props); P.current = props;
   const cam = useRef({ x: WORLD_W / 2, y: WORLD_H / 2, z: 0.5, tx: WORLD_W / 2, ty: WORLD_H / 2, tz: 0.5, fit: 0.5, init: false, W: 1, H: 1 });
-  const drag = useRef<{ sx: number; sy: number; cx: number; cy: number; moved: boolean } | null>(null);
+  const drag = useRef<{ sx: number; sy: number; cx: number; cy: number; moved: boolean; grab?: { kind: 'unit' | 'station' | 'incident'; id: string } } | null>(null);
   const hover = useRef<{ kind: string; id: string; label: string } | null>(null);
   const mouse = useRef({ x: 0, y: 0, inside: false });
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
@@ -116,7 +118,7 @@ export function MapView(props: MapProps) {
     const toScreen = (x: number, y: number) => ({ x: (x - cam.current.x) * cam.current.z + W / 2, y: (y - cam.current.y) * cam.current.z + H / 2 });
     const pinPos = (inc: Incident) => { const n = city.nodes[inc.reportedNode!]; return toScreen(n.x, n.y); };
 
-    const hit = (sx: number, sy: number): { kind: 'incident' | 'unit' | 'station' | 'heard'; id: string; label: string } | null => {
+    const hit = (sx: number, sy: number): { kind: 'incident' | 'unit' | 'station' | 'heard' | 'hospital'; id: string; label: string } | null => {
       const st = P.current.engine.state;
       if (P.current.showIncidents !== false) for (const inc of Object.values(st.incidents)) {
         if (inc.reportedNode === null || inc.hidden || ['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
@@ -136,6 +138,11 @@ export function MapView(props: MapProps) {
         const n = city.nodes[s.nodeId]; const p = toScreen(n.x, n.y);
         if (Math.hypot(p.x - sx, p.y - sy) < 13) return { kind: 'station', id: s.id, label: s.name };
       }
+      if (cam.current.z > 0.55) for (const l of city.landmarks) {
+        if (l.kind !== 'hospital') continue;
+        const n = city.nodes[l.nodeId]; const p = toScreen(n.x, n.y + 18);
+        if (Math.hypot(p.x - sx, p.y - sy) < 11) return { kind: 'hospital', id: String(l.nodeId), label: `${l.name} — click for bed board` };
+      }
       return null;
     };
 
@@ -144,7 +151,15 @@ export function MapView(props: MapProps) {
       for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const a = pts[i], b = pts[j]; if ((a.y > y) !== (b.y > y) && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) ins = !ins; }
       return ins;
     };
-    const onDown = (e: PointerEvent) => { if (e.button === 2) return; drag.current = { sx: e.clientX, sy: e.clientY, cx: cam.current.tx, cy: cam.current.ty, moved: false }; };
+    const onDown = (e: PointerEvent) => {
+      if (e.button === 2) return;
+      e.preventDefault(); // no text selection when a drag sweeps over the overlays
+      const r = canvas.getBoundingClientRect();
+      const h = P.current.mode === 'select' ? hit(e.clientX - r.left, e.clientY - r.top) : null;
+      // grabbing a unit or a station starts a drag-to-dispatch, grabbing a pin moves it, instead of a pan
+      const grab = h && (h.kind === 'unit' || h.kind === 'station' || h.kind === 'incident') ? { kind: h.kind, id: h.id } : undefined;
+      drag.current = { sx: e.clientX, sy: e.clientY, cx: cam.current.tx, cy: cam.current.ty, moved: false, grab };
+    };
     const onMove = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
       const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
@@ -152,13 +167,15 @@ export function MapView(props: MapProps) {
       const d = drag.current;
       if (d) {
         const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
-        if (Math.abs(dx) + Math.abs(dy) > 4) d.moved = true;
-        if (d.moved) { cam.current.tx = d.cx - dx / cam.current.z; cam.current.ty = d.cy - dy / cam.current.z; cam.current.x = cam.current.tx; cam.current.y = cam.current.ty; }
+        if (Math.abs(dx) + Math.abs(dy) > (d.grab ? 7 : 4)) d.moved = true;
+        if (d.moved && !d.grab) { cam.current.tx = d.cx - dx / cam.current.z; cam.current.ty = d.cy - dy / cam.current.z; cam.current.x = cam.current.tx; cam.current.y = cam.current.ty; }
       }
       if (!inside) return;
       const h = hit(mouse.current.x, mouse.current.y);
       const prev = hover.current;
       hover.current = h;
+      canvas.style.cursor = d?.grab && d.moved ? 'grabbing' : P.current.mode === 'pickLocation' ? 'crosshair' : h && (h.kind === 'unit' || h.kind === 'station') ? 'grab' : h ? 'pointer' : d?.moved ? 'move' : '';
+      if (d?.grab && d.moved) { setTip((t) => (t ? null : t)); return; }
       if (P.current.mode === 'pickLocation') { const w = toWorld(mouse.current.x, mouse.current.y); setTip({ x: mouse.current.x, y: mouse.current.y, text: `Set location: ${addressOf(city, city.nearestNode(w.x, w.y))}` }); }
       else if (h && (!prev || prev.id !== h.id)) setTip({ x: mouse.current.x, y: mouse.current.y, text: h.label });
       else if (h) setTip((t) => (t ? { ...t, x: mouse.current.x, y: mouse.current.y } : t));
@@ -166,14 +183,22 @@ export function MapView(props: MapProps) {
     };
     const onUp = (e: PointerEvent) => {
       const d = drag.current; drag.current = null;
-      if (!d || d.moved || e.button === 2) return;
+      if (!d || e.button === 2) return;
       const r = canvas.getBoundingClientRect(); const sx = e.clientX - r.left, sy = e.clientY - r.top;
       if (sx < 0 || sy < 0 || sx > r.width || sy > r.height) return;
       const w = toWorld(sx, sy);
+      if (d.grab && d.moved) {
+        const t = hit(sx, sy);
+        canvas.style.cursor = '';
+        if (!(t && t.kind === d.grab.kind && t.id === d.grab.id)) P.current.onDrop?.(d.grab, t && t.kind !== 'heard' ? { kind: t.kind, id: t.id } : null, city.nearestNode(w.x, w.y));
+        return;
+      }
+      if (d.moved) return;
       if (P.current.mode === 'pickLocation') { P.current.onPickNode?.(city.nearestNode(w.x, w.y)); return; }
       const h = hit(sx, sy);
       if (h) {
         if (h.kind === 'heard') { const hh = (P.current.heard ?? []).find((x) => x.id === h.id); if (hh) P.current.onPickHeard?.(hh); }
+        else if (h.kind === 'hospital') P.current.onContext?.(Number(h.id), { kind: 'hospital', id: h.id }, { x: sx, y: sy });
         else P.current.onSelect(h.kind as 'incident' | 'unit' | 'station', h.id);
         return;
       }
@@ -184,7 +209,7 @@ export function MapView(props: MapProps) {
       e.preventDefault();
       const r = canvas.getBoundingClientRect(); const sx = e.clientX - r.left, sy = e.clientY - r.top;
       const w = toWorld(sx, sy); const h = hit(sx, sy);
-      P.current.onContext?.(city.nearestNode(w.x, w.y), h && h.kind !== 'heard' ? { kind: h.kind, id: h.id } : null);
+      P.current.onContext?.(city.nearestNode(w.x, w.y), h && h.kind !== 'heard' ? { kind: h.kind, id: h.id } : null, { x: sx, y: sy });
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -226,11 +251,13 @@ export function MapView(props: MapProps) {
       const view = { x0: c.x - W / 2 / z, y0: c.y - H / 2 / z, x1: c.x + W / 2 / z, y1: c.y + H / 2 / z };
       const hour = ((st.timeOfDay % 24) + 24) % 24;
       const night = hour >= 21 || hour < 5 ? 1 : hour >= 19 ? (hour - 19) / 2 : hour < 7 ? (7 - hour) / 2 : 0;
+      // golden hour around sunrise and sunset
+      const dusk = Math.max(0, 1 - Math.abs(hour - 19) / 1.6) + Math.max(0, 1 - Math.abs(hour - 6) / 1.4);
       const tSec = now / 1000;
 
       // ── world layer ──
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.fillStyle = '#0b2133'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#7fbfe3'; ctx.fillRect(0, 0, W, H);
       ctx.save();
       ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-c.x, -c.y);
       // zooming in tilts the camera: buildings rise into 2.5D and the streets come alive
@@ -243,10 +270,9 @@ export function MapView(props: MapProps) {
       else drawCity(ctx, 2, liveView, active, z, { skipRoofs: true, tilt });
       if (z > 2.1 && pr.layer === 'normal' && !lowDetail) drawParked(ctx, view, active);
       if (z > 1.2 && motion && !lowDetail && (pr.layer === 'normal' || pr.layer === 'traffic')) drawTraffic(ctx, view, ambT, st.districtTraffic, night, z, active);
-      if (live3d || eff > 2.6) { drawBuildings3D(ctx, liveView, tilt, night, z, !lowDetail); drawModels(ctx, liveView, tilt, night, z); }
       // water glints
       if (motion) {
-        ctx.strokeStyle = 'rgba(170,215,240,0.16)'; ctx.lineWidth = 1.2; ctx.beginPath();
+        ctx.strokeStyle = `rgba(255,255,255,${0.45 - 0.3 * night})`; ctx.lineWidth = 1.2; ctx.beginPath();
         const rl = city.riverline;
         for (let k = 0; k < 40; k++) {
           const i = (k * 7) % (rl.length - 1); const p = rl[i];
@@ -256,16 +282,31 @@ export function MapView(props: MapProps) {
         for (let k = 0; k < 50; k++) { const x = (k * 97) % WORLD_W, y = city.coast[Math.floor((x / WORLD_W) * (city.coast.length - 1))].y + 20 + ((k * 13) % 60); const off = Math.sin(tSec * 0.8 + k) * 6; ctx.moveTo(x + off, y); ctx.lineTo(x + off + 8, y); }
         ctx.stroke();
       }
+      // night: the colour drains out and the city darkens toward a deep blue
+      const nightA = 0.72 * night;
+      const vr = { x: view.x0 - 50, y: view.y0 - 50, w: view.x1 - view.x0 + 100, h: view.y1 - view.y0 + 140 };
+      const darken = () => {
+        if (night <= 0) return;
+        ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = `rgba(128,128,128,${0.5 * night})`; ctx.fillRect(vr.x, vr.y, vr.w, vr.h);
+        ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = `rgba(8,14,34,${nightA})`; ctx.fillRect(vr.x, vr.y, vr.w, vr.h);
+      };
+      // the live close-up darkens the ground first and draws night-graded buildings over it, so lit windows glow
+      const liveCity = live3d || eff > 2.6;
+      if (liveCity) { darken(); drawBuildings3D(ctx, liveView, tilt, night, z, !lowDetail, nightA * 0.92); drawModels(ctx, liveView, tilt, night, z, nightA * 0.92); }
       // locked districts are greyed out
+      const lockedFill = liveCity ? `rgba(${Math.round(64 - 56 * nightA)},${Math.round(70 - 56 * nightA)},${Math.round(82 - 48 * nightA)},0.45)` : 'rgba(64,70,82,0.45)';
       for (const d of city.districts) {
         if (active.has(d.id)) continue;
-        ctx.fillStyle = 'rgba(10,14,20,0.42)'; ctx.beginPath(); ctx.moveTo(d.poly[0].x, d.poly[0].y); for (const p of d.poly) ctx.lineTo(p.x, p.y); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = lockedFill; ctx.beginPath(); ctx.moveTo(d.poly[0].x, d.poly[0].y); for (const p of d.poly) ctx.lineTo(p.x, p.y); ctx.closePath(); ctx.fill();
       }
-      // night: darken, then add lights
+      // golden hour around sunrise and sunset
+      if (dusk > 0.01 && night < 0.95) {
+        ctx.fillStyle = `rgba(255,150,70,${0.13 * dusk * (1 - night)})`; ctx.fillRect(vr.x, vr.y, vr.w, vr.h);
+      }
       if (night > 0) {
-        ctx.fillStyle = `rgba(3,7,20,${0.42 * night})`; ctx.fillRect(-PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
+        if (!liveCity) darken();
         ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.85 * night;
-        if (live3d || eff > 2.6) drawNightLights(ctx, view, { windows: false }); else ctx.drawImage(lightsCanvas(), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
+        if (liveCity) drawNightLights(ctx, view, { windows: false }); else ctx.drawImage(lightsCanvas(), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
         ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
       }
       const layer = pr.layer;
@@ -303,7 +344,7 @@ export function MapView(props: MapProps) {
         ctx.stroke(); ctx.setLineDash([]);
       }
       // district borders
-      ctx.setLineDash([6 / z, 6 / z]); ctx.strokeStyle = 'rgba(170,185,200,0.22)'; ctx.lineWidth = Math.max(1, 1 / z);
+      ctx.setLineDash([6 / z, 6 / z]); ctx.strokeStyle = night > 0.5 ? 'rgba(170,185,200,0.28)' : 'rgba(80,90,110,0.38)'; ctx.lineWidth = Math.max(1, 1.2 / z);
       for (const d of city.districts) { ctx.beginPath(); ctx.moveTo(d.poly[0].x, d.poly[0].y); for (const p of d.poly) ctx.lineTo(p.x, p.y); ctx.closePath(); ctx.stroke(); }
       ctx.setLineDash([]);
       if (st.selected.kind === 'district') { const d = city.districtById[st.selected.id!]; if (d) { ctx.strokeStyle = '#4A9CD6'; ctx.lineWidth = Math.max(2, 2 / z); ctx.beginPath(); ctx.moveTo(d.poly[0].x, d.poly[0].y); for (const p of d.poly) ctx.lineTo(p.x, p.y); ctx.closePath(); ctx.stroke(); } }
@@ -321,14 +362,36 @@ export function MapView(props: MapProps) {
           const locked = !active.has(d.id);
           ctx.font = `700 ${Math.max(10, Math.min(15, 10 + z * 3.5))}px Inter, system-ui, sans-serif`;
           const name = d.name.toUpperCase().split('').join(' ');
-          ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,18,0.75)'; ctx.strokeText(name, p.x, p.y);
-          ctx.fillStyle = locked ? 'rgba(152,166,181,0.42)' : 'rgba(214,224,234,0.82)'; ctx.fillText(name, p.x, p.y);
-          if (locked) { ctx.font = '600 9px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(152,166,181,0.55)'; ctx.fillText(`🔒 RANK ${d.unlockRank}`, p.x, p.y + 14); }
+          const dark = night > 0.5;
+          ctx.lineWidth = 3.5; ctx.strokeStyle = dark ? 'rgba(8,12,18,0.8)' : 'rgba(255,255,255,0.85)'; ctx.strokeText(name, p.x, p.y);
+          ctx.fillStyle = locked ? (dark ? 'rgba(152,166,181,0.5)' : 'rgba(90,96,108,0.6)') : (dark ? 'rgba(214,224,234,0.9)' : 'rgba(34,42,56,0.88)'); ctx.fillText(name, p.x, p.y);
+          if (locked) { ctx.font = '600 9px Inter, system-ui, sans-serif'; ctx.fillStyle = dark ? 'rgba(152,166,181,0.6)' : 'rgba(80,86,98,0.75)'; ctx.fillText(`🔒 RANK ${d.unlockRank}`, p.x, p.y + 14); }
         }
       }
-      ctx.font = '600 10px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(110,160,210,0.55)';
+      ctx.font = 'italic 600 10px Inter, system-ui, sans-serif'; ctx.fillStyle = night > 0.5 ? 'rgba(110,160,210,0.6)' : 'rgba(30,90,140,0.65)';
       const rv = S(260, city.riverline[5].y + 1); if (z > 0.6) ctx.fillText('R A V E N P O R T   R I V E R', rv.x, rv.y);
       const sea = S(1000, 1365); ctx.fillText('S O U T H E R N   B A Y', sea.x, sea.y);
+
+      // street names along the roads when zoomed in
+      if (z > 2.2 && layer !== 'incidents') {
+        ctx.font = `600 ${Math.min(12, 8 + z)}px Inter, system-ui, sans-serif`;
+        const dark = night > 0.5;
+        for (const e of city.edges) {
+          if (e.cls === 'local' ? (z < 3.1 || e.id % 3 !== 0) : e.id % 2 !== 0) continue;
+          const a = city.nodes[e.a], b = city.nodes[e.b];
+          const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+          if (mx < view.x0 || mx > view.x1 || my < view.y0 || my > view.y1) continue;
+          const len = Math.hypot(b.x - a.x, b.y - a.y) * z;
+          const tw = ctx.measureText(e.name).width;
+          if (tw > len - 30) continue;
+          let ang = Math.atan2(b.y - a.y, b.x - a.x); if (ang > Math.PI / 2) ang -= Math.PI; if (ang < -Math.PI / 2) ang += Math.PI;
+          const p = S(mx, my);
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ang);
+          ctx.lineWidth = 3; ctx.strokeStyle = dark ? 'rgba(10,14,22,0.85)' : 'rgba(255,255,255,0.92)'; ctx.strokeText(e.name, 0, 0);
+          ctx.fillStyle = dark ? 'rgba(200,210,222,0.9)' : 'rgba(70,74,84,0.95)'; ctx.fillText(e.name, 0, 0);
+          ctx.restore();
+        }
+      }
 
       // landmarks
       if (z > 0.55) for (const l of city.landmarks) {
@@ -381,7 +444,7 @@ export function MapView(props: MapProps) {
       };
       for (const u of Object.values(st.units)) {
         const strong = (sel.kind === 'unit' && sel.id === u.id) || (sel.kind === 'incident' && u.assignedIncidentId === sel.id);
-        if (['EN_ROUTE', 'TRANSPORTING'].includes(u.status) || strong) drawRoute(u, strong);
+        if (['EN_ROUTE', 'TRANSPORTING'].includes(u.status) || strong || (u.status === 'BUSY' && u.note?.startsWith('Spike strip'))) drawRoute(u, strong);
       }
       if (pr.preview && pr.preview.path.length) {
         const u = st.units[pr.preview.unitId];
@@ -394,6 +457,25 @@ export function MapView(props: MapProps) {
         }
       }
       if (sel.kind === 'unit' && sel.id) { const u = st.units[sel.id]; if (u && u.destNode !== null && u.destNode >= 0) { const dn = city.nodes[u.destNode]; const p = S(dn.x, dn.y); ctx.strokeStyle = '#fff'; ctx.globalAlpha = 0.7; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; } }
+
+      // spike strips laid (or on their way) ahead of a pursuit
+      for (const sg of st.stingers ?? []) {
+        if (sg.result) continue;
+        const n = city.nodes[sg.node]; const p = S(n.x, n.y);
+        if (p.x < -30 || p.y < -30 || p.x > W + 30 || p.y > H + 30) continue;
+        if (sg.laidAt === null) {
+          ctx.strokeStyle = 'rgba(240,192,112,0.9)'; ctx.lineWidth = 1.6; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+        } else {
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(0.6);
+          ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(-15, -2, 30, 6);
+          ctx.fillStyle = '#f0c040'; ctx.fillRect(-15, -3, 30, 5);
+          ctx.fillStyle = '#1a1d22'; for (let k = -13; k < 14; k += 4) { ctx.beginPath(); ctx.moveTo(k, -3); ctx.lineTo(k + 2, -7); ctx.lineTo(k + 4, -3); ctx.closePath(); ctx.fill(); }
+          ctx.restore();
+        }
+        ctx.font = '800 9px Inter, system-ui, sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,18,0.85)';
+        const lbl = sg.laidAt === null ? 'SPIKES EN ROUTE' : 'SPIKES';
+        ctx.strokeText(lbl, p.x, p.y - 16); ctx.fillStyle = '#f0c040'; ctx.fillText(lbl, p.x, p.y - 16);
+      }
 
       // heard locations
       for (const h of pr.heard ?? []) {
@@ -501,10 +583,29 @@ export function MapView(props: MapProps) {
       // units (stacked parked units fan out so each stays clickable)
       const dimUnits = layer === 'incidents' ? 0.55 : 1;
       const groups = new Map<string, Unit[]>();
-      for (const u of Object.values(st.units)) { const k = `${Math.round(u.x / 3)},${Math.round(u.y / 3)}`; const g = groups.get(k); if (g) g.push(u); else groups.set(k, [u]); }
+      for (const u of Object.values(st.units)) { if (u.speed > 0.05 || parkedAtBase(st, u)) continue; const k = `${Math.round(u.x / 6)},${Math.round(u.y / 6)}`; const g = groups.get(k); if (g) g.push(u); else groups.set(k, [u]); }
       offs.current.clear();
-      for (const g of groups.values()) { const vis = g.filter((u) => !parkedAtBase(st, u)); vis.forEach((u, i) => { if (vis.length > 1) { const row = Math.floor(i / 4), col = i % 4, inRow = Math.min(4, vis.length - row * 4); offs.current.set(u.id, { dx: (col - (inRow - 1) / 2) * 17, dy: 30 + row * 13 }); } }); }
+      const markers = z < 1.15;
       const vs = Math.max(0.75, Math.min(1.5, 0.6 + z * 0.45));
+      // crews sharing a scene line up nose-first under the pin in a tidy bay, with one caption for the group
+      const bays: Array<{ x: number; y: number; w: number; h: number; units: Unit[] }> = [];
+      for (const g of groups.values()) {
+        if (g.length < 2) continue;
+        g.sort((a, b) => a.id.localeCompare(b.id));
+        const perRow = markers ? 4 : 5;
+        const pitchX = markers ? 15 : Math.round(9 * vs + 6), pitchY = markers ? 15 : Math.round(19 * vs + 4);
+        const dy0 = markers ? 28 : Math.round(30 + 9 * vs);
+        g.forEach((u, i) => { const row = Math.floor(i / perRow), col = i % perRow, inRow = Math.min(perRow, g.length - row * perRow); offs.current.set(u.id, { dx: (col - (inRow - 1) / 2) * pitchX, dy: dy0 + row * pitchY }); });
+        const rows = Math.ceil(g.length / perRow), cols = Math.min(perRow, g.length);
+        const a = S(g[0].x, g[0].y);
+        const bw = cols * pitchX + 8, bh = rows * pitchY + (markers ? 2 : 4);
+        bays.push({ x: a.x - bw / 2, y: a.y + dy0 - pitchY / 2 - 2, w: bw, h: bh, units: g });
+      }
+      for (const b of bays) {
+        if (b.x > W || b.y > H || b.x + b.w < 0 || b.y + b.h < 0) continue;
+        ctx.fillStyle = 'rgba(12,17,23,0.55)'; roundRect(ctx, b.x, b.y, b.w, b.h, 6); ctx.fill();
+        ctx.strokeStyle = 'rgba(232,237,242,0.22)'; ctx.lineWidth = 1; ctx.stroke();
+      }
       for (const u of Object.values(st.units)) {
         // parked vehicles are the dots under their station; only units out on the road are drawn
         if (parkedAtBase(st, u) && !(sel.kind === 'unit' && sel.id === u.id)) continue;
@@ -512,20 +613,37 @@ export function MapView(props: MapProps) {
         const p0 = S(u.x, u.y); const p = { x: p0.x + o0.dx, y: p0.y + o0.dy };
         if (p.x < -40 || p.y < -40 || p.x > W + 40 || p.y > H + 40) continue;
         const hd = heading.current.get(u.id) ?? { x: u.x, y: u.y, h: -Math.PI / 2 };
-        if (Math.hypot(u.x - hd.x, u.y - hd.y) > 0.6) { hd.h = Math.atan2(u.y - hd.y, u.x - hd.x); hd.x = u.x; hd.y = u.y; }
+        if (Math.hypot(u.x - hd.x, u.y - hd.y) > 0.6) {
+          const target = Math.atan2(u.y - hd.y, u.x - hd.x);
+          let diff = target - hd.h; while (diff > Math.PI) diff -= Math.PI * 2; while (diff < -Math.PI) diff += Math.PI * 2;
+          hd.h += diff * Math.min(1, dtMs / 90); hd.x = u.x; hd.y = u.y;
+        }
+        const grouped = offs.current.has(u.id);
+        if (grouped && !markers) { let diff = -Math.PI / 2 - hd.h; while (diff > Math.PI) diff -= Math.PI * 2; while (diff < -Math.PI) diff += Math.PI * 2; hd.h += diff * Math.min(1, dtMs / 220); }
         heading.current.set(u.id, hd);
         const responding = (['EN_ROUTE', 'DISPATCHED'].includes(u.status) && u.code !== 2) || u.status === 'TRANSPORTING' || (u.status === 'ON_SCENE' && !!u.assignedIncidentId);
         const moving = u.speed > 0.1 && ['EN_ROUTE', 'TRANSPORTING', 'RETURNING'].includes(u.status);
         const v = VEH[u.service];
         ctx.globalAlpha = (u.status === 'OUT_OF_SERVICE' ? 0.4 : 1) * dimUnits;
         // siren glow
-        if (responding && motion) {
+        if (responding && motion && !markers) {
           const ph = Math.floor(now / 170) % 2;
           const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 18 * vs);
           g.addColorStop(0, ph ? `${v.bar[0]}55` : `${v.bar[1]}55`); g.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, 18 * vs, 0, 7); ctx.fill();
         }
-        if (isAir(u)) {
+        if (markers && !isAir(u)) {
+          // zoomed out: a clean marker per unit, with a heading notch and flashing ring when responding
+          const col = SERVICE_META[u.service].color;
+          const r = 6.5;
+          ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.arc(p.x + 1, p.y + 1.5, r + 1, 0, 7); ctx.fill();
+          if (moving) { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(p.x + Math.cos(hd.h) * (r + 5), p.y + Math.sin(hd.h) * (r + 5)); ctx.lineTo(p.x + Math.cos(hd.h + 2.4) * r, p.y + Math.sin(hd.h + 2.4) * r); ctx.lineTo(p.x + Math.cos(hd.h - 2.4) * r, p.y + Math.sin(hd.h - 2.4) * r); ctx.closePath(); ctx.fill(); }
+          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(p.x, p.y, r + 1.2, 0, 7); ctx.fill();
+          ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.font = '800 8px Inter, system-ui, sans-serif'; ctx.fillText(SERVICE_META[u.service].glyph, p.x, p.y + 0.5);
+          if (responding && motion) { const ph = Math.floor(now / 200) % 2; ctx.strokeStyle = ph ? v.bar[0] : v.bar[1]; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, r + 3.5, 0, 7); ctx.stroke(); }
+          else if (eng.onPatrol(u)) { ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1; ctx.setLineDash([2, 2]); ctx.beginPath(); ctx.arc(p.x, p.y, r + 3, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+        } else if (isAir(u)) {
           drawHeli(ctx, st, u, p, hd.h, vs, now, motion, night, S);
         } else {
         ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(hd.h);
@@ -545,10 +663,10 @@ export function MapView(props: MapProps) {
         }
         ctx.globalAlpha = 1;
         if (u.temp) { ctx.strokeStyle = '#E5AC4D'; ctx.setLineDash([2, 2]); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
-        if (u.status === 'ON_SCENE') { ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.x, p.y, 12 * vs, 0, 7); ctx.stroke(); }
+        if (u.status === 'ON_SCENE' && !grouped) { ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.x, p.y, 12 * vs, 0, 7); ctx.stroke(); }
         const selected = sel.kind === 'unit' && sel.id === u.id;
         if (selected) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.8; ctx.setLineDash([4, 3]); ctx.lineDashOffset = motion ? now / 70 : 0; ctx.beginPath(); ctx.arc(p.x, p.y, 15 * vs, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
-        if (z > 1.1 || selected || hover.current?.id === u.id) {
+        if ((z > 1.1 && !grouped) || selected || hover.current?.id === u.id) {
           // service-coded badge: diamond (police), circle (fire), square (medical)
           const bx = p.x, by = p.y + 13 * vs + 5;
           ctx.font = '700 9px Inter, system-ui, sans-serif';
@@ -562,6 +680,16 @@ export function MapView(props: MapProps) {
           ctx.fill();
           ctx.fillStyle = '#e8edf2'; ctx.fillText(u.callsign, bx + 4, by + 0.5);
         }
+      }
+
+      // one caption per bay instead of overlapping callsign badges
+      if (z > 1.1) for (const b of bays) {
+        const names = b.units.map((u) => u.callsign);
+        const text = names.length > 3 ? `${names.slice(0, 3).join(' · ')} +${names.length - 3}` : names.join(' · ');
+        ctx.font = '700 9px Inter, system-ui, sans-serif';
+        const tw = ctx.measureText(text).width + 12, cx = b.x + b.w / 2, cy = b.y + b.h + 9;
+        ctx.fillStyle = 'rgba(12,17,23,0.9)'; roundRect(ctx, cx - tw / 2, cy - 7, tw, 14, 3); ctx.fill();
+        ctx.fillStyle = '#e8edf2'; ctx.fillText(text, cx, cy + 0.5);
       }
 
       // floating feedback
@@ -597,7 +725,50 @@ export function MapView(props: MapProps) {
       }
       // edge vignette
       const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.max(W, H) * 0.75);
-      vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.35)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+      vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${0.12 + 0.2 * night})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+
+      // drag-to-dispatch: a tether from the grabbed unit to the cursor, and the drop target lights up
+      const dg = drag.current;
+      if (dg?.grab && dg.moved && mouse.current.inside) {
+        const pinInc = dg.grab.kind === 'incident' ? st.incidents[dg.grab.id] : null;
+        if (pinInc && pinInc.reportedNode !== null) {
+          const from = pinPos(pinInc), m = mouse.current, t = hover.current;
+          const onOther = t?.kind === 'incident' && t.id !== pinInc.id ? st.incidents[t.id] : null;
+          const w = toWorld(m.x, m.y), dest = city.nearestNode(w.x, w.y), dn = S(city.nodes[dest].x, city.nodes[dest].y);
+          ctx.strokeStyle = sevColor(pinInc.severity); ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(onOther ? m.x : dn.x, onOther ? m.y : dn.y); ctx.stroke(); ctx.setLineDash([]);
+          if (!onOther) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(dn.x, dn.y, 9 + pulse * 3, 0, 7); ctx.stroke(); }
+          const text = onOther ? `Link as the same emergency as ${onOther.label}` : `Move pin to ${addressOf(city, dest)}`;
+          ctx.font = '700 11px Inter, system-ui, sans-serif';
+          const tw = ctx.measureText(text).width + 16;
+          ctx.fillStyle = 'rgba(12,17,23,0.92)'; roundRect(ctx, m.x - tw / 2, m.y + 20, tw, 20, 5); ctx.fill();
+          ctx.strokeStyle = 'rgba(232,237,242,0.25)'; ctx.lineWidth = 1; ctx.stroke();
+          ctx.fillStyle = '#e8edf2'; ctx.fillText(text, m.x, m.y + 30.5);
+        }
+        const src = dg.grab.kind === 'unit' ? st.units[dg.grab.id] : null;
+        const stn = dg.grab.kind === 'station' ? st.stations[dg.grab.id] : null;
+        const from = src ? (() => { const q = S(src.x, src.y); const o = offs.current.get(src.id) ?? { dx: 0, dy: 0 }; return { x: q.x + o.dx, y: q.y + o.dy }; })() : stn ? S(city.nodes[stn.nodeId].x, city.nodes[stn.nodeId].y) : null;
+        const svc = src?.service ?? stn?.service ?? 'police';
+        const col = SERVICE_META[svc].color;
+        if (from) {
+          const m = mouse.current;
+          ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.setLineDash([8, 6]); ctx.lineDashOffset = motion ? -now / 30 : 0;
+          ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(m.x, m.y); ctx.stroke(); ctx.setLineDash([]);
+          const t = hover.current;
+          const onInc = t?.kind === 'incident' ? st.incidents[t.id] : null;
+          ctx.fillStyle = 'rgba(12,17,23,0.9)'; ctx.strokeStyle = onInc ? '#fff' : col; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(m.x, m.y, onInc ? 15 : 10, 0, 7); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = col; ctx.font = '800 10px Inter, system-ui, sans-serif'; ctx.fillText(SERVICE_META[svc].glyph, m.x, m.y + 0.5);
+          const who = src ? src.callsign : stn ? `next free unit · ${stn.name}` : '';
+          const canMove = src && ['AVAILABLE', 'RETURNING'].includes(src.status) && !isAir(src);
+          const eta = onInc && onInc.reportedNode !== null && src ? eng.estimate(src.id, onInc.reportedNode)?.eta : undefined;
+          const text = onInc ? `Dispatch ${who} → ${onInc.label}${eta !== undefined && isFinite(eta) ? ` · ${eta >= 60 ? `${Math.floor(eta / 60)}m ${String(Math.round(eta % 60)).padStart(2, '0')}s` : `${Math.round(eta)}s`}` : ''}` : t?.kind === 'hospital' && src?.status === 'TRANSPORTING' ? `Transport ${who} to this hospital` : canMove ? `Move ${who} here to cover` : `Drop on an incident to dispatch ${who}`;
+          ctx.font = '700 11px Inter, system-ui, sans-serif';
+          const tw = ctx.measureText(text).width + 16;
+          ctx.fillStyle = 'rgba(12,17,23,0.92)'; roundRect(ctx, m.x - tw / 2, m.y + 20, tw, 20, 5); ctx.fill();
+          ctx.strokeStyle = onInc ? sevColor(onInc.severity) : 'rgba(232,237,242,0.25)'; ctx.lineWidth = 1; ctx.stroke();
+          ctx.fillStyle = '#e8edf2'; ctx.fillText(text, m.x, m.y + 30.5);
+        }
+      }
 
       // pick-location crosshair
       if (pr.mode === 'pickLocation' && mouse.current.inside) {
@@ -620,17 +791,19 @@ export function MapView(props: MapProps) {
         lastSnd = now;
         const list: SirenVoice[] = [];
         if (st.phase === 'running' && !st.paused && !document.hidden) {
-          const R = Math.hypot(W, H) / 2 / z * 1.3;
-          const zg = Math.max(0.25, Math.min(1, (z - 0.4) / 2));
+          // everything responding on screen is clearly audible; nearer the centre and closer in is louder
+          const R = Math.hypot(W, H) / 2 / z;
+          const zg = 0.6 + 0.4 * Math.max(0, Math.min(1, (z - 0.5) / 2));
           const sir: SirenVoice[] = [], rot: SirenVoice[] = [];
           for (const u of Object.values(st.units)) {
             const air = isAir(u);
-            const loud = air ? ['EN_ROUTE', 'ON_SCENE', 'RETURNING'].includes(u.status) : (u.status === 'EN_ROUTE' && u.code !== 2) || u.status === 'TRANSPORTING';
+            const loud = air ? ['EN_ROUTE', 'ON_SCENE', 'RETURNING'].includes(u.status) : ((u.status === 'EN_ROUTE' || u.status === 'DISPATCHED') && u.code !== 2) || u.status === 'TRANSPORTING';
             if (!loud) continue;
-            const d = Math.hypot(u.x - c.x, u.y - c.y);
-            if (d > R) continue;
+            const d = Math.hypot(u.x - c.x, u.y - c.y) / R;
+            if (d > 1.6) continue;
+            const near = d <= 1 ? 0.5 + 0.5 * Math.pow(1 - d, 1.2) : 0.5 * (1.6 - d) / 0.6;
             const sp = S(u.x, u.y);
-            (air ? rot : sir).push({ id: u.id, kind: air ? 'rotor' : u.service, pan: (sp.x - W / 2) / (W / 2), vol: Math.pow(1 - d / R, 1.6) * zg, variant: u.id.charCodeAt(u.id.length - 1) });
+            (air ? rot : sir).push({ id: u.id, kind: air ? 'rotor' : u.service, pan: Math.max(-0.9, Math.min(0.9, (sp.x - W / 2) / (W / 2))), vol: near * zg, variant: u.id.charCodeAt(u.id.length - 1) });
           }
           sir.sort((a, b) => b.vol - a.vol); rot.sort((a, b) => b.vol - a.vol);
           list.push(...sir.slice(0, 3), ...rot.slice(0, 1));
@@ -639,7 +812,7 @@ export function MapView(props: MapProps) {
           const inc = call ? st.incidents[call.incidentId] : null;
           if (call?.heardSirens && inc) {
             const near = inc.assignedUnits.map((id) => st.units[id]).find((u) => u && u.status === 'EN_ROUTE' && u.code !== 2 && !isAir(u));
-            if (near) list.push({ id: 'phone', kind: near.service, pan: 0, vol: 0.28, variant: 1 });
+            if (near) list.push({ id: 'phone', kind: near.service, pan: 0, vol: 0.45, variant: 1 });
           }
         }
         audio.updateSirens(list);

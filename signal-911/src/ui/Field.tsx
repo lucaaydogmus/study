@@ -104,15 +104,15 @@ export function DecisionCards({ engine }: { engine: GameEngine }) {
         const left = Math.max(0, d.expiresAt - now);
         return (
           <div key={d.id} className="decision" role="alertdialog" aria-label="Crew needs a decision">
-            <div className="dc-head"><Icon n="radio" size={13} /> <b>{u?.callsign ?? 'Unit'}</b><span className="muted small">· {inc?.label}</span><span className="grow" /><span className="mono small">{Math.ceil(left)}s</span></div>
+            <div className="dc-head"><Icon n={d.kind === 'break' ? 'clock' : 'radio'} size={13} /> <b>{u?.callsign ?? 'Unit'}</b><span className="muted small">· {d.kind === 'break' ? 'Code 7 request' : inc?.label}</span><span className="grow" /><span className="mono small">{Math.ceil(left)}s</span></div>
             <div className="dc-bar"><i style={{ width: `${(left / 25) * 100}%` }} /></div>
             <div className="dc-q">{d.prompt.replace(/^[^:]+: /, '')}</div>
             <div className="dc-opts">{d.options.map((o) => <button key={o.id} className="dc-opt" onClick={() => { engine.decide(d.id, o.id); audio.radioBlip(); bump(); }}><b>{o.label}</b><span>{o.hint}</span></button>)}</div>
-            <button className="linkish small" onClick={() => { engine.select('incident', d.incId); bump(); }}>Open incident</button>
+            {inc ? <button className="linkish small" onClick={() => { engine.select('incident', d.incId); bump(); }}>Open incident</button> : u && <button className="linkish small" onClick={() => { engine.select('unit', u.id); bump(); }}>Open unit</button>}
           </div>
         );
       })}
-      {recent.map((d) => <div key={d.id} className={`decision done ${/hurt|shot|did not|went off|cost|wrong/.test(d.outcome ?? '') ? 'bad' : 'good'}`}><b>{d.options.find((o) => o.id === d.chosen)?.label}{d.auto ? ' (crew decided)' : ''}</b> — {d.outcome}</div>)}
+      {recent.map((d) => <div key={d.id} className={`decision done ${/hurt|shot|did not|went off|cost|wrong|not happy/.test(d.outcome ?? '') ? 'bad' : 'good'}`}><b>{d.options.find((o) => o.id === d.chosen)?.label}{d.auto ? ' (crew decided)' : ''}</b> — {d.outcome}</div>)}
     </div>
   );
 }
@@ -218,4 +218,25 @@ export function openCctv(engine: GameEngine, incId: string) {
   if (!r.ok) { toast(r); return; }
   audio.click();
   cctvSink?.({ cam: r.cam!, x: r.x!, y: r.y!, sees: !!r.sees, text: r.text!, incId });
+}
+
+/** active BOLOs, with the time left on each */
+export function BoloDock({ engine }: { engine: GameEngine }) {
+  const st = engine.state;
+  const live = (st.bolos ?? []).filter((b) => b.status === 'active' || (b.status === 'found' && st.time - b.at < 600 && st.time < b.expiresAt));
+  if (!live.length) return null;
+  return (
+    <div className="bolodock">
+      {live.slice(-3).map((b) => {
+        const inc = st.incidents[b.incId];
+        return (
+          <button key={b.id} className={`bolo ${b.status}`} onClick={() => { if (inc) { engine.select('incident', inc.id); useApp.getState().bump(); } }} title={b.text}>
+            <span className="bolo-tag">{b.status === 'found' ? 'BOLO HIT' : 'BOLO'}</span>
+            <span className="bolo-txt">{b.text}</span>
+            <span className="mono small">{b.status === 'found' ? st.units[b.foundBy ?? '']?.callsign ?? '' : fmtTime(b.expiresAt - st.time)}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }

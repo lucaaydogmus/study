@@ -317,6 +317,9 @@ export class GameEngine {
     this.updateDecisions();
     this.updateHospitals();
     this.radioChatter();
+    this.updateBolos();
+    this.updateStingers();
+    this.breakRequests();
     if (!st.config.script) this.breakdowns();
   }
 
@@ -1757,6 +1760,8 @@ export class GameEngine {
           break;
         }
         case 'BUSY': {
+          // a car running spikes out ahead of a pursuit drives there with lights on
+          if (u.note?.startsWith('Spike strip') && u.route.length) { this.advance(u, dt); break; }
           u.timer -= dt;
           if (u.timer <= 0) { u.status = 'RETURNING'; u.assignedIncidentId = undefined; this.routeUnit(u, u.postNode, false); }
           break;
@@ -2416,15 +2421,17 @@ export class GameEngine {
     if (st.time >= m.startAt && contacts.length < 2) {
       let remaining = m.speed * TIME_COMPRESS / 2.4 * WEATHER_SPEED[st.weather] * (contacts.length ? 0.45 : evading ? 1.25 : 1) * dt;
       let guard = 0;
+      const passed: number[] = [];
       while (remaining > 1e-6 && guard++ < 8) {
         if (m.next < 0) m.next = this.chooseEscape(m, assigned);
         const tgt = city.nodes[m.next];
         const dx = tgt.x - m.x, dy = tgt.y - m.y, d = Math.hypot(dx, dy);
-        if (d <= remaining || d < 1e-3) { m.x = tgt.x; m.y = tgt.y; remaining -= d; m.came = m.prev; m.prev = m.next; m.next = -1; if (d < 1e-3 && guard > 3) break; }
+        if (d <= remaining || d < 1e-3) { m.x = tgt.x; m.y = tgt.y; remaining -= d; m.came = m.prev; m.prev = m.next; m.next = -1; passed.push(m.prev); if (d < 1e-3 && guard > 3) break; }
         else { m.x += (dx / d) * remaining; m.y += (dy / d) * remaining; m.heading = Math.atan2(dy, dx); remaining = 0; }
       }
       const last = m.trail[m.trail.length - 1];
       if (!last || Math.hypot(last.x - m.x, last.y - m.y) > 10) { m.trail.push({ x: m.x, y: m.y }); if (m.trail.length > 26) m.trail.shift(); }
+      for (const node of passed) this.runOverStinger(inc, node);
     }
     const dPrev = Math.hypot(city.nodes[m.prev].x - m.x, city.nodes[m.prev].y - m.y);
     inc.nodeId = m.next >= 0 && Math.hypot(city.nodes[m.next].x - m.x, city.nodes[m.next].y - m.y) < dPrev ? m.next : m.prev;
@@ -2474,6 +2481,204 @@ export class GameEngine {
     } else if (st.time >= m.startAt) inc.threat += inc.growth * dt;
     if (inc.status === 'ESCALATING' && st.time - (inc.escalatedAt ?? 0) > 10) inc.status = contacts.length ? 'ON_SCENE' : inc.assignedUnits.length ? 'UNITS_EN_ROUTE' : inc.reportedNode !== null ? 'AWAITING_DISPATCH' : inc.status;
     if (inc.threat >= 100) this.escalate(inc);
+  }
+
+  // ── BOLOs, spike strips and crew breaks ───────────────────────────────────
+  /** what a BOLO would say: the caller's description, plus vehicle and weapon if known */
+  boloInfo(incId: string): { ok: boolean; reason?: string; text?: string; quality?: number } {
+    const st = this.state;
+    const inc = st.incidents[incId];
+    if (!inc || inc.category !== 'police') return { ok: false, reason: 'BOLOs are for police incidents with a suspect' };
+    if (inc.status === 'CLOSED') return { ok: false, reason: 'Incident closed' };
+    const f = (k: string) => inc.facts.find((x) => x.key === k && x.confidence !== 'contradicted');
+    const desc = f('suspect_desc');
+    if (!desc || typeof desc.value !== 'string') return { ok: false, reason: 'Get a description of the suspect from the caller first' };
+    if ((st.bolos ?? []).some((b) => b.incId === incId && b.status === 'active')) return { ok: false, reason: 'A BOLO is already out for this suspect' };
+    const veh = f('vehicles'), weapon = f('weapon');
+    const armed = weapon && weapon.value && weapon.value !== 'none';
+    const quality = Math.min(1, 0.55 + (veh ? 0.2 : 0) + (weapon ? 0.1 : 0) + (desc.confidence === 'confirmed' ? 0.15 : 0));
+    return { ok: true, text: `${desc.value}${armed ? `, possibly armed${typeof weapon.value === 'string' ? ` (${weapon.value})` : ''}` : ''}`, quality };
+  }
+  /** put the description out to every patrol: cruising cars may spot the suspect later */
+  broadcastBolo(incId: string): { ok: boolean; reason?: string } {
+    const info = this.boloInfo(incId);
+    if (!info.ok) return info;
+    const st = this.state, inc = st.incidents[incId], t = inc.truth;
+    const blurb = `${String(t.cause ?? '')} ${String(t.suspect_desc ?? '')}`;
+    const fled = inc.pursuit || /flee|fled|leaving|running|escap|heading/.test(blurb);
+    const caughtOnScene = inc.firstArrivalAt !== null && !fled;
+    const atLarge = t.suspect === true && this.rng.chance(fled ? 0.95 : caughtOnScene ? 0.25 : 0.65);
+    const vehicle = /car|sedan|van|hatchback|truck|vehicle|motorbike/.test(String(t.suspect_desc ?? ''));
+    (st.bolos ??= []).push({ id: `b${st.bolos.length + 1}`, incId, at: st.time, expiresAt: st.time + 540, text: info.text!, quality: info.quality!, atLarge, vehicle, status: 'active' });
+    const num = String(inc.num).padStart(4, '0');
+    this.radio('DISPATCH', `All units, BOLO in connection with INC-${num}: ${info.text}. Last seen near ${addressOf(this.city, inc.reportedNode ?? inc.nodeId)}.`, 'dispatch', undefined, inc.id);
+    const ack = Object.values(st.units).find((u) => this.onPatrol(u));
+    if (ack) this.radio(ack.spoken, this.rng.pick(['Copy the BOLO.', `${ack.spoken} copies, we'll keep an eye out.`, 'Copy, watching for them.']), 'chatter', ack.id);
+    this.log('dispatch', `BOLO issued for INC-${num}`, { incidentId: inc.id });
+    return { ok: true };
+  }
+  private updateBolos() {
+    const st = this.state;
+    for (const b of st.bolos ?? []) {
+      if (b.status !== 'active') continue;
+      const inc = st.incidents[b.incId];
+      const num = inc ? String(inc.num).padStart(4, '0') : '----';
+      if (st.time >= b.expiresAt) {
+        b.status = 'expired';
+        this.radio('DISPATCH', `All units, cancel the BOLO for INC-${num} — no sightings.`, 'dispatch', undefined, b.incId);
+        continue;
+      }
+      const watchers = Object.values(st.units).filter((u) => this.onPatrol(u));
+      if (!watchers.length) continue;
+      const night = st.timeOfDay % 24 >= 21 || st.timeOfDay % 24 < 5;
+      // a vague description gets the odd wrong stop
+      if (!b.atLarge || b.quality < 0.7) {
+        if (this.rng.chance(0.004 * (1.2 - b.quality))) {
+          const u = this.rng.pick(watchers);
+          this.radio(u.spoken, `Dispatch, ${u.spoken}. Stopped someone who looked like the BOLO for INC-${num} — not our guy. Back in service.`, 'unit', u.id, b.incId);
+          u.status = 'BUSY'; u.timer = 20; u.route = []; u.speed = 0;
+        }
+        if (!b.atLarge) continue;
+      }
+      if (!this.rng.chance(0.0045 * b.quality * Math.min(4, watchers.length) * (night ? 0.8 : 1))) continue;
+      const u = this.rng.pick(watchers);
+      b.status = 'found'; b.foundBy = u.id;
+      st.stats.boloHits = (st.stats.boloHits ?? 0) + 1;
+      const where = addressOf(this.city, u.prevNode);
+      this.fx('good', u.prevNode, 'BOLO hit');
+      if (b.vehicle && inc) {
+        this.radio(u.spoken, `Dispatch, ${u.spoken}! I've got the BOLO vehicle from INC-${num} at ${where} — lit him up and he's not stopping!`, 'alert', u.id, b.incId);
+        const child = this.spawnIncident('pursuit', this.city.nodes[u.prevNode].district, { connectedTo: inc, noCall: true, nodeId: u.prevNode });
+        child.reportedNode = u.prevNode;
+        this.dispatch(u.id, child.id, { code: 3, self: true });
+        this.notify(`BOLO hit — ${u.callsign} is chasing the suspect from INC-${num}`, 'good', child.id);
+        this.emit({ type: 'alert', text: 'BOLO hit — pursuit' });
+      } else {
+        this.radio(u.spoken, `Dispatch, ${u.spoken}. Out with a subject matching the BOLO for INC-${num} at ${where}. Running them now.`, 'unit', u.id, b.incId);
+        u.status = 'BUSY'; u.timer = 60; u.route = []; u.speed = 0; u.note = 'BOLO stop';
+        this.officerRequest(u, inc ?? null, 'person', inc?.truth.weapon !== false && inc?.truth.weapon !== undefined, 3);
+        this.notify(`BOLO hit — ${u.callsign} has stopped a subject matching INC-${num}`, 'good', b.incId);
+      }
+      st.stats.bonus += 400; st.budget += 400;
+      this.headline(`Patrol spots suspect wanted over ${inc ? inc.label.toLowerCase() : 'earlier incident'}`, 'good');
+    }
+  }
+
+  /** the vehicle pursuit spikes would be laid against */
+  activePursuit(): Incident | undefined {
+    return Object.values(this.state.incidents).filter((i) => i.pursuit && i.mover && !i.hidden && !['RESOLVED', 'CLOSED'].includes(i.status)).sort((a, b) => b.createdAt - a.createdAt)[0];
+  }
+  /** police cars that could get spikes to a spot in time */
+  stingerUnits(node: number): Array<{ unit: Unit; eta: number }> {
+    const inc = this.activePursuit();
+    return Object.values(this.state.units)
+      .filter((u) => u.service === 'police' && !isAir(u) && !u.temp && ((['AVAILABLE', 'RETURNING'].includes(u.status) && !u.assignedIncidentId) || (inc && u.assignedIncidentId === inc.id && ['DISPATCHED', 'EN_ROUTE'].includes(u.status))))
+      .map((unit) => ({ unit, eta: this.estimate(unit.id, node)?.eta ?? Infinity })).filter((x) => isFinite(x.eta)).sort((a, b) => a.eta - b.eta);
+  }
+  deployStinger(unitId: string, node: number): { ok: boolean; reason?: string } {
+    const st = this.state;
+    const inc = this.activePursuit();
+    if (!inc) return { ok: false, reason: 'No vehicle pursuit in progress' };
+    const u = st.units[unitId];
+    if (!u || !this.stingerUnits(node).some((x) => x.unit.id === unitId)) return { ok: false, reason: 'That unit cannot run spikes right now' };
+    if ((st.stingers ?? []).some((x) => !x.result && x.incId === inc.id && x.node === node)) return { ok: false, reason: 'Spikes are already going down there' };
+    if (u.assignedIncidentId) this.detach(u, true);
+    u.status = 'BUSY'; u.timer = 9999; u.note = `Spike strip → ${addressOf(this.city, node)}`;
+    this.routeUnit(u, node, true);
+    (st.stingers ??= []).push({ id: `s${st.stingers.length + 1}`, unitId, incId: inc.id, node, laidAt: null, expiresAt: st.time + 260 });
+    this.radio('DISPATCH', `${u.spoken}, deploy stop sticks at ${addressOf(this.city, node)}.`, 'dispatch', u.id, inc.id);
+    this.radio(u.spoken, this.rng.pick(['Copy, en route with the stingers.', 'Copy, setting up spikes.', 'On our way — we\'ll have the strip down.']), 'unit', u.id, inc.id);
+    return { ok: true };
+  }
+  private updateStingers() {
+    const st = this.state;
+    for (const s of st.stingers ?? []) {
+      if (s.result) continue;
+      const u = st.units[s.unitId], inc = st.incidents[s.incId];
+      const over = !inc || !inc.mover || ['RESOLVED', 'CLOSED'].includes(inc.status);
+      if (!u || over || st.time >= s.expiresAt || !u.note?.startsWith('Spike strip')) {
+        s.result = 'cancelled';
+        if (u && u.note?.startsWith('Spike strip')) {
+          u.note = undefined; u.timer = 0; u.status = 'RETURNING'; this.routeUnit(u, u.postNode, false);
+          if (!over) this.radio(u.spoken, 'Pulling the spikes, he never came this way.', 'unit', u.id, s.incId);
+        }
+        continue;
+      }
+      if (s.laidAt === null && !u.route.length) {
+        s.laidAt = st.time; u.note = `Spike strip at ${addressOf(this.city, s.node)}`; u.speed = 0;
+        this.radio(u.spoken, `Dispatch, ${u.spoken}. Spikes are down at ${addressOf(this.city, s.node)}.`, 'unit', u.id, s.incId);
+        this.fx('info', s.node, 'Spikes down');
+      }
+    }
+  }
+  /** the fleeing car crosses a node: did it meet a spike strip? */
+  private runOverStinger(inc: Incident, node: number) {
+    const st = this.state;
+    const s = (st.stingers ?? []).find((x) => !x.result && x.laidAt !== null && x.incId === inc.id && x.node === node);
+    if (!s) return;
+    const u = st.units[s.unitId], m = inc.mover!;
+    const grip = ({ rain: 0.9, storm: 0.85, snow: 0.8, fog: 0.95 } as Record<string, number>)[st.weather] ?? 1;
+    const w = this.moverWhere(m);
+    if (this.rng.chance(0.8 * grip)) {
+      s.result = 'hit';
+      st.stats.stingerHits = (st.stingers ?? []).filter((x) => x.result === 'hit').length;
+      m.speed *= 0.2; m.evadeUntil = 0;
+      inc.threat = Math.max(0, inc.threat - 25); inc.workProgress += inc.work * 0.35; inc.reportedNode = node;
+      this.radio(u?.spoken ?? 'UNIT', `Spikes got him! Tyres are shredded — he's crawling ${w.dir} on ${w.street}!`, 'alert', u?.id, inc.id);
+      this.fx('good', node, 'Spikes hit');
+      this.headline(`Stop sticks end ${inc.label.toLowerCase()}`, 'good');
+    } else {
+      s.result = 'missed';
+      this.radio(u?.spoken ?? 'UNIT', `He swerved round the strip! Still going ${w.dir} on ${w.street}!`, 'alert', u?.id, inc.id);
+      this.fx('warn', node, 'Missed the spikes');
+    }
+    // the spike car joins the chase either way
+    if (u) { u.note = undefined; u.timer = 0; u.status = 'AVAILABLE'; this.dispatch(u.id, inc.id, { code: 3, self: true }); }
+  }
+
+  /** tired crews ask for a meal break (Code 7): rest against coverage */
+  private breakRequests() {
+    const st = this.state;
+    if (st.config.script || st.config.mode === 'tutorial' || st.time < (st.nextBreakAt ?? 300)) return;
+    if ((st.decisions ?? []).some((d) => !d.chosen)) return;
+    const fat = (u: Unit) => { const c = this.crewOf(u); return c.length ? c.reduce((a, p) => a + p.fatigue, 0) / c.length : 0; };
+    const tired = Object.values(st.units).filter((u) => u.status === 'AVAILABLE' && !isAir(u) && !u.temp && fat(u) > 42).sort((a, b) => fat(b) - fat(a))[0];
+    if (!tired) { st.nextBreakAt = st.time + 60; return; }
+    st.nextBreakAt = st.time + this.rng.range(280, 440);
+    (st.decisions ??= []).push({
+      id: `d${st.decisions.length + 1}-b${Math.floor(st.time)}`, incId: '', unitId: tired.id, at: st.time, expiresAt: st.time + 25, kind: 'break',
+      prompt: `${tired.spoken}: requesting Code 7 for a meal break — about fifteen minutes?`,
+      options: [{ id: 'approve', label: 'Approve the break', hint: 'Out of service for a while, back fresh and sharper' }, { id: 'later', label: 'Not now — ask me later', hint: 'Stays available; the crew keeps tiring' }, { id: 'deny', label: 'Deny it', hint: 'Available, but morale takes a hit' }],
+      defaultId: 'later',
+    });
+    this.radio(tired.spoken, `Dispatch, ${tired.spoken}. Requesting Code 7 for a meal break when you can.`, 'unit', tired.id);
+  }
+  private decideBreak(d: import('./types').Decision, optionId: string, auto: boolean): { ok: boolean; outcome?: string } {
+    const st = this.state;
+    const u = st.units[d.unitId];
+    const crew = u ? this.crewOf(u) : [];
+    if (!u) { d.outcome = 'Unit no longer on shift.'; return { ok: true, outcome: d.outcome }; }
+    if (optionId === 'approve') {
+      if (u.status !== 'AVAILABLE') { d.outcome = `${u.callsign} got a call first — break cancelled.`; return { ok: true, outcome: d.outcome }; }
+      this.radio('DISPATCH', `${u.spoken}, Code 7 approved. Enjoy.`, 'dispatch', u.id);
+      this.radio(u.spoken, this.rng.pick(['Appreciate it, dispatch.', 'Thanks — back shortly.', 'Copy, Code 7.']), 'unit', u.id);
+      u.status = 'OUT_OF_SERVICE'; u.note = 'Meal break'; u.timer = 150; u.route = []; u.speed = 0;
+      for (const p of crew) { p.fatigue = Math.max(0, p.fatigue - 40); p.morale = Math.min(100, p.morale + 6); }
+      st.stats.breaksGiven = (st.stats.breaksGiven ?? 0) + 1;
+      d.outcome = `${u.callsign} is on a meal break — back in service in a few minutes.`;
+    } else if (optionId === 'later') {
+      if (!auto) this.radio('DISPATCH', `${u.spoken}, stand by on that — busy board.`, 'dispatch', u.id);
+      this.radio(u.spoken, 'Copy, standing by.', 'unit', u.id);
+      for (const p of crew) { p.fatigue = Math.min(100, p.fatigue + 3); p.morale = Math.max(0, p.morale - 2); }
+      st.nextBreakAt = Math.min(st.nextBreakAt ?? Infinity, st.time + 130);
+      d.outcome = `${u.callsign} will ask again later.`;
+    } else {
+      this.radio('DISPATCH', `${u.spoken}, negative on the Code 7, we need you available.`, 'dispatch', u.id);
+      this.radio(u.spoken, this.rng.pick(['...Copy.', 'Copy. Running on fumes here.', 'Understood.']), 'unit', u.id);
+      for (const p of crew) p.morale = Math.max(0, p.morale - 10);
+      d.outcome = `${u.callsign} stays available — the crew is not happy (morale down).`;
+    }
+    return { ok: true, outcome: d.outcome };
   }
 
   // ── Dispatch tools: trace, interpreter, redial, CCTV ─────────────────────
@@ -2651,6 +2856,7 @@ export class GameEngine {
     const inc = st.incidents[d.incId];
     const u = st.units[d.unitId];
     d.chosen = optionId; d.auto = auto;
+    if (d.kind === 'break') return this.decideBreak(d, optionId, auto);
     if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) { d.outcome = 'The incident was already over.'; return { ok: true, outcome: d.outcome }; }
     const t = inc.truth;
     const n = (k: string) => (typeof t[k] === 'number' ? (t[k] as number) : 0);

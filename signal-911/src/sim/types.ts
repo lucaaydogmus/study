@@ -150,6 +150,15 @@ export interface Decision {
   id: string; incId: string; unitId: string; at: number; expiresAt: number; kind: string; prompt: string;
   options: Array<{ id: string; label: string; hint: string }>; defaultId: string; chosen?: string; outcome?: string; auto?: boolean;
 }
+/** be-on-the-lookout broadcast: patrols watch for a suspect the caller described */
+export interface Bolo {
+  id: string; incId: string; at: number; expiresAt: number; text: string; quality: number;
+  /** hidden truth: is the suspect still out there, and in a vehicle? */
+  atLarge: boolean; vehicle: boolean;
+  status: 'active' | 'found' | 'expired'; foundBy?: string;
+}
+/** a spike strip run out ahead of a fleeing vehicle */
+export interface Stinger { id: string; unitId: string; incId: string; node: number; laidAt: number | null; expiresAt: number; result?: 'hit' | 'missed' | 'cancelled' }
 export interface CallTrace {
   startedAt: number; stage: number; stages: Array<{ at: number; radius: number; label: string }>;
   x: number; y: number; radius: number; label: string; done: boolean; wrongNode?: number | null;
@@ -294,6 +303,7 @@ export interface ShiftStats {
   merges: number; wrongLinks: number; pursuitsCaught: number; verifiedOk: number; cleanFalseAlarms: number; bestStreak: number; calmedCallers: number; transfersOk: number; mutualAid: number; contractBonus: number;
   aidGood: number; aidBad: number; unitCrashes: number; breakdowns: number; aiLines: number;
   heliRelays: number; heliSightings: number; checksOk: number; checksBad: number; checksMissed: number; guidanceDeaths: number; guidanceSaves: number; harmfulAdvice: number;
+  boloHits?: number; stingerHits?: number; breaksGiven?: number;
 }
 
 export interface GameState {
@@ -318,6 +328,7 @@ export interface GameState {
   hospitalLoad?: Record<number, number[]>;
   /** tactical questions from crews on scene */
   decisions?: Decision[];
+  bolos?: Bolo[]; stingers?: Stinger[]; nextBreakAt?: number;
   /** headlines for the news ticker */
   news?: Array<{ t: number; text: string; tone: 'good' | 'bad' | 'info' }>;
   /** hospital departments, beds and diversions, keyed by hospital node */

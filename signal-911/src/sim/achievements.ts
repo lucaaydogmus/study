@@ -55,6 +55,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'touchdown', name: 'Wheels Down', desc: 'Have crews in position before an emergency landing.', icon: 'clock', tier: 'silver', check: (c) => incidents(c).some((i) => i.deadlineMet === true) },
   { id: 'heist', name: 'Box Them In', desc: 'Catch the getaway van after a bank robbery.', icon: 'shield', tier: 'gold', check: (c) => incidents(c).some((i) => i.templateId === 'getaway' && i.outcome === 'success') },
   { id: 'guardian', name: 'Guardian Angel', desc: 'Keep 3 patients alive with your instructions in one shift.', icon: 'heart', tier: 'gold', check: (c) => (c.st?.stats.guidanceSaves ?? 0) >= 3 },
+  { id: 'bolo', name: 'Be On the Look-Out', desc: 'Have a patrol spot a suspect from one of your BOLOs.', icon: 'search', tier: 'silver', check: (c) => (c.st?.stats.boloHits ?? 0) >= 1 },
+  { id: 'stinger', name: 'Stop Sticks', desc: 'End a pursuit with a spike strip laid in its path.', icon: 'car', tier: 'gold', check: (c) => (c.st?.stats.stingerHits ?? 0) >= 1 },
+  { id: 'code7', name: 'Fed and Rested', desc: 'Approve 3 crew meal breaks in one shift.', icon: 'heart', tier: 'bronze', check: (c) => (c.st?.stats.breaksGiven ?? 0) >= 3 },
   { id: 'daily7', name: 'Regular', desc: 'Complete 7 different Daily Challenges.', icon: 'clock', tier: 'gold', check: (c) => Object.keys(c.profile.daily ?? {}).length >= 7 },
 ];
 export const ACHIEVEMENT_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a])) as Record<string, AchievementDef>;
