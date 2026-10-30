@@ -49,6 +49,16 @@ function play(id: string, seed: number, smart: boolean) {
         if (inc.mover?.heliId && st.time - (inc.relayedAt ?? -99) > 12) e.relayAir(inc.id);
       }
     }
+    // the newer duties a competent dispatcher keeps up with: agencies, status checks, search sectors
+    if (smart) for (const inc of Object.values(st.incidents)) {
+      if (['RESOLVED', 'CLOSED'].includes(inc.status) || inc.hidden) continue;
+      if (inc.agency && inc.agency.askedAt !== null && inc.agency.calledAt === null && st.time - inc.agency.askedAt > 8) e.callAgency(inc.id);
+      if (inc.search && !inc.search.found && Math.floor(st.time) % 6 === 0) {
+        const open = inc.search.sectors.map((x, i) => ({ x, i })).filter((o) => o.x.searched < 1 && !inc.assignedUnits.some((id) => st.units[id]?.searchSector === o.i)).sort((a, b) => b.x.p - a.x.p);
+        if (open.length) e.assignSearch(inc.id, open[0].i);
+      }
+    }
+    if (smart) for (const u of e.overdueChecks()) if (st.time - u.checkDue! > 6) e.statusCheck(u.id);
     if (smart) for (const r of st.requests) if (r.status === 'open' && st.time - r.at > 6 && st.time >= r.at) { e.runRequest(r.id); e.answerRequest(r.id, r.truth, r.db.findIndex((h) => h.match)); }
     e.step(DT);
   }

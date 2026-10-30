@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getCity, addressOf, WORLD_H, WORLD_W } from '../sim/city';
 import { SERVICE_META, isAir } from '../sim/fleet';
+import { AGENCY } from '../sim/engine';
 import { audio, type SirenVoice } from '../audio/audioManager';
 import { WEATHER_LABEL, WEATHER_SPEED } from '../sim/events';
 import type { GameEngine } from '../sim/engine';
@@ -28,6 +29,8 @@ export interface MapProps {
   sounds?: boolean;
   /** camera easing per frame (lower = slower, cinematic) */
   camEase?: number;
+  /** units picked with a Shift+drag box */
+  multi?: string[]; onBoxSelect?: (ids: string[]) => void;
 }
 
 // ── cached city layers ───────────────────────────────────────────────────────
@@ -84,6 +87,7 @@ export function MapView(props: MapProps) {
   const cam = useRef({ x: WORLD_W / 2, y: WORLD_H / 2, z: 0.5, tx: WORLD_W / 2, ty: WORLD_H / 2, tz: 0.5, fit: 0.5, init: false, W: 1, H: 1 });
   const drag = useRef<{ sx: number; sy: number; cx: number; cy: number; moved: boolean; grab?: { kind: 'unit' | 'station' | 'incident'; id: string } } | null>(null);
   const hover = useRef<{ kind: string; id: string; label: string } | null>(null);
+  const box = useRef<{ sx: number; sy: number; x: number; y: number } | null>(null);
   const mouse = useRef({ x: 0, y: 0, inside: false });
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
   const lastFocus = useRef(0);
@@ -158,12 +162,15 @@ export function MapView(props: MapProps) {
       const h = P.current.mode === 'select' ? hit(e.clientX - r.left, e.clientY - r.top) : null;
       // grabbing a unit or a station starts a drag-to-dispatch, grabbing a pin moves it, instead of a pan
       const grab = h && (h.kind === 'unit' || h.kind === 'station' || h.kind === 'incident') ? { kind: h.kind, id: h.id } : undefined;
+      // Shift+drag on open map draws a selection box around several units
+      if (e.shiftKey && !grab && P.current.onBoxSelect) { const x = e.clientX - r.left, y = e.clientY - r.top; box.current = { sx: x, sy: y, x, y }; drag.current = null; return; }
       drag.current = { sx: e.clientX, sy: e.clientY, cx: cam.current.tx, cy: cam.current.ty, moved: false, grab };
     };
     const onMove = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
       const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
       mouse.current = { x: e.clientX - r.left, y: e.clientY - r.top, inside };
+      if (box.current) { box.current.x = mouse.current.x; box.current.y = mouse.current.y; return; }
       const d = drag.current;
       if (d) {
         const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
@@ -182,6 +189,19 @@ export function MapView(props: MapProps) {
       else setTip((t) => (t ? null : t));
     };
     const onUp = (e: PointerEvent) => {
+      if (box.current) {
+        const b = box.current; box.current = null;
+        const x0 = Math.min(b.sx, b.x), x1 = Math.max(b.sx, b.x), y0 = Math.min(b.sy, b.y), y1 = Math.max(b.sy, b.y);
+        if (x1 - x0 < 6 && y1 - y0 < 6) return;
+        const st = P.current.engine.state;
+        const ids = Object.values(st.units).filter((u) => {
+          if (parkedAtBase(st, u)) return false;
+          const p = toScreen(u.x, u.y); const o = offs.current.get(u.id) ?? { dx: 0, dy: 0 };
+          return p.x + o.dx >= x0 && p.x + o.dx <= x1 && p.y + o.dy >= y0 && p.y + o.dy <= y1;
+        }).map((u) => u.id);
+        P.current.onBoxSelect?.(ids);
+        return;
+      }
       const d = drag.current; drag.current = null;
       if (!d || e.button === 2) return;
       const r = canvas.getBoundingClientRect(); const sx = e.clientX - r.left, sy = e.clientY - r.top;
@@ -347,6 +367,17 @@ export function MapView(props: MapProps) {
       ctx.setLineDash([6 / z, 6 / z]); ctx.strokeStyle = night > 0.5 ? 'rgba(170,185,200,0.28)' : 'rgba(80,90,110,0.38)'; ctx.lineWidth = Math.max(1, 1.2 / z);
       for (const d of city.districts) { ctx.beginPath(); ctx.moveTo(d.poly[0].x, d.poly[0].y); for (const p of d.poly) ctx.lineTo(p.x, p.y); ctx.closePath(); ctx.stroke(); }
       ctx.setLineDash([]);
+      // public alert zones
+      for (const inc of Object.values(st.incidents)) {
+        if (!inc.alert || inc.reportedNode === null || ['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
+        const d = city.districtById[city.nodes[inc.reportedNode].district];
+        if (!d) continue;
+        const ev = inc.alert.kind === 'evacuate';
+        const pulseA = motion ? 0.16 + 0.06 * Math.sin(now / 500) : 0.18;
+        ctx.fillStyle = ev ? `rgba(214,60,60,${pulseA})` : `rgba(229,160,50,${pulseA})`;
+        ctx.strokeStyle = ev ? 'rgba(200,40,40,0.9)' : 'rgba(210,140,30,0.95)'; ctx.lineWidth = Math.max(3, 3.5 / z); ctx.setLineDash([12 / z, 7 / z]);
+        ctx.beginPath(); ctx.moveTo(d.poly[0].x, d.poly[0].y); for (const p of d.poly) ctx.lineTo(p.x, p.y); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+      }
       if (st.selected.kind === 'district') { const d = city.districtById[st.selected.id!]; if (d) { ctx.strokeStyle = '#4A9CD6'; ctx.lineWidth = Math.max(2, 2 / z); ctx.beginPath(); ctx.moveTo(d.poly[0].x, d.poly[0].y); for (const p of d.poly) ctx.lineTo(p.x, p.y); ctx.closePath(); ctx.stroke(); } }
       ctx.restore();
 
@@ -457,6 +488,46 @@ export function MapView(props: MapProps) {
         }
       }
       if (sel.kind === 'unit' && sel.id) { const u = st.units[sel.id]; if (u && u.destNode !== null && u.destNode >= 0) { const dn = city.nodes[u.destNode]; const p = S(dn.x, dn.y); ctx.strokeStyle = '#fff'; ctx.globalAlpha = 0.7; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; } }
+
+      // search grids: sectors shaded by likelihood, sweep progress around the rim
+      for (const inc of Object.values(st.incidents)) {
+        const SG = inc.search;
+        if (!SG || SG.found || inc.hidden || ['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
+        const rr = SG.r * z;
+        for (const sec of SG.sectors) {
+          const p = S(sec.x, sec.y);
+          if (p.x < -rr || p.y < -rr || p.x > W + rr || p.y > H + rr) continue;
+          const clear = sec.searched >= 1;
+          ctx.fillStyle = clear ? 'rgba(120,130,140,0.22)' : `rgba(229,172,77,${0.05 + sec.p / 260})`;
+          ctx.beginPath(); ctx.arc(p.x, p.y, rr, 0, 7); ctx.fill();
+          ctx.strokeStyle = clear ? 'rgba(160,170,180,0.6)' : 'rgba(240,192,112,0.85)'; ctx.lineWidth = 1.4; ctx.setLineDash(clear ? [] : [5, 4]);
+          ctx.beginPath(); ctx.arc(p.x, p.y, rr, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+          if (sec.searched > 0 && !clear) { ctx.strokeStyle = '#54B889'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, rr, -Math.PI / 2, -Math.PI / 2 + sec.searched * Math.PI * 2); ctx.stroke(); }
+          if (z > 0.6) {
+            const t = clear ? `${sec.id} ✓ clear` : `${sec.id} · ${sec.p}%`;
+            ctx.font = '800 10px Inter, system-ui, sans-serif';
+            const tw = ctx.measureText(t).width + 10;
+            ctx.fillStyle = clear ? 'rgba(40,46,54,0.85)' : 'rgba(40,30,8,0.88)'; roundRect(ctx, p.x - tw / 2, p.y - rr - 9, tw, 15, 4); ctx.fill();
+            ctx.fillStyle = clear ? '#b8c2cc' : '#f0c070'; ctx.fillText(t, p.x, p.y - rr - 1);
+          }
+        }
+        if (SG.exhausted && z > 0.6) { const p = S(SG.cx, SG.cy); ctx.font = '800 11px Inter, system-ui, sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,18,0.85)'; ctx.strokeText('AREA SEARCHED — VERIFY LAST-SEEN POINT', p.x, p.y + rr * 2.2); ctx.fillStyle = '#ff9a9a'; ctx.fillText('AREA SEARCHED — VERIFY LAST-SEEN POINT', p.x, p.y + rr * 2.2); }
+      }
+      // alert banners over their district
+      for (const inc of Object.values(st.incidents)) {
+        if (!inc.alert || inc.reportedNode === null || ['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
+        const d = city.districtById[city.nodes[inc.reportedNode].district];
+        if (!d) continue;
+        // pin the banner to the district's top edge so it never covers the incident itself
+        const top = Math.min(...d.poly.map((q) => q.y));
+        const p = S(d.center.x, top);
+        p.y = Math.max(p.y + 16, 62);
+        const t = inc.alert.kind === 'evacuate' ? '⚠ EVACUATION ORDER' : '⚠ SHELTER IN PLACE';
+        ctx.font = '900 11px Inter, system-ui, sans-serif';
+        const tw = ctx.measureText(t).width + 16;
+        ctx.fillStyle = inc.alert.kind === 'evacuate' ? 'rgba(120,24,24,0.9)' : 'rgba(110,74,10,0.9)'; roundRect(ctx, p.x - tw / 2, p.y - 9, tw, 18, 4); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.fillText(t, p.x, p.y + 0.5);
+      }
 
       // spike strips laid (or on their way) ahead of a pursuit
       for (const sg of st.stingers ?? []) {
@@ -577,6 +648,19 @@ export function MapView(props: MapProps) {
           ctx.fillStyle = 'rgba(12,17,23,0.88)'; roundRect(ctx, p.x - tw / 2, p.y + 6, tw, 16, 4); ctx.fill();
           ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke();
           ctx.fillStyle = '#e8edf2'; ctx.fillText(text, p.x, p.y + 14.5);
+          const ag = inc.agency;
+          if (ag && !ag.here || ag?.here && st.time - (ag.arriveAt ?? 0) < 20) {
+            const def = AGENCY[ag!.kind];
+            const asked = ag!.askedAt !== null && ag!.calledAt === null;
+            const t2 = ag!.here ? `${def.short} ON SCENE` : ag!.calledAt !== null ? `${def.short} · ${Math.max(0, Math.ceil((ag!.arriveAt! - st.time) / 60 * 10) / 10)} min` : asked ? `${def.short} REQUESTED` : '';
+            if (t2) {
+              ctx.font = '800 9px Inter, system-ui, sans-serif';
+              const w2 = ctx.measureText(t2).width + 10;
+              const blink = asked && motion && Math.floor(now / 450) % 2 === 0;
+              ctx.fillStyle = ag!.here ? 'rgba(20,60,40,0.92)' : asked ? (blink ? 'rgba(140,90,10,0.95)' : 'rgba(80,52,8,0.92)') : 'rgba(20,44,70,0.92)'; roundRect(ctx, p.x - w2 / 2, p.y + 25, w2, 13, 3); ctx.fill();
+              ctx.fillStyle = ag!.here ? '#a7f0c8' : asked ? '#ffd98a' : '#9fd3f5'; ctx.fillText(t2, p.x, p.y + 32);
+            }
+          }
         }
       }
 
@@ -664,6 +748,16 @@ export function MapView(props: MapProps) {
         ctx.globalAlpha = 1;
         if (u.temp) { ctx.strokeStyle = '#E5AC4D'; ctx.setLineDash([2, 2]); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
         if (u.status === 'ON_SCENE' && !grouped) { ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.x, p.y, 12 * vs, 0, 7); ctx.stroke(); }
+        if (u.checkDue != null) {
+          const over = st.time >= u.checkDue, soon = !over && u.checkDue - st.time < 12;
+          if (over || soon) {
+            const ph = motion ? (Math.sin(now / 180) + 1) / 2 : 1;
+            ctx.strokeStyle = over ? `rgba(240,170,60,${0.5 + 0.5 * ph})` : 'rgba(240,192,112,0.45)'; ctx.lineWidth = over ? 2.4 : 1.4;
+            ctx.beginPath(); ctx.arc(p.x, p.y, (over ? 14 + ph * 3 : 13) * Math.min(1.2, vs), 0, 7); ctx.stroke();
+            if (over) { ctx.font = '900 9px Inter, system-ui, sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,18,0.9)'; ctx.strokeText('STATUS?', p.x, p.y - 20 * Math.min(1.2, vs)); ctx.fillStyle = '#f0b860'; ctx.fillText('STATUS?', p.x, p.y - 20 * Math.min(1.2, vs)); }
+          }
+        }
+        if (pr.multi?.includes(u.id)) { ctx.strokeStyle = '#7cc0f0'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(p.x, p.y, 13 * Math.min(1.3, vs), 0, 7); ctx.stroke(); ctx.setLineDash([]); }
         const selected = sel.kind === 'unit' && sel.id === u.id;
         if (selected) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.8; ctx.setLineDash([4, 3]); ctx.lineDashOffset = motion ? now / 70 : 0; ctx.beginPath(); ctx.arc(p.x, p.y, 15 * vs, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
         if ((z > 1.1 && !grouped) || selected || hover.current?.id === u.id) {
@@ -768,6 +862,13 @@ export function MapView(props: MapProps) {
           ctx.strokeStyle = onInc ? sevColor(onInc.severity) : 'rgba(232,237,242,0.25)'; ctx.lineWidth = 1; ctx.stroke();
           ctx.fillStyle = '#e8edf2'; ctx.fillText(text, m.x, m.y + 30.5);
         }
+      }
+
+      if (box.current) {
+        const b = box.current;
+        ctx.fillStyle = 'rgba(74,156,214,0.16)'; ctx.strokeStyle = 'rgba(124,192,240,0.95)'; ctx.lineWidth = 1.6; ctx.setLineDash([6, 4]);
+        ctx.fillRect(Math.min(b.sx, b.x), Math.min(b.sy, b.y), Math.abs(b.x - b.sx), Math.abs(b.y - b.sy));
+        ctx.strokeRect(Math.min(b.sx, b.x), Math.min(b.sy, b.y), Math.abs(b.x - b.sx), Math.abs(b.y - b.sy)); ctx.setLineDash([]);
       }
 
       // pick-location crosshair

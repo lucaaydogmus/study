@@ -58,6 +58,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'bolo', name: 'Be On the Look-Out', desc: 'Have a patrol spot a suspect from one of your BOLOs.', icon: 'search', tier: 'silver', check: (c) => (c.st?.stats.boloHits ?? 0) >= 1 },
   { id: 'stinger', name: 'Stop Sticks', desc: 'End a pursuit with a spike strip laid in its path.', icon: 'car', tier: 'gold', check: (c) => (c.st?.stats.stingerHits ?? 0) >= 1 },
   { id: 'code7', name: 'Fed and Rested', desc: 'Approve 3 crew meal breaks in one shift.', icon: 'heart', tier: 'bronze', check: (c) => (c.st?.stats.breaksGiven ?? 0) >= 3 },
+  { id: 'found_safe', name: 'Found Safe', desc: 'Find a missing person with a sector search.', icon: 'search', tier: 'silver', check: (c) => (c.st?.stats.searchFinds ?? 0) >= 1 },
+  { id: 'code_four', name: 'Code Four?', desc: 'Catch an officer in trouble with a status check before it turns bad.', icon: 'radio', tier: 'silver', check: (c) => (c.st?.stats.statusSaves ?? 0) >= 1 },
+  { id: 'right_alert', name: 'Clear the Area', desc: 'Send the right public alert for a dangerous incident.', icon: 'alert', tier: 'silver', check: (c) => (c.st?.stats.alertsRight ?? 0) >= 1 },
+  { id: 'logistics', name: 'Logistics', desc: 'Call 3 outside agencies before crews have to chase you in one shift.', icon: 'phone', tier: 'bronze', check: (c) => (c.st?.stats.agencyCalls ?? 0) - (c.st?.stats.agencyLate ?? 0) >= 3 },
   { id: 'daily7', name: 'Regular', desc: 'Complete 7 different Daily Challenges.', icon: 'clock', tier: 'gold', check: (c) => Object.keys(c.profile.daily ?? {}).length >= 7 },
 ];
 export const ACHIEVEMENT_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a])) as Record<string, AchievementDef>;

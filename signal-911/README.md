@@ -80,8 +80,30 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 | `B` | Broadcast a BOLO for the selected incident | Wheel / drag | Zoom / pan |
 | Right-click | Quick-order menu for incidents, units, stations, hospitals and streets | Drag a unit | Drop it on an incident to dispatch, or on a street to move it |
 | Drag a station | Sends its next free unit to the incident you drop it on | Drag a pin | Move an incident, or drop it on another to link duplicates |
+| `S` | Status check on the most overdue officer | Shift + drag | Box-select several units, then right-click an incident to send them all |
 
 ## What is in the game
+
+### Remaster 6: searches, outside agencies, officer safety and public alerts
+
+- **Missing-person searches**: missing people, lost children and lost walkers come with a search grid around the
+  last-seen point: lettered sectors shaded by how likely the person is to be there (parks, woods and shopping areas
+  score higher). Send crews sector by sector from the incident card, by right-clicking a sector, or by dragging a
+  unit onto it. A helicopter's thermal camera sweeps every sector at once, best at night. If the whole grid comes up
+  empty, the last-seen point was wrong: fix the location and the grid is redrawn.
+- **Outside agencies**: crashes need tow trucks, downed lines the power company, gas leaks the gas company, loose
+  animals animal control. Crews ask on the radio and the scene cannot clear until the agency arrives. Call it from
+  the incident card or the right-click menu (calling ahead saves time). Leave them waiting and they phone it in
+  themselves, late.
+- **Officer status checks**: police on scene owe dispatch a check-in. When one is due the officer gets a pulsing
+  *STATUS?* ring and a dock appears (`S` checks the most overdue). A check can catch trouble early, so backup goes in
+  before anyone is hurt. Let it lapse on the wrong call and an officer can go down.
+- **Public alerts**: for serious incidents, send an evacuation order or a shelter-in-place to every phone in the
+  district. The right one halves casualties if things escalate. The wrong one puts people in harm's way, and a
+  needless alert costs reputation. Either way, worried residents ring in asking if it is real.
+- **Box-select**: Shift+drag a box around several units, then right-click an incident to send them all, right-click
+  a street to move them, or recall them all at once.
+- New achievements: *Found Safe*, *Code Four?*, *Clear the Area* and *Logistics*.
 
 ### Remaster 5: map, sirens and hands-on dispatching
 

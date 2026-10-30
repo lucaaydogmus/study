@@ -965,6 +965,17 @@ export const TEMPLATES: Template[] = [
     resolved: 'Hidden fire found and extinguished before it spread.', failed: 'The fire in the wall spread unseen.',
   }),
   base({
+    id: 'alert_query', category: 'unusual', label: 'Question about the emergency alert', hint: 'no_response', cls: 'no_response', w: { residential: 1, commercial: 1, suburb: 1, dense: 1 },
+    sev: [1, 1], spawnOnly: true,
+    truth: { people: 1, injured: 0, safe: true, weapon: false, suspect: false, false_alarm: true, cause: 'a resident asking whether the emergency alert is real' }, reported: [],
+    requires: [], threat: [1, 0.01, 1.0], work: 10,
+    archetypes: [['worried_neighbor', 4], ['confused_elderly', 3], ['professional', 1]],
+    open: ["My phone just made this awful noise — an emergency alert? Is it real? Do I need to leave?", "Hi, sorry, I know this isn't an emergency, but we just got an alert telling us to stay inside. What's going on?", "We got the alert — is it safe to drive to my mother's? I need to know what to do."],
+    cause: ["It's the alert on everyone's phones. I just want to know if it's real and what to do."],
+    scene: 'Resident reassured.', ambience: 'indoor',
+    resolved: 'The caller was told what to do.', failed: 'The caller never got an answer.',
+  }),
+  base({
     id: 'accidental_call', category: 'unusual', label: 'Open line / accidental call', hint: 'unknown', cls: 'no_response', w: { residential: 1, commercial: 1, campus: 1.3, suburb: 1 },
     sev: [1, 2],
     truth: { people: 1, injured: 0, safe: true, weapon: false, suspect: false, false_alarm: true, cause: 'pocket dial' }, reported: [],

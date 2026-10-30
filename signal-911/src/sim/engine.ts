@@ -18,6 +18,7 @@ import { modProduct, MODIFIER_BY_ID } from './extras';
 import type {
   Call, CallerProfile, CityEvent, CityState, Capability, Fact, FactVal, GameState, HeardLocation, Incident, IncidentStatus, Outcome, Personnel, Req,
   Service, ShiftConfig, ShiftStats, Station, Unit, UpgradeLevels, TimelineEntry, OfficerRequest, CheckResult, Decision, Dept, HospitalState,
+  AgencyKind, AlertKind, SearchGrid,
 } from './types';
 
 export const DT = 0.5;
@@ -26,6 +27,28 @@ export const REVEAL_KEYS = TOPIC_FACTS as Record<string, string[]>;
 export const STATE_VERSION = 1;
 /** global pacing knob: scales how quickly unattended incidents deteriorate */
 export const THREAT_SCALE = 0.55;
+
+/** outside agencies crews ask dispatch to call */
+export const AGENCY: Record<AgencyKind, { name: string; short: string; cost: number; eta: [number, number]; ask: string[] }> = {
+  tow: { name: 'Tow truck', short: 'TOW', cost: 150, eta: [45, 85], ask: ["We'll need a tow truck — these vehicles aren't going anywhere on their own.", 'Can you roll a wrecker? Both cars are undriveable and blocking the lane.'] },
+  power: { name: 'Power company', short: 'POWER CO', cost: 250, eta: [60, 110], ask: ['We need the power company to kill the feed before we can make this safe.', 'Get the utility out here — that line is still live.'] },
+  gas: { name: 'Gas company', short: 'GAS CO', cost: 250, eta: [55, 100], ask: ['Request the gas company to isolate the main.', 'We need the gas utility to shut it off at the street.'] },
+  animal: { name: 'Animal control', short: 'ANIMAL CTRL', cost: 120, eta: [45, 85], ask: ["Can we get animal control out here? We've got it cornered but can't transport it.", 'Requesting animal control with a trailer.'] },
+};
+export const AGENCY_FOR: Record<string, AgencyKind> = {
+  collision_minor: 'tow', collision_injury: 'tow', collision_trapped: 'tow', collision_multi: 'tow', vehicle_fire: 'tow', tanker_fire: 'tow',
+  power_line_down: 'power', gas_leak: 'gas', house_explosion: 'gas', escaped_animal: 'animal', animal_burglar: 'animal',
+};
+/** which public alert actually protects people for each kind of incident */
+export const ALERT_RIGHT: Record<string, AlertKind> = {
+  gas_leak: 'evacuate', house_explosion: 'evacuate', tanker_fire: 'evacuate', train_derailment: 'evacuate', brush_fire: 'evacuate', building_collapse: 'evacuate', bomb_threat: 'evacuate', apartment_fire: 'evacuate',
+  warehouse_smoke: 'shelter', industrial_accident: 'shelter', active_shooter: 'shelter', hostage_barricade: 'shelter', crowd_crush: 'shelter',
+};
+export const SEARCH_TEMPLATES = new Set(['missing_person', 'lost_hiker', 'lost_child']);
+/** seconds one crew needs to sweep a search sector */
+const SECTOR_WORK = 26;
+/** police calls where an officer on scene can get into trouble */
+const RISKY_POLICE = new Set(['domestic_disturbance', 'public_disturbance', 'robbery', 'burglary_progress', 'traffic_stop', 'public_intoxication', 'trespassing', 'suspicious_activity', 'carjacking', 'street_racing', 'unruly_passenger', 'shoplifting']);
 
 /** incidents where a helicopter overhead speeds up the job (searching, overwatch) */
 export const AIR_HELPS = new Set(['lost_hiker', 'kidnapping', 'active_shooter', 'bank_robbery', 'hostage_barricade', 'water_rescue', 'boat_fire', 'escaped_animal', 'train_derailment', 'missing_person', 'brush_fire', 'crowd_crush', 'tanker_fire']);
@@ -320,6 +343,9 @@ export class GameEngine {
     this.updateBolos();
     this.updateStingers();
     this.breakRequests();
+    this.updateAgencies();
+    this.updateStatusChecks();
+    this.updateAlertCalls();
     if (!st.config.script) this.breakdowns();
   }
 
@@ -1351,7 +1377,9 @@ export class GameEngine {
     else this.log('info', `Location corrected: ${fullAddress(this.city, nodeId)}`, { incidentId: incId });
     inc.callbackAt = null;
     // the committed location might be wrong; track mislocated
-    inc.mislocated = Math.hypot(this.city.nodes[nodeId].x - this.city.nodes[inc.nodeId].x, this.city.nodes[nodeId].y - this.city.nodes[inc.nodeId].y) > 90;
+    const truthNode = inc.search?.origin ?? inc.nodeId;
+    inc.mislocated = Math.hypot(this.city.nodes[nodeId].x - this.city.nodes[truthNode].x, this.city.nodes[nodeId].y - this.city.nodes[truthNode].y) > (inc.search || SEARCH_TEMPLATES.has(inc.templateId) ? 220 : 90);
+    if (SEARCH_TEMPLATES.has(inc.templateId) && (!inc.search || (!inc.search.found && inc.search.sectors.every((x) => x.searched === 0)) || inc.search.exhausted)) this.buildSearch(inc, nodeId);
     // redirect units
     for (const uid of inc.assignedUnits) {
       const u = st.units[uid];
@@ -1708,6 +1736,9 @@ export class GameEngine {
   }
 
   private unitAtScene(u: Unit, inc: Incident): boolean {
+    // during a search every sector counts as the scene
+    const S = inc.search;
+    if (S && !S.found) return Math.hypot(u.x - S.cx, u.y - S.cy) < (S.r / 0.55) * 1.6 + 30;
     const n = this.city.nodes[inc.nodeId];
     return Math.hypot(u.x - n.x, u.y - n.y) < 90;
   }
@@ -1752,6 +1783,12 @@ export class GameEngine {
               if (u.route.length) this.advance(u, dt); else { u.speed = 0; u.note = 'Searching area'; }
               break;
             }
+            if (inc.search && !inc.search.found && u.searchSector != null) {
+              const tgt = inc.search.sectors[u.searchSector]?.node;
+              if (tgt !== undefined && u.destNode !== tgt) this.routeUnit(u, tgt, this.sirenFor(u));
+              if (!u.route.length) this.arrive(u); else this.advance(u, dt);
+              break;
+            }
             if (inc.reportedNode !== null && u.destNode !== inc.reportedNode) this.routeUnit(u, inc.reportedNode, this.sirenFor(u));
             if (u.staging && this.stagingHold(u, inc)) break;
             if (u.crashAt && st.time >= u.crashAt && u.route.length > 2) this.unitCrash(u, inc);
@@ -1771,7 +1808,7 @@ export class GameEngine {
           if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) {
             if (u.temp) { delete st.units[u.id]; break; }
             u.assignedIncidentId = undefined; u.status = 'RETURNING'; this.routeUnit(u, u.postNode, false);
-          } else if (!inc.pursuit && inc.reportedNode !== null && !this.unitAtScene(u, inc) && Math.hypot(this.city.nodes[inc.reportedNode].x - u.x, this.city.nodes[inc.reportedNode].y - u.y) > 90) {
+          } else if (!inc.pursuit && !(inc.search && !inc.search.found) && inc.reportedNode !== null && !this.unitAtScene(u, inc) && Math.hypot(this.city.nodes[inc.reportedNode].x - u.x, this.city.nodes[inc.reportedNode].y - u.y) > 90) {
             u.status = 'EN_ROUTE'; this.routeUnit(u, inc.reportedNode, true);
           }
           break;
@@ -1885,6 +1922,14 @@ export class GameEngine {
       if (inc.pursuit) { u.note = 'Searching area'; u.speed = 0; return; }
       u.status = 'ON_SCENE';
       this.emit({ type: 'arrive', unitId: u.id });
+      if (inc.search && !inc.search.found) {
+        const sec = u.searchSector != null ? inc.search.sectors[u.searchSector] : null;
+        this.radio(u.spoken, sec ? `Dispatch, ${u.spoken}. In sector ${sec.id}, starting our sweep.` : `Dispatch, ${u.spoken}. At the last-seen point, starting a search.`, 'unit', u.id, inc.id);
+        if (inc.firstArrivalAt === null) { inc.firstArrivalAt = st.time; const rt = st.time - (inc.answeredAt ?? inc.createdAt); st.stats.responseTimes.push(rt); st.stats.serviceResponse[u.service].push(rt); }
+        if (['UNITS_EN_ROUTE', 'AWAITING_DISPATCH', 'CLASSIFIED'].includes(inc.status)) inc.status = 'ON_SCENE';
+        if (inc.sceneAt === null) inc.sceneAt = st.time + 6;
+        return;
+      }
       if (!this.unitAtScene(u, inc)) {
         // wrong place
         inc.wrongLocationArrivals++;
@@ -1918,6 +1963,7 @@ export class GameEngine {
       } else if (inc.accessNeeded?.relayed && !inc.accessDelayUntil) { inc.accessDelayUntil = st.time; this.radio(u.spoken, `Dispatch, ${u.spoken}. On scene — got in with the details you gave us, thanks.`, 'unit', u.id, inc.id); }
       else this.radio(u.spoken, `Dispatch, ${u.spoken}. On scene at ${addressOf(this.city, inc.nodeId)}.`, 'unit', u.id, inc.id);
       this.log('arrival', `${u.callsign} on scene — ${inc.label}`, { incidentId: inc.id, unitId: u.id, good: true });
+      this.startStatusTimer(u, inc);
       if (inc.firstArrivalAt === null) {
         inc.firstArrivalAt = st.time;
         const rt = st.time - (inc.answeredAt ?? inc.createdAt);
@@ -1984,6 +2030,7 @@ export class GameEngine {
       if (inc.sceneSeen && !inc.checkRolled) this.rollOfficerCheck(inc, here);
       if (inc.sceneSeen && !inc.decided && here.length && st.time - (inc.sceneAt ?? st.time) > 4) this.rollDecision(inc, here);
       if (inc.accessNeeded === undefined && inc.assignedUnits.length) this.checkAccess(inc);
+      if (inc.search && !inc.search.found) { this.updateSearch(inc, here, dt); continue; }
       const cov = matchCoverage(inc.requires, here);
       const usedUnits = here.filter((u) => cov.used.has(u.id));
       const eff = usedUnits.length ? usedUnits.reduce((s, u) => s + this.unitEffectiveness(u), 0) / usedUnits.length : 1;
@@ -1994,7 +2041,10 @@ export class GameEngine {
       if (f > 0 && here.length && st.time >= (inc.accessDelayUntil ?? 0)) inc.workProgress += dt * eff * f * f * (AIR_HELPS.has(inc.templateId) && here.some(isAir) ? 1.35 : 1) * (inc.briefedAt != null ? 1.12 : 1);
       if (inc.status === 'ESCALATING' && st.time - (inc.escalatedAt ?? 0) > 10) inc.status = here.length ? 'ON_SCENE' : inc.assignedUnits.length ? 'UNITS_EN_ROUTE' : 'AWAITING_DISPATCH';
       if (inc.threat >= 100) { this.escalate(inc); continue; }
-      if (inc.workProgress >= inc.work && f >= 1 && !st.requests.some((r) => r.incidentId === inc.id && r.status === 'open')) this.completeWork(inc, here);
+      if (inc.workProgress >= inc.work && f >= 1 && !st.requests.some((r) => r.incidentId === inc.id && r.status === 'open')) {
+        if (this.agencyHolds(inc)) { if (inc.agency!.nagged < 3 && here[0]) { inc.agency!.nagged = 3; this.radio(here[0].spoken, `Dispatch, ${here[0].spoken}. We're done here — just waiting on the ${AGENCY[inc.agency!.kind].name.toLowerCase()}.`, 'unit', here[0].id, inc.id); } }
+        else this.completeWork(inc, here);
+      }
       // caller impatience when a promise has not been kept
       this.checkPromise(inc);
     }
@@ -2040,6 +2090,7 @@ export class GameEngine {
     inc.knownReqs = inc.requires.map((r) => ({ ...r }));
     const cov = matchCoverage(inc.requires, this.onScene(inc).concat(inc.assignedUnits.map((id) => st.units[id]).filter((x) => x && x.status !== 'ON_SCENE')));
     if (cov.missing.length) this.radio(u.spoken, `Dispatch, requesting ${reqText(cov.missing)} at this location.`, 'unit', u.id, inc.id);
+    this.requestAgency(inc, u);
     for (const [k, v] of Object.entries(inc.truth)) if (['fire', 'smoke', 'injured', 'trapped', 'vehicles', 'hazard', 'people'].includes(k) && inc.facts.every((x) => x.key !== k)) this.addFact(inc, k, v, 'confirmed', 'scene');
     // upgrade confidence of existing
     for (const x of inc.facts) if (x.confidence === 'unconfirmed' && inc.truth[x.key] === x.value) x.confidence = 'confirmed';
@@ -2057,7 +2108,11 @@ export class GameEngine {
     inc.escalatedAt = st.time; inc.lastStageAt = st.time;
     inc.status = 'ESCALATING';
     inc.workProgress *= 0.6;
-    if (esc.casualties) { inc.casualties += esc.casualties; st.stats.casualties += esc.casualties; }
+    let hurt = esc.casualties ?? 0;
+    // a public alert that got people out of the way saves lives; the wrong one puts them in harm's way
+    if (inc.alert?.right && hurt) { hurt = Math.floor(hurt / 2); this.consequence(inc, 'The public alert kept people clear — fewer were hurt when it escalated'); }
+    else if (inc.alert && !inc.alert.right && inc.alert.needed) { hurt += 1; this.consequence(inc, `The ${inc.alert.kind === 'evacuate' ? 'evacuation order sent people into danger' : 'shelter-in-place order kept people where the danger was'}`); }
+    if (hurt) { inc.casualties += hurt; st.stats.casualties += hurt; }
     st.stats.escalations++;
     this.fx('bad', inc.reportedNode ?? inc.nodeId, 'Escalating!');
     this.log('escalation', `${inc.label} escalated: ${esc.text}`, { incidentId: inc.id, good: false });
@@ -2679,6 +2734,288 @@ export class GameEngine {
       d.outcome = `${u.callsign} stays available — the crew is not happy (morale down).`;
     }
     return { ok: true, outcome: d.outcome };
+  }
+
+  // ── Outside agencies ──────────────────────────────────────────────────────
+  /** crews on scene ask for a tow truck, a utility or animal control */
+  private requestAgency(inc: Incident, u: Unit) {
+    const kind = AGENCY_FOR[inc.templateId];
+    if (!kind || inc.onView || inc.requires.length === 0) return;
+    if (inc.agency) { if (inc.agency.askedAt === null) inc.agency.askedAt = this.state.time; return; }
+    if (!this.rng.chance(0.85)) return;
+    inc.agency = { kind, askedAt: this.state.time, calledAt: null, arriveAt: null, here: false, nagged: 0 };
+    this.radio(u.spoken, `Dispatch, ${u.spoken}. ${this.rng.pick(AGENCY[kind].ask)}`, 'unit', u.id, inc.id);
+    this.notify(`${u.callsign} needs a ${AGENCY[kind].name.toLowerCase()} — call one from the incident card`, 'warn', inc.id);
+  }
+  /** what outside agency this incident could use (whether or not the crew has asked yet) */
+  agencyFor(inc: Incident): AgencyKind | null { return inc.agency?.kind ?? AGENCY_FOR[inc.templateId] ?? null; }
+  callAgency(incId: string): { ok: boolean; reason?: string; eta?: number } {
+    const st = this.state;
+    const inc = st.incidents[incId];
+    if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) return { ok: false, reason: 'Incident closed' };
+    const kind = this.agencyFor(inc);
+    if (!kind) return { ok: false, reason: 'No outside agency needed here' };
+    if (inc.reportedNode === null) return { ok: false, reason: 'Set the incident location first' };
+    if (inc.agency?.calledAt != null) return { ok: false, reason: `${AGENCY[kind].name} already called` };
+    const a = AGENCY[kind];
+    const night = st.timeOfDay % 24 >= 21 || st.timeOfDay % 24 < 5;
+    const eta = Math.round(this.rng.range(a.eta[0], a.eta[1]) * (night ? 1.25 : 1) * (st.weather === 'storm' || st.weather === 'snow' ? 1.3 : 1));
+    inc.agency = { ...(inc.agency ?? { kind, askedAt: null, here: false, nagged: 0 }), kind, calledAt: st.time, arriveAt: st.time + eta };
+    st.budget -= a.cost; st.stats.costs += a.cost;
+    st.stats.agencyCalls = (st.stats.agencyCalls ?? 0) + 1;
+    this.radio('DISPATCH', `Units at INC-${String(inc.num).padStart(4, '0')}, ${a.name.toLowerCase()} is on the way, about ${Math.max(1, Math.round(eta / 60))} minute${Math.round(eta / 60) > 1 ? 's' : ''}.`, 'dispatch', undefined, inc.id);
+    return { ok: true, eta };
+  }
+  private agencyHolds(inc: Incident): boolean { return !!inc.agency && inc.agency.askedAt !== null && !inc.agency.here; }
+  private updateAgencies() {
+    const st = this.state;
+    for (const inc of Object.values(st.incidents)) {
+      const a = inc.agency;
+      if (!a || a.here || ['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
+      const def = AGENCY[a.kind];
+      if (a.arriveAt !== null && st.time >= a.arriveAt) {
+        a.here = true;
+        this.radio(def.name, `${def.name} on scene at ${addressOf(this.city, inc.reportedNode ?? inc.nodeId)}.`, 'chatter', undefined, inc.id);
+        this.fx('info', inc.reportedNode ?? inc.nodeId, `${def.short} on scene`);
+        continue;
+      }
+      if (a.calledAt !== null || a.askedAt === null) continue;
+      const here = this.onScene(inc)[0];
+      const waited = st.time - a.askedAt;
+      if (waited > 120) {
+        // crews end up phoning it in themselves, later than if dispatch had done it
+        a.calledAt = st.time; a.arriveAt = st.time + this.rng.range(def.eta[0], def.eta[1]) + 40; a.late = true;
+        st.stats.agencyLate = (st.stats.agencyLate ?? 0) + 1;
+        this.consequence(inc, `Crews waited two minutes for someone to call the ${def.name.toLowerCase()}`);
+        if (here) this.radio(here.spoken, `Dispatch, ${here.spoken}. Never mind, we've called the ${def.name.toLowerCase()} ourselves.`, 'unit', here.id, inc.id);
+      } else if (waited > 45 + a.nagged * 35 && a.nagged < 2 && here) {
+        a.nagged++;
+        this.radio(here.spoken, `Dispatch, ${here.spoken}. Any update on that ${def.name.toLowerCase()}?`, 'unit', here.id, inc.id);
+      }
+    }
+  }
+
+  // ── Officer status checks ─────────────────────────────────────────────────
+  private startStatusTimer(u: Unit, inc: Incident) {
+    const st = this.state;
+    if (u.service !== 'police' || isAir(u) || inc.category !== 'police' || inc.pursuit || inc.search || st.config.mode === 'tutorial') return;
+    u.checkDue = st.time + 60; u.lastCheck = st.time;
+    const risky = RISKY_POLICE.has(inc.templateId) || (inc.truth.weapon !== false && inc.truth.weapon !== undefined && inc.truth.weapon !== 'none');
+    u.trouble = this.rng.chance(risky ? 0.2 : 0.05) ? st.time + this.rng.range(55, 150) : null;
+  }
+  /** dispatch asks an officer on scene for a status; trouble that is brewing comes out early */
+  statusCheck(unitId: string): { ok: boolean; reason?: string; text?: string; trouble?: boolean } {
+    const st = this.state;
+    const u = st.units[unitId];
+    if (!u) return { ok: false, reason: 'Unknown unit' };
+    const inc = u.assignedIncidentId ? st.incidents[u.assignedIncidentId] : undefined;
+    this.radio('DISPATCH', `${u.spoken}, status?`, 'dispatch', u.id, inc?.id);
+    st.stats.statusChecks = (st.stats.statusChecks ?? 0) + 1;
+    u.lastCheck = st.time;
+    if (u.checkDue != null) u.checkDue = st.time + 75;
+    if (u.trouble != null && inc && st.time >= u.trouble - 45) {
+      u.trouble = null;
+      st.stats.statusSaves = (st.stats.statusSaves ?? 0) + 1;
+      const text = this.rng.pick([`${u.spoken}... send me another unit, code three. He's getting aggressive.`, `${u.spoken}, I need a second unit here now — this is going sideways.`, `Dispatch, ${u.spoken}. Start me backup, subject's squaring up.`]);
+      this.radio(u.spoken, text, 'alert', u.id, inc.id);
+      inc.requires = mergeReqs(inc.requires, [{ cap: 'patrol', n: 2 }]); inc.knownReqs = inc.requires.map((x) => ({ ...x }));
+      inc.threat = Math.min(95, inc.threat + 15);
+      this.notify(`${u.callsign} needs backup — your status check caught it early`, 'warn', inc.id);
+      this.fx('warn', inc.reportedNode ?? inc.nodeId, 'Backup needed');
+      return { ok: true, text, trouble: true };
+    }
+    const text = this.rng.pick([`${u.spoken}, code four.`, `${u.spoken}, all good here.`, `${u.spoken}, situation's under control.`, `Code four, ${u.spoken}.`]);
+    this.radio(u.spoken, text, 'unit', u.id, inc?.id);
+    return { ok: true, text };
+  }
+  /** officers whose status check is overdue */
+  overdueChecks(): Unit[] { const t = this.state.time; return Object.values(this.state.units).filter((u) => u.checkDue != null && t >= u.checkDue).sort((a, b) => a.checkDue! - b.checkDue!); }
+  private updateStatusChecks() {
+    const st = this.state;
+    for (const u of Object.values(st.units)) {
+      if (u.checkDue == null) continue;
+      const inc = u.assignedIncidentId ? st.incidents[u.assignedIncidentId] : undefined;
+      if (u.status !== 'ON_SCENE' || !inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) { u.checkDue = null; u.trouble = null; continue; }
+      if (st.time - u.checkDue > 45 && (u.lastCheck ?? 0) < u.checkDue && !u.note?.includes('overdue')) { st.stats.statusMissed = (st.stats.statusMissed ?? 0) + 1; u.note = 'Status overdue'; }
+      if (u.trouble == null || st.time < u.trouble) continue;
+      u.trouble = null;
+      if (st.time < u.checkDue) {
+        // dispatch was on top of things: the officer gets the call out in time
+        this.radio(u.spoken, `Dispatch, ${u.spoken}. Start me another unit, code three — subject's fighting.`, 'alert', u.id, inc.id);
+        inc.requires = mergeReqs(inc.requires, [{ cap: 'patrol', n: 2 }]); inc.knownReqs = inc.requires.map((x) => ({ ...x }));
+        inc.threat = Math.min(95, inc.threat + 20);
+        this.notify(`${u.callsign} is calling for backup`, 'warn', inc.id);
+      } else if (this.rng.chance(0.55)) {
+        this.radio(u.spoken, `10-33! ${u.spoken} — officer down! I haven't been able to get on the radio!`, 'alert', u.id, inc.id);
+        this.consequence(inc, `Nobody had checked on ${u.callsign} — the officer was hurt before anyone knew there was trouble`);
+        st.reputation = Math.max(0, st.reputation - 2);
+        const down = this.spawnConnected(inc, 'officer_down', { noCall: true });
+        this.detach(u, true); u.status = 'OUT_OF_SERVICE'; u.note = 'Officer injured'; u.timer = 300; u.route = []; u.destNode = null; u.checkDue = null;
+        if (down) this.notify('OFFICER DOWN — a status check was overdue', 'bad', down.id);
+      } else {
+        this.radio(u.spoken, `Dispatch, ${u.spoken}... had a struggle here, I'm okay. Subject's in cuffs. Could've used a check-in.`, 'unit', u.id, inc.id);
+        this.consequence(inc, `${u.callsign} fought a subject alone while the status check was overdue`);
+        for (const p of this.crewOf(u)) p.morale = Math.max(10, p.morale - 12);
+      }
+    }
+  }
+
+  // ── Public emergency alerts ───────────────────────────────────────────────
+  alertInfo(incId: string): { ok: boolean; reason?: string; district?: string } {
+    const inc = this.state.incidents[incId];
+    if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) return { ok: false, reason: 'Incident closed' };
+    if (inc.reportedNode === null) return { ok: false, reason: 'Set the incident location first' };
+    if (inc.alert) return { ok: false, reason: 'An alert is already out for this incident' };
+    if (inc.severity < 3) return { ok: false, reason: 'Too minor for a public alert' };
+    return { ok: true, district: this.city.nodes[inc.reportedNode].district };
+  }
+  /** push an evacuation order or a shelter-in-place to every phone in the district */
+  issueAlert(incId: string, kind: AlertKind): { ok: boolean; reason?: string } {
+    const info = this.alertInfo(incId);
+    if (!info.ok) return info;
+    const st = this.state, inc = st.incidents[incId];
+    const rightKind = ALERT_RIGHT[inc.templateId];
+    const needed = !!rightKind, right = rightKind === kind;
+    inc.alert = { kind, at: st.time, right, needed };
+    const dName = this.city.districtById[info.district!]?.name ?? 'the area';
+    const what = kind === 'evacuate' ? 'evacuation order' : 'shelter-in-place order';
+    this.radio('DISPATCH', `All units, a public ${what} has gone out for ${dName} in connection with INC-${String(inc.num).padStart(4, '0')}.`, 'dispatch', undefined, inc.id);
+    this.headline(`Emergency alert: ${kind === 'evacuate' ? 'residents told to leave' : 'residents told to stay indoors'} in ${dName}`, right ? 'good' : needed ? 'bad' : 'info');
+    if (right) { inc.growth *= 0.75; st.stats.alertsRight = (st.stats.alertsRight ?? 0) + 1; this.fx('good', inc.reportedNode!, kind === 'evacuate' ? 'Evacuating' : 'Sheltering'); }
+    else if (needed) { inc.growth *= 1.15; st.stats.alertsWrong = (st.stats.alertsWrong ?? 0) + 1; this.fx('bad', inc.reportedNode!, 'Wrong alert'); }
+    else { st.reputation = Math.max(0, st.reputation - 2); st.stats.alertsWrong = (st.stats.alertsWrong ?? 0) + 1; this.consequence(inc, `A city-wide alert went out for a ${inc.label.toLowerCase()} — residents panicked for nothing`); }
+    // phones light up: worried residents ring in to ask what is going on
+    const n = right ? 2 : needed ? 3 : 4;
+    for (let i = 0; i < n; i++) (st.alertCalls ??= []).push({ at: st.time + 6 + i * this.rng.range(8, 16), district: info.district! });
+    return { ok: true };
+  }
+  private updateAlertCalls() {
+    const st = this.state;
+    if (!st.alertCalls?.length) return;
+    const due = st.alertCalls.filter((c) => st.time >= c.at);
+    if (!due.length) return;
+    st.alertCalls = st.alertCalls.filter((c) => st.time < c.at);
+    for (const c of due) this.spawnIncident('alert_query', c.district, { accuracy: 'exact' });
+  }
+
+  // ── Missing-person search grid ────────────────────────────────────────────
+  private buildSearch(inc: Incident, center: number) {
+    const city = this.city;
+    const origin = inc.search?.origin ?? inc.nodeId;
+    const c = city.nodes[center];
+    const R = inc.templateId === 'lost_child' ? 60 : 92;
+    const likes = inc.templateId === 'lost_hiker' ? ['forest', 'park'] : inc.templateId === 'lost_child' ? ['mall', 'market', 'plaza', 'park'] : ['park', 'transit', 'plaza', 'campus'];
+    const pts: Array<{ x: number; y: number }> = [{ x: c.x, y: c.y }];
+    for (let k = 0; k < 6; k++) { const a = -Math.PI / 2 + k * Math.PI / 3; pts.push({ x: c.x + Math.cos(a) * R, y: c.y + Math.sin(a) * R }); }
+    const sectors: SearchGrid['sectors'] = [];
+    const used = new Set<number>();
+    for (const q of pts) {
+      const node = city.nearestNode(q.x, q.y);
+      if (used.has(node)) continue;
+      used.add(node);
+      const n = city.nodes[node];
+      const near = city.landmarks.some((l) => likes.includes(l.kind) && Math.hypot(city.nodes[l.nodeId].x - n.x, city.nodes[l.nodeId].y - n.y) < R * 0.9);
+      sectors.push({ id: String.fromCharCode(65 + sectors.length), x: n.x, y: n.y, node, p: (sectors.length === 0 ? 2 : this.rng.range(0.7, 1.4)) + (near ? 1.3 : 0), searched: 0 });
+    }
+    const tot = sectors.reduce((a, x) => a + x.p, 0);
+    for (const x of sectors) x.p = Math.round((x.p / tot) * 100);
+    // the person really is out there only if the grid was drawn around the right place
+    const o = city.nodes[origin];
+    const right = Math.hypot(o.x - c.x, o.y - c.y) < 220;
+    let target = -1;
+    if (right) { let roll = this.rng.range(0, sectors.reduce((a, x) => a + x.p, 0)); for (let i = 0; i < sectors.length; i++) { roll -= sectors[i].p; if (roll <= 0) { target = i; break; } } if (target < 0) target = 0; inc.nodeId = sectors[target].node; }
+    inc.search = { cx: c.x, cy: c.y, r: R * 0.55, sectors, target, origin, found: false };
+    for (const id of inc.assignedUnits) { const u = this.state.units[id]; if (u) u.searchSector = null; }
+  }
+  /** send a crew to sweep one sector (an idle crew on scene, or the nearest free unit) */
+  assignSearch(incId: string, sector: number, unitId?: string): { ok: boolean; reason?: string; unitId?: string } {
+    const st = this.state;
+    const inc = st.incidents[incId];
+    const S = inc?.search;
+    if (!inc || !S || S.found) return { ok: false, reason: 'No active search' };
+    const sec = S.sectors[sector];
+    if (!sec) return { ok: false, reason: 'Unknown sector' };
+    if (sec.searched >= 1) return { ok: false, reason: `Sector ${sec.id} has already been searched` };
+    let u = unitId ? st.units[unitId] : undefined;
+    if (!u) {
+      const mine = inc.assignedUnits.map((id) => st.units[id]).filter((x): x is Unit => !!x && !isAir(x) && ['ON_SCENE', 'EN_ROUTE', 'DISPATCHED'].includes(x.status));
+      const idle = mine.find((x) => x.searchSector == null || S.sectors[x.searchSector]?.searched >= 1);
+      u = idle ?? Object.values(st.units).filter((x) => !isAir(x) && !x.temp && (x.capabilities.includes('patrol') || x.capabilities.includes('rescue')) && ['AVAILABLE', 'RETURNING'].includes(x.status) && !x.assignedIncidentId && this.canDispatch(x, inc).ok)
+        .map((x) => ({ x, eta: this.estimate(x.id, sec.node)?.eta ?? Infinity })).sort((a, b) => a.eta - b.eta)[0]?.x;
+    }
+    if (!u) return { ok: false, reason: 'No crew free to search' };
+    if (isAir(u)) return { ok: false, reason: 'The helicopter sweeps every sector from above — just send it to the incident' };
+    if (u.assignedIncidentId !== inc.id) { const r = u.assignedIncidentId ? this.divert(u.id, inc.id) : this.dispatch(u.id, inc.id, { code: 2 }); if (!r.ok) return r; }
+    u.searchSector = sector; u.note = undefined;
+    if (u.status === 'ON_SCENE') { u.status = 'EN_ROUTE'; this.routeUnit(u, sec.node, false); if (!u.route.length) this.arrive(u); }
+    this.radio('DISPATCH', `${u.spoken}, take sector ${sec.id}.`, 'dispatch', u.id, inc.id);
+    return { ok: true, unitId: u.id };
+  }
+  private updateSearch(inc: Incident, here: Unit[], dt: number) {
+    const st = this.state, S = inc.search!;
+    const night = st.timeOfDay % 24 >= 20 || st.timeOfDay % 24 < 6;
+    const sweep = (sec: SearchGrid['sectors'][number], amount: number, by: Unit) => {
+      if (sec.searched >= 1 || S.found) return;
+      sec.searched = Math.min(1, sec.searched + amount);
+      if (sec.searched < 1) return;
+      const idx = S.sectors.indexOf(sec);
+      if (idx === S.target) { this.searchFound(inc, by, sec); return; }
+      sec.cleared = true;
+      if (!isAir(by)) { by.note = 'Sector clear'; this.radio(by.spoken, `Dispatch, ${by.spoken}. Sector ${sec.id} is clear, nothing. Where do you want us?`, 'unit', by.id, inc.id); }
+    };
+    for (const u of here) {
+      if (isAir(u)) {
+        // thermal camera overhead sweeps every open sector at once, best at night
+        for (const sec of S.sectors) sweep(sec, (dt * 0.3 * (night ? 1.8 : 1)) / SECTOR_WORK, u);
+        continue;
+      }
+      if (u.searchSector == null) {
+        // crews arriving without orders take the nearest open sector
+        const open = S.sectors.map((sec, i) => ({ i, d: sec.searched < 1 ? Math.hypot(sec.x - u.x, sec.y - u.y) : Infinity })).sort((a, b) => a.d - b.d)[0];
+        if (!open || !isFinite(open.d)) continue;
+        u.searchSector = open.i;
+        if (open.d > S.r) { u.status = 'EN_ROUTE'; this.routeUnit(u, S.sectors[open.i].node, false); if (!u.route.length) this.arrive(u); continue; }
+      }
+      const sec = S.sectors[u.searchSector];
+      if (!sec) continue;
+      if (sec.searched < 1 && Math.hypot(sec.x - u.x, sec.y - u.y) > S.r * 1.5 && u.destNode !== sec.node) { u.status = 'EN_ROUTE'; this.routeUnit(u, sec.node, false); if (u.route.length) continue; }
+      if (sec.searched >= 1) {
+        // an idle crew picks the likeliest open sector after a while
+        if (u.note === 'Sector clear' && this.rng.chance(dt / 18)) {
+          const next = S.sectors.map((x, i) => ({ x, i })).filter((o) => o.x.searched < 1).sort((a, b) => b.x.p - a.x.p)[0];
+          if (next) { this.radio(u.spoken, `Dispatch, ${u.spoken}. Moving on to sector ${next.x.id}.`, 'unit', u.id, inc.id); this.assignSearch(inc.id, next.i, u.id); }
+        }
+        continue;
+      }
+      const rate = (u.capabilities.includes('rescue') ? 1.25 : 1) * this.unitEffectiveness(u) * (night ? 0.75 : 1) * (st.weather === 'fog' || st.weather === 'storm' ? 0.75 : 1);
+      sweep(sec, (dt * rate) / SECTOR_WORK, u);
+      if (S.found) return;
+    }
+    // the whole grid came up empty: the last-seen point must be wrong
+    if (!S.found && !S.exhausted && S.sectors.every((x) => x.searched >= 1)) {
+      S.exhausted = true;
+      const u = here.find((x) => !isAir(x)) ?? here[0];
+      if (u) this.radio(u.spoken, `Dispatch, ${u.spoken}. Every sector's clear. Can you verify where they were last seen?`, 'unit', u.id, inc.id);
+      this.notify('Search area exhausted — the last-seen location is probably wrong. Re-check it with the caller.', 'bad', inc.id);
+      inc.mislocated = true;
+    }
+    // time is against the missing person
+    inc.threat += inc.growth * (night ? 1.3 : 1) * dt * (here.length ? 0.6 : 1);
+    if (inc.threat >= 100) this.escalate(inc);
+  }
+  private searchFound(inc: Incident, u: Unit, sec: SearchGrid['sectors'][number]) {
+    const st = this.state, S = inc.search!;
+    S.found = true; S.foundAt = st.time;
+    st.stats.searchFinds = (st.stats.searchFinds ?? 0) + 1;
+    const hurt = typeof inc.truth.injured === 'number' && inc.truth.injured > 0;
+    this.radio(u.spoken, `Dispatch, ${u.spoken}! We've found them in sector ${sec.id}${hurt ? ' — one hurt, we need medical up here' : ' — cold and scared, but okay'}.`, 'alert', u.id, inc.id);
+    this.fx('good', sec.node, 'Found!');
+    this.headline(`${inc.templateId === 'lost_child' ? 'Lost child' : inc.templateId === 'lost_hiker' ? 'Missing walkers' : 'Missing person'} found safe after search`, 'good');
+    inc.reportedNode = sec.node; inc.nodeId = sec.node; inc.mislocated = false;
+    inc.threat = Math.max(0, inc.threat - 30);
+    inc.workProgress = Math.max(inc.workProgress, inc.work * 0.5);
+    inc.sceneSeen = true; inc.sceneReported = true; inc.knownReqs = inc.requires.map((r) => ({ ...r }));
+    for (const id of inc.assignedUnits) { const x = st.units[id]; if (x) { x.searchSector = null; if (x.note === 'Sector clear') x.note = undefined; if (x.status === 'ON_SCENE' && !isAir(x) && Math.hypot(x.x - sec.x, x.y - sec.y) > 90) { x.status = 'EN_ROUTE'; this.routeUnit(x, sec.node, false); } } }
   }
 
   // ── Dispatch tools: trace, interpreter, redial, CCTV ─────────────────────
@@ -3513,6 +3850,7 @@ export class GameEngine {
     const st = this.state;
     const u = st.units[unitId];
     if (!u) return '';
+    if (u.checkDue != null && u.status === 'ON_SCENE') return this.statusCheck(u.id).text ?? '';
     this.radio('DISPATCH', `${u.spoken}, status check.`, 'dispatch', u.id);
     const inc = u.assignedIncidentId ? st.incidents[u.assignedIncidentId] : undefined;
     const eta = u.eta ?? 0;

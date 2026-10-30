@@ -10,7 +10,7 @@ import { useApp } from '../store';
 import { averageOf } from '../sim/scoring';
 import { DispatchConsole, type Preview } from './DispatchConsole';
 import { AirSupport, Consequences, DeadlineBanner, LifeMeter } from './Ops';
-import { CrewBriefing, UnitCommands, openCctv } from './Field';
+import { CrewBriefing, FieldOps, UnitCommands, openCctv } from './Field';
 import { AIR_HELPS } from '../sim/engine';
 
 export interface PanelCtx { setPreview: (p: Preview) => void; engine: GameEngine; pickLocation: (incId: string | null) => void; pickingFor: string | null; repositioning: string | null; startReposition: (unitId: string | null) => void; focus: (x: number, y: number, zoom?: number) => void; openCall: () => void; setBottom: (t: string) => void }
@@ -197,6 +197,7 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
           {inc.category === 'police' && inc.status !== 'CLOSED' && (() => { const b = engine.boloInfo(inc.id); const out = (st.bolos ?? []).find((x) => x.incId === inc.id && x.status === 'active'); return <Btn size="sm" icon="search" kind={out ? 'primary' : 'default'} disabled={!b.ok} onClick={() => { const r = engine.broadcastBolo(inc.id); if (r.ok) audio.dispatchConfirm(); else useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }} title={b.ok ? 'Broadcast the suspect description to every patrol (B)' : b.reason}>{out ? 'BOLO out' : 'BOLO'}</Btn>; })()}
         </div>
         {inc.truth.outside && <div className="note-line warn"><Icon n="alert" size={12} /> Caller is outside Ravenport. Use <b>TRANSFER</b> to hand them to the neighbouring agency.</div>}
+        {!done && <FieldOps engine={engine} inc={inc} />}
         {inc.parentId && st.incidents[inc.parentId] && <div className="note-line"><Icon n="layers" size={12} /> Broke out of INC-{String(st.incidents[inc.parentId].num).padStart(4, '0')} {st.incidents[inc.parentId].label} — crews there can be sent straight here.</div>}
         <DeadlineBanner engine={engine} inc={inc} />
         {!done && <LifeMeter inc={inc} />}

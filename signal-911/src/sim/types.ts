@@ -74,6 +74,10 @@ export interface Unit {
   patrol?: boolean;
   /** fire/EMS told to stage short of an unsafe scene until police secure it */
   staging?: boolean; stagedAt?: number | null;
+  /** search incidents: the sector this crew is sweeping */
+  searchSector?: number | null;
+  /** police on scene: when dispatch owes them a status check, when they last had one, and (hidden) when things go wrong */
+  checkDue?: number | null; lastCheck?: number; trouble?: number | null;
 }
 
 export interface Station {
@@ -221,6 +225,20 @@ export interface Incident {
   accessNeeded?: { at: number; relayed: boolean } | null; accessDelayUntil?: number;
   /** how well the receiving hospital matched the patient */
   hospitalOutcome?: 'ideal' | 'ok' | 'unsuitable'; hospitalAsked?: boolean;
+  /** an outside agency the crews need before the scene can clear (tow truck, power or gas company, animal control) */
+  agency?: { kind: AgencyKind; askedAt: number | null; calledAt: number | null; arriveAt: number | null; here: boolean; nagged: number; late?: boolean } | null;
+  /** missing-person search: sectors around the last-seen point */
+  search?: SearchGrid | null;
+  /** public emergency alert issued for the incident's district */
+  alert?: { kind: AlertKind; at: number; right: boolean; needed: boolean } | null;
+}
+export type AgencyKind = 'tow' | 'power' | 'gas' | 'animal';
+export type AlertKind = 'evacuate' | 'shelter';
+export interface SearchSector { id: string; x: number; y: number; node: number; p: number; searched: number; cleared?: boolean }
+export interface SearchGrid {
+  cx: number; cy: number; r: number; sectors: SearchSector[];
+  /** hidden: the sector the person is in (-1 when the grid was drawn around the wrong place) */
+  target: number; origin: number; found: boolean; foundAt?: number; exhausted?: boolean;
 }
 
 /** an officer on the radio asking dispatch to run someone or something through records */
@@ -304,6 +322,7 @@ export interface ShiftStats {
   aidGood: number; aidBad: number; unitCrashes: number; breakdowns: number; aiLines: number;
   heliRelays: number; heliSightings: number; checksOk: number; checksBad: number; checksMissed: number; guidanceDeaths: number; guidanceSaves: number; harmfulAdvice: number;
   boloHits?: number; stingerHits?: number; breaksGiven?: number;
+  agencyCalls?: number; agencyLate?: number; statusChecks?: number; statusSaves?: number; statusMissed?: number; alertsRight?: number; alertsWrong?: number; searchFinds?: number;
 }
 
 export interface GameState {
@@ -329,6 +348,8 @@ export interface GameState {
   /** tactical questions from crews on scene */
   decisions?: Decision[];
   bolos?: Bolo[]; stingers?: Stinger[]; nextBreakAt?: number;
+  /** worried residents ringing in after a public alert */
+  alertCalls?: Array<{ at: number; district: string }>;
   /** headlines for the news ticker */
   news?: Array<{ t: number; text: string; tone: 'good' | 'bad' | 'info' }>;
   /** hospital departments, beds and diversions, keyed by hospital node */

@@ -2,7 +2,7 @@
 // hospitals and empty streets, plus the drop handler for drag-to-dispatch.
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { addressOf } from '../sim/city';
-import { recommendFor, type GameEngine } from '../sim/engine';
+import { AGENCY, recommendFor, type GameEngine } from '../sim/engine';
 import { SERVICE_META, isAir } from '../sim/fleet';
 import type { Incident, Service, Unit } from '../sim/types';
 import { audio } from '../audio/audioManager';
@@ -45,6 +45,17 @@ export function stationPick(engine: GameEngine, stationId: string, inc: Incident
   const need = recommendFor(inc, st.rank).filter((r) => inc.assignedUnits.filter((id) => st.units[id]?.capabilities.includes(r.cap)).length < r.n).map((r) => r.cap);
   return here.find((u) => u.capabilities.some((c) => need.includes(c))) ?? here[0];
 }
+/** the open search sector (if any) that contains a node */
+export function sectorAt(engine: GameEngine, node: number): { inc: Incident; idx: number } | null {
+  const n = engine.city.nodes[node];
+  for (const inc of Object.values(engine.state.incidents)) {
+    const S = inc.search;
+    if (!S || S.found || inc.hidden || ['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
+    const idx = S.sectors.findIndex((sec) => sec.searched < 1 && Math.hypot(sec.x - n.x, sec.y - n.y) <= S.r);
+    if (idx >= 0) return { inc, idx };
+  }
+  return null;
+}
 /** drag-to-dispatch: a unit or a station dropped on an incident, a hospital or an empty street */
 export function handleDrop(engine: GameEngine, src: { kind: 'unit' | 'station' | 'incident'; id: string }, target: { kind: string; id: string } | null, node: number) {
   const st = engine.state;
@@ -71,6 +82,8 @@ export function handleDrop(engine: GameEngine, src: { kind: 'unit' | 'station' |
   if (!u) return;
   if (target?.kind === 'hospital') { if (u.status === 'TRANSPORTING') feedback(engine.setHospital(u.id, Number(target.id))); else feedback({ ok: false, reason: `${u.callsign} has no patient on board` }); return; }
   if (target) return;
+  const sec = sectorAt(engine, node);
+  if (sec) { feedback(engine.assignSearch(sec.inc.id, sec.idx, u.id), `${u.callsign} searching sector ${sec.inc.search!.sectors[sec.idx].id}`); return; }
   if (isAir(u)) { feedback({ ok: false, reason: 'Aircraft are tasked to incidents, not to street corners' }); return; }
   if (!['AVAILABLE', 'RETURNING'].includes(u.status)) { feedback({ ok: false, reason: `${u.callsign} is committed — recall it first` }); return; }
   feedback(engine.reposition(u.id, node), `${u.callsign} moving to ${addressOf(engine.city, node)}`);
@@ -136,6 +149,13 @@ export function MapMenu({ engine, menu, onClose, focus, startReposition, openTab
         <div className="mm-sep" />
         {assigned.length > 0 && <Item icon="radio" onClick={run(() => feedback(engine.briefUnits(inc.id), 'Crews briefed'))}>Brief responding crews</Item>}
         {!inc.truth.outside && <Item icon="map" onClick={run(() => openCctv(engine, inc.id))}>Check nearest CCTV</Item>}
+        {(() => { const k = engine.agencyFor(inc); const a = inc.agency; if (!k || !live(inc) || a?.calledAt != null) return null; return <Item icon="phone" tone={a?.askedAt != null ? 'primary' : undefined} sub={`$${AGENCY[k].cost}`} onClick={run(() => feedback(engine.callAgency(inc.id), `${AGENCY[k].name} called`))}>Call {AGENCY[k].name.toLowerCase()}{a?.askedAt != null ? ' — crew is waiting' : ''}</Item>; })()}
+        {engine.alertInfo(inc.id).ok && (sub === 'alert' ? (
+          <>
+            <Item icon="alert" tone="danger" onClick={run(() => feedback(engine.issueAlert(inc.id, 'evacuate'), 'Evacuation order sent'))}>Order evacuation of the district</Item>
+            <Item icon="alert" onClick={run(() => feedback(engine.issueAlert(inc.id, 'shelter'), 'Shelter-in-place order sent'))}>Order shelter in place</Item>
+          </>
+        ) : <Item icon="alert" sub="›" onClick={() => setSub('alert')}>Public alert…</Item>)}
         {inc.category === 'police' && (() => { const b = engine.boloInfo(inc.id); return <Item icon="search" disabled={!b.ok} sub={b.ok ? 'all units' : undefined} onClick={run(() => feedback(engine.broadcastBolo(inc.id), 'BOLO broadcast to all units'))}>{b.ok ? 'Broadcast BOLO' : <span className="muted">BOLO — {b.reason?.toLowerCase()}</span>}</Item>; })()}
         <Item icon="note" onClick={run(() => { engine.select('incident', inc.id); useApp.getState().bump(); })}>Open incident card</Item>
         {inc.reportedNode !== null && <Item icon="search" onClick={run(() => { const m = engine.city.nodes[inc.reportedNode!]; focus(m.x, m.y, 3.2); })}>Zoom to scene</Item>}
@@ -166,7 +186,9 @@ export function MapMenu({ engine, menu, onClose, focus, startReposition, openTab
         <Item icon="send" disabled={!targets.length} onClick={() => setSub('send')} sub={targets.length ? `${targets.length} ›` : '—'}>{inc ? 'Divert to…' : 'Send to incident…'}</Item>
         {moving && !isAir(u) && <Item icon="bolt" tone={u.code === 3 ? 'danger' : undefined} onClick={run(() => feedback(engine.setCode(u.id, u.code === 3 ? 2 : 3)))}>{u.code === 3 ? 'Downgrade to Code 2' : 'Upgrade to Code 3'}</Item>}
         {moving && u.service !== 'police' && <Item icon="shield" onClick={run(() => feedback(engine.setStaging(u.id, !u.staging)))}>{u.staging ? 'Cancel staging' : 'Stage until PD secures'}</Item>}
-        {u.status === 'ON_SCENE' && <Item icon="radio" onClick={run(() => { engine.radioQuery(u.id); audio.radioBlip(); useApp.getState().bump(); })}>Request sitrep</Item>}
+        {u.status === 'ON_SCENE' && (u.checkDue != null
+          ? <Item icon="radio" tone={st.time >= u.checkDue ? 'primary' : undefined} sub={st.time >= u.checkDue ? 'overdue' : fmtEta(u.checkDue - st.time)} onClick={run(() => { engine.statusCheck(u.id); audio.radioBlip(); useApp.getState().bump(); })}>Status check</Item>
+          : <Item icon="radio" onClick={run(() => { engine.radioQuery(u.id); audio.radioBlip(); useApp.getState().bump(); })}>Request sitrep</Item>)}
         {u.status === 'TRANSPORTING' && <Item icon="phone" onClick={run(() => feedback(engine.prealert(u.id)))}>Pre-alert hospital</Item>}
         {policeCar && engine.onPatrol(u) && <Item icon="shield" onClick={run(() => feedback(engine.orderStop(u.id)))}>Make a traffic stop</Item>}
         {policeCar && ['AVAILABLE', 'RETURNING'].includes(u.status) && <Item icon={u.patrol === false ? 'car' : 'hosp'} onClick={run(() => { engine.setPatrol(u.id, u.patrol === false); audio.click(); useApp.getState().bump(); })}>{u.patrol === false ? 'Resume patrol' : 'Hold at station'}</Item>}
@@ -239,6 +261,7 @@ export function MapMenu({ engine, menu, onClose, focus, startReposition, openTab
     };
     const covers = (['police', 'fire', 'medical'] as const).map((s) => ({ s, b: cover(s) }));
     const pursuit = engine.activePursuit();
+    const sector = sectorAt(engine, menu.node);
     head = (
       <>
         <div className="mm-title"><span className="mm-ico"><Icon n="pin" size={13} /></span>{addressOf(engine.city, menu.node)}</div>
@@ -247,6 +270,7 @@ export function MapMenu({ engine, menu, onClose, focus, startReposition, openTab
     );
     body = (
       <>
+        {sector && (() => { const sec = sector.inc.search!.sectors[sector.idx]; return <Item icon="search" tone="primary" sub={`${sec.p}%`} onClick={run(() => feedback(engine.assignSearch(sector.inc.id, sector.idx), `Crew sent to sector ${sec.id}`))}>Search sector {sec.id} here</Item>; })()}
         {selInc && !['RESOLVED', 'CLOSED'].includes(selInc.status) && <Item icon="pin" tone="primary" onClick={run(() => { engine.setIncidentLocation(selInc.id, menu.node, 'map'); feedback(true); })}>Set “{selInc.label}” here</Item>}
         {pursuit && (() => {
           const cand = engine.stingerUnits(menu.node)[0];

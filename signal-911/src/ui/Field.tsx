@@ -2,7 +2,7 @@
 // the breaking-news banner and the news ticker.
 import { useEffect, useRef, useState } from 'react';
 import { addressOf, getCity } from '../sim/city';
-import { gameClock, type GameEngine } from '../sim/engine';
+import { AGENCY, gameClock, type GameEngine } from '../sim/engine';
 import { isAir } from '../sim/fleet';
 import type { Call, Incident, Unit } from '../sim/types';
 import { audio } from '../audio/audioManager';
@@ -33,7 +33,9 @@ export function UnitCommands({ engine, unit }: { engine: GameEngine; unit: Unit 
       <div className="btnrow">
         {moving && !isAir(unit) && <Btn size="sm" kind={unit.code === 3 ? 'danger' : 'default'} icon="bolt" onClick={() => { toast(engine.setCode(unit.id, unit.code === 3 ? 2 : 3)); bump(); }} title="Lights and sirens are faster but riskier">{unit.code === 3 ? 'Downgrade to Code 2' : 'Upgrade to Code 3'}</Btn>}
         {moving && unit.service !== 'police' && <Btn size="sm" kind={unit.staging ? 'primary' : 'default'} icon="shield" onClick={() => { toast(engine.setStaging(unit.id, !unit.staging)); bump(); }} title="Hold short of the scene until police make it safe">{unit.staging ? 'Cancel staging' : 'Stage until PD secures'}</Btn>}
-        {unit.status === 'ON_SCENE' && <Btn size="sm" icon="radio" onClick={() => { engine.radioQuery(unit.id); audio.radioBlip(); bump(); }}>Request sitrep</Btn>}
+        {unit.status === 'ON_SCENE' && (unit.checkDue != null
+          ? <Btn size="sm" icon="radio" kind={st.time >= unit.checkDue ? 'warn' : 'default'} onClick={() => { engine.statusCheck(unit.id); audio.radioBlip(); bump(); }} title="Officers on scene should be checked on regularly">{st.time >= unit.checkDue ? 'Status check — overdue' : `Status check · due in ${fmtTime(unit.checkDue - st.time)}`}</Btn>
+          : <Btn size="sm" icon="radio" onClick={() => { engine.radioQuery(unit.id); audio.radioBlip(); bump(); }}>Request sitrep</Btn>)}
         {policeCar && engine.onPatrol(unit) && <Btn size="sm" icon="shield" onClick={() => { toast(engine.orderStop(unit.id)); bump(); }} title="Pull the next vehicle over and run its plate">Make a traffic stop</Btn>}
         {policeCar && <Btn size="sm" icon={unit.patrol === false ? 'car' : 'hosp'} onClick={() => { engine.setPatrol(unit.id, unit.patrol === false); audio.click(); bump(); }} title="Patrolling cars respond faster and run their own traffic stops">{unit.patrol === false ? 'Resume patrol' : 'Hold at station'}</Btn>}
       </div>
@@ -237,6 +239,93 @@ export function BoloDock({ engine }: { engine: GameEngine }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/** incident card: outside agency, public alert and the search grid */
+export function FieldOps({ engine, inc }: { engine: GameEngine; inc: Incident }) {
+  const st = engine.state;
+  const bump = useApp((s) => s.bump);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const kind = engine.agencyFor(inc);
+  const a = inc.agency;
+  const S = inc.search;
+  const al = engine.alertInfo(inc.id);
+  const district = al.district ? engine.city.districtById[al.district]?.name : inc.reportedNode !== null ? engine.city.districtById[engine.city.nodes[inc.reportedNode].district]?.name : '';
+  const asked = a?.askedAt != null && a.calledAt == null;
+  return (
+    <>
+      {kind && inc.reportedNode !== null && (
+        <div className={`agency ${asked ? 'ask' : ''} ${a?.here ? 'here' : ''}`}>
+          <Icon n="phone" size={13} />
+          <div className="grow">
+            <b>{AGENCY[kind].name}</b>
+            <div className="small muted">{a?.here ? 'On scene' : a?.calledAt != null ? `En route · ${fmtTime((a.arriveAt ?? st.time) - st.time)}` : asked ? `Crew asked ${fmtTime(st.time - a!.askedAt!)} ago — the scene can't clear without it` : 'Likely needed — calling ahead saves time'}</div>
+          </div>
+          {a?.calledAt == null && <Btn size="sm" kind={asked ? 'primary' : 'default'} onClick={() => { toast(engine.callAgency(inc.id), `${AGENCY[kind].name} called`); bump(); }}>Call · ${AGENCY[kind].cost}</Btn>}
+        </div>
+      )}
+      {S && !S.found && (
+        <div className="searchgrid">
+          <div className="sub">SEARCH SECTORS {S.exhausted && <Badge tone="red">AREA EXHAUSTED</Badge>}</div>
+          {S.sectors.map((sec, i) => {
+            const crews = inc.assignedUnits.map((id) => st.units[id]).filter((u) => u && u.searchSector === i);
+            const clear = sec.searched >= 1;
+            return (
+              <div className={`sector ${clear ? 'clear' : ''}`} key={sec.id}>
+                <b className="sec-id">{sec.id}</b>
+                <span className="mono sec-p">{sec.p}%</span>
+                <div className="sec-bar"><i style={{ width: `${Math.round(sec.searched * 100)}%` }} /></div>
+                <span className="small muted sec-who">{clear ? 'clear' : crews.map((u) => u.callsign).join(', ')}</span>
+                {!clear && <Btn size="sm" onClick={() => { toast(engine.assignSearch(inc.id, i)); bump(); }} title="Send an idle crew on scene, or the nearest free unit">Send</Btn>}
+              </div>
+            );
+          })}
+          <div className="small muted">Likelier sectors first. Drag a unit onto a sector on the map, or right-click a sector. A helicopter sweeps every sector at once.</div>
+        </div>
+      )}
+      {inc.alert ? (
+        <div className={`note-line ${inc.alert.kind === 'evacuate' ? 'bad' : 'warn'}`}><Icon n="alert" size={12} /> {inc.alert.kind === 'evacuate' ? 'Evacuation order' : 'Shelter-in-place order'} out for {district}.</div>
+      ) : al.ok && (
+        <div className="alertrow">
+          {!alertOpen ? <button className="linkish small" onClick={() => setAlertOpen(true)}><Icon n="alert" size={11} /> Public alert for {district}…</button> : (
+            <>
+              <span className="small muted">Alert every phone in {district}:</span>
+              <Btn size="sm" kind="danger" onClick={() => { toast(engine.issueAlert(inc.id, 'evacuate'), 'Evacuation order sent'); setAlertOpen(false); bump(); }} title="Get people out: fires, gas, explosions, derailments, bomb threats">Evacuate</Btn>
+              <Btn size="sm" kind="warn" onClick={() => { toast(engine.issueAlert(inc.id, 'shelter'), 'Shelter-in-place order sent'); setAlertOpen(false); bump(); }} title="Keep people indoors: shooters, hostage scenes, toxic smoke">Shelter in place</Btn>
+              <button className="linkish small" onClick={() => setAlertOpen(false)}>Cancel</button>
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+/** officers waiting on a status check */
+export function StatusDock({ engine }: { engine: GameEngine }) {
+  const bump = useApp((s) => s.bump);
+  const due = engine.overdueChecks();
+  if (!due.length) return null;
+  return (
+    <button className="recdock statusdock" onClick={() => { engine.statusCheck(due[0].id); audio.radioBlip(); bump(); }} title="Ask the most overdue officer for a status (S)">
+      <Icon n="radio" size={15} /> <b>{due.length} status check{due.length > 1 ? 's' : ''} due</b> <span className="mono small">{due[0].callsign}</span> <kbd>S</kbd>
+    </button>
+  );
+}
+
+/** units picked with a Shift+drag box */
+export function MultiBar({ engine, ids, onClear }: { engine: GameEngine; ids: string[]; onClear: () => void }) {
+  const bump = useApp((s) => s.bump);
+  const units = ids.map((id) => engine.state.units[id]).filter(Boolean);
+  if (!units.length) return null;
+  return (
+    <div className="multibar">
+      <Icon n="users" size={14} /> <b>{units.length} unit{units.length > 1 ? 's' : ''}</b>
+      <span className="small muted">{units.slice(0, 4).map((u) => u.callsign).join(', ')}{units.length > 4 ? '…' : ''} — right-click an incident to send them all</span>
+      <Btn size="sm" onClick={() => { let n = 0; for (const u of units) if (engine.recall(u.id)) n++; toast(n > 0, `${n} unit${n === 1 ? '' : 's'} recalled`); onClear(); bump(); }}>Recall all</Btn>
+      <Btn size="sm" kind="ghost" onClick={onClear}>Clear</Btn>
     </div>
   );
 }

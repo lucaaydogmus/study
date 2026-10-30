@@ -17,7 +17,7 @@ import { computeScore } from '../sim/scoring';
 import { contractProgress, MODIFIER_BY_ID } from '../sim/extras';
 import { GRADE_COLOR } from './common';
 import { RecordsDock, RecordsTerminal, threatKnown } from './Ops';
-import { BoloDock, CctvViewer, DecisionCards, NewsTicker, useCctvSink } from './Field';
+import { BoloDock, CctvViewer, DecisionCards, MultiBar, NewsTicker, StatusDock, useCctvSink } from './Field';
 import { MapMenu, handleDrop, type MenuState } from './MapMenu';
 
 const CAT_ICON: Record<string, string> = { medical: 'cross', fire: 'flame', police: 'shield', unusual: 'help' };
@@ -48,6 +48,7 @@ export function GameScreen() {
   const [terminal, setTerminal] = useState(false);
   const [cctv, setCctv] = useState<Parameters<typeof CctvViewer>[0]['view'] | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const [multi, setMulti] = useState<string[]>([]);
   const closeMenu = useCallback(() => setMenu(null), []);
   useCctvSink(setCctv);
   const st = engine.state;
@@ -91,9 +92,10 @@ export function GameScreen() {
       else if (e.key === 'e' || e.key === 'E') { if (s.activeCallId) { eng.endCall(s.activeCallId); bump(); } }
       else if (e.key === 'm' || e.key === 'M') { const i = LAYERS.findIndex((l) => l.id === layer); setLayer(LAYERS[(i + 1) % LAYERS.length].id); }
       else if (e.key === 'd' || e.key === 'D') { const c = s.activeCallId ? s.calls[s.activeCallId] : null; if (c) { eng.select('incident', c.incidentId); bump(); } }
-      else if (e.key === 'Escape') { if (menu) setMenu(null); else if (target) setTarget(null); else if (s.selected.kind) { eng.select(null, null); bump(); } else useApp.getState().setPauseMenu(true); }
+      else if (e.key === 'Escape') { if (menu) setMenu(null); else if (multi.length) setMulti([]); else if (target) setTarget(null); else if (s.selected.kind) { eng.select(null, null); bump(); } else useApp.getState().setPauseMenu(true); }
       else if (e.key === '?' ) setShowHelp(true);
       else if (e.key === 't' || e.key === 'T') setTerminal((v) => !v);
+      else if (e.key === 's' || e.key === 'S') { const due = eng.overdueChecks(); if (due.length) { eng.statusCheck(due[0].id); audio.radioBlip(); bump(); } }
       else if (e.key === 'f' || e.key === 'F') {
         const sel = s.selected;
         const at = sel.kind === 'unit' && sel.id && s.units[sel.id] ? { x: s.units[sel.id].x, y: s.units[sel.id].y } : sel.kind === 'incident' && sel.id && s.incidents[sel.id]?.reportedNode != null ? eng.city.nodes[s.incidents[sel.id].reportedNode!] : sel.kind === 'station' && sel.id && s.stations[sel.id] ? eng.city.nodes[s.stations[sel.id].nodeId] : null;
@@ -120,7 +122,7 @@ export function GameScreen() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [engine, layer, target, pauseMenu, menu]);
+  }, [engine, layer, target, pauseMenu, menu, multi]);
 
   const heardForMap = (() => {
     if (st.selected.kind !== 'incident' || !st.selected.id) return undefined;
@@ -139,6 +141,12 @@ export function GameScreen() {
   const onContext = (node: number, hit: { kind: string; id: string } | null, at: { x: number; y: number }) => {
     const s = engine.state;
     // quick orders: with a unit selected, right-click an incident to send it or a street to move it there
+    // a box of units: send them all to the incident, or move them all to the street
+    if (multi.length && (hit?.kind === 'incident' || !hit)) {
+      const ids = multi.filter((id) => s.units[id]);
+      for (const id of ids) handleDrop(engine, { kind: 'unit', id }, hit, node);
+      setMulti([]); bump(); return;
+    }
     const u = s.selected.kind === 'unit' && s.selected.id ? s.units[s.selected.id] : null;
     if (u && (hit?.kind === 'incident' || (!hit && ['AVAILABLE', 'RETURNING'].includes(u.status) && !isAir(u)))) { handleDrop(engine, { kind: 'unit', id: u.id }, hit, node); return; }
     setMenu({ x: at.x, y: at.y, node, hit, key: performance.now() });
@@ -171,7 +179,8 @@ export function GameScreen() {
         {!collapsed.l && <div className="vresizer" onPointerDown={startDrag('l')} role="separator" aria-orientation="vertical" aria-label="Resize call queue" />}
         <div className="center">
           <MapView engine={engine} layer={layer} mode={target ? 'pickLocation' : 'select'} selected={st.selected}
-            onSelect={(k, id) => { engine.select(k, id); setCollapsed((c) => ({ ...c, r: false })); bump(); }}
+            onSelect={(k, id) => { engine.select(k, id); setMulti([]); setCollapsed((c) => ({ ...c, r: false })); bump(); }}
+            multi={multi} onBoxSelect={(ids) => { setMulti(ids); if (ids.length) { audio.click(); useApp.getState().showToast(`${ids.length} unit${ids.length > 1 ? 's' : ''} selected — right-click an incident to send them`, 'info'); } }}
             onPickNode={onPickNode} onContext={onContext} onDrop={(src, t, node) => handleDrop(engine, src, t, node)} heard={heardForMap}
             onPickHeard={(h) => { const s = engine.state; if (s.selected.kind === 'incident' && s.selected.id) { engine.setIncidentLocation(s.selected.id, h.nodeId, 'candidate'); audio.dispatchConfirm(); bump(); } }}
             focus={focus} reduceMotion={settings.reduceMotion} minimap preview={preview} sounds />
@@ -183,7 +192,8 @@ export function GameScreen() {
             {target && <div className="banner"><Icon n="pin" size={14} /> {target.kind === 'loc' ? 'Click the map to set the incident location' : 'Click the map to reposition the unit'} <button className="linkish" onClick={() => setTarget(null)}>Cancel (Esc)</button></div>}
           </div>
           <IncomingBanner engine={engine} />
-          <RecordsDock engine={engine} onOpen={() => setTerminal(true)} />
+          <div className="dockrow"><RecordsDock engine={engine} onOpen={() => setTerminal(true)} /><StatusDock engine={engine} /></div>
+          <MultiBar engine={engine} ids={multi} onClear={() => setMulti([])} />
           <BoloDock engine={engine} />
           <DecisionCards engine={engine} />
           <NewsTicker engine={engine} />
@@ -315,7 +325,7 @@ function Legend({ layer }: { layer: LayerId }) {
 }
 
 export function HelpModal({ onClose }: { onClose: () => void }) {
-  const rows: Array<[string, string]> = [['Space', 'Pause / resume'], ['1 / 2 / 3', 'Set game speed'], ['A', 'Answer the next ringing call'], ['H', 'Hold / resume a call'], ['E', 'End the active call'], ['D', 'Open the active call’s incident'], ['T', 'Records terminal (officer ID / warrant / plate checks)'], ['R', 'Relay the helicopter’s position to ground units'], ['M', 'Cycle map layers'], ['Esc', 'Cancel / deselect / menu'], ['Enter', 'Dispatch the response plan for the selected incident'], ['F', 'Fly the camera to the selection'], ['B', 'Broadcast a BOLO for the selected incident'], ['Drag a pin', 'Move an incident, or drop it on another to link duplicates'], ['Right-click', 'Quick-order menu (incidents, units, stations, hospitals, streets)'], ['Drag unit → incident', 'Dispatch it (drag a station to send its next free unit)'], ['Scroll / drag', 'Zoom / pan the map'], ['?', 'This help']];
+  const rows: Array<[string, string]> = [['Space', 'Pause / resume'], ['1 / 2 / 3', 'Set game speed'], ['A', 'Answer the next ringing call'], ['H', 'Hold / resume a call'], ['E', 'End the active call'], ['D', 'Open the active call’s incident'], ['T', 'Records terminal (officer ID / warrant / plate checks)'], ['R', 'Relay the helicopter’s position to ground units'], ['M', 'Cycle map layers'], ['Esc', 'Cancel / deselect / menu'], ['Enter', 'Dispatch the response plan for the selected incident'], ['F', 'Fly the camera to the selection'], ['B', 'Broadcast a BOLO for the selected incident'], ['Drag a pin', 'Move an incident, or drop it on another to link duplicates'], ['S', 'Status check on the most overdue officer'], ['Shift + drag', 'Box-select several units, then right-click an incident'], ['Right-click', 'Quick-order menu (incidents, units, stations, hospitals, streets)'], ['Drag unit → incident', 'Dispatch it (drag a station to send its next free unit)'], ['Scroll / drag', 'Zoom / pan the map'], ['?', 'This help']];
   return (
     <Modal title="Controls & shortcuts" onClose={onClose}>
       <table className="tbl"><tbody>{rows.map(([k, v]) => <tr key={k}><td><kbd>{k}</kbd></td><td>{v}</td></tr>)}</tbody></table>
