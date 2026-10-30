@@ -1,2 +1,7 @@
-# Next: Stage 5 — Career and scenarios (awaiting approval)
-Career progression (XP levels, reputation, unlocks), varied objectives (e.g. keep Downtown response under target, improve Northside medical cover, finish a shift in heavy rain, resolve a major disruption, coordinate linked incidents), data-driven special events (Rush Hour, Heavy Rain, City Festival, Power Outage, Industrial Fire) with bespoke mechanics, district challenges, and persistence of objective/event progress in the save. Hooks: `settings.weather` and `trafficAt` in `sim/world.ts`, `directorStep`/`phaseFactor`, `Summary` for objective evaluation, `SaveData` (bump version, migrate), the briefing panel for choosing a shift/event.
+# Status: all seven stages complete
+
+SIGNAL 911 is feature-complete against PROJECT_SPEC.md. Ideas if development continues (none are started):
+- Call hold / second line, mid-shift repositioning orders.
+- More incident families (hazmat, search and rescue) and more scripted events using the existing `scripted` waves in `sim/events.ts`.
+- Balance pass using real play data; difficulty presets for event scenarios.
+- Multiple save slots, richer audio, localisation of `dialogueData.ts`.

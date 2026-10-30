@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { advance, initialClock, SPEEDS, type ClockState, type Speed } from '../sim/clock';
-import { loadSave, writeSave, type SaveData } from '../sim/save';
+import { defaultSave, loadSave, writeSave, type SaveData } from '../sim/save';
 import {
   answerCall, buildSummary, createWorld, decide, dispatch, fleetAfterShift, recall, step, type Config, type Summary, type World,
 } from '../sim/world';
@@ -30,6 +30,7 @@ interface GameState {
   summary: Summary | null;
   outcome: CareerOutcome | null;
   careerOpen: boolean;
+  helpOpen: boolean;
   focus: { x: number; y: number; nonce: number } | null;
   toast: string | null;
   depotOpen: boolean;
@@ -50,6 +51,8 @@ interface GameState {
   decide(optionId: string): void;
   openDepot(open: boolean): void;
   openCareer(open: boolean): void;
+  openHelp(open: boolean): void;
+  resetProgress(): void;
   setScenario(kind: 'standard' | 'event' | 'challenge', id?: string): void;
   buyVehicle(vehicle: VehicleId, stationId: string): void;
   sellUnit(id: string): void;
@@ -114,6 +117,7 @@ export const useGame = create<GameState>((set, get) => {
     summary: null,
     outcome: null,
     careerOpen: false,
+    helpOpen: false,
     focus: null,
     toast: null,
     depotOpen: false,
@@ -210,6 +214,14 @@ export const useGame = create<GameState>((set, get) => {
       const r = decide(st.world, st.sel.incidentId, optionId);
       if (r.ok) sfx.dispatch(); else { set({ toast: r.error ?? 'Not available.' }); setTimeout(() => set({ toast: null }), 2500); }
       bump();
+    },
+    openHelp: (open) => set({ helpOpen: open }),
+    resetProgress: () => {
+      const st = get();
+      if (st.phase === 'shift') return;
+      const fresh = { ...defaultSave(), settings: st.save.settings };
+      const config: Config = { ...st.config, event: null, challenge: null };
+      set({ save: fresh, saveOk: writeSave(fresh), config, world: createWorld(config, fresh.fleet), phase: 'preshift', summary: null, outcome: null, sel: emptySel(), clock: initialClock(), rev: st.rev + 1 });
     },
     openCareer: (open) => set({ careerOpen: open && get().phase === 'preshift' }),
     setScenario: (kind, id) => {

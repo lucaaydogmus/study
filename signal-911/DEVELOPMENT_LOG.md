@@ -58,3 +58,17 @@ Known/deferred: no mid-shift reposition (units only move pre-shift); upgrade/veh
 - **UI**: Career modal (objectives, scenarios, record), scenario picker in the briefing, event/challenge tag in the top bar, career section in the shift summary.
 - **Fixes**: district-restricted variations (e.g. difficult-access fire = Old Town only) were not enforced in Stage 3; now they are, including for the caller's first impression.
 - **Tests**: 68 total (new `career.test.ts`: levels, save v3 migration + sanitising, weather/traffic effects, outage waves and linking, event-only variation, district restriction, challenge concentration, a full shift for every event, objective/reward evaluation).
+
+## Stage 6 — Final polish and testing (done)
+- **Robustness**: React error boundary (a crash shows a recoverable screen, never a blank page); all storage access guarded; sim time cannot jump (long frame gaps are sub-stepped); modals close with Esc and click-outside.
+- **Help** (`?` or the top-bar button): how to play, keys, map legend, and a functional *Reset all progress*.
+- **Layout** verified at 1024×700, 1280×720, 1440×900, 1920×1080 and 3440×1440: no horizontal overflow, panels scroll internally, ultrawide caps the interface width and centres it.
+- **Tests (86)**: new `stress.test.ts` plays whole shifts across every difficulty × weather, every special event and a maximum-size equipped fleet, asserting unit/incident/closure invariants throughout (`checkInvariants` in `testbot.ts`); new `store/game.test.ts` covers phases, pause/speed, a call end-to-end through the store, fleet-only-between-shifts, locked scenarios, reset, and storage that throws.
+- **Checked in a real browser**: full shifts (standard, hard, event), depot edit + reload persistence, career screen, help/reset, pause/resume.
+
+### Known limits (honest list)
+- Balance is tuned with a simple bot and a few manual shifts, not with many human players; difficulty, payouts and equipment prices may need adjusting.
+- One active call at a time (no hold); no mid-shift unit repositioning; all dialogue is English and authored (16+ variation scripts, 7 personalities).
+- Single save slot in one browser; clearing site data erases it.
+- The map draws every frame on a canvas; it handled the tested loads smoothly, but very large fleets on low-end devices were not profiled.
+- Sound is synthesised tones only (no recorded audio).

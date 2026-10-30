@@ -1,4 +1,4 @@
-import { Pause, Play, FastForward, Volume2, VolumeX, Radio, Wallet, Star, CloudRain, Sun, Flag } from 'lucide-react';
+import { Pause, Play, FastForward, Volume2, VolumeX, Radio, Wallet, Star, CloudRain, Sun, Flag, HelpCircle } from 'lucide-react';
 import { useGame } from '../store/game';
 import { SPEEDS } from '../sim/clock';
 import { fmt, money } from './common';
@@ -43,6 +43,7 @@ export function TopBar() {
             <button onClick={() => { if (window.confirm('End the shift now?')) g.endShift(); }} title="End shift early"><Flag size={14} /></button>
           </>
         )}
+        <button onClick={() => g.openHelp(true)} title="How to play (?)"><HelpCircle size={14} /></button>
         <button onClick={g.toggleMute} title="Mute (M) — sound effects arrive in a later stage">{muted ? <VolumeX size={14} /> : <Volume2 size={14} />}</button>
         <input type="range" min={0} max={1} step={0.05} value={volume} aria-label="Volume" onChange={(e) => g.setVolume(Number(e.target.value))} />
       </div>

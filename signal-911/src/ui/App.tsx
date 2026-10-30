@@ -8,12 +8,14 @@ import { MapCanvas } from './MapCanvas';
 import { SummaryModal } from './SummaryModal';
 import { DepotModal } from './DepotModal';
 import { CareerModal } from './CareerModal';
+import { HelpModal } from './HelpModal';
 
 export function App() {
   const phase = useGame((s) => s.phase);
   const toast = useGame((s) => s.toast);
   const depot = useGame((s) => s.depotOpen);
   const career = useGame((s) => s.careerOpen);
+  const help = useGame((s) => s.helpOpen);
 
   // One animation-frame loop drives the simulation clock.
   useEffect(() => {
@@ -36,8 +38,9 @@ export function App() {
       else if (e.key === '2') g.setSpeed(2);
       else if (e.key === '3') g.setSpeed(4);
       else if (e.key.toLowerCase() === 'm') g.toggleMute();
-      else if (e.key === 'Escape') { if (g.depotOpen) g.openDepot(false); else if (g.careerOpen) g.openCareer(false); else g.clearSelection(); }
+      else if (e.key === 'Escape') { if (g.helpOpen) g.openHelp(false); else if (g.depotOpen) g.openDepot(false); else if (g.careerOpen) g.openCareer(false); else g.clearSelection(); }
       else if (e.key === 'Enter') { if (t.tagName === 'BUTTON') return; g.confirmDispatch(); }
+      else if (e.key === '?') g.openHelp(!g.helpOpen);
       else if (e.key.toLowerCase() === 'e') g.hangUp();
       else if (e.key.toLowerCase() === 'a') {
         const c = g.world.calls.find((x) => x.status === 'ringing');
@@ -58,6 +61,7 @@ export function App() {
       {phase === 'summary' && <SummaryModal />}
       {depot && phase === 'preshift' && <DepotModal />}
       {career && phase === 'preshift' && <CareerModal />}
+      {help && <HelpModal />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>
   );

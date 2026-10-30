@@ -173,3 +173,11 @@ button.icon:hover { border-color: var(--accent); }
 .scen { display: flex; gap: 8px; align-items: center; }
 .chipbtn { background: var(--elev); border: var(--border); border-radius: 12px; padding: 3px 12px; cursor: pointer; } .chipbtn.on { background: #2a4258; border-color: var(--accent); } .chipbtn:disabled { opacity: .45; cursor: not-allowed; }
 .seg button:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ---- Stage 6 ---- */
+.help { max-width: 900px; } .helpgrid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 24px; } @media (max-width: 800px) { .helpgrid { grid-template-columns: 1fr; } }
+.help ol, .help ul.notes { padding-left: 18px; } .help .keys li { margin: 3px 0; }
+pre.crash { background: var(--bg); padding: 8px; border-radius: 3px; white-space: pre-wrap; color: var(--critical); }
+.card button.big { display: block; } button.danger.big { height: 34px; margin-top: 8px; width: 100%; justify-content: center; }
+button:disabled { cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .call.ringing, .line.typing { animation: none; } }
