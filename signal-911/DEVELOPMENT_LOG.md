@@ -38,3 +38,14 @@ Known/deferred: only one call at a time (no hold); no on-scene decisions or road
 - **Tests**: 36 total (new `decisions.test.ts`: offering/lapsing, fetch timing and the unnecessary-deployment exemption, unavailable options and supervisor limit, speed effect, risk/complication, road closure routing + connectivity + reopening, diversion decision, linked fire; full-shift bot now makes decisions and checks closure/connectivity invariants).
 
 Known/deferred: closure is activated when reported, not when the crash happens; decisions are single-step (one per incident); no OUT OF SERVICE or repositioning (Stage 4).
+
+## Stage 4 — Management and upgrades (done)
+- **Persistent fleet** (`sim/fleet.ts`, save v2): each unit is stored as `{id, vehicle, stationId, upgrades, condition}`. `createWorld(config, fleet)` builds the live units from it. Save v1 migrates (fleet = starting fleet); `sanitizeFleet` drops invalid/duplicate units, clamps condition, caps upgrades and station capacity, and falls back to the starting fleet.
+- **Depot screen** (pre-shift only; `ui/DepotModal.tsx`): *Fleet* (move units between stations of their service, max 4 per station; equip up to 2 upgrades; service worn units; sell), *Shop* (6 vehicle types, fleet 8–20 units, 2+ per service), *Coverage* (average clear-weather drive time per district and service from staffed stations; green < 35 s, red > 60 s). Every action validates budget/limits, saves immediately and shows an error toast when refused.
+- **Equipment** (`sim/equipment.ts`) changes real values: rescue kit (fire/water/industrial scenes 20% faster, −10% risk), advanced medical kit (medical/collision 20% faster, −8% risk), tactical gear (disturbances 15% faster, −15% risk), comms (unit travels 6% faster). Scene equipment applies once per kind across the units on scene.
+- **Costs**: purchase prices, 50% sale/refund, automatic **upkeep** every shift (per vehicle + $50 per upgrade) charged in the shift summary, optional **servicing** (cost scales with wear).
+- **Wear and OUT OF SERVICE**: every dispatch costs 6% condition. A unit under 70% can break down on an emergency run (chance rises as condition falls): it drops the call, is out of service 45 s, then returns (condition ≥ 40). A unit at ≤ 10% starts the shift in the workshop. Condition is saved after each shift. Breakdowns are logged, noted on the incident and counted in the summary.
+- **Balance hook**: a larger fleet draws proportionally more calls (interval × √(11/fleet size)).
+- **Tests**: 51 total (new `fleet.test.ts`: buy/sell/move/equip/service rules and limits, coverage, save round-trip + v1 migration + hostile data, fleet-in-sim, equipment effects, comms ETA, forced breakdown flow, workshop start, upkeep in summary).
+
+Known/deferred: no mid-shift reposition (units only move pre-shift); upgrade/vehicle prices untuned for pacing (Stage 5 will tie unlocks and income to career); spec’s “maintenance costs” are upkeep + optional servicing.

@@ -6,10 +6,12 @@ import { RightPanel } from './RightPanel';
 import { BottomPanel } from './BottomPanel';
 import { MapCanvas } from './MapCanvas';
 import { SummaryModal } from './SummaryModal';
+import { DepotModal } from './DepotModal';
 
 export function App() {
   const phase = useGame((s) => s.phase);
   const toast = useGame((s) => s.toast);
+  const depot = useGame((s) => s.depotOpen);
 
   // One animation-frame loop drives the simulation clock.
   useEffect(() => {
@@ -32,7 +34,7 @@ export function App() {
       else if (e.key === '2') g.setSpeed(2);
       else if (e.key === '3') g.setSpeed(4);
       else if (e.key.toLowerCase() === 'm') g.toggleMute();
-      else if (e.key === 'Escape') g.clearSelection();
+      else if (e.key === 'Escape') { if (g.depotOpen) g.openDepot(false); else g.clearSelection(); }
       else if (e.key === 'Enter') { if (t.tagName === 'BUTTON') return; g.confirmDispatch(); }
       else if (e.key.toLowerCase() === 'e') g.hangUp();
       else if (e.key.toLowerCase() === 'a') {
@@ -52,6 +54,7 @@ export function App() {
       <RightPanel />
       <BottomPanel />
       {phase === 'summary' && <SummaryModal />}
+      {depot && phase === 'preshift' && <DepotModal />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>
   );

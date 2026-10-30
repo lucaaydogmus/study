@@ -1,8 +1,12 @@
 /** Versioned local save. Every storage access is guarded; failures never throw. */
 export const SAVE_KEY = 'signal911.save';
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 import type { Difficulty } from './types';
+import { defaultFleet, STATION_CAPACITY, type FleetUnit } from './fleet';
+import { EQUIPMENT, MAX_UPGRADES } from './equipment';
+import { VEHICLES } from './units';
+import { getCity } from './city';
 
 export interface Settings {
   difficulty: Difficulty;
@@ -18,6 +22,7 @@ export interface SaveData {
   reputation: number;
   completedShifts: number;
   settings: Settings;
+  fleet: FleetUnit[];
 }
 
 export const defaultSave = (): SaveData => ({
@@ -27,6 +32,7 @@ export const defaultSave = (): SaveData => ({
   reputation: 50,
   completedShifts: 0,
   settings: { difficulty: 'normal', volume: 0.6, muted: false, shiftMinutes: 10 },
+  fleet: defaultFleet(),
 });
 
 export interface StorageLike {
@@ -42,6 +48,26 @@ const browserStorage = (): StorageLike | null => {
   }
 };
 
+/** Drop anything that is not a valid unit; fall back to the starting fleet if nothing usable remains. */
+export function sanitizeFleet(raw: unknown): FleetUnit[] {
+  if (!Array.isArray(raw)) return defaultFleet();
+  const stations = getCity().stations;
+  const seen = new Set<string>();
+  const load: Record<string, number> = {};
+  const out: FleetUnit[] = [];
+  for (const r of raw as Partial<FleetUnit>[]) {
+    const v = r && r.vehicle ? VEHICLES[r.vehicle] : undefined;
+    const st = stations.find((s) => s.id === r?.stationId);
+    if (!v || !st || st.service !== v.service || typeof r.id !== 'string' || seen.has(r.id)) continue;
+    if ((load[st.id] ?? 0) >= STATION_CAPACITY) continue;
+    seen.add(r.id); load[st.id] = (load[st.id] ?? 0) + 1;
+    const cond = typeof r.condition === 'number' && Number.isFinite(r.condition) ? Math.min(100, Math.max(0, r.condition)) : 100;
+    const ups = Array.isArray(r.upgrades) ? r.upgrades.filter((g, i, a) => EQUIPMENT[g] && a.indexOf(g) === i).slice(0, MAX_UPGRADES) : [];
+    out.push({ id: r.id, vehicle: r.vehicle!, stationId: st.id, upgrades: ups, condition: cond });
+  }
+  return out.length >= 3 ? out : defaultFleet();
+}
+
 /** Fill missing fields from defaults; upgrade older versions here as the format grows. */
 export function migrate(raw: unknown): SaveData {
   const d = defaultSave();
@@ -54,6 +80,7 @@ export function migrate(raw: unknown): SaveData {
     xp: num(r.xp, d.xp),
     reputation: num(r.reputation, d.reputation),
     completedShifts: num(r.completedShifts, d.completedShifts),
+    fleet: sanitizeFleet(r.fleet),
     settings: {
       difficulty: r.settings?.difficulty === 'easy' || r.settings?.difficulty === 'hard' ? r.settings.difficulty : 'normal',
       volume: Math.min(1, Math.max(0, num(r.settings?.volume, d.settings.volume))),

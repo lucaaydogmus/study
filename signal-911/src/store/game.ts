@@ -2,11 +2,13 @@ import { create } from 'zustand';
 import { advance, initialClock, SPEEDS, type ClockState, type Speed } from '../sim/clock';
 import { loadSave, writeSave, type SaveData } from '../sim/save';
 import {
-  answerCall, buildSummary, createWorld, decide, dispatch, recall, step, type Config, type Summary, type World,
+  answerCall, buildSummary, createWorld, decide, dispatch, fleetAfterShift, recall, step, type Config, type Summary, type World,
 } from '../sim/world';
 import { ask, endCall } from '../sim/calls';
+import * as fleetOps from '../sim/fleet';
+import type { Result } from '../sim/fleet';
 import { configureAudio, sfx, unlockAudio } from '../audio';
-import type { DistrictId, Difficulty, Weather } from '../sim/types';
+import type { DistrictId, Difficulty, VehicleId, Weather } from '../sim/types';
 
 export type Phase = 'preshift' | 'shift' | 'summary';
 export interface Selection { incidentId: number | null; unitId: string | null; stationId: string | null; districtId: DistrictId | null; pending: string[] }
@@ -25,6 +27,7 @@ interface GameState {
   summary: Summary | null;
   focus: { x: number; y: number; nonce: number } | null;
   toast: string | null;
+  depotOpen: boolean;
 
   tick(realDt: number): void;
   togglePause(): void;
@@ -40,6 +43,13 @@ interface GameState {
   answer(callId: number): void;
   askQuestion(key: string): void;
   decide(optionId: string): void;
+  openDepot(open: boolean): void;
+  buyVehicle(vehicle: VehicleId, stationId: string): void;
+  sellUnit(id: string): void;
+  moveUnitTo(id: string, stationId: string): void;
+  installUpgrade(id: string, upgrade: string): void;
+  removeUpgrade(id: string, upgrade: string): void;
+  serviceUnits(ids: string[]): void;
   hangUp(): void;
   selectIncident(id: number | null): void;
   selectUnit(id: string | null): void;
@@ -69,6 +79,15 @@ const LOG_SOUND = { dispatch: sfx.dispatch, arrive: sfx.arrive, warn: sfx.warn, 
 
 export const useGame = create<GameState>((set, get) => {
   const bump = () => set({ rev: get().rev + 1 });
+  /** Apply a fleet change (pre-shift only): validate, save, and rebuild the preview world. */
+  const fleetAction = (op: (fleet: SaveData['fleet'], money: number) => Result) => {
+    const st = get();
+    if (st.phase !== 'preshift') return;
+    const r = op(st.save.fleet, st.save.money);
+    if (!r.ok) { set({ toast: r.error }); setTimeout(() => get().toast === r.error && set({ toast: null }), 2500); return; }
+    const save = { ...st.save, fleet: r.fleet, money: r.money };
+    set({ save, saveOk: writeSave(save), world: createWorld(st.config, r.fleet), sel: emptySel(), rev: st.rev + 1 });
+  };
   const persistSettings = (patch: Partial<SaveData['settings']>) => {
     const save = { ...get().save, settings: { ...get().save.settings, ...patch } };
     configureAudio(save.settings.volume, save.settings.muted);
@@ -78,7 +97,7 @@ export const useGame = create<GameState>((set, get) => {
   return {
     phase: 'preshift',
     config: config0,
-    world: createWorld(config0),
+    world: createWorld(config0, save0.fleet),
     rev: 0,
     clock: initialClock(),
     save: save0,
@@ -88,6 +107,7 @@ export const useGame = create<GameState>((set, get) => {
     summary: null,
     focus: null,
     toast: null,
+    depotOpen: false,
 
     tick: (realDt) => {
       const st = get();
@@ -122,18 +142,18 @@ export const useGame = create<GameState>((set, get) => {
       if (p.shiftMinutes !== undefined || p.difficulty !== undefined) {
         persistSettings({ shiftMinutes: config.shiftMinutes, difficulty: config.difficulty as Difficulty });
       }
-      set({ config, world: createWorld(config), sel: emptySel(), rev: get().rev + 1 });
+      set({ config, world: createWorld(config, get().save.fleet), sel: emptySel(), rev: get().rev + 1 });
     },
     rerollSeed: () => {
       const config = { ...get().config, seed: newSeed() };
-      set({ config, world: createWorld(config), rev: get().rev + 1 });
+      set({ config, world: createWorld(config, get().save.fleet), rev: get().rev + 1 });
     },
     startShift: () => {
       const config = get().config;
       acc = 0; lastSeq = 0; lastRing = -10;
       unlockAudio();
       set({
-        phase: 'shift', world: createWorld(config), sel: emptySel(), summary: null,
+        phase: 'shift', world: createWorld(config, get().save.fleet), sel: emptySel(), summary: null,
         clock: { ...initialClock(), paused: false, speed: 1 }, rev: get().rev + 1,
       });
     },
@@ -148,12 +168,13 @@ export const useGame = create<GameState>((set, get) => {
         xp: s.xp + summary.xp,
         reputation: Math.max(0, Math.min(100, s.reputation + summary.reputation)),
         completedShifts: s.completedShifts + 1,
+        fleet: fleetAfterShift(st.world),
       };
       set({ phase: 'summary', summary, save, saveOk: writeSave(save), clock: { ...st.clock, paused: true }, sel: emptySel() });
     },
     nextShift: () => {
       const config = { ...get().config, seed: newSeed() };
-      set({ phase: 'preshift', config, world: createWorld(config), summary: null, sel: emptySel(), clock: initialClock(), rev: get().rev + 1 });
+      set({ phase: 'preshift', config, world: createWorld(config, get().save.fleet), summary: null, sel: emptySel(), clock: initialClock(), rev: get().rev + 1 });
     },
 
     answer: (callId) => {
@@ -179,6 +200,13 @@ export const useGame = create<GameState>((set, get) => {
       if (r.ok) sfx.dispatch(); else { set({ toast: r.error ?? 'Not available.' }); setTimeout(() => set({ toast: null }), 2500); }
       bump();
     },
+    openDepot: (open) => set({ depotOpen: open && get().phase === 'preshift' }),
+    buyVehicle: (v, st) => fleetAction((f, m) => fleetOps.buyVehicle(f, m, v, st)),
+    sellUnit: (id) => fleetAction((f, m) => fleetOps.sellUnit(f, m, id)),
+    moveUnitTo: (id, st) => fleetAction((f, m) => fleetOps.moveUnit(f, m, id, st)),
+    installUpgrade: (id, up) => fleetAction((f, m) => fleetOps.installUpgrade(f, m, id, up)),
+    removeUpgrade: (id, up) => fleetAction((f, m) => fleetOps.removeUpgrade(f, m, id, up)),
+    serviceUnits: (ids) => fleetAction((f, m) => fleetOps.serviceUnits(f, m, ids)),
     hangUp: () => {
       const st = get();
       const inc = st.world.incidents.find((i) => i.id === st.world.activeCall);

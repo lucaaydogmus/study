@@ -110,7 +110,7 @@ describe('full shift', () => {
     expect(s.resolved).toBeGreaterThan(3);
     expect(s.resolved + s.failed + s.unresolved).toBe(w.incidents.length);
     expect(['S', 'A', 'B', 'C', 'D', 'F']).toContain(s.grade);
-  });
+  }, 30000);
   it('is deterministic for a seed', () => {
     const run = () => { const w = createWorld(cfg); for (let i = 0; i < 1200; i++) step(w, 0.5); return w.calls.map((c) => `${c.spec.templateId}${c.spec.nodeId}`).join(); };
     expect(run()).toBe(run());

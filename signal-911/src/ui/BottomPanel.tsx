@@ -34,14 +34,14 @@ export function BottomPanel() {
           <label className="search"><Search size={12} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search units" aria-label="Search units" /></label>
         </div>
         <table>
-          <thead><tr>{th('callsign', 'Unit')}<th>Vehicle</th>{th('station', 'Station')}{th('status', 'Status')}{th('eta', 'ETA')}<th>Crew</th></tr></thead>
+          <thead><tr>{th('callsign', 'Unit')}<th>Vehicle</th>{th('station', 'Station')}{th('status', 'Status')}{th('eta', 'ETA')}<th>Cond.</th><th>Crew</th></tr></thead>
           <tbody>
             {units.map((u) => (
               <tr key={u.id} className={g.sel.unitId === u.id ? 'sel' : ''} onClick={() => g.selectUnit(u.id)}>
                 <td><span className="dot" style={{ background: SERVICE_COLOR[u.service] }} /> <b>{u.callsign}</b></td>
                 <td>{VEHICLES[u.vehicle].name}</td><td>{stationName(u.stationId)}</td>
                 <td><StatusChip s={u.status} />{u.incidentId ? <span className="muted"> #{u.incidentId}</span> : null}</td>
-                <td className="mono">{u.eta ? `${Math.round(u.eta)}s` : '—'}</td><td>{u.personnel}</td>
+                <td className="mono">{u.eta ? `${Math.round(u.eta)}s` : '—'}</td><td className={u.condition < 40 ? 'badc' : u.condition < 70 ? 'warnc' : 'muted'} title="Vehicle condition: worn vehicles can break down">{Math.round(u.condition)}%</td><td>{u.personnel}</td>
               </tr>
             ))}
           </tbody>

@@ -2,7 +2,10 @@ import { createRng, type Rng } from './rng';
 import { getCity } from './city';
 import { findPath, isConnected } from './pathfinding';
 import { COMPLICATION_TEXT, CONTINUE, DECISIONS, DECISION_SECONDS, LINKED, SUPERVISOR, SUPERVISORS_PER_SHIFT, type DecisionOption } from './decisions';
-import { STARTING_FLEET, VEHICLES, type Leg, type Unit } from './units';
+import { VEHICLES, type Leg, type Unit } from './units';
+import { BASE_SPEED, CLASS_MULT } from './constants';
+import { EQUIPMENT } from './equipment';
+import { defaultFleet, totalUpkeep, type FleetUnit } from './fleet';
 import { TEMPLATES, type Template } from './incidents';
 import { PERSONALITIES, scriptFor, type Personality, type Twist } from './dialogueData';
 import { endCall, openSession, tickSession, type Session } from './calls';
@@ -41,7 +44,7 @@ export interface Incident {
 }
 export interface Stats {
   answered: number; missed: number; resolved: number; failed: number; dispatched: number; unnecessary: number;
-  responseTimes: number[]; spent: number; reward: number; fastResponses: number; hungUp: number;
+  responseTimes: number[]; spent: number; reward: number; fastResponses: number; hungUp: number; breakdowns: number;
   decisions: number; complications: number; linked: number; supervisorsLeft: number;
 }
 
@@ -51,11 +54,10 @@ export interface World {
   nextIncidentId: number; nextCallId: number; nextCallAt: number;
   recentTemplates: string[]; recentOpenings: string[]; finalSpawned: boolean;
   blocked: Set<number>; trafficPhase: Record<DistrictId, number>;
-  activeCall: number | null; recentPersonalities: Personality[]; logSeq: number;
+  activeCall: number | null; recentPersonalities: Personality[]; logSeq: number; mrng: Rng;
 }
 
-export const BASE_SPEED = 18;
-const CLASS_MULT = { arterial: 1.0, street: 0.7, bridge: 0.9, narrow: 0.45 } as const;
+export { BASE_SPEED };
 export const CALL_RING_SECONDS = 20;
 const BUSY_SECONDS = 4;
 const MAX_ESCALATIONS = 2;
@@ -66,19 +68,20 @@ const DIFF = {
   hard: { interval: 0.75, fail: 0.85 },
 } as const;
 
-export function createWorld(config: Config): World {
+export function createWorld(config: Config, fleet: FleetUnit[] = defaultFleet()): World {
   const city = getCity();
   const rng = createRng(config.seed);
-  const counts: Record<string, number> = {};
-  const units: Unit[] = STARTING_FLEET.map(([stationId, vehicle]) => {
-    const v = VEHICLES[vehicle];
-    const station = city.stations.find((s) => s.id === stationId)!;
-    const n = (counts[vehicle] = (counts[vehicle] ?? 0) + 1);
+  const units: Unit[] = fleet.map((f) => {
+    const v = VEHICLES[f.vehicle];
+    const station = city.stations.find((s) => s.id === f.stationId)!;
     const node = city.nodes[station.nodeId];
+    // A badly worn vehicle starts the shift in the workshop.
+    const broken = f.condition <= 10;
     return {
-      id: `${v.prefix}-${n}`, callsign: `${v.prefix}-${n}`, vehicle, service: v.service, stationId,
-      x: node.x, y: node.y, node: node.id, status: 'AVAILABLE', caps: [...v.caps], personnel: v.personnel,
+      id: f.id, callsign: f.id, vehicle: f.vehicle, service: v.service, stationId: f.stationId,
+      x: node.x, y: node.y, node: node.id, status: broken ? 'OUT OF SERVICE' : 'AVAILABLE', caps: [...v.caps], personnel: v.personnel,
       equipment: [...v.equipment], incidentId: null, legs: [], eta: 0, busyUntil: 0, wrongSite: false,
+      upgrades: [...f.upgrades], condition: f.condition, oosUntil: broken ? 45 : 0,
     };
   });
   const phase = {} as Record<DistrictId, number>;
@@ -86,10 +89,10 @@ export function createWorld(config: Config): World {
   return {
     config, rng, city, time: 0, length: config.shiftMinutes * 60, over: false, units, incidents: [], calls: [],
     log: [{ t: 0, kind: 'info', text: 'Shift briefing complete. Ravenport dispatch is online.' }],
-    stats: { answered: 0, missed: 0, resolved: 0, failed: 0, dispatched: 0, unnecessary: 0, responseTimes: [], spent: 0, reward: 0, fastResponses: 0, hungUp: 0, decisions: 0, complications: 0, linked: 0, supervisorsLeft: SUPERVISORS_PER_SHIFT },
+    stats: { answered: 0, missed: 0, resolved: 0, failed: 0, dispatched: 0, unnecessary: 0, responseTimes: [], spent: 0, reward: 0, fastResponses: 0, hungUp: 0, breakdowns: 0, decisions: 0, complications: 0, linked: 0, supervisorsLeft: SUPERVISORS_PER_SHIFT },
     nextIncidentId: 1, nextCallId: 1, nextCallAt: 6 + rng.next() * 6,
     recentTemplates: [], recentOpenings: [], finalSpawned: false, blocked: new Set(), trafficPhase: phase,
-    activeCall: null, recentPersonalities: [], logSeq: 0,
+    activeCall: null, recentPersonalities: [], logSeq: 0, mrng: createRng(config.seed ^ 0x5bd1e995),
   };
 }
 
@@ -105,7 +108,7 @@ export function edgeSpeed(w: World, u: Unit, edge: Edge | null): number {
   const cls = edge ? CLASS_MULT[edge.cls] : 0.7;
   const t = trafficAt(w, edge ? edge.district : w.city.nodes[u.node].district);
   const penalty = 1 + (t - 1) * 0.5; // emergency vehicles are only partly slowed by traffic
-  return (BASE_SPEED * VEHICLES[u.vehicle].speed * cls * (w.config.weather === 'rain' ? 0.85 : 1)) / penalty;
+  return (BASE_SPEED * VEHICLES[u.vehicle].speed * cls * (w.config.weather === 'rain' ? 0.85 : 1) * (u.upgrades.includes('comms') ? EQUIPMENT.comms.travel! : 1)) / penalty;
 }
 
 interface Plan { legs: Leg[]; eta: number }
@@ -305,7 +308,7 @@ function directorStep(w: World) {
   log(w, 'call', `Incoming call from ${w.city.districts.find((d) => d.id === spec.district)!.name}.`);
   const free = w.units.filter((u) => u.status === 'AVAILABLE').length;
   const base = 18 + w.rng.next() * 14;
-  w.nextCallAt = w.time + base * phaseFactor(p) * DIFF[w.config.difficulty].interval * (1 + 0.35 * Math.max(0, load - 2)) * (free === 0 ? 1.5 : 1);
+  w.nextCallAt = w.time + base * phaseFactor(p) * DIFF[w.config.difficulty].interval * (1 + 0.35 * Math.max(0, load - 2)) * (free === 0 ? 1.5 : 1) * Math.sqrt(11 / Math.max(6, w.units.length));
 }
 
 function createIncident(w: World, spec: Spec, callAt: number, kind: 'call' | 'late' | 'linked', linkedTo: number | null = null): Incident {
@@ -466,9 +469,21 @@ export function decide(w: World, incidentId: number, optionId: string): { ok: bo
 
 export const modActive = (w: World, inc: Incident, m: Mod) =>
   m.unitId === null || onSceneUnits(w, inc).some((u) => u.id === m.unitId);
-const workRate = (w: World, inc: Incident) => inc.mods.reduce((r, m) => (modActive(w, inc, m) ? r * m.speed : r), 1);
+/** Equipment carried by units on scene: each kind counts once, however many units carry it. */
+function gear(w: World, inc: Incident): { speed: number; risk: number } {
+  const ids = new Set<string>();
+  for (const u of onSceneUnits(w, inc)) for (const g of u.upgrades) ids.add(g);
+  let speed = 1, risk = 0;
+  for (const id of ids) {
+    const e = EQUIPMENT[id];
+    if (!e || (e.templates && !e.templates.includes(inc.templateId))) continue;
+    speed *= e.speed ?? 1; risk += e.risk ?? 0;
+  }
+  return { speed, risk };
+}
+const workRate = (w: World, inc: Incident) => inc.mods.reduce((r, m) => (modActive(w, inc, m) ? r * m.speed : r), gear(w, inc).speed);
 export const currentRisk = (w: World, inc: Incident) =>
-  Math.max(0, inc.mods.reduce((r, m) => (modActive(w, inc, m) ? r + m.risk : r), inc.risk));
+  Math.max(0, inc.mods.reduce((r, m) => (modActive(w, inc, m) ? r + m.risk : r), inc.risk + gear(w, inc).risk));
 
 export function answerCall(w: World, callId: number): Incident | null {
   const c = w.calls.find((x) => x.id === callId);
@@ -502,6 +517,7 @@ export function dispatch(w: World, incidentId: number, unitIds: string[], opts: 
     if (after === before && !opts.support) { w.stats.unnecessary++; inc.surplus++; }
     w.stats.dispatched++;
     w.stats.spent += VEHICLES[u.vehicle].cost;
+    u.condition = Math.max(0, u.condition - 6); // every trip wears the vehicle
     u.legs = plan.legs; u.eta = plan.eta; u.incidentId = inc.id; u.status = 'EN ROUTE';
     inc.assigned.push(u.id);
     sent++;
@@ -589,7 +605,19 @@ function refreshStatus(w: World, inc: Incident) {
 
 /* ----------------------------------------------------------- simulation */
 
+/** A worn vehicle on an emergency run may break down and be out of service for a while. */
+function breakdown(w: World, u: Unit) {
+  const inc = w.incidents.find((i) => i.id === u.incidentId);
+  if (inc) { inc.assigned = inc.assigned.filter((id) => id !== u.id); }
+  u.incidentId = null; u.legs = []; u.eta = 0; u.wrongSite = false;
+  u.status = 'OUT OF SERVICE'; u.oosUntil = w.time + 45;
+  w.stats.breakdowns++;
+  log(w, 'bad', `${u.callsign} broke down on the way${inc ? ` to #${inc.id}` : ''}! Out of service for repairs.`);
+  if (inc) { addNote(w, inc, `${u.callsign} broke down en route and is out of service.`, 'warning'); refreshStatus(w, inc); }
+}
+
 function moveUnit(w: World, u: Unit, dt: number) {
+  if (u.status === 'EN ROUTE' && u.condition < 70 && w.mrng.next() < ((100 - u.condition) / 100) ** 2 * 0.004 * dt) { breakdown(w, u); return; }
   let remaining = dt;
   while (u.legs.length && remaining > 1e-9) {
     const leg = u.legs[0];
@@ -705,7 +733,9 @@ export function step(w: World, dt: number) {
       }
     }
     for (const u of w.units) {
-      if (u.status === 'BUSY' && w.time >= u.busyUntil) sendHome(w, u);
+      if (u.status === 'OUT OF SERVICE') {
+        if (w.time >= u.oosUntil) { u.condition = Math.max(u.condition, 40); sendHome(w, u); log(w, 'info', `${u.callsign} is back in service.`); }
+      } else if (u.status === 'BUSY' && w.time >= u.busyUntil) sendHome(w, u);
       else if (u.legs.length) moveUnit(w, u, d);
     }
     for (const inc of w.incidents) {
@@ -726,7 +756,7 @@ export function step(w: World, dt: number) {
 
 export interface Summary {
   answered: number; missed: number; hungUp: number; resolved: number; failed: number; unresolved: number;
-  avgResponse: number | null; accuracy: number; unnecessary: number; decisions: number; complications: number; linked: number; spent: number; reward: number;
+  avgResponse: number | null; upkeep: number; breakdowns: number; accuracy: number; unnecessary: number; decisions: number; complications: number; linked: number; spent: number; reward: number;
   net: number; xp: number; reputation: number; grade: string; significant: string[];
 }
 
@@ -741,7 +771,8 @@ export function buildSummary(w: World): Summary {
   const score = 0.45 * resolveRate + 0.3 * respScore + 0.25 * accuracy - 0.03 * s.missed;
   const grade = score >= 0.88 ? 'S' : score >= 0.78 ? 'A' : score >= 0.66 ? 'B' : score >= 0.52 ? 'C' : score >= 0.38 ? 'D' : 'F';
   const base = 2000;
-  const net = base + s.reward - s.spent;
+  const upkeep = totalUpkeep(fleetAfterShift(w));
+  const net = base + s.reward - s.spent - upkeep;
   const reputation = s.resolved * 2 - s.failed * 4 - s.missed + (score >= 0.78 ? 3 : 0);
   const significant = w.incidents
     .filter((i) => i.status === 'FAILED' || i.severity >= 3)
@@ -749,7 +780,12 @@ export function buildSummary(w: World): Summary {
     .map((i) => `#${i.id} ${i.title} (${i.label}) in ${w.city.districts.find((d) => d.id === i.district)!.name}: ${i.status === 'RESOLVED' ? 'resolved' : i.status === 'FAILED' ? i.outcome : 'unresolved at end of shift'}`);
   return {
     answered: s.answered, missed: s.missed, hungUp: s.hungUp, resolved: s.resolved, failed: s.failed, unresolved,
-    avgResponse: avg, accuracy, unnecessary: s.unnecessary, decisions: s.decisions, complications: s.complications, linked: s.linked, spent: s.spent, reward: s.reward, net,
+    avgResponse: avg, accuracy, unnecessary: s.unnecessary, decisions: s.decisions, complications: s.complications, linked: s.linked, spent: s.spent, upkeep, breakdowns: s.breakdowns, reward: s.reward, net,
     xp: 40 + s.resolved * 20 - s.failed * 5, reputation, grade, significant,
   };
+}
+
+/** The fleet as it should be saved after the shift: same units, with their new condition. */
+export function fleetAfterShift(w: World): FleetUnit[] {
+  return w.units.map((u) => ({ id: u.id, vehicle: u.vehicle, stationId: u.stationId, upgrades: [...u.upgrades], condition: Math.round(u.condition) }));
 }

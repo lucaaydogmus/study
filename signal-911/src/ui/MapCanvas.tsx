@@ -250,12 +250,13 @@ export function MapCanvas() {
         if (!st.filters[u.service]) continue;
         const o = off.get(u.id) ?? { dx: 0, dy: 0 };
         const x = S(u.x) + o.dx, y = SY(u.y) + o.dy;
-        const dim = u.status === 'RETURNING' || u.status === 'BUSY';
+        const dim = u.status === 'RETURNING' || u.status === 'BUSY' || u.status === 'OUT OF SERVICE';
         ctx.globalAlpha = dim ? 0.65 : 1;
         ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fillStyle = SERVICE_COLOR[u.service]; ctx.fill();
         ctx.lineWidth = 1.5; ctx.strokeStyle = '#0b1218'; ctx.stroke();
         ctx.fillStyle = '#0b1218'; ctx.font = '700 9px system-ui'; ctx.fillText(SERVICE_LETTER[u.service], x, y + 0.5);
         ctx.globalAlpha = 1;
+        if (u.status === 'OUT OF SERVICE') { ctx.strokeStyle = '#E45A5A'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 5, y - 5); ctx.lineTo(x + 5, y + 5); ctx.moveTo(x + 5, y - 5); ctx.lineTo(x - 5, y + 5); ctx.stroke(); }
         if (u.status === 'ON SCENE') { ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.strokeStyle = '#E8B65B'; ctx.lineWidth = 2; ctx.stroke(); }
         if (u.status === 'EN ROUTE') { ctx.beginPath(); ctx.arc(x, y, 9 + pulse * 2, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(231,237,244,0.7)'; ctx.lineWidth = 1.2; ctx.stroke(); }
         if (pend.has(u.id)) { ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.strokeStyle = '#5A9CCB'; ctx.setLineDash([3, 3]); ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); }

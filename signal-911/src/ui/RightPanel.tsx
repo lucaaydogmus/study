@@ -5,6 +5,8 @@ import { SEVERITY_LABEL } from '../sim/incidents';
 import { DECISIONS, type DecisionOption } from '../sim/decisions';
 import { CAP_LABEL, VEHICLES, type Unit } from '../sim/units';
 import { coverers, currentRisk, decisionOptions, modActive, optionBlocked, matchSlots, planRoute, shownCaps, shownSeverity, slotStates, trafficAt, type Incident, type World } from '../sim/world';
+import { totalUpkeep } from '../sim/fleet';
+import { EQUIPMENT } from '../sim/equipment';
 import { Bar, CapChip, NoteList, SevChip, StatusChip, money } from './common';
 import { SERVICE_COLOR } from './MapCanvas';
 import type { Difficulty } from '../sim/types';
@@ -59,6 +61,8 @@ function Briefing() {
       <div className="seg">{(['clear', 'rain'] as const).map((x) => <button key={x} className={cfg.weather === x ? 'on' : ''} onClick={() => g.setConfig({ weather: x })} title={x === 'rain' ? 'All vehicles travel 15% slower' : 'Normal road conditions'}>{x}</button>)}</div>
       <label>Seed <span className="muted mono">{cfg.seed}</span> <button className="link" onClick={g.rerollSeed}>reroll</button></label>
       <p className="muted small">Click districts, stations and units on the map to review coverage. Toggle the coverage overlay (radar icon) to see 25-second reach.</p>
+      <div className="row"><span className="muted small">{useGame.getState().save.fleet.length} units · upkeep {money(totalUpkeep(useGame.getState().save.fleet))}/shift</span></div>
+      <button className="big" onClick={() => g.openDepot(true)} title="Move units, equip vehicles, buy vehicles, review coverage">Open depot</button>
       <button className="primary big" onClick={g.startShift}>Start shift</button>
     </section>
   );
@@ -204,7 +208,8 @@ function UnitView({ w, id }: { w: World; id: string }) {
       <dl className="kv">
         <dt>Station</dt><dd>{st.name}</dd>
         <dt>Personnel</dt><dd>{u.personnel}</dd>
-        <dt>Equipment</dt><dd>{u.equipment.join(', ')}</dd>
+        <dt>Equipment</dt><dd>{[...u.equipment, ...u.upgrades.map((g2) => EQUIPMENT[g2].name)].join(', ')}</dd>
+        <dt>Condition</dt><dd className={u.condition < 40 ? 'badc' : u.condition < 70 ? 'warnc' : ''}>{Math.round(u.condition)}%</dd>
         <dt>Dispatch cost</dt><dd>{money(v.cost)}</dd>
         <dt>Assigned</dt><dd>{u.incidentId ? <button className="link" onClick={() => g.selectIncident(u.incidentId)}>Incident #{u.incidentId}</button> : '—'}</dd>
         <dt>ETA</dt><dd>{u.eta ? `${Math.round(u.eta)}s` : '—'}</dd>

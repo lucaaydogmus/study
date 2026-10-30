@@ -29,13 +29,7 @@ export interface Unit {
   x: number; y: number; node: number; status: UnitStatus; caps: Capability[];
   personnel: number; equipment: string[]; incidentId: number | null;
   legs: Leg[]; eta: number; busyUntil: number;
+  upgrades: string[]; condition: number; oosUntil: number;
   /** Arrived at an address the caller got wrong: not covering the real incident. */
   wrongSite: boolean;
 }
-
-/** Starting fleet: station id + vehicle. Callsigns are numbered per vehicle type. */
-export const STARTING_FLEET: [string, VehicleId][] = [
-  ['cpd', 'patrol'], ['cpd', 'suv'], ['npd', 'patrol'], ['wps', 'patrol'],
-  ['fs1', 'engine'], ['fs1', 'rescue'], ['fs2', 'engine'],
-  ['gen', 'ambulance'], ['gen', 'advanced'], ['nem', 'ambulance'], ['rem', 'ambulance'],
-];
