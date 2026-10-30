@@ -1,0 +1,41 @@
+:root {
+  --bg: #111820; --panel: #1b2530; --elev: #253240;
+  --text: #e7edf4; --muted: #96a6b5; --accent: #5a9cca;
+  --police: #5c91c9; --fire: #d76b54; --medical: #61b894;
+  --urgent: #e8b65b; --critical: #e45a5a;
+  --gap: 8px; --border: 1px solid #2c3b4b;
+}
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+.mono { font-family: ui-monospace, 'SF Mono', Consolas, monospace; }
+.muted { color: var(--muted); }
+
+.app {
+  height: 100%; display: grid; gap: var(--gap); padding: var(--gap);
+  grid-template-columns: minmax(260px, 22vw) 1fr minmax(300px, 24vw);
+  grid-template-rows: 40px 1fr minmax(150px, 22vh);
+  grid-template-areas: 'top top top' 'left map right' 'bottom bottom bottom';
+}
+@media (min-width: 2200px) {
+  .app { max-width: 2800px; margin: 0 auto; grid-template-columns: 420px 1fr 440px; }
+}
+@media (max-width: 1100px) {
+  .app { grid-template-columns: 220px 1fr 260px; }
+}
+.topbar { grid-area: top; display: flex; align-items: center; gap: 16px; background: var(--panel); border: var(--border); padding: 0 12px; overflow: hidden; }
+.brand { display: flex; align-items: center; gap: 6px; font-weight: 700; letter-spacing: .12em; color: var(--accent); }
+.stat { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.stat.warn { color: var(--urgent); }
+.spacer { flex: 1; }
+.controls { display: flex; align-items: center; gap: 4px; }
+.controls button { display: inline-flex; align-items: center; gap: 3px; height: 26px; min-width: 30px; justify-content: center; background: var(--elev); color: var(--text); border: var(--border); border-radius: 3px; cursor: pointer; font: inherit; }
+.controls button:hover { border-color: var(--accent); }
+.controls button.on { background: var(--accent); color: #0b1218; border-color: var(--accent); }
+.controls input[type=range] { width: 80px; accent-color: var(--accent); }
+
+.panel { background: var(--panel); border: var(--border); padding: 10px 12px; overflow: auto; min-height: 0; }
+.panel h2 { margin: 0 0 6px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.left { grid-area: left; } .right { grid-area: right; } .bottom { grid-area: bottom; }
+.map { grid-area: map; background: #0d1319; border: var(--border); display: grid; place-items: center; min-height: 0; min-width: 0; }
+.placeholder { color: var(--muted); letter-spacing: .08em; }
