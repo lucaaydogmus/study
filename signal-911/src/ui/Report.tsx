@@ -64,6 +64,22 @@ export function ReportScreen() {
         {((st.config.contracts?.length ?? 0) > 0 || (st.config.modifiers?.length ?? 0) > 0) && <div className="card"><h3>Conditions & contracts</h3><ExtrasList config={st.config} st={st} /><div className="kv"><span>Best streak</span><b>{st.stats.bestStreak}</b></div></div>}
         {st.config.objectives.length > 0 && <div className="card"><h3>Objectives</h3><div className="objrow">{st.config.objectives.map((o) => <div key={o.id} className={`obj ${o.done ? 'ok' : 'no'}`}><Icon n={o.done ? 'check' : 'x'} size={14} /> {o.text}{o.optional ? ' (optional)' : ''}<span className="mono small muted"> {o.value !== undefined ? `· ${o.value}` : ''}</span></div>)}</div></div>}
 
+        {(() => {
+          const cons = incs.flatMap((i) => (i.consequences ?? []).map((c) => ({ c, i })));
+          const any = cons.length || s.aidGood || s.aidBad || (s.checksOk ?? 0) + (s.checksBad ?? 0) + (s.checksMissed ?? 0) || (s.heliRelays ?? 0);
+          if (!any) return null;
+          return (
+            <div className="card guidance"><h3><Icon n="pulse" size={14} /> Your guidance & radio work</h3>
+              <div className="cols3 tight">
+                <div><Row k="Correct first-aid instructions" v={s.aidGood} tone={s.aidGood ? 'green' : ''} /><Row k="Harmful instructions" v={s.aidBad} tone={s.aidBad ? 'red' : ''} /><Row k="Lives saved by your coaching" v={s.guidanceSaves ?? 0} tone={(s.guidanceSaves ?? 0) ? 'green' : ''} /><Row k="Deaths without first aid" v={s.guidanceDeaths ?? 0} tone={(s.guidanceDeaths ?? 0) ? 'red' : ''} /></div>
+                <div><Row k="Records returns correct" v={s.checksOk ?? 0} tone={(s.checksOk ?? 0) ? 'green' : ''} /><Row k="Wrong returns" v={s.checksBad ?? 0} tone={(s.checksBad ?? 0) ? 'red' : ''} /><Row k="Requests left unanswered" v={s.checksMissed ?? 0} tone={(s.checksMissed ?? 0) ? 'amber' : ''} /></div>
+                <div><Row k="Air sightings" v={s.heliSightings ?? 0} /><Row k="Air positions relayed" v={s.heliRelays ?? 0} tone={(s.heliRelays ?? 0) ? 'green' : ''} /><Row k="Pursuits stopped" v={s.pursuitsCaught} /></div>
+              </div>
+              {cons.length > 0 && <ul className="cons">{cons.map(({ c, i }, k) => <li key={k} className={/kept the patient alive/.test(c) ? 'good' : 'bad'}><Icon n={/kept the patient alive/.test(c) ? 'heart' : 'alert'} size={12} /> <b>{i.label}:</b> {c}</li>)}</ul>}
+            </div>
+          );
+        })()}
+
         <div className="cols3">
           <div className="card"><h3>Calls & incidents</h3>
             <Row k="Calls received" v={s.callsReceived} /><Row k="Calls answered" v={s.callsAnswered} /><Row k="Calls missed" v={s.callsMissed} tone={s.callsMissed ? 'red' : ''} />

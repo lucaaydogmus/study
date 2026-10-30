@@ -50,6 +50,7 @@ npm run preview    # serve the production build
 npm test           # 48 simulation, mechanics, AI-pipeline and persistence tests (vitest)
 npm start          # production build served with the AI endpoints
 npx vite-node scripts/balance.ts   # headless balance harness (bot vs. idle dispatcher)
+npx vite-node scripts/smoke.ts     # plays the set-piece scenarios with a bot that uses air support and records
 ```
 
 Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down to ~1100 px wide).
@@ -73,10 +74,40 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 | `Space` | Pause | `A` | Answer next ringing call |
 | `1` `2` `3` | Game speed | `H` / `E` | Hold-resume / end call |
 | `M` | Cycle map layer | `D` | Open the active call’s incident |
+| `T` | Records terminal (officer ID / warrant / plate checks) | `R` | Relay the helicopter's position to ground units |
 | `Esc` | Cancel / deselect / menu | `?` | Help |
 | Right-click | With a unit selected: dispatch to incident or reposition | Wheel / drag | Zoom / pan |
 
 ## What is in the game
+
+### Remaster 3: air support, major incidents and consequences
+
+- **2.5D city when you zoom in**: the camera tilts and buildings rise with lit windows at night, rooftop beacons,
+  parked cars and civilian traffic that follows the simulated congestion. Slower machines automatically drop the extra
+  detail to keep the frame rate up.
+- **Sirens you can hear**: every responding vehicle on screen has its own positional siren (police wail / yelp, fire
+  wail, ambulance hi-lo), panned left and right and louder as you zoom in, plus helicopter rotor noise. When the caller
+  says they can hear sirens, you hear them down the line too. Volume: *Settings → Sirens & rotors*.
+- **Air One**: a police helicopter with fuel, refuelling and storm grounding. Its camera picks up fleeing vehicles from
+  far away and the observer gives running commentary — but ground units only know what you **relay** to them (`R`),
+  which sends them to an intercept point ahead of the suspect. Without air cover, lone patrol cars can lose a suspect in traffic.
+- **Major incidents**: bank robberies (and the getaway van that breaks out of them), active shooters with victims
+  fleeing the building, bomb threats, carjackings and child abductions, tanker fires on the expressway, train
+  derailments, house explosions, crowd crushes, a barricaded gunman, street racing, people stuck on a fairground ride,
+  a child pulled from a pool, lost hikers — and at the airport: emergency landings with a **touchdown countdown**
+  (crews must be staged on the runway before the aircraft lands), collapsed passengers and violent passengers.
+- **Officer radio requests**: crews on traffic stops and at scenes radio for **ID / warrant checks** and **plate
+  checks**. Run them on the RCIS records terminal (`T`), read the return carefully (names repeat — the date of birth
+  decides) and radio it back. Tell an officer an armed subject is clear and they can get hurt; flag an innocent person
+  and there is a complaint. Officers wait for your return before clearing the scene.
+- **Your guidance has consequences**: patients who are not breathing, unconscious or bleeding badly have a **survival
+  clock** that runs until crews take over. CPR, the recovery position or pressure on the wound slow it down; nothing
+  lets it run; harmful advice speeds it up. Typed advice is understood too: telling a caller to give an unconscious
+  patient water, to sit up someone with a spinal injury, to go back into a fire or to confront an intruder hurts people,
+  and the report lists every consequence. Good coaching is credited when the patient survives.
+- **New scenarios**: *The Heist*, *Code Red*, *Airport Alert* and *Eye in the Sky*. The Airport District now unlocks at rank 4.
+- Callers no longer say they can hear the ambulance the moment you dispatch it: the siren line only comes once a unit
+  running lights and sirens is actually close.
 
 ### Realism update
 
@@ -152,6 +183,7 @@ src/persistence.ts IndexedDB / memory key-value store + SaveManager (versioned, 
 src/store.ts       zustand app store (screens, profile, live engine)
 tests/             vitest suites (engine loop, dispatch, escalation, saves, city)
 scripts/balance.ts headless balance harness
+scripts/smoke.ts   headless run of the set-piece scenarios
 ```
 
 ## Notes

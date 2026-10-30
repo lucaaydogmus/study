@@ -9,14 +9,14 @@ import { CONTRACT_BY_ID, contractProgress, modProduct, rollExtras } from './extr
 import type { CityState, GameState, Personnel, Service, ShiftConfig, ShiftScore, Station, Unit, UpgradeLevels } from './types';
 import type { ShiftSetup } from './engine';
 
-export const PROFILE_VERSION = 3;
+export const PROFILE_VERSION = 4;
 
 export interface Settings {
   master: number; effects: number; radio: number; music: number; ambience: number; muted: boolean;
   hideIntense: boolean; reduceMotion: boolean; highContrast: boolean; autoSave: boolean; showHints: boolean; defaultSpeed: number;
-  aiCallers: boolean; aiMaxLines: number; heartbeat: boolean;
+  aiCallers: boolean; aiMaxLines: number; heartbeat: boolean; sirens: number;
 }
-export const DEFAULT_SETTINGS: Settings = { master: 0.8, effects: 0.8, radio: 0.7, music: 0.0, ambience: 0.5, muted: false, hideIntense: false, reduceMotion: false, highContrast: false, autoSave: true, showHints: true, defaultSpeed: 1, aiCallers: true, aiMaxLines: 150, heartbeat: true };
+export const DEFAULT_SETTINGS: Settings = { master: 0.8, effects: 0.8, radio: 0.7, music: 0.0, ambience: 0.5, muted: false, hideIntense: false, reduceMotion: false, highContrast: false, autoSave: true, showHints: true, defaultSpeed: 1, aiCallers: true, aiMaxLines: 150, heartbeat: true, sirens: 0.55 };
 
 export interface Lifetime {
   shifts: number; calls: number; answered: number; resolved: number; failed: number; casualties: number; livesHelped: number; falseAlarms: number;
@@ -68,17 +68,20 @@ export function setupFromProfile(p: Profile): ShiftSetup {
 }
 
 /** free-play / scenario setup: a clean fleet configured independently of the career profile */
-export function temporarySetup(opts: { units?: number; budget?: number; rank?: number; reduced?: boolean; seed?: number } = {}): ShiftSetup {
+export function temporarySetup(opts: { units?: number; budget?: number; rank?: number; reduced?: boolean; seed?: number; fleet?: { stations?: Array<[Service, string]>; units?: Array<[string, string]> } } = {}): ShiftSetup {
   const rng = new Rng(opts.seed ?? 77);
   const fleet = buildStartingFleet(rng);
-  let { units, personnel } = fleet;
+  // the helicopter is kept out of the vehicle count (and out of reduced fleets)
+  const air = opts.reduced ? [] : fleet.units.filter((u) => u.type === 'helicopter');
+  let units = fleet.units.filter((u) => u.type !== 'helicopter');
+  let personnel = fleet.personnel.filter((pp) => !pp.unitId || units.some((u) => u.id === pp.unitId) || air.some((u) => u.id === pp.unitId));
   const target = opts.units ?? (opts.reduced ? 7 : 12);
   if (target < units.length) {
     const keep = new Set<string>();
     // keep a balanced mix
     for (const svc of ['police', 'fire', 'medical'] as Service[]) units.filter((u) => u.service === svc).slice(0, Math.max(1, Math.round(target / 3))).forEach((u) => keep.add(u.id));
     units = units.filter((u) => keep.has(u.id));
-    personnel = personnel.filter((pp) => pp.unitId && keep.has(pp.unitId));
+    personnel = personnel.filter((pp) => pp.unitId && (keep.has(pp.unitId) || air.some((u) => u.id === pp.unitId)));
   } else if (target > units.length) {
     const extraTypes = ['patrol', 'engine', 'ambulance', 'patrol', 'advanced_ambulance', 'rescue', 'engine', 'motorcycle'];
     const stationsByService = (s: Service) => fleet.stations.filter((x) => x.service === s);
@@ -91,7 +94,20 @@ export function temporarySetup(opts: { units?: number; budget?: number; rank?: n
       units = [...units, u];
     }
   }
-  return { rank: opts.rank ?? 7, reputation: 50, budget: opts.budget ?? 200000, stations: fleet.stations, units, personnel, upgrades: { ali: 2, console: 1 }, city: { closedRoads: [], districtTraffic: {}, damagedStations: {}, log: [] } };
+  units = [...units, ...air];
+  // scenario set pieces bring their own stations and specialist vehicles
+  const stations = [...fleet.stations];
+  for (const [svc, d] of opts.fleet?.stations ?? []) if (!stations.some((x) => x.id === `${svc}-${d}`)) stations.push(makeStation(svc, d));
+  let xid = 7000, xp = 7000;
+  for (const [type, sid] of opts.fleet?.units ?? []) {
+    const def = UNIT_TYPE_BY_ID[type];
+    const stn = stations.find((x) => x.id === sid);
+    if (!def || !stn) continue;
+    const u = makeUnit(def, stn, units, xid++);
+    for (let k = 0; k < def.crew; k++) { const pp = makePersonnel(rng, def.service, `p${xp++}`, 1.1, u.id); personnel.push(pp); u.personnelIds.push(pp.id); }
+    units = [...units, u];
+  }
+  return { rank: opts.rank ?? 7, reputation: 50, budget: opts.budget ?? 200000, stations, units, personnel, upgrades: { ali: 2, console: 1 }, city: { closedRoads: [], districtTraffic: {}, damagedStations: {}, log: [] } };
 }
 
 export function careerConfig(p: Profile, over: Partial<ShiftConfig> = {}): ShiftConfig {
@@ -124,10 +140,11 @@ export function computeResult(st: GameState): ShiftResult {
   const contract = Math.round(44000 * Math.max(0.6, len) * mult * (0.5 + 0.5 * score.total / 100) * (0.8 + st.reputation / 250) * modProduct(cfg, 'pay'));
   const bonus = Math.round(s.bonus * mult);
   let salaries = 0;
-  for (const u of Object.values(st.units)) if (!u.temp) for (const pid of u.personnelIds) salaries += st.personnel[pid]?.salary ?? 0;
+  // the air unit is funded by the city: its crew and upkeep are not charged to dispatch
+  for (const u of Object.values(st.units)) if (!u.temp && u.type !== 'helicopter') for (const pid of u.personnelIds) salaries += st.personnel[pid]?.salary ?? 0;
   for (const p of Object.values(st.personnel)) if (!p.unitId) salaries += p.salary;
   salaries = Math.round(salaries * modProduct(cfg, 'salary') * len);
-  const maintenance = Math.round(Object.values(st.units).filter((u) => !u.temp).length * 260 * len);
+  const maintenance = Math.round(Object.values(st.units).filter((u) => !u.temp && u.type !== 'helicopter').length * 260 * len);
   const dispatchCosts = Math.round(s.costs);
   const penalties = s.casualties * 4000;
   const contracts = (cfg.contracts ?? []).map((c) => ({ c, p: contractProgress(st, c), def: CONTRACT_BY_ID[c.id] })).filter((x) => x.def);
@@ -235,7 +252,8 @@ export function applyShift(p: Profile, st: GameState): ShiftResult {
 }
 
 // ── Shopping / management actions ───────────────────────────────────────────
-export function stationUnitCount(p: Profile, stationId: string) { return p.units.filter((u) => u.stationId === stationId).length; }
+/** aircraft sit on the roof helipad and do not take a garage bay */
+export function stationUnitCount(p: Profile, stationId: string) { return p.units.filter((u) => u.stationId === stationId && u.type !== 'helicopter').length; }
 export function stationCapacity(p: Profile, st: Station) { return st.capacity + (p.upgrades.garage ?? 0); }
 
 export function buyUnit(p: Profile, type: string, stationId: string): { ok: boolean; reason?: string } {

@@ -9,6 +9,8 @@ import { Badge, Bar, Btn, Icon, Section, fmtEta, fmtTime, SERVICE_ICON } from '.
 import { useApp } from '../store';
 import { averageOf } from '../sim/scoring';
 import { DispatchConsole, type Preview } from './DispatchConsole';
+import { AirSupport, Consequences, DeadlineBanner, LifeMeter } from './Ops';
+import { AIR_HELPS } from '../sim/engine';
 
 export interface PanelCtx { setPreview: (p: Preview) => void; engine: GameEngine; pickLocation: (incId: string | null) => void; pickingFor: string | null; repositioning: string | null; startReposition: (unitId: string | null) => void; focus: (x: number, y: number, zoom?: number) => void; openCall: () => void; setBottom: (t: string) => void }
 
@@ -132,6 +134,7 @@ function UnitPanel({ engine, unit, startReposition, repositioning, focus, setBot
         {unit.destNode !== null && ['EN_ROUTE', 'TRANSPORTING', 'RETURNING', 'DISPATCHED'].includes(unit.status) && <div className="kv"><span>ETA</span><b className="mono">{fmtEta(unit.eta)}</b></div>}
         <div className="kv"><span>Speed</span><b className="mono">{unit.speed ? `${Math.round(unit.speed / 2.4 * 4 * 3.6)} km/h` : '—'}</b></div>
         <div className="kv"><span>Effectiveness</span><Bar value={Math.min(100, eff * 62)} tone={eff > 1 ? 'green' : eff > 0.7 ? 'blue' : 'amber'} /></div>
+        {unit.fuel !== undefined && <div className="kv"><span>Fuel</span><Bar value={unit.fuel} tone={unit.fuel < 30 ? 'red' : unit.fuel < 55 ? 'amber' : 'green'} label="Fuel" /></div>}
         {unit.note && <div className="note-line"><Icon n="info" size={12} /> {unit.note}</div>}
         {inc && <button className="rowbtn" onClick={() => { engine.select('incident', inc.id); bump(); }}><span>Assigned: <b>{inc.label}</b></span><Icon n="chevR" size={12} /></button>}
         <div className="btnrow">
@@ -187,16 +190,22 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
         {call && <div className="kv"><span>Caller</span><span><b>{call.profile.name}</b> · {call.callerId}</span></div>}
         {call && (call.state === 'active' || call.state === 'hold') && <Btn size="sm" icon="phone" onClick={openCall}>Go to call</Btn>}
         {inc.truth.outside && <div className="note-line warn"><Icon n="alert" size={12} /> Caller is outside Ravenport. Use <b>TRANSFER</b> to hand them to the neighbouring agency.</div>}
+        {inc.parentId && st.incidents[inc.parentId] && <div className="note-line"><Icon n="layers" size={12} /> Broke out of INC-{String(st.incidents[inc.parentId].num).padStart(4, '0')} {st.incidents[inc.parentId].label} — crews there can be sent straight here.</div>}
+        <DeadlineBanner engine={engine} inc={inc} />
+        {!done && <LifeMeter inc={inc} />}
       </Section>
 
       {inc.pursuit && inc.mover && !done && (
-        <Section title="Pursuit" id="pursuit" right={<Badge tone={inc.mover.contact ? 'green' : inc.mover.tracked ? 'blue' : 'amber'}>{inc.mover.contact ? `IN CONTACT ×${inc.mover.contact}` : inc.mover.tracked ? 'TRACKING' : 'LOST VISUAL'}</Badge>}>
-          <p className="small muted">{inc.mover.contact ? 'Units are on the suspect’s tail. A second unit boxes it in much faster.' : inc.mover.tracked ? 'The location updates live while the caller follows the car or crews have it in sight.' : 'Nobody has eyes on the vehicle. Sightings will update its last known position — keep units moving toward it.'}</p>
+        <Section title="Pursuit" id="pursuit" right={<Badge tone={inc.mover.contact ? 'green' : inc.mover.heliId ? 'green' : inc.mover.tracked ? 'blue' : 'amber'}>{inc.mover.contact ? `IN CONTACT ×${inc.mover.contact}` : inc.mover.heliId ? 'AIR HAS EYES' : inc.mover.tracked ? 'TRACKING' : 'LOST VISUAL'}</Badge>}>
+          <p className="small muted">{inc.mover.contact ? 'Units are on the suspect’s tail. A second unit boxes it in much faster.' : inc.mover.heliId ? 'The helicopter is following the vehicle. Ground units only know what you relay to them.' : inc.mover.tracked ? 'The location updates live while the caller follows the car or crews have it in sight.' : 'Nobody has eyes on the vehicle. Sightings will update its last known position — put the helicopter up or keep units moving toward it.'}</p>
+          <AirSupport engine={engine} inc={inc} />
           <div className="kv"><span>Box-in</span><Bar value={inc.workProgress} max={inc.work} tone="green" label="Box-in progress" /></div>
           <div className="kv"><span>Public risk</span><Bar value={inc.threat} tone={inc.threat > 70 ? 'red' : inc.threat > 40 ? 'amber' : 'blue'} label="Public risk" /></div>
           {inc.reportedNode === null && <div className="note-line warn"><Icon n="pin" size={12} /> Set an initial location from the caller to start tracking.</div>}
         </Section>
       )}
+
+      {!done && !inc.pursuit && AIR_HELPS.has(inc.templateId) && <Section title="Air support" id="airsup"><AirSupport engine={engine} inc={inc} /></Section>}
 
       {!done && !inc.truth.outside && dupCands.length > 0 && (
         <Section title="Same incident?" id="dups" right={<Badge tone="blue">{dupCands.length} NEARBY</Badge>}>
@@ -282,6 +291,8 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
           ))}
         </ul>
       </Section>
+
+      <Consequences inc={inc} />
 
       <Section title="Dispatcher notes" id="notes">
         <textarea aria-label="Incident notes" rows={3} value={inc.notes} placeholder="Add incident notes…" onChange={(e) => { engine.setNotes(inc.id, e.target.value); bump(); }} />

@@ -9,7 +9,7 @@ export type Category = 'medical' | 'fire' | 'police' | 'unusual';
 export type Capability =
   | 'patrol' | 'traffic' | 'crowd' | 'tactical' | 'police_supervisor' | 'prisoner_transport'
   | 'fire_suppression' | 'aerial' | 'rescue' | 'heavy_rescue' | 'water_rescue' | 'command'
-  | 'bls' | 'als' | 'transport' | 'critical_transport' | 'med_supervisor';
+  | 'bls' | 'als' | 'transport' | 'critical_transport' | 'med_supervisor' | 'air_support';
 
 export interface Req { cap: Capability; n: number }
 
@@ -68,6 +68,8 @@ export interface Unit {
   deployments: number;
   note?: string; temp?: boolean;
   code?: 2 | 3; crashAt?: number | null; stoppedUntil?: number;
+  /** aircraft only: fuel 0..100 */
+  fuel?: number;
 }
 
 export interface Station {
@@ -115,6 +117,8 @@ export interface Call {
   typing: boolean; endReason?: string; spokeFirst: boolean; callbackOf?: string; misunderstood: number; peakPanic?: number; calmed?: boolean;
   /** last time the caller volunteered something */
   lastSpontaneous: number; stateNote: string;
+  /** the caller has heard the first siren approaching (said once, only when a unit is actually close) */
+  heardSirens?: boolean;
 }
 
 export interface Fact {
@@ -126,7 +130,11 @@ export interface Fact {
 export type Outcome = 'success' | 'partial' | 'failed' | 'false_alarm' | 'mishandled' | 'handover' | 'lost' | 'merged';
 
 /** a fleeing suspect vehicle that moves along the road network */
-export interface Mover { x: number; y: number; prev: number; next: number; came: number; speed: number; tracked: boolean; trail: Vec[]; startAt: number; lastUpdate: number; lastSighting: number; contact: number; heading: number }
+export interface Mover {
+  x: number; y: number; prev: number; next: number; came: number; speed: number; tracked: boolean; trail: Vec[]; startAt: number; lastUpdate: number; lastSighting: number; contact: number; heading: number;
+  /** air unit with eyes on the vehicle (positions only reach ground units when dispatch relays them) */
+  heliId?: string | null; heliSince?: number; lastHeliReport?: number; evadeUntil?: number;
+}
 
 export interface Fx { id: number; t: number; kind: 'good' | 'bad' | 'warn' | 'info'; x: number; y: number; text: string }
 
@@ -153,6 +161,24 @@ export interface Incident {
   vars: Record<string, string>; blockedEdge: number | null; sceneSeen: boolean; twist: import('./content/templates').Twist | null; sceneAt: number | null; escalatedAt: number | null; mutualAid: number;
   duplicateOf: string | null; dupPlan: number[]; pursuit: boolean; mover: Mover | null; mergedInto: string | null;
   aid?: { kind: string; fit: 'good' | 'bad' | 'neutral'; at: number; encouragedAt: number } | null;
+  /** something unstoppable happens at this time (an aircraft touches down); responders must be staged first */
+  deadlineAt?: number | null; deadlineMet?: boolean | null;
+  /** incident this one broke out of (getaway van from a bank robbery, a victim fleeing a shooting) */
+  parentId?: string | null;
+  /** patient survival 0..100 while a life threat is untreated; dispatcher guidance changes how fast it falls */
+  survival?: number; lifeThreat?: 'arrest' | 'bleed' | 'airway' | null; careAt?: number | null;
+  /** what the dispatcher's guidance did, for the report */
+  consequences?: string[]; relayedAt?: number; checkRolled?: boolean;
+}
+
+/** an officer on the radio asking dispatch to run someone or something through records */
+export interface RecordHit { name: string; dob: string; lines: string[]; flag: CheckResult; match: boolean }
+export type CheckResult = 'clear' | 'warrant' | 'caution' | 'suspended' | 'missing' | 'stolen' | 'expired';
+export interface OfficerRequest {
+  id: string; unitId: string; incidentId: string | null; kind: 'person' | 'plate';
+  at: number; status: 'open' | 'answered' | 'expired';
+  subject: string; detail: string; truth: CheckResult; hits: RecordHit[]; ran: boolean; ranAt?: number;
+  answer?: CheckResult; answeredAt?: number; reminded: number; correct?: boolean;
 }
 
 // ── City events / weather / config ──────────────────────────────────────────
@@ -187,6 +213,8 @@ export interface ShiftConfig {
   modifiers?: string[];
   contracts?: Array<{ id: string; target: number }>;
   daily?: string;
+  /** guaranteed incidents on top of the random ones (scenario set pieces) */
+  forced?: Array<{ at: number; template: string; district?: string; archetype?: string }>;
 }
 
 export interface TimelineEntry {
@@ -208,6 +236,7 @@ export interface ShiftStats {
   byCategory: Record<string, { n: number; ok: number }>; callbacks: number; escalations: number; promisesBroken: number;
   merges: number; wrongLinks: number; pursuitsCaught: number; verifiedOk: number; cleanFalseAlarms: number; bestStreak: number; calmedCallers: number; transfersOk: number; mutualAid: number; contractBonus: number;
   aidGood: number; aidBad: number; unitCrashes: number; breakdowns: number; aiLines: number;
+  heliRelays: number; heliSightings: number; checksOk: number; checksBad: number; checksMissed: number; guidanceDeaths: number; guidanceSaves: number; harmfulAdvice: number;
 }
 
 export interface GameState {
@@ -226,6 +255,8 @@ export interface GameState {
   assistantFreeAt: number; lastCoverage: number; uniqueNameCounter: number; endingAt: number | null;
   scoreBreakdown?: ShiftScore;
   streak: number; fx: Fx[]; fxCounter: number; closedHospitals: number[]; lineCounter: number;
+  forcedIndex?: number;
+  requests: OfficerRequest[]; requestCounter: number; nextStopAt: number;
 }
 
 export interface ShiftScore {

@@ -7,6 +7,8 @@ export const fmtTime = (sec: number) => { const s = Math.max(0, Math.round(sec))
 export const fmtEta = (sec: number | null | undefined) => (sec === null || sec === undefined || !isFinite(sec) ? '—' : sec >= 60 ? `${Math.floor(sec / 60)}m ${String(Math.round(sec % 60)).padStart(2, '0')}s` : `${Math.round(sec)}s`);
 
 const P: Record<string, string> = {
+  heli: 'M3 5h18M12 5v3M6 12.5C6 10 8 8 11 8h3c2.8 0 5 2 5 4.5S16.8 17 14 17h-3c-3 0-5-2-5-4.5zM19 12h3M10 17l-1 3M15 17l1 3M7 20h11',
+  search: 'M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4', terminal: 'M3 5h18v14H3zM7 10l3 2-3 2M12 15h5', pulse: 'M2 12h4l2-5 4 10 3-7 2 2h5',
   phone: 'M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z',
   phoneoff: 'M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2zM3 3l18 18',
   pause: 'M7 5h3v14H7zM14 5h3v14h-3z', play: 'M8 5v14l11-7z', ff: 'M4 5l8 7-8 7zM12 5l8 7-8 7z', fff: 'M2 5l6 7-6 7zM9 5l6 7-6 7zM16 5l6 7-6 7z',

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { getCity, addressOf, WORLD_H, WORLD_W } from '../sim/city';
-import { SERVICE_META } from '../sim/fleet';
+import { SERVICE_META, isAir } from '../sim/fleet';
+import { audio, type SirenVoice } from '../audio/audioManager';
 import { WEATHER_LABEL, WEATHER_SPEED } from '../sim/events';
 import type { GameEngine } from '../sim/engine';
-import type { HeardLocation, Incident, Unit } from '../sim/types';
-import { drawCity, drawNightLights, getScenery } from './scenery';
+import type { GameState, HeardLocation, Incident, Unit } from '../sim/types';
+import { drawBuildings3D, drawCity, drawNightLights, drawParked, drawTraffic, getScenery } from './scenery';
 
 export type LayerId = 'normal' | 'traffic' | 'coverage' | 'police' | 'fire' | 'medical' | 'incidents' | 'weather';
 export const LAYERS: Array<{ id: LayerId; label: string; key: string }> = [
@@ -21,6 +22,8 @@ export interface MapProps {
   heard?: HeardLocation[]; onPickHeard?: (h: HeardLocation) => void; focus?: { x: number; y: number; zoom?: number; key: number } | null;
   showIncidents?: boolean; reduceMotion?: boolean; lockedLabel?: boolean; minimap?: boolean; ambient?: boolean;
   preview?: { unitId: string; path: number[] } | null;
+  /** play positional sirens and rotor noise for what is on screen */
+  sounds?: boolean;
 }
 
 // ── cached city layers ───────────────────────────────────────────────────────
@@ -85,7 +88,9 @@ export function MapView(props: MapProps) {
     const canvas = ref.current!, el = wrap.current!;
     const city = getCity();
     getScenery();
-    let raf = 0, W = 0, H = 0, dpr = 1, lastT = performance.now(), lastMini = 0;
+    let raf = 0, W = 0, H = 0, dpr = 1, lastT = performance.now(), lastMini = 0, lastSnd = 0, ambT = 0;
+    // adaptive detail: drop street life and window lights if the close-up view cannot hold ~35 fps
+    let frameEma = 16, lowDetail = false;
     const particles = Array.from({ length: 180 }, () => ({ x: Math.random(), y: Math.random(), v: 0.4 + Math.random() * 0.8 }));
     const resize = () => {
       const r = el.getBoundingClientRect();
@@ -201,6 +206,8 @@ export function MapView(props: MapProps) {
     const draw = (now: number) => {
       raf = requestAnimationFrame(draw);
       const dtMs = Math.min(100, now - lastT); lastT = now;
+      frameEma += (dtMs - frameEma) * 0.05;
+      if (!lowDetail && frameEma > 29) lowDetail = true; else if (lowDetail && frameEma < 19) lowDetail = false;
       const pr = P.current, eng = pr.engine, st = eng.state, c = cam.current;
       const motion = !pr.reduceMotion;
       if (pr.focus && pr.focus.key !== lastFocus.current) { lastFocus.current = pr.focus.key; c.tx = pr.focus.x; c.ty = pr.focus.y; if (pr.focus.zoom) c.tz = Math.max(c.fit, pr.focus.zoom); }
@@ -220,9 +227,16 @@ export function MapView(props: MapProps) {
       ctx.fillStyle = '#0b2133'; ctx.fillRect(0, 0, W, H);
       ctx.save();
       ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-c.x, -c.y);
-      if (eff <= 1.15) ctx.drawImage(cityCanvas(1, active, activeKey), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
-      else if (eff <= 2.6) ctx.drawImage(cityCanvas(2, active, activeKey), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
-      else drawCity(ctx, 2, view, active, z);
+      // zooming in tilts the camera: buildings rise into 2.5D and the streets come alive
+      const tilt = pr.layer === 'normal' || pr.layer === 'incidents' || pr.layer === 'traffic' ? Math.max(0, Math.min(1, (z - 1.7) / 1.6)) : 0;
+      const liveView = { x0: view.x0 - 10, y0: view.y0 - 10, x1: view.x1 + 10, y1: view.y1 + (tilt > 0 ? 45 : 10) };
+      if (!st.paused && st.phase === 'running') ambT += (dtMs / 1000) * Math.max(1, st.speed);
+      if (tilt <= 0 && eff <= 1.15) ctx.drawImage(cityCanvas(1, active, activeKey), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
+      else if (tilt <= 0 && eff <= 2.6) ctx.drawImage(cityCanvas(2, active, activeKey), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
+      else drawCity(ctx, 2, liveView, active, z, { skipRoofs: tilt > 0 });
+      if (z > 2.1 && pr.layer === 'normal' && !lowDetail) drawParked(ctx, view, active);
+      if (z > 1.2 && motion && !lowDetail && (pr.layer === 'normal' || pr.layer === 'traffic')) drawTraffic(ctx, view, ambT, st.districtTraffic, night, z, active);
+      if (tilt > 0) drawBuildings3D(ctx, liveView, tilt, night, z, !lowDetail);
       // water glints
       if (motion) {
         ctx.strokeStyle = 'rgba(170,215,240,0.16)'; ctx.lineWidth = 1.2; ctx.beginPath();
@@ -244,7 +258,7 @@ export function MapView(props: MapProps) {
       if (night > 0) {
         ctx.fillStyle = `rgba(3,7,20,${0.42 * night})`; ctx.fillRect(-PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
         ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.85 * night;
-        ctx.drawImage(lightsCanvas(), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
+        if (tilt > 0) drawNightLights(ctx, view, { windows: false }); else ctx.drawImage(lightsCanvas(), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
         ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
       }
       const layer = pr.layer;
@@ -378,7 +392,7 @@ export function MapView(props: MapProps) {
       for (const inc of Object.values(st.incidents)) {
         const m = inc.mover;
         if (!m || !inc.pursuit || ['RESOLVED', 'CLOSED'].includes(inc.status) || inc.reportedNode === null) continue;
-        if (!m.tracked && m.contact === 0) continue;
+        if (!m.tracked && m.contact === 0 && !m.heliId) continue;
         if (m.trail.length > 1) {
           ctx.lineWidth = 2.5; ctx.lineCap = 'round';
           for (let i = 1; i < m.trail.length; i++) { const a = S(m.trail[i - 1].x, m.trail[i - 1].y), b = S(m.trail[i].x, m.trail[i].y); ctx.strokeStyle = `rgba(240,160,70,${(i / m.trail.length) * 0.6})`; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
@@ -471,6 +485,9 @@ export function MapView(props: MapProps) {
           g.addColorStop(0, ph ? `${v.bar[0]}55` : `${v.bar[1]}55`); g.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, 18 * vs, 0, 7); ctx.fill();
         }
+        if (isAir(u)) {
+          drawHeli(ctx, st, u, p, hd.h, vs, now, motion, night, S);
+        } else {
         ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(hd.h);
         const L = (u.type === 'ladder' || u.type === 'heavy_rescue' ? 19 : u.type === 'motorcycle' ? 9 : 15) * vs, Wd = (u.type === 'motorcycle' ? 4 : 7.5) * vs;
         if (night > 0.3 && moving) { ctx.fillStyle = `rgba(255,240,200,${0.14 * night})`; ctx.beginPath(); ctx.moveTo(L / 2, -Wd * 0.3); ctx.lineTo(L / 2 + 26 * vs, -10 * vs); ctx.lineTo(L / 2 + 26 * vs, 10 * vs); ctx.lineTo(L / 2, Wd * 0.3); ctx.closePath(); ctx.fill(); }
@@ -485,6 +502,7 @@ export function MapView(props: MapProps) {
         ctx.fillStyle = responding ? (ph2 ? v.bar[0] : v.bar[1]) : '#5a636e'; ctx.fillRect(L * 0.02, -Wd / 2 + 0.6, 2.4 * vs, Wd * 0.45);
         ctx.fillStyle = responding ? (ph2 ? v.bar[1] : v.bar[0]) : '#5a636e'; ctx.fillRect(L * 0.02, 0, 2.4 * vs, Wd * 0.45 - 0.6);
         ctx.restore();
+        }
         ctx.globalAlpha = 1;
         if (u.temp) { ctx.strokeStyle = '#E5AC4D'; ctx.setLineDash([2, 2]); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
         if (u.status === 'ON_SCENE') { ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.x, p.y, 12 * vs, 0, 7); ctx.stroke(); }
@@ -533,7 +551,7 @@ export function MapView(props: MapProps) {
           for (let i = 0; i < 130; i++) { const q = particles[i]; const y = motion ? ((q.y + now / (5200 / q.v)) % 1) * H : q.y * H, x = (q.x * W + (motion ? Math.sin(now / 900 + i) * 14 : 0) + W) % W; ctx.beginPath(); ctx.arc(x, y, 1.3, 0, 7); ctx.fill(); }
           ctx.fillStyle = `rgba(220,232,245,${0.07 * I})`; ctx.fillRect(0, 0, W, H);
         } else if (st.weather === 'fog') {
-          for (let k = 0; k < 4; k++) { const g = ctx.createRadialGradient(((k * 0.31 + (motion ? now / 90000 : 0)) % 1) * W, H * (0.2 + k * 0.2), 0, ((k * 0.31) % 1) * W, H * (0.2 + k * 0.2), W * 0.5); g.addColorStop(0, `rgba(180,195,210,${0.16 * I})`); g.addColorStop(1, 'rgba(180,195,210,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
+          for (let k = 0; k < 4; k++) { const fx = ((k * 0.31 + (motion ? now / 90000 : 0)) % 1) * W, fy = H * (0.2 + k * 0.2); const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, W * 0.5); g.addColorStop(0, `rgba(180,195,210,${0.16 * I})`); g.addColorStop(1, 'rgba(180,195,210,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
         } else if (st.weather === 'heat') { const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, `rgba(229,150,60,${0.1 * I})`); g.addColorStop(1, 'rgba(229,150,60,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
         if (layer === 'weather') { ctx.fillStyle = 'rgba(232,237,242,0.92)'; ctx.font = '700 13px Inter, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(`${WEATHER_LABEL[st.weather]} · intensity ${Math.round(st.weatherIntensity * 100)}% · road speed ×${WEATHER_SPEED[st.weather].toFixed(2)}`, 14, H - 48); ctx.textAlign = 'center'; }
       }
@@ -557,6 +575,36 @@ export function MapView(props: MapProps) {
         ctx.font = '600 10px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(232,237,242,0.85)'; ctx.fillText(nice >= 1000 ? `${nice / 1000} km` : `${nice} m`, x + len / 2, y - 9);
       }
 
+      // positional sirens and rotors for what is on (or just off) screen
+      if (pr.sounds && now - lastSnd > 150) {
+        lastSnd = now;
+        const list: SirenVoice[] = [];
+        if (st.phase === 'running' && !st.paused && !document.hidden) {
+          const R = Math.hypot(W, H) / 2 / z * 1.3;
+          const zg = Math.max(0.25, Math.min(1, (z - 0.4) / 2));
+          const sir: SirenVoice[] = [], rot: SirenVoice[] = [];
+          for (const u of Object.values(st.units)) {
+            const air = isAir(u);
+            const loud = air ? ['EN_ROUTE', 'ON_SCENE', 'RETURNING'].includes(u.status) : (u.status === 'EN_ROUTE' && u.code !== 2) || u.status === 'TRANSPORTING';
+            if (!loud) continue;
+            const d = Math.hypot(u.x - c.x, u.y - c.y);
+            if (d > R) continue;
+            const sp = S(u.x, u.y);
+            (air ? rot : sir).push({ id: u.id, kind: air ? 'rotor' : u.service, pan: (sp.x - W / 2) / (W / 2), vol: Math.pow(1 - d / R, 1.6) * zg, variant: u.id.charCodeAt(u.id.length - 1) });
+          }
+          sir.sort((a, b) => b.vol - a.vol); rot.sort((a, b) => b.vol - a.vol);
+          list.push(...sir.slice(0, 3), ...rot.slice(0, 1));
+          // the caller on the line can hear the sirens coming: so can you
+          const call = st.activeCallId ? st.calls[st.activeCallId] : null;
+          const inc = call ? st.incidents[call.incidentId] : null;
+          if (call?.heardSirens && inc) {
+            const near = inc.assignedUnits.map((id) => st.units[id]).find((u) => u && u.status === 'EN_ROUTE' && u.code !== 2 && !isAir(u));
+            if (near) list.push({ id: 'phone', kind: near.service, pan: 0, vol: 0.28, variant: 1 });
+          }
+        }
+        audio.updateSirens(list);
+      }
+
       // minimap
       if (pr.minimap && mc && now - lastMini > 200) {
         lastMini = now;
@@ -575,6 +623,7 @@ export function MapView(props: MapProps) {
     const warm = window.setTimeout(() => { const st = P.current.engine.state; const a = new Set(st.config.districts); cityCanvas(2, a, [...a].sort().join(',')); lightsCanvas(); }, 400);
     return () => {
       cancelAnimationFrame(raf); ro.disconnect(); clearTimeout(warm);
+      if (P.current.sounds) audio.updateSirens([]);
       canvas.removeEventListener('pointerdown', onDown); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
       canvas.removeEventListener('contextmenu', onCtx); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('pointerleave', onLeave);
       mc?.removeEventListener('pointerdown', onMini);
@@ -596,6 +645,53 @@ export function MapView(props: MapProps) {
       {props.minimap && <canvas ref={mini} className="minimap" width={184} height={132} aria-label="Minimap — click to move the view" />}
     </div>
   );
+}
+
+/** police helicopter: ground shadow (offset by altitude), spinning rotor, camera lock and night searchlight */
+function drawHeli(ctx: CanvasRenderingContext2D, st: GameState, u: Unit, p: { x: number; y: number }, h: number, vs: number, now: number, motion: boolean, night: number, S: (x: number, y: number) => { x: number; y: number }) {
+  const airborne = ['EN_ROUTE', 'ON_SCENE', 'RETURNING'].includes(u.status);
+  const inc = u.assignedIncidentId ? st.incidents[u.assignedIncidentId] : undefined;
+  const m = inc?.mover;
+  const locked = !!m && m.heliId === u.id;
+  const s = vs * 1.15;
+  if (airborne) {
+    // searchlight / camera footprint
+    const target = locked ? S(m!.x, m!.y) : inc && inc.reportedNode !== null ? S(getCity().nodes[inc.reportedNode].x, getCity().nodes[inc.reportedNode].y) : null;
+    if (target && u.status === 'ON_SCENE') {
+      if (night > 0.25) {
+        const g = ctx.createRadialGradient(target.x, target.y, 0, target.x, target.y, 30 * s);
+        g.addColorStop(0, `rgba(255,250,225,${0.38 * night})`); g.addColorStop(1, 'rgba(255,250,225,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(target.x, target.y, 30 * s, 0, 7); ctx.fill();
+        ctx.fillStyle = `rgba(255,250,225,${0.08 * night})`; ctx.beginPath(); ctx.moveTo(p.x - 2, p.y); ctx.lineTo(target.x - 24 * s, target.y); ctx.lineTo(target.x + 24 * s, target.y); ctx.lineTo(p.x + 2, p.y); ctx.closePath(); ctx.fill();
+      }
+      if (locked) {
+        ctx.strokeStyle = 'rgba(111,224,155,0.75)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(target.x, target.y); ctx.stroke(); ctx.setLineDash([]);
+        const r = 11 + (motion ? Math.sin(now / 200) * 1.5 : 0);
+        ctx.strokeStyle = '#6fe09b'; ctx.lineWidth = 1.6; ctx.beginPath();
+        for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { ctx.moveTo(target.x + sx * r, target.y + sy * (r - 5)); ctx.lineTo(target.x + sx * r, target.y + sy * r); ctx.lineTo(target.x + sx * (r - 5), target.y + sy * r); }
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.beginPath(); ctx.ellipse(p.x + 11 * s, p.y + 17 * s, 8 * s, 3.4 * s, h, 0, 7); ctx.fill();
+  }
+  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(h);
+  // tail boom and fin
+  ctx.fillStyle = '#16304f'; ctx.fillRect(-15 * s, -0.8 * s, 10 * s, 1.6 * s); ctx.fillRect(-16 * s, -3 * s, 2 * s, 6 * s);
+  // skids
+  ctx.strokeStyle = 'rgba(200,210,220,0.6)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-5 * s, -3.6 * s); ctx.lineTo(5 * s, -3.6 * s); ctx.moveTo(-5 * s, 3.6 * s); ctx.lineTo(5 * s, 3.6 * s); ctx.stroke();
+  // body
+  ctx.fillStyle = '#1d4a7a'; ctx.beginPath(); ctx.ellipse(0, 0, 7 * s, 3.4 * s, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = '#e8edf2'; ctx.fillRect(-4 * s, -0.6 * s, 6 * s, 1.2 * s);
+  ctx.fillStyle = 'rgba(150,200,240,0.85)'; ctx.beginPath(); ctx.ellipse(4 * s, 0, 2.6 * s, 2.4 * s, 0, -1.2, 1.2); ctx.fill();
+  // beacon
+  if (airborne && (Math.floor(now / 500) % 2 === 0 || !motion)) { ctx.fillStyle = '#ff5050'; ctx.beginPath(); ctx.arc(-2 * s, 0, 1 * s, 0, 7); ctx.fill(); }
+  // main rotor
+  const a = airborne && motion ? now / 28 : 0.4;
+  if (airborne) { ctx.fillStyle = 'rgba(210,220,230,0.1)'; ctx.beginPath(); ctx.arc(0, 0, 13 * s, 0, 7); ctx.fill(); }
+  ctx.strokeStyle = airborne ? 'rgba(220,228,236,0.55)' : 'rgba(220,228,236,0.85)'; ctx.lineWidth = 1.4;
+  ctx.beginPath(); for (let k = 0; k < 2; k++) { const b = a + k * Math.PI / 2; ctx.moveTo(Math.cos(b) * 13 * s, Math.sin(b) * 13 * s); ctx.lineTo(-Math.cos(b) * 13 * s, -Math.sin(b) * 13 * s); } ctx.stroke();
+  ctx.restore();
 }
 
 function glyph(ctx: CanvasRenderingContext2D, cat: string, x: number, y: number, s: number) {

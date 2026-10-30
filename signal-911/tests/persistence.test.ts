@@ -26,8 +26,11 @@ describe('save system (10)', () => {
   it('migrates version-1 saves', () => {
     const p = newProfile('Old', 9) as unknown as Record<string, unknown>;
     delete p.flags; delete p.endless; delete p.scenarios;
+    // careers from before the remaster have no helicopter: migration grants one
+    p.units = (p.units as Array<{ type: string }>).filter((u) => u.type !== 'helicopter');
     const env = migrate({ version: 1, savedAt: 0, slot: 'auto', label: 'x', profile: p as never, settings: {} as never });
-    expect(env.version).toBe(3);
+    expect(env.version).toBe(PROFILE_VERSION);
+    expect(env.profile.units.filter((u) => u.type === 'helicopter').length).toBe(1);
     expect(env.profile.achievements).toEqual({});
     expect(env.profile.flags.difficulty).toBe('standard');
     expect(env.profile.version).toBe(PROFILE_VERSION);

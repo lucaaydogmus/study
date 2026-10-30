@@ -256,7 +256,7 @@ export const useApp = create<AppStore>((set, get) => ({
     const sc = SCENARIOS.find((s) => s.id === id);
     if (!sc) return;
     const cfg = baseConfig({ ...sc.config, mode: 'scenario', scenarioId: id, title: sc.title, briefing: sc.description, difficulty: sc.difficulty, durationSec: sc.minutes * 60 });
-    get().brief({ kind: 'scenario', config: cfg, scenarioId: id, setupOpts: { reduced: sc.reducedFleet, rank: 7 } });
+    get().brief({ kind: 'scenario', config: cfg, scenarioId: id, setupOpts: { reduced: sc.reducedFleet, rank: 7, fleet: sc.fleet } });
   },
   startFree: (cfg, opts) => get().brief({ kind: 'free', config: cfg, setupOpts: opts }),
   startDaily: () => { const d = dailyConfig(); get().brief({ kind: 'daily', config: d.config, setupOpts: { units: d.units, rank: 7 } }); },

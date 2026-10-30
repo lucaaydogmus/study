@@ -12,7 +12,8 @@ export type Intent =
   | 'emergency' | 'address' | 'landmark' | 'district' | 'name' | 'callback' | 'injuries' | 'breathing' | 'conscious'
   | 'age' | 'people' | 'fire' | 'hazard' | 'weapon' | 'suspect' | 'vehicles' | 'trapped' | 'safe' | 'cause'
   | 'calm' | 'promise' | 'stay' | 'move' | 'repeat' | 'thanks' | 'unknown'
-  | 'inst_cpr' | 'inst_recovery' | 'inst_pressure' | 'inst_still' | 'inst_lock';
+  | 'inst_cpr' | 'inst_recovery' | 'inst_pressure' | 'inst_still' | 'inst_lock'
+  | 'inst_water' | 'inst_lift' | 'inst_goback' | 'inst_confront';
 
 export interface QuickQ { group: 'Opening' | 'Location' | 'Situation' | 'Guidance' | 'Instructions'; intent: Intent; label: string; text: string }
 export const QUICK_QUESTIONS: QuickQ[] = [
@@ -46,6 +47,15 @@ export const QUICK_QUESTIONS: QuickQ[] = [
   { group: 'Instructions', intent: 'inst_still', label: "Don't move them", text: "Don't move them unless they're in danger. Keep them still and warm until help arrives." },
   { group: 'Instructions', intent: 'move', label: 'Get out / evacuate', text: 'Get everyone out now. Close the doors behind you, stay low under the smoke, and do not use the lift.' },
   { group: 'Instructions', intent: 'inst_lock', label: 'Lock & hide', text: 'Lock yourself in a room, stay quiet, and keep away from the door. Stay on the line with me.' },
+];
+
+// instructions a dispatcher should never give in the wrong situation (typed advice can hurt people)
+const NEGATED = /\b(don'?t|do not|never|no need to|avoid|stop)\b\s+(\w+\s+){0,2}$/;
+const RISKY: Array<[RegExp, Intent]> = [
+  [/(give|get) (him|her|them|the patient|the child|the kid)? ?(some |a )?(water|a drink|something to drink|food|something to eat)|let (him|her|them) drink/, 'inst_water'],
+  [/(sit|stand|get|pick|lift|help|prop) (him|her|them|the patient|the child) (up|upright|onto)|move (him|her|them|the patient)|carry (him|her|them)|drag (him|her|them)|drive (him|her|them) to|put (him|her|them) in (the|your) car/, 'inst_lift'],
+  [/go back (in|inside|into|upstairs)|run back in|grab (your|the) (things|stuff|pet|dog|cat|bag)|go (in|inside) (and|to) (get|check|look)|try to put (it|the fire) out|use (a|the) (bucket|hose|extinguisher)/, 'inst_goback'],
+  [/confront|go (and )?(see|check|look) (who|what)|tackle|stop (him|them|the intruder)|fight (him|them|back)|approach (him|them|the)|chase (him|them|after)|go downstairs|open the door/, 'inst_confront'],
 ];
 
 const RULES: Array<[RegExp, Intent]> = [
@@ -82,6 +92,10 @@ const RULES: Array<[RegExp, Intent]> = [
 export function classifyIntent(text: string): Intent {
   const t = text.toLowerCase().trim();
   if (!t) return 'unknown';
+  for (const [re, intent] of RISKY) {
+    const m = re.exec(t);
+    if (m && !NEGATED.test(t.slice(0, m.index))) return intent;
+  }
   for (const [re, intent] of RULES) if (re.test(t)) return intent;
   return 'unknown';
 }
@@ -265,7 +279,7 @@ function heardFrom(call: Call, nodeId: number, label: string, source: HeardLocat
 }
 
 export interface DialogueEnv { rng: Rng; city: City; inc: Incident; call: Call; tpl: Template; now: number }
-export type AidKind = 'cpr' | 'recovery' | 'pressure' | 'still' | 'lock' | 'evacuate';
+export type AidKind = 'cpr' | 'recovery' | 'pressure' | 'still' | 'lock' | 'evacuate' | 'water' | 'lift' | 'goback' | 'confront';
 export interface Reply { lines: PendingLine[]; mood: { panic?: number; base?: number; cooperation?: number; frustration?: number; trust?: number }; promise?: boolean; safety?: boolean; refused?: boolean; misunderstood?: boolean; hangup?: boolean; aid?: { kind: AidKind; fit: 'good' | 'bad' | 'neutral' } }
 
 export function openingLines(env: DialogueEnv): PendingLine[] {
@@ -581,7 +595,7 @@ export function verifyReply(env: DialogueEnv, candidate: number): { text: string
 }
 
 // ── Spontaneous lines ───────────────────────────────────────────────────────
-export type SpontKind = 'escalated' | 'arrived' | 'dispatched' | 'waiting' | 'nothing_found' | 'resolved' | 'broken_promise' | 'hold' | 'callback';
+export type SpontKind = 'sirens' | 'escalated' | 'arrived' | 'dispatched' | 'waiting' | 'nothing_found' | 'resolved' | 'broken_promise' | 'hold' | 'callback';
 export function spontaneous(env: DialogueEnv, kind: SpontKind, extra = ''): string {
   const { tpl, rng, call, inc } = env;
   const v = inc.vars;
@@ -594,7 +608,8 @@ export function spontaneous(env: DialogueEnv, kind: SpontKind, extra = ''): stri
       return flavor(pick(cat === 'fire' ? ["It's getting worse! It's spreading!", "It's bigger now — much bigger!"] : cat === 'medical' ? ["{He}'s getting worse! Please hurry!", "Something's changed — {he} looks worse!"] : ["It's getting worse out here!", "Things just got a lot worse!"]), call, rng);
     }
     case 'arrived': return flavor(pick(["I can see them! They're here — thank you!", "They've arrived! I can see the lights!", "They're here. Thank God they're here."]), call, rng, { neutral: true });
-    case 'dispatched': return flavor(pick(['Thank you. I can hear sirens, I think.', 'Okay, I hear them! They\'re coming, aren\'t they?', "That's good. Please tell them to be quick."]), call, rng, { neutral: true });
+    case 'dispatched': return flavor(pick(['Okay. Okay, thank you. How long will they be?', "Thank God. Please tell them to hurry.", "Alright — I'll watch for them."]), call, rng, { neutral: true });
+    case 'sirens': return flavor(pick(["I can hear sirens! I think they're close!", "Sirens — I can hear them, they're coming this way!", "I hear them! Is that them? I think that's them!"]), call, rng, { neutral: true });
     case 'waiting': return flavor(pick(['Hello? Are you still there? How long will they be?', "Where are they? It feels like forever!", "Is anyone coming? You said help was coming!", 'Still nobody here. Please, how long?']), call, rng);
     case 'nothing_found': return flavor(pick(["The officers are here but they're in the wrong place — this isn't where we are!", 'They\'re looking at the wrong building! We\'re not here!', "I can see someone driving past slowly. They don't know where we are!"]), call, rng);
     case 'resolved': return flavor(pick(['Thank you so much. Thank you.', "They've sorted it out. I can't thank you enough.", 'It\'s over, I think. Thank you for staying with me.']), call, rng, { neutral: true });
@@ -606,10 +621,10 @@ export function spontaneous(env: DialogueEnv, kind: SpontKind, extra = ''): stri
 
 // ── Pre-arrival instructions ─────────────────────────────────────────────────
 // Game simplification of widely published bystander guidance; not training material.
-const BLEEDING = new Set(['collision_injury', 'collision_trapped', 'collision_multi', 'workplace_injury', 'industrial_accident', 'building_collapse', 'boat_fire', 'robbery', 'domestic_disturbance', 'fireworks']);
-const KEEP_STILL = new Set(['fall_elderly', 'collision_injury', 'collision_trapped', 'collision_multi', 'sports_injury', 'workplace_injury', 'remote_medical', 'building_collapse']);
-const HIDE = new Set(['burglary_progress', 'domestic_disturbance', 'robbery', 'refuses_explain', 'strange_noise', 'fireworks', 'suspicious_activity']);
-const GET_OUT = new Set(['kitchen_fire', 'apartment_fire', 'gas_leak', 'carbon_monoxide', 'electrical_fire', 'smell_burning', 'warehouse_smoke', 'building_collapse', 'power_line_down']);
+const BLEEDING = new Set(['gunshot_victim', 'active_shooter', 'train_derailment', 'house_explosion', 'tanker_fire', 'collision_injury', 'collision_trapped', 'collision_multi', 'workplace_injury', 'industrial_accident', 'building_collapse', 'boat_fire', 'robbery', 'domestic_disturbance', 'fireworks']);
+const KEEP_STILL = new Set(['train_derailment', 'lost_hiker', 'fall_elderly', 'collision_injury', 'collision_trapped', 'collision_multi', 'sports_injury', 'workplace_injury', 'remote_medical', 'building_collapse']);
+const HIDE = new Set(['bank_robbery', 'active_shooter', 'hostage_barricade', 'burglary_progress', 'domestic_disturbance', 'robbery', 'refuses_explain', 'strange_noise', 'fireworks', 'suspicious_activity']);
+const GET_OUT = new Set(['bomb_threat', 'house_explosion', 'kitchen_fire', 'apartment_fire', 'gas_leak', 'carbon_monoxide', 'electrical_fire', 'smell_burning', 'warehouse_smoke', 'building_collapse', 'power_line_down']);
 
 export function aidVerdict(tpl: Template, inc: Incident, kind: AidKind): { fit: 'good' | 'bad' | 'neutral'; text: string } {
   const t = inc.truth, v = inc.vars;
@@ -642,8 +657,36 @@ export function aidVerdict(tpl: Template, inc: Incident, kind: AidKind): { fit: 
       if (fireLike) return { fit: 'good', text: "Okay, everyone out — I'm shutting the door behind us. We're outside now, we're on the pavement." };
       if (tpl.category === 'medical' && hasPatient) return { fit: 'neutral', text: say("I'm not leaving {him} — we're safe here, I just need help to come.") };
       return { fit: 'neutral', text: "Get out of where? We're not in any danger here." };
+    case 'water':
+      if (t.conscious === false || t.conscious === 'drifting' || t.breathing === false) return { fit: 'bad', text: say("I'm trying to get some into {his} mouth... it's just running out — {he}'s coughing, {he}'s choking on it! What do I do?!") };
+      if (tpl.id === 'heat_exhaustion') return { fit: 'good', text: say("Okay, small sips. {He}'s drinking a little... {he} says it helps.") };
+      if (BLEEDING.has(tpl.id) && injured) return { fit: 'bad', text: say("I gave {him} some water and {he} just threw it straight back up. {He} looks worse.") };
+      return { fit: 'neutral', text: say("Water? Okay... {he}'s had a little.") };
+    case 'lift':
+      if (t.breathing === false) return { fit: 'bad', text: say("I'm trying to lift {him} but {he}'s a dead weight — {he}'s still not breathing! We're wasting time!") };
+      if (KEEP_STILL.has(tpl.id) && injured) return { fit: 'bad', text: say("I sat {him} up and {he} screamed — {he} says {he} can't feel {his} legs now! Oh god, what did I do?") };
+      if (BLEEDING.has(tpl.id) && injured) return { fit: 'bad', text: say("We moved {him} and the bleeding's got so much worse — it's everywhere!") };
+      if (t.conscious === false || t.conscious === 'drifting') return { fit: 'bad', text: say("I propped {him} up but {his} head just flops forward. {He}'s making a gurgling sound...") };
+      if (fireLike && hasPatient) return { fit: 'good', text: say("Okay, I've got {his} arm round my shoulder — we're out, we're away from the smoke.") };
+      return { fit: 'neutral', text: say("Move {him}? Okay... {he}'s sitting up now.") };
+    case 'goback':
+      if (fireLike) return { fit: 'bad', text: "Okay — okay, I'm going back in... (coughing) I can't see anything, it's so thick— (heavy coughing)" };
+      return { fit: 'neutral', text: "Go back in? There's nothing in there I need." };
+    case 'confront':
+      if (HIDE.has(tpl.id) && t.suspect !== false) return { fit: 'bad', text: "Okay... I'm going to look. (whispering) I'm on the stairs— HEY! Who's th— (shouting, a crash, the line goes quiet)" };
+      return { fit: 'neutral', text: "Confront who? There's nobody to confront." };
   }
 }
+
+/** the untreated life threat a patient has, if any: drives the survival clock */
+export function lifeThreatOf(tpl: Template, truth: Record<string, FactVal>, severity: number): 'arrest' | 'bleed' | 'airway' | null {
+  if (!tpl.lethal && severity < 4) return null;
+  if (truth.breathing === false) return 'arrest';
+  if (truth.conscious === false || truth.conscious === 'drifting') return 'airway';
+  if (BLEEDING.has(tpl.id) && typeof truth.injured === 'number' && truth.injured > 0 && severity >= 4) return 'bleed';
+  return null;
+}
+export const FIRE_LIKE = (tpl: Template) => GET_OUT.has(tpl.id) || tpl.category === 'fire' && tpl.id !== 'animal_rescue' && tpl.id !== 'elevator_rescue' && tpl.id !== 'flooded_basement';
 
 // ── Knowledge sheet for the AI dialogue layer ────────────────────────────────
 /** What this caller can truthfully say, topic by topic — only facts their character could know. */

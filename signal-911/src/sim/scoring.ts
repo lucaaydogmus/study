@@ -8,7 +8,7 @@ export function avgResponse(st: GameState): number { return avg(st.stats.respons
 export function computeScore(st: GameState): ShiftScore {
   const s = st.stats;
   const diffTarget = { casual: 150, standard: 120, hard: 105, expert: 90 }[st.config.difficulty];
-  const handled = Object.values(st.incidents).filter((i) => !i.truth.outside && !i.duplicateOf && i.outcome !== 'merged');
+  const handled = Object.values(st.incidents).filter((i) => !i.truth.outside && !i.duplicateOf && i.outcome !== 'merged' && i.templateId !== 'traffic_stop');
   const needResponse = handled.filter((i) => i.requires.length > 0 || i.outcome === 'false_alarm');
 
   // response time: full marks at/under target, zero at 2.2x target
@@ -31,7 +31,7 @@ export function computeScore(st: GameState): ShiftScore {
 
   // dispatch accuracy
   let accuracy = s.dispatches ? s.correctDispatches / s.dispatches : 0.8;
-  accuracy -= s.unnecessary * 0.035 + s.wrongLocations * 0.05;
+  accuracy -= s.unnecessary * 0.035 + s.wrongLocations * 0.05 + (s.checksBad ?? 0) * 0.04 + (s.checksMissed ?? 0) * 0.03;
   accuracy = Math.max(0, Math.min(1, accuracy));
 
   // call handling
@@ -42,7 +42,7 @@ export function computeScore(st: GameState): ShiftScore {
   const cov = (s.coverageSamples.police.length ? (avg(s.coverageSamples.police) + avg(s.coverageSamples.fire) + avg(s.coverageSamples.medical)) / 3 : 0.5);
   const coverage = Math.max(0, Math.min(1, cov / 0.85));
 
-  const penalties = s.casualties * 5 + s.promisesBroken * 1.5 + s.mishandled * 3 + (s.wrongLinks ?? 0) * 2;
+  const penalties = s.casualties * 5 + s.promisesBroken * 1.5 + s.mishandled * 3 + (s.wrongLinks ?? 0) * 2 + (s.harmfulAdvice ?? 0) * 2;
   let total = 100 * (0.27 * response + 0.34 * outcomes + 0.17 * accuracy + 0.12 * calls + 0.10 * coverage) - penalties;
   total = Math.max(0, Math.min(100, total));
   const grade: ShiftScore['grade'] = total >= 91 && s.casualties === 0 ? 'S' : total >= 80 ? 'A' : total >= 68 ? 'B' : total >= 55 ? 'C' : total >= 42 ? 'D' : 'F';
@@ -63,6 +63,11 @@ export function evaluateObjectives(st: GameState) {
       case 'categories': o.value = Object.keys(s.byCategory).length; o.done = Object.keys(s.byCategory).length >= o.target; break;
       case 'coverage': o.value = Math.round(avg([...s.coverageSamples.police, ...s.coverageSamples.fire, ...s.coverageSamples.medical]) * 100); o.done = (o.value ?? 0) >= o.target; break;
       case 'no_wrong_location': o.value = s.wrongLocations; o.done = s.wrongLocations === 0; break;
+      case 'pursuits': o.value = s.pursuitsCaught; o.done = s.pursuitsCaught >= o.target; break;
+      case 'relays': o.value = s.heliRelays ?? 0; o.done = (o.value ?? 0) >= o.target; break;
+      case 'aid_good': o.value = s.aidGood; o.done = s.aidGood >= o.target; break;
+      case 'checks': o.value = s.checksOk ?? 0; o.done = (o.value ?? 0) >= o.target; break;
+      case 'deadlines': o.value = Object.values(st.incidents).filter((i) => i.deadlineMet === true).length; o.done = o.value >= o.target && !Object.values(st.incidents).some((i) => i.deadlineMet === false); break;
       default: break;
     }
   }

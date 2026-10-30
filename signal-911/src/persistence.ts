@@ -2,6 +2,8 @@
 // so a backend database can be dropped in later (implement `KV` over fetch and pass it to SaveManager).
 import { DEFAULT_SETTINGS, PROFILE_VERSION, type Profile, type Settings } from './sim/profile';
 import type { GameState } from './sim/types';
+import { grantHelicopter } from './sim/fleet';
+import { Rng } from './sim/rng';
 
 export interface KV {
   get<T = unknown>(key: string): Promise<T | undefined>;
@@ -76,6 +78,14 @@ export function migrate(raw: SaveEnvelope): SaveEnvelope {
     for (const k of ['merges', 'pursuits', 'verifies', 'gradeA', 'calmed', 'bestStreak', 'contracts']) L[k] = L[k] ?? 0;
     p.stats = L as unknown as Profile['stats'];
     v = 3;
+  }
+  if (v < 4) {
+    // remaster 3: every city now has a police helicopter
+    const g = grantHelicopter(new Rng(p.counters?.seed ?? 99), p.stations, p.units, p.personnel, p.counters.unit, p.counters.person);
+    if (g) { p.units.push(g.unit); p.personnel.push(...g.crew); p.counters.unit++; p.counters.person += g.crew.length; }
+    const L = ((p.stats as unknown) as Record<string, number>) ?? {};
+    for (const k of ['heliRelays', 'checksOk', 'guidanceSaves']) L[k] = L[k] ?? 0;
+    v = 4;
   }
   out.version = v;
   out.profile.version = PROFILE_VERSION;

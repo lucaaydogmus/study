@@ -7,6 +7,7 @@ import type { Call, Service } from '../sim/types';
 import { useApp } from '../store';
 import { Badge, Bar, Btn, Icon, fmtEta, fmtTime, SERVICE_ICON } from './common';
 import { StatusBadge } from './RightPanel';
+import { DeadlineBanner, LifeMeter } from './Ops';
 
 export type BottomTab = 'call' | 'radio' | 'units' | 'log' | 'transcripts';
 
@@ -91,6 +92,8 @@ function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngine; set
             <div title="Cooperation"><span>Cooperation</span><Bar value={mood.cooperation} tone="blue" label="Cooperation" /></div>
           </div>
         </div>
+        <LifeMeter inc={inc} compact />
+        {inc.deadlineAt != null && inc.deadlineMet == null && <DeadlineBanner engine={engine} inc={inc} />}
         <div className="transcript" ref={scroll} aria-live="polite" aria-label="Call transcript">
           {call.transcript.map((l, i) => (
             <div key={i} className={`tline ${l.who.toLowerCase()}`}>

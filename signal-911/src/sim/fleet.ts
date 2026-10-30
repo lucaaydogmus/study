@@ -15,6 +15,7 @@ export const UNIT_TYPES: UnitTypeDef[] = [
   { type: 'traffic', service: 'police', label: 'Traffic Unit', short: 'TRAFFIC', spoken: 'Traffic', caps: ['patrol', 'traffic'], cost: 46000, crew: 2, minCrew: 1, speed: 1.05, equipment: 'Flares, cones, reconstruction kit', minRank: 2, blurb: 'Collision specialist; clears roads.' },
   { type: 'van', service: 'police', label: 'Police Van', short: 'VAN', spoken: 'Van', caps: ['patrol', 'crowd', 'prisoner_transport'], cost: 54000, crew: 3, minCrew: 2, speed: 0.92, equipment: 'Crowd control gear', minRank: 2, blurb: 'Crowd management and transport.' },
   { type: 'police_supervisor', service: 'police', label: 'Supervisor Unit', short: 'SUPV', spoken: 'Supervisor', caps: ['patrol', 'police_supervisor'], cost: 62000, crew: 1, minCrew: 1, speed: 1.05, equipment: 'Command radio', minRank: 3, blurb: 'Takes command of complex scenes.' },
+  { type: 'helicopter', service: 'police', label: 'Police Helicopter', short: 'AIR', spoken: 'Air', caps: ['air_support'], cost: 420000, crew: 2, minCrew: 2, speed: 1, equipment: 'FLIR camera, searchlight', minRank: 3, blurb: 'Eyes in the sky: tracks fleeing vehicles and searches from above. Limited fuel; grounded in storms.' },
   { type: 'tactical', service: 'police', label: 'Specialist Response', short: 'SRT', spoken: 'Tactical', caps: ['patrol', 'tactical'], cost: 145000, crew: 4, minCrew: 3, speed: 0.95, equipment: 'Tactical equipment', minRank: 5, blurb: 'Armed or high-risk incidents.' },
   // Fire
   { type: 'engine', service: 'fire', label: 'Fire Engine', short: 'ENGINE', spoken: 'Engine', caps: ['fire_suppression'], cost: 98000, crew: 4, minCrew: 3, speed: 0.88, equipment: 'Pump, 500 gal tank', minRank: 1, blurb: 'Fire suppression workhorse.' },
@@ -111,7 +112,7 @@ const CALL_COUNTER_KEY = 'unit-counter';
 export function nextCallsign(existing: Unit[], def: UnitTypeDef): { callsign: string; spoken: string } {
   // numbering per service: PATROL-11.. ENGINE-01.. MEDIC-04..
   const sameKind = existing.filter((u) => u.service === def.service && u.typeLabel.length > 0 && UNIT_TYPE_BY_ID[u.type].short === def.short);
-  const base = def.service === 'police' ? 10 : 0;
+  const base = def.service === 'police' && def.type !== 'helicopter' ? 10 : 0;
   let n = base + 1;
   const used = new Set(sameKind.map((u) => u.callsign));
   while (used.has(`${def.short}-${String(n).padStart(2, '0')}`)) n++;
@@ -120,6 +121,23 @@ export function nextCallsign(existing: Unit[], def: UnitTypeDef): { callsign: st
   return { callsign, spoken: `${def.spoken} ${numWord(spokenNum)}` };
 }
 void CALL_COUNTER_KEY;
+
+export const isAir = (u: Pick<Unit, 'type'>) => u.type === 'helicopter';
+/** world units per second in straight-line flight */
+export const AIR_SPEED = 30;
+
+/** give an existing career its city helicopter (added in the remaster) */
+export function grantHelicopter(rng: Rng, stations: Station[], units: Unit[], personnel: Personnel[], nextUnit: number, nextPerson: number): { unit: Unit; crew: Personnel[] } | null {
+  if (units.some(isAir)) return null;
+  const st = stations.find((s) => s.service === 'police' && s.id === 'police-downtown') ?? stations.find((s) => s.service === 'police');
+  if (!st) return null;
+  const def = UNIT_TYPE_BY_ID.helicopter;
+  const unit = makeUnit(def, st, units, nextUnit);
+  const crew: Personnel[] = [];
+  for (let k = 0; k < def.crew; k++) { const p = makePersonnel(rng, 'police', `p${nextPerson + k}`, 1.2, unit.id); crew.push(p); unit.personnelIds.push(p.id); }
+  void personnel;
+  return { unit, crew };
+}
 
 export function makeUnit(def: UnitTypeDef, station: Station, existing: Unit[], idNum: number): Unit {
   const city = getCity();
@@ -130,6 +148,7 @@ export function makeUnit(def: UnitTypeDef, station: Station, existing: Unit[], i
     x: node.x, y: node.y, prevNode: station.nodeId, stationId: station.id, postNode: station.nodeId,
     route: [], destNode: null, eta: null, speed: 0, capabilities: [...def.caps], personnelIds: [], crewSeats: def.crew, minCrew: def.minCrew,
     speedModifier: def.speed, equipment: def.equipment, timer: 0, value: def.cost, patients: 0, lastRadio: -999, deployments: 0,
+    ...(def.type === 'helicopter' ? { fuel: 100 } : {}),
   };
 }
 
@@ -145,6 +164,7 @@ export function buildStartingFleet(rng: Rng, opts: { reduced?: boolean; quality?
     ['patrol', 'police-downtown'], ['patrol', 'police-downtown'], ['patrol', 'police-westres'], ['motorcycle', 'police-downtown'],
     ['engine', 'fire-downtown'], ['rescue', 'fire-downtown'], ['engine', 'fire-riverside'], ['engine', 'fire-riverside'],
     ['advanced_ambulance', 'medical-downtown'], ['ambulance', 'medical-downtown'], ['ambulance', 'medical-westres'], ['advanced_ambulance', 'medical-westres'],
+    ['helicopter', 'police-downtown'],
   ];
   const useStations = Object.fromEntries(stations.map((s) => [s.id, s]));
   const units: Unit[] = [];

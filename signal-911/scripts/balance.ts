@@ -20,9 +20,10 @@ function play(rank: number, diff: 'casual' | 'standard' | 'hard' | 'expert', see
           const inc = st.incidents[c.incidentId];
           const since = st.time - (c.answeredAt ?? st.time);
           if (c.pending.length === 0 && c.transcript.length) {
-            const order = ['address', 'landmark', 'injuries', 'fire', 'trapped', 'suspect', 'conscious', 'safe', 'promise'];
+            const order = ['address', 'landmark', 'injuries', 'fire', 'trapped', 'suspect', 'conscious', 'breathing', 'safe', 'promise'];
             const next = order.find((k) => !c.asked[k] && !(k === 'landmark' && inc.reportedNode !== null));
             if (next && since > 2) e.ask(c.id, { intent: next as never });
+            else if (!inc.aid && inc.facts.some((f) => f.key === 'breathing' && f.value === false)) e.ask(c.id, { intent: 'inst_cpr' });
           }
           const best = c.heard.filter((h) => h.reliability !== 'contradicted').sort((a, b) => (b.reliability === 'sure' ? 1 : 0) - (a.reliability === 'sure' ? 1 : 0))[0];
           if (best && (inc.reportedNode === null || (best.reliability === 'sure' && inc.reportedNode !== best.nodeId))) e.setIncidentLocation(inc.id, best.nodeId, 'candidate');
@@ -41,8 +42,11 @@ function play(rank: number, diff: 'casual' | 'standard' | 'hard' | 'expert', see
         }
       }
     }
+    // officers' records requests: run and answer (a competent dispatcher gets most of them right)
+    if (competent) for (const r of st.requests) if (r.status === 'open' && st.time >= r.at + 8) { e.runRequest(r.id); e.answerRequest(r.id, e.rng.chance(0.85) ? r.truth : 'clear'); }
     e.step(DT);
   }
+  if (process.env.DETAIL) for (const i of Object.values(e.state.incidents)) if (i.casualties || i.outcome === 'failed') console.log('   ', rank, seed, i.templateId, i.outcome, 'cas', i.casualties, 'stage', i.stage, 'surv', i.survival?.toFixed(0), 'aid', i.aid?.kind, 'first', i.firstArrivalAt && Math.round(i.firstArrivalAt - i.createdAt), (i.consequences ?? []).join('; '), i.lostReason ?? '');
   const s = e.state.stats, sc = e.state.scoreBreakdown!;
   return { calls: s.callsReceived, ans: s.callsAnswered, resolved: s.resolved, failed: s.failed, cas: s.casualties, rt: Math.round(averageOf(s.responseTimes)), wrong: s.wrongLocations, unn: s.unnecessary, score: sc.total, grade: sc.grade, money: computeResult(e.state).money };
 }

@@ -16,7 +16,16 @@ const lerp = (a: Vec, b: Vec, t: number): Vec => ({ x: a.x + (b.x - a.x) * t, y:
 const quadPt = (q: Vec[], u: number, v: number): Vec => lerp(lerp(q[0], q[1], u), lerp(q[3], q[2], u), v);
 const subQuad = (q: Vec[], u0: number, v0: number, u1: number, v1: number): Vec[] => [quadPt(q, u0, v0), quadPt(q, u1, v0), quadPt(q, u1, v1), quadPt(q, u0, v1)];
 
+const shadeMemo = new Map<string, string>();
 function shade(hex: string, f: number): string {
+  const key = hex + f;
+  const hit = shadeMemo.get(key);
+  if (hit) return hit;
+  const out = shadeRaw(hex, f);
+  shadeMemo.set(key, out);
+  return out;
+}
+function shadeRaw(hex: string, f: number): string {
   const n = parseInt(hex.slice(1), 16);
   const r = Math.max(0, Math.min(255, Math.round(((n >> 16) & 255) * f)));
   const g = Math.max(0, Math.min(255, Math.round(((n >> 8) & 255) * f)));
@@ -187,7 +196,7 @@ export const MAP_COLORS = {
  * Draws the static city. `lod` 0 = overview cache, 1 = mid cache, 2 = live close-up with extra detail.
  * The context must already be transformed into world coordinates.
  */
-export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View | null, activeDistricts: Set<string>, scale: number) {
+export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View | null, activeDistricts: Set<string>, scale: number, opts: { skipRoofs?: boolean } = {}) {
   const city = getCity();
   const sc = getScenery();
   const C = MAP_COLORS;
@@ -259,8 +268,8 @@ export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View 
     ctx.moveTo(p[0].x, p[0].y); ctx.lineTo(p[1].x, p[1].y); ctx.lineTo(p[1].x + dx, p[1].y + dy); ctx.lineTo(p[2].x + dx, p[2].y + dy); ctx.lineTo(p[3].x + dx, p[3].y + dy); ctx.lineTo(p[3].x, p[3].y); ctx.closePath();
   }
   ctx.fill();
-  // roofs
-  for (const l of sc.lots) {
+  // roofs (in the tilted close-up view buildings are extruded after the roads instead)
+  if (!opts.skipRoofs) for (const l of sc.lots) {
     if (!visible(view, l.cx, l.cy, l.r + 4)) continue;
     if (l.style === 'tank') {
       ctx.fillStyle = l.roof; ctx.beginPath(); ctx.arc(l.cx, l.cy, l.r, 0, 7); ctx.fill();
@@ -325,10 +334,10 @@ export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View 
   roadPath('bridge'); ctx.strokeStyle = '#06090c'; ctx.lineWidth = 11; ctx.stroke(); ctx.strokeStyle = '#8a9bb0'; ctx.lineWidth = 9; ctx.stroke(); ctx.strokeStyle = C.bridge; ctx.lineWidth = 7; ctx.stroke();
 }
 
-export function drawNightLights(ctx: CanvasRenderingContext2D, view: View | null) {
+export function drawNightLights(ctx: CanvasRenderingContext2D, view: View | null, opts: { windows?: boolean } = {}) {
   const sc = getScenery();
   ctx.fillStyle = 'rgba(255,214,140,0.9)';
-  for (const w of sc.windows) { if (!visible(view, w.x, w.y, 2)) continue; ctx.fillRect(w.x - w.s / 2, w.y - w.s / 2, w.s, w.s); }
+  if (opts.windows !== false) for (const w of sc.windows) { if (!visible(view, w.x, w.y, 2)) continue; ctx.fillRect(w.x - w.s / 2, w.y - w.s / 2, w.s, w.s); }
   for (const l of sc.lights) {
     if (!visible(view, l.x, l.y, 9)) continue;
     const g = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, 9);
@@ -340,4 +349,166 @@ export function drawNightLights(ctx: CanvasRenderingContext2D, view: View | null
 function centroid(p: Vec[]): Vec { return { x: p.reduce((s, q) => s + q.x, 0) / p.length, y: p.reduce((s, q) => s + q.y, 0) / p.length }; }
 function tintFor(tag: string): string {
   return ({ commercial: '#4A9CD6', dense: '#4A9CD6', industrial: '#E5AC4D', residential: '#c9b79c', forest: '#54B889', harbor: '#3ec1c9', airport: '#9a8cd6', campus: '#c58bd6', suburb: '#7fa889', historic: '#d69a53', highrise: '#4A9CD6', river: '#4A9CD6', rail: '#98A6B5' } as Record<string, string>)[tag] ?? '#98A6B5';
+}
+
+// ── 2.5D close-up ────────────────────────────────────────────────────────────
+/** how far roofs rise on screen per unit of building height at full tilt */
+export const LIFT = 1.25;
+const LEAN = 0.22;
+let sortedLots: Lot[] | null = null;
+
+/**
+ * Extruded buildings for the zoomed-in view. Roofs are lifted "up" the screen by height × tilt so
+ * the south and east walls become visible; drawn back to front so nearer blocks overlap farther ones.
+ */
+export function drawBuildings3D(ctx: CanvasRenderingContext2D, view: View, tilt: number, night: number, scale: number, detail = true) {
+  const sc = getScenery();
+  sortedLots ??= [...sc.lots].sort((a, b) => a.cy - b.cy);
+  const k = LIFT * tilt;
+  const px = (n: number) => n / scale;
+  const lit = night > 0.25;
+  for (const l of sortedLots) {
+    const rise = l.h * k;
+    if (!visible(view, l.cx, l.cy - rise, l.r + rise + 4)) continue;
+    const ox = rise * LEAN, oy = -rise;
+    if (l.style === 'tank') {
+      ctx.fillStyle = shade(l.roof, 0.62);
+      ctx.beginPath(); ctx.ellipse(l.cx + ox / 2, l.cy + oy / 2, l.r, Math.abs(oy) / 2 + l.r * 0.4, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = l.roof; ctx.beginPath(); ctx.arc(l.cx + ox, l.cy + oy, l.r, 0, 7); ctx.fill();
+      ctx.strokeStyle = l.edge; ctx.lineWidth = px(1); ctx.stroke();
+      continue;
+    }
+    const p = l.pts;
+    const r = p.map((q) => ({ x: q.x + ox, y: q.y + oy }));
+    // walls facing the viewer
+    for (let i = 0; i < 4; i++) {
+      const a = p[i], b = p[(i + 1) % 4];
+      const nx = b.y - a.y, ny = -(b.x - a.x);
+      const facing = -nx * ox - ny * oy;
+      if (facing <= 0) continue;
+      const south = ny > Math.abs(nx);
+      ctx.fillStyle = shade(l.roof, south ? 0.52 : 0.68);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(r[(i + 1) % 4].x, r[(i + 1) % 4].y); ctx.lineTo(r[i].x, r[i].y); ctx.closePath(); ctx.fill();
+      // floors and windows: daytime glass bands, lit windows at night (batched per building)
+      const floors = Math.max(1, Math.floor(l.h / (l.style === 'warehouse' || l.style === 'hangar' ? 4 : 2.4)));
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      if (detail && rise * scale > 10 && l.style !== 'warehouse' && l.style !== 'hangar') {
+        const q = (u: number, v: number) => ({ x: a.x + (b.x - a.x) * u + ox * v, y: a.y + (b.y - a.y) * u + oy * v });
+        const quad = (path: Path2D, u0: number, u1: number, v0: number, v1: number) => { const w0 = q(u0, v0), w1 = q(u1, v0), w2 = q(u1, v1), w3 = q(u0, v1); path.moveTo(w0.x, w0.y); path.lineTo(w1.x, w1.y); path.lineTo(w2.x, w2.y); path.lineTo(w3.x, w3.y); path.closePath(); };
+        if (!lit) {
+          const glass = new Path2D();
+          for (let f = 0; f < floors; f++) quad(glass, 0.06, 0.94, (f + 0.3) / floors, (f + 0.72) / floors);
+          ctx.fillStyle = l.style === 'tower' ? 'rgba(150,190,220,0.26)' : 'rgba(140,175,205,0.16)'; ctx.fill(glass);
+        } else {
+          const cols = Math.max(1, Math.floor(len / (l.style === 'tower' ? 3.2 : 4.5)));
+          const on = new Path2D();
+          const rng = l.seed + i * 977;
+          for (let f = 0; f < floors; f++) for (let c = 0; c < cols; c++) if ((((rng + f * 131 + c * 71) * 2654435761) >>> 0) % 100 < 42) quad(on, (c + 0.25) / cols, (c + 0.75) / cols, (f + 0.3) / floors, (f + 0.75) / floors);
+          ctx.fillStyle = `rgba(255,212,140,${0.55 + 0.4 * night})`; ctx.fill(on);
+        }
+      } else if (l.style === 'warehouse' || l.style === 'hangar') {
+        // big roller doors
+        const q = (u: number, v: number) => ({ x: a.x + (b.x - a.x) * u + ox * v, y: a.y + (b.y - a.y) * u + oy * v });
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        const cols = Math.max(1, Math.min(3, Math.floor(len / 12)));
+        for (let c = 0; c < cols; c++) { const u0 = (c + 0.2) / cols, u1 = u0 + 0.5 / cols; const w0 = q(u0, 0), w1 = q(u1, 0), w2 = q(u1, 0.55), w3 = q(u0, 0.55); ctx.beginPath(); ctx.moveTo(w0.x, w0.y); ctx.lineTo(w1.x, w1.y); ctx.lineTo(w2.x, w2.y); ctx.lineTo(w3.x, w3.y); ctx.closePath(); ctx.fill(); }
+      }
+    }
+    // roof
+    ctx.fillStyle = l.roof; ctx.beginPath(); poly(ctx, r); ctx.fill();
+    ctx.strokeStyle = l.edge; ctx.lineWidth = Math.max(0.5, px(0.9));
+    ctx.beginPath(); ctx.moveTo(r[3].x, r[3].y); ctx.lineTo(r[0].x, r[0].y); ctx.lineTo(r[1].x, r[1].y); ctx.stroke();
+    if (l.style === 'tower' || l.style === 'office') {
+      const inner = subQuad(r, 0.3, 0.3, 0.7, 0.7); ctx.fillStyle = shade(l.roof, 1.16); ctx.beginPath(); poly(ctx, inner); ctx.fill();
+      if (l.style === 'tower' && lit) { const m = centroid(r); ctx.fillStyle = (Math.floor(performance.now() / 900 + l.seed) % 2) ? 'rgba(255,70,70,0.95)' : 'rgba(120,20,20,0.6)'; ctx.beginPath(); ctx.arc(m.x, m.y, Math.max(0.6, px(1.6)), 0, 7); ctx.fill(); }
+    } else if (l.style === 'house' || l.style === 'terrace') {
+      ctx.strokeStyle = shade(l.roof, 0.7); ctx.lineWidth = Math.max(0.5, px(0.8));
+      const a = lerp(r[0], r[3], 0.5), b = lerp(r[1], r[2], 0.5); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    } else if (l.style === 'warehouse' || l.style === 'hangar') {
+      ctx.strokeStyle = shade(l.roof, 0.82); ctx.lineWidth = Math.max(0.4, px(0.6));
+      ctx.beginPath(); for (let k2 = 1; k2 < 5; k2++) { const a = lerp(r[0], r[1], k2 / 5), b = lerp(r[3], r[2], k2 / 5); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); } ctx.stroke();
+    }
+  }
+}
+
+// ── street life: parked cars and ambient traffic ─────────────────────────────
+const CAR_COLORS = ['#c9ced6', '#8a929c', '#3d4450', '#e6e8eb', '#7a2f2f', '#2f4f7a', '#2f5a3f', '#8a6a2e', '#1c2026', '#5d4a7a'];
+interface Lane { pts: Vec[]; cum: number[]; len: number; district: string }
+let lanes: Lane[] | null = null;
+function getLanes(): Lane[] {
+  if (lanes) return lanes;
+  const city = getCity();
+  const out: Lane[] = [];
+  const COLS = Math.max(...city.nodes.map((n) => n.i)) + 1, ROWS = Math.max(...city.nodes.map((n) => n.j)) + 1;
+  const push = (ids: number[]) => {
+    if (ids.length < 4) return;
+    const pts = ids.map((n) => ({ x: city.nodes[n].x, y: city.nodes[n].y }));
+    const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+    out.push({ pts, cum, len: cum[cum.length - 1], district: city.nodes[ids[Math.floor(ids.length / 2)]].district });
+  };
+  // continuous runs along lattice rows and columns
+  for (let j = 0; j < ROWS; j++) { let run: number[] = []; for (let i = 0; i < COLS; i++) { const n = city.nodeAt(i, j); if (run.length && !city.edgeBetween.has(run[run.length - 1] * 100000 + n)) { push(run); run = []; } run.push(n); } push(run); }
+  for (let i = 0; i < COLS; i++) { let run: number[] = []; for (let j = 0; j < ROWS; j++) { const n = city.nodeAt(i, j); if (run.length && !city.edgeBetween.has(run[run.length - 1] * 100000 + n)) { push(run); run = []; } run.push(n); } push(run); }
+  lanes = out;
+  return out;
+}
+function laneAt(l: Lane, d: number): { x: number; y: number; h: number } {
+  let i = 1; while (i < l.cum.length - 1 && l.cum[i] < d) i++;
+  const a = l.pts[i - 1], b = l.pts[i];
+  const t = (d - l.cum[i - 1]) / Math.max(1e-6, l.cum[i] - l.cum[i - 1]);
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, h: Math.atan2(b.y - a.y, b.x - a.x) };
+}
+const hash = (n: number) => { let x = n | 0; x = Math.imul(x ^ (x >>> 16), 0x45d9f3b); x = Math.imul(x ^ (x >>> 16), 0x45d9f3b); return ((x ^ (x >>> 16)) >>> 0) / 4294967296; };
+
+/** cosmetic civilian traffic: deterministic in time, denser where the simulation says traffic is heavy */
+export function drawTraffic(ctx: CanvasRenderingContext2D, view: View, tSec: number, traffic: Record<string, number>, night: number, scale: number, active: Set<string>) {
+  const ls = getLanes();
+  const s = Math.max(0.9, Math.min(1.25, 0.55 + 0.25 * scale));
+  for (let li = 0; li < ls.length; li++) {
+    const l = ls[li];
+    if (!active.has(l.district)) continue;
+    const density = (traffic[l.district] ?? 0.3) * (night > 0.5 ? 0.45 : 1);
+    const n = Math.round(l.len / 60 * density * 1.6);
+    for (let k = 0; k < n; k++) {
+      const seed = li * 131 + k * 17;
+      const dir = hash(seed) < 0.5 ? 1 : -1;
+      const speed = 7 + hash(seed + 1) * 6;
+      let d = (hash(seed + 2) * l.len + tSec * speed) % l.len;
+      if (dir < 0) d = l.len - d;
+      const p = laneAt(l, d);
+      if (p.x < view.x0 - 10 || p.x > view.x1 + 10 || p.y < view.y0 - 10 || p.y > view.y1 + 10) continue;
+      const h = p.h + (dir < 0 ? Math.PI : 0);
+      const off = 1.6;
+      const x = p.x + Math.cos(h + Math.PI / 2) * off, y = p.y + Math.sin(h + Math.PI / 2) * off;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(h);
+      if (night > 0.3) { ctx.fillStyle = `rgba(255,236,190,${0.16 * night})`; ctx.beginPath(); ctx.moveTo(2.4 * s, -0.8); ctx.lineTo(13 * s, -3.5 * s); ctx.lineTo(13 * s, 3.5 * s); ctx.lineTo(2.4 * s, 0.8); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(-2.2 * s + 0.4, -1.1 * s + 0.6, 4.4 * s, 2.2 * s);
+      ctx.fillStyle = CAR_COLORS[Math.floor(hash(seed + 3) * CAR_COLORS.length)]; ctx.fillRect(-2.2 * s, -1.1 * s, 4.4 * s, 2.2 * s);
+      ctx.fillStyle = 'rgba(20,30,40,0.7)'; ctx.fillRect(0.3 * s, -0.85 * s, 1 * s, 1.7 * s);
+      if (night > 0.3) { ctx.fillStyle = 'rgba(255,60,60,0.9)'; ctx.fillRect(-2.3 * s, -1 * s, 0.4, 0.6); ctx.fillRect(-2.3 * s, 0.4 * s, 0.4, 0.6); }
+      ctx.restore();
+    }
+  }
+}
+
+/** parked cars along local streets (static) */
+export function drawParked(ctx: CanvasRenderingContext2D, view: View, active: Set<string>) {
+  const city = getCity();
+  for (const e of city.edges) {
+    if (e.cls !== 'local') continue;
+    const a = city.nodes[e.a], b = city.nodes[e.b];
+    if (!active.has(a.district)) continue;
+    if (Math.max(a.x, b.x) < view.x0 || Math.min(a.x, b.x) > view.x1 || Math.max(a.y, b.y) < view.y0 || Math.min(a.y, b.y) > view.y1) continue;
+    const h = Math.atan2(b.y - a.y, b.x - a.x);
+    const n = Math.floor(hash(e.id * 7) * 4);
+    for (let k = 0; k < n; k++) {
+      const t = 0.18 + hash(e.id * 13 + k) * 0.64;
+      const side = hash(e.id * 29 + k) < 0.5 ? 1 : -1;
+      const x = a.x + (b.x - a.x) * t + Math.cos(h + Math.PI / 2) * 3.4 * side, y = a.y + (b.y - a.y) * t + Math.sin(h + Math.PI / 2) * 3.4 * side;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(h);
+      ctx.fillStyle = CAR_COLORS[Math.floor(hash(e.id * 31 + k) * CAR_COLORS.length)]; ctx.fillRect(-2, -0.95, 4, 1.9);
+      ctx.fillStyle = 'rgba(20,30,40,0.6)'; ctx.fillRect(-0.6, -0.75, 1.1, 1.5);
+      ctx.restore();
+    }
+  }
 }

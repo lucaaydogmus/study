@@ -178,8 +178,9 @@ export function ScenarioScreen() {
       <header className="screen-head"><Btn kind="ghost" icon="chevL" onClick={() => go('modes')}>Back</Btn><h1>Scenarios</h1></header>
       <div className="screen-body">
         <div className="cardgrid wide">
-          {SCENARIOS.map((s) => { const r = profile?.scenarios[s.id]; return (
-            <div className="card scen" key={s.id} style={{ borderTopColor: s.accent }}>
+          {[...SCENARIOS].sort((a, b) => (b.special ? 1 : 0) - (a.special ? 1 : 0)).map((s) => { const r = profile?.scenarios[s.id]; return (
+            <div className={`card scen ${s.special ? 'special' : ''}`} key={s.id} style={{ borderTopColor: s.accent, ['--acc' as string]: s.accent }}>
+              {s.special && <span className="newtag">NEW</span>}
               <h2>{s.title}</h2><div className="tagline">{s.tagline}</div><p className="muted">{s.description}</p>
               <div className="chips"><Badge>{s.minutes} min</Badge><Badge tone={s.difficulty === 'hard' ? 'amber' : 'blue'}>{DIFFICULTY[s.difficulty].label}</Badge>{s.reducedFleet && <Badge tone="red">Reduced staff</Badge>}</div>
               <div className="row gap center">{r ? <><Grade g={r.best} size={32} /><span className="muted small">best {r.bestScore} · {r.plays} plays</span></> : <span className="muted small">Not yet played</span>}<div className="grow" /><Btn kind="primary" icon="play" onClick={() => startScenario(s.id)}>Play</Btn></div>

@@ -20,7 +20,7 @@ const DISTRICT_DEFS: DDef[] = [
   { id: 'westres', name: 'West Residential', tags: ['residential'], ci: 0, cj: 0, rank: 1, traffic: 0.3, w: [1.2, 0.8, 1, 1.1], blurb: 'Family homes and quiet streets. Kitchen fires, falls and neighbourhood disputes.' },
   { id: 'university', name: 'University District', tags: ['campus', 'residential'], ci: 1, cj: 0, rank: 2, traffic: 0.4, w: [1, 0.8, 1.2, 1.4], blurb: 'Lecture halls, dorms and a stadium. Sports injuries, parties, strange calls.' },
   { id: 'northsub', name: 'North Suburbs', tags: ['suburb', 'residential'], ci: 2, cj: 0, rank: 4, traffic: 0.25, w: [1, 0.9, 0.9, 1], blurb: 'Spread-out cul-de-sacs. Long drives for every responder.' },
-  { id: 'airport', name: 'Airport District', tags: ['airport', 'industrial'], ci: 3, cj: 0, rank: 6, traffic: 0.5, w: [0.9, 1.1, 1, 0.9], blurb: 'Terminals, cargo aprons and fast roads. Traffic spikes with every arrival bank.' },
+  { id: 'airport', name: 'Airport District', tags: ['airport', 'industrial'], ci: 3, cj: 0, rank: 4, traffic: 0.5, w: [0.9, 1.1, 1, 0.9], blurb: 'Terminals, cargo aprons and fast roads. Traffic spikes with every arrival bank.' },
   { id: 'oldtown', name: 'Old Town', tags: ['historic', 'dense'], ci: 0, cj: 1, rank: 1, traffic: 0.55, w: [1, 1.2, 1, 1.2], blurb: 'Narrow historic streets, old wiring and crowded market days.' },
   { id: 'downtown', name: 'Downtown', tags: ['commercial', 'dense'], ci: 1, cj: 1, rank: 1, traffic: 0.8, w: [1.1, 1, 1.2, 1.1], blurb: 'Heavy traffic and crowds. Everything happens here, slowly.' },
   { id: 'financial', name: 'Financial District', tags: ['commercial', 'highrise'], ci: 2, cj: 1, rank: 2, traffic: 0.7, w: [0.9, 1.1, 1, 0.9], blurb: 'Glass towers, elevators and alarm systems.' },

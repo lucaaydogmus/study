@@ -16,6 +16,7 @@ import { SERVICE_META } from '../sim/fleet';
 import { computeScore } from '../sim/scoring';
 import { contractProgress, MODIFIER_BY_ID } from '../sim/extras';
 import { GRADE_COLOR } from './common';
+import { RecordsDock, RecordsTerminal, threatKnown } from './Ops';
 
 const CAT_ICON: Record<string, string> = { medical: 'cross', fire: 'flame', police: 'shield', unusual: 'help' };
 
@@ -42,6 +43,7 @@ export function GameScreen() {
   const [showHelp, setShowHelp] = useState(false);
   const [preview, setPreview] = useState<Preview>(null);
   const [collapsed, setCollapsed] = useState({ l: false, r: false, b: false });
+  const [terminal, setTerminal] = useState(false);
   const st = engine.state;
   const focusKey = useRef(0);
   const doFocus = useCallback((x: number, y: number, zoom?: number) => setFocus({ x, y, zoom, key: ++focusKey.current }), []);
@@ -85,6 +87,12 @@ export function GameScreen() {
       else if (e.key === 'd' || e.key === 'D') { const c = s.activeCallId ? s.calls[s.activeCallId] : null; if (c) { eng.select('incident', c.incidentId); bump(); } }
       else if (e.key === 'Escape') { if (target) setTarget(null); else if (s.selected.kind) { eng.select(null, null); bump(); } else useApp.getState().setPauseMenu(true); }
       else if (e.key === '?' ) setShowHelp(true);
+      else if (e.key === 't' || e.key === 'T') setTerminal((v) => !v);
+      else if (e.key === 'r' || e.key === 'R') {
+        const sel = s.selected.kind === 'incident' && s.selected.id ? s.incidents[s.selected.id] : null;
+        const target = sel?.mover?.heliId ? sel : Object.values(s.incidents).find((i) => i.mover?.heliId && !['RESOLVED', 'CLOSED'].includes(i.status));
+        if (target) { const r = eng.relayAir(target.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); else audio.dispatchConfirm(); bump(); }
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -144,7 +152,7 @@ export function GameScreen() {
             onSelect={(k, id) => { engine.select(k, id); setCollapsed((c) => ({ ...c, r: false })); bump(); }}
             onPickNode={onPickNode} onContext={onContext} heard={heardForMap}
             onPickHeard={(h) => { const s = engine.state; if (s.selected.kind === 'incident' && s.selected.id) { engine.setIncidentLocation(s.selected.id, h.nodeId, 'candidate'); audio.dispatchConfirm(); bump(); } }}
-            focus={focus} reduceMotion={settings.reduceMotion} minimap preview={preview} />
+            focus={focus} reduceMotion={settings.reduceMotion} minimap preview={preview} sounds />
           <div className="maptools">
             <div className="layerbtn">
               <Btn size="sm" icon="layers" onClick={() => setLayerMenu(!layerMenu)}>{LAYERS.find((l) => l.id === layer)!.label}</Btn>
@@ -153,6 +161,8 @@ export function GameScreen() {
             {target && <div className="banner"><Icon n="pin" size={14} /> {target.kind === 'loc' ? 'Click the map to set the incident location' : 'Click the map to reposition the unit'} <button className="linkish" onClick={() => setTarget(null)}>Cancel (Esc)</button></div>}
           </div>
           <IncomingBanner engine={engine} />
+          <RecordsDock engine={engine} onOpen={() => setTerminal(true)} />
+          {terminal && <RecordsTerminal engine={engine} onClose={() => setTerminal(false)} />}
           <GoalsCard engine={engine} />
           <Legend layer={layer} />
           {session.kind === 'tutorial' && <Coach engine={engine} onSkip={() => { useApp.getState().abandon(); }} />}
@@ -251,7 +261,7 @@ function LeftSidebar({ engine, doFocus }: { engine: GameEngine; doFocus: (x: num
             <button key={i.id} className={`inc ${st.selected.id === i.id ? 'sel' : ''} sev${i.severity}`} onClick={() => { engine.select('incident', i.id); if (i.reportedNode !== null) { const n = engine.city.nodes[i.reportedNode]; doFocus(n.x, n.y, 1.6); } bump(); }}>
               <span className="inc-ic"><Icon n={CAT_ICON[i.category]} size={14} /></span>
               <span className="inc-main"><b>{i.label}</b><span className="small muted">{loc ?? 'Location unknown'}</span></span>
-              <span className="inc-side"><StatusBadge s={i.status} /><span className="small mono muted">{i.assignedUnits.length ? `${i.assignedUnits.length} unit${i.assignedUnits.length > 1 ? 's' : ''}` : 'no units'} · {fmtTime(st.time - i.createdAt)}</span></span>
+              <span className="inc-side">{i.deadlineAt != null && i.deadlineMet == null ? <Badge tone="red">⏱ {fmtTime(i.deadlineAt - st.time)}</Badge> : i.lifeThreat && i.careAt == null && i.survival !== undefined && i.survival < 70 && threatKnown(i) ? <Badge tone={i.survival < 35 ? 'red' : 'amber'}>♥ {Math.round(i.survival)}%</Badge> : <StatusBadge s={i.status} />}<span className="small mono muted">{i.assignedUnits.length ? `${i.assignedUnits.length} unit${i.assignedUnits.length > 1 ? 's' : ''}` : 'no units'} · {fmtTime(st.time - i.createdAt)}</span></span>
             </button>
           );
         })}
@@ -278,7 +288,7 @@ function Legend({ layer }: { layer: LayerId }) {
 }
 
 export function HelpModal({ onClose }: { onClose: () => void }) {
-  const rows: Array<[string, string]> = [['Space', 'Pause / resume'], ['1 / 2 / 3', 'Set game speed'], ['A', 'Answer the next ringing call'], ['H', 'Hold / resume a call'], ['E', 'End the active call'], ['D', 'Open the active call’s incident'], ['M', 'Cycle map layers'], ['Esc', 'Cancel / deselect / menu'], ['Right-click', 'Unit selected: dispatch to incident or reposition'], ['Scroll / drag', 'Zoom / pan the map'], ['?', 'This help']];
+  const rows: Array<[string, string]> = [['Space', 'Pause / resume'], ['1 / 2 / 3', 'Set game speed'], ['A', 'Answer the next ringing call'], ['H', 'Hold / resume a call'], ['E', 'End the active call'], ['D', 'Open the active call’s incident'], ['T', 'Records terminal (officer ID / warrant / plate checks)'], ['R', 'Relay the helicopter’s position to ground units'], ['M', 'Cycle map layers'], ['Esc', 'Cancel / deselect / menu'], ['Right-click', 'Unit selected: dispatch to incident or reposition'], ['Scroll / drag', 'Zoom / pan the map'], ['?', 'This help']];
   return (
     <Modal title="Controls & shortcuts" onClose={onClose}>
       <table className="tbl"><tbody>{rows.map(([k, v]) => <tr key={k}><td><kbd>{k}</kbd></td><td>{v}</td></tr>)}</tbody></table>

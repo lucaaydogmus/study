@@ -1,8 +1,11 @@
 // Procedural audio: every sound is synthesised with Web Audio, so there are no assets to load.
-// Buses: master → (effects | radio | music | ambience). All volumes are user-configurable.
+// Buses: master → (effects | radio | music | ambience | sirens). All volumes are user-configurable.
 import type { Settings } from '../sim/profile';
 
-type Bus = 'effects' | 'radio' | 'music' | 'ambience';
+type Bus = 'effects' | 'radio' | 'music' | 'ambience' | 'sirens';
+export type SirenKind = 'police' | 'fire' | 'medical' | 'rotor';
+export interface SirenVoice { id: string; kind: SirenKind; pan: number; vol: number; variant?: number }
+interface LiveVoice { kind: SirenKind; gain: GainNode; pan: StereoPannerNode; sources: Array<OscillatorNode | AudioBufferSourceNode> }
 
 class AudioManager {
   private ctx: AudioContext | null = null;
@@ -16,6 +19,7 @@ class AudioManager {
   private officeHum: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
   private musicTimer: number | null = null;
   private ambKind = '';
+  private voices = new Map<string, LiveVoice>();
 
   private ensure(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -25,7 +29,7 @@ class AudioManager {
         this.ctx = new AC();
         this.master = this.ctx.createGain();
         this.master.connect(this.ctx.destination);
-        (['effects', 'radio', 'music', 'ambience'] as Bus[]).forEach((b) => { const g = this.ctx!.createGain(); g.connect(this.master!); this.buses[b] = g; });
+        (['effects', 'radio', 'music', 'ambience', 'sirens'] as Bus[]).forEach((b) => { const g = this.ctx!.createGain(); g.connect(this.master!); this.buses[b] = g; });
         const n = this.ctx.sampleRate * 2;
         this.noiseBuf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
         const d = this.noiseBuf.getChannelData(0);
@@ -49,6 +53,7 @@ class AudioManager {
     this.buses.radio!.gain.value = s.radio;
     this.buses.music!.gain.value = s.music * 0.5;
     this.buses.ambience!.gain.value = s.ambience * 0.6;
+    this.buses.sirens!.gain.value = (s.sirens ?? 0.55) * 0.7;
     if (s.music > 0.01 && !this.musicTimer) this.startMusic(); else if (s.music <= 0.01) this.stopMusic();
   }
 
@@ -171,7 +176,62 @@ class AudioManager {
   }
   private stopMusic() { if (this.musicTimer) { clearInterval(this.musicTimer); this.musicTimer = null; } }
 
-  shutdown() { this.stopAllRings(); this.stopOffice(); this.stopMusic(); this.setCallAmbience(null); }
+  // ── positional sirens & rotors ────────────────────────────────────────────
+  /** create one continuous siren (or rotor) voice: an oscillator swept by an LFO, panned in the stereo field */
+  private makeVoice(kind: SirenKind, variant: number): LiveVoice | null {
+    const ctx = this.ctx;
+    if (!ctx || !this.buses.sirens || !this.noiseBuf) return null;
+    const gain = ctx.createGain(); gain.gain.value = 0.0001;
+    const pan = ctx.createStereoPanner();
+    gain.connect(pan); pan.connect(this.buses.sirens);
+    const sources: LiveVoice['sources'] = [];
+    if (kind === 'rotor') {
+      const src = ctx.createBufferSource(); src.buffer = this.noiseBuf; src.loop = true;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260;
+      const amp = ctx.createGain(); amp.gain.value = 0.5;
+      const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 12.5;
+      const depth = ctx.createGain(); depth.gain.value = 0.5;
+      lfo.connect(depth); depth.connect(amp.gain);
+      src.connect(lp); lp.connect(amp); amp.connect(gain);
+      src.start(); lfo.start(); sources.push(src, lfo);
+      return { kind, gain, pan, sources };
+    }
+    const osc = ctx.createOscillator();
+    osc.type = kind === 'medical' ? 'square' : 'sawtooth';
+    const lfo = ctx.createOscillator();
+    const depth = ctx.createGain();
+    if (kind === 'police') { const yelp = variant % 2 === 1; osc.frequency.value = 1020; lfo.type = yelp ? 'triangle' : 'sine'; lfo.frequency.value = yelp ? 3.1 : 0.24; depth.gain.value = yelp ? 330 : 380; }
+    else if (kind === 'fire') { osc.frequency.value = 760; lfo.type = 'sine'; lfo.frequency.value = 0.13; depth.gain.value = 360; }
+    else { osc.frequency.value = 865; lfo.type = 'square'; lfo.frequency.value = 0.8; depth.gain.value = 96; }
+    lfo.connect(depth); depth.connect(osc.frequency);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = kind === 'fire' ? 1500 : 2300; lp.Q.value = 0.6;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 380;
+    osc.connect(lp); lp.connect(hp); hp.connect(gain);
+    osc.start(); lfo.start(); sources.push(osc, lfo);
+    return { kind, gain, pan, sources };
+  }
+  /** called by the map every few frames with the emergency vehicles that should be audible right now */
+  updateSirens(list: SirenVoice[]) {
+    if (!this.ctx) { if (!list.length) return; if (!this.ensure()) return; }
+    const ctx = this.ctx!;
+    const now = ctx.currentTime;
+    const want = new Set(list.map((v) => v.id));
+    for (const [id, v] of this.voices) {
+      if (want.has(id)) continue;
+      v.gain.gain.setTargetAtTime(0.0001, now, 0.25);
+      for (const src of v.sources) { try { src.stop(now + 1.2); } catch { /* ignore */ } }
+      this.voices.delete(id);
+    }
+    for (const v of list) {
+      let live = this.voices.get(v.id);
+      if (!live) { const made = this.makeVoice(v.kind, v.variant ?? 0); if (!made) continue; live = made; this.voices.set(v.id, live); }
+      const peak = v.kind === 'rotor' ? 0.5 : v.kind === 'medical' ? 0.045 : 0.06;
+      live.gain.gain.setTargetAtTime(Math.max(0.0001, v.vol * peak), now, 0.2);
+      live.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, v.pan)), now, 0.1);
+    }
+  }
+
+  shutdown() { this.updateSirens([]); this.stopAllRings(); this.stopOffice(); this.stopMusic(); this.setCallAmbience(null); }
 }
 
 export const audio = new AudioManager();

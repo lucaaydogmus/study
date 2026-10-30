@@ -31,7 +31,7 @@ export const CLASS_BY_ID: Record<string, ClassDef> = Object.fromEntries(CLASSES.
 export const CAP_LABEL: Record<Capability, string> = {
   patrol: 'Patrol', traffic: 'Traffic', crowd: 'Crowd control', tactical: 'Tactical', police_supervisor: 'Supervisor', prisoner_transport: 'Prisoner transport',
   fire_suppression: 'Fire suppression', aerial: 'Aerial', rescue: 'Rescue', heavy_rescue: 'Heavy rescue', water_rescue: 'Water rescue', command: 'Command',
-  bls: 'Basic life support', als: 'Advanced life support', transport: 'Patient transport', critical_transport: 'Critical transport', med_supervisor: 'Medical supervisor',
+  bls: 'Basic life support', als: 'Advanced life support', transport: 'Patient transport', critical_transport: 'Critical transport', med_supervisor: 'Medical supervisor', air_support: 'Air support',
 };
 
 /** Capabilities a fleet can plausibly contain at a given rank; used to adapt escalations so a shift never demands the impossible. */

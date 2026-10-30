@@ -4,12 +4,12 @@ import { audio } from '../audio/audioManager';
 import { useApp } from '../store';
 import { Btn, Confirm, DISCLAIMER, Icon } from './common';
 
-function Slider({ label, k }: { label: string; k: 'master' | 'effects' | 'radio' | 'music' | 'ambience' }) {
+function Slider({ label, k }: { label: string; k: 'master' | 'effects' | 'radio' | 'music' | 'ambience' | 'sirens' }) {
   const v = useApp((s) => s.settings[k]);
   const update = useApp((s) => s.updateSettings);
   return (
     <label className="slider"><span>{label}</span>
-      <input type="range" min={0} max={1} step={0.05} value={v} aria-label={`${label} volume`} onChange={(e) => update({ [k]: parseFloat(e.target.value) })} onPointerUp={() => { audio.unlock(); if (k === 'radio') audio.radioBlip(); else audio.dispatchConfirm(); }} />
+      <input type="range" min={0} max={1} step={0.05} value={v} aria-label={`${label} volume`} onChange={(e) => update({ [k]: parseFloat(e.target.value) })} onPointerUp={() => { audio.unlock(); if (k === 'radio') audio.radioBlip(); else if (k === 'sirens') audio.siren(); else audio.dispatchConfirm(); }} />
       <span className="mono">{Math.round(v * 100)}</span>
     </label>
   );
@@ -30,7 +30,7 @@ export function SettingsPanel({ compact }: { compact?: boolean }) {
       <div className="setcol">
         <h3>Audio</h3>
         <Toggle label="Mute everything" k="muted" />
-        <Slider label="Master" k="master" /><Slider label="Effects" k="effects" /><Slider label="Radio" k="radio" /><Slider label="Ambience" k="ambience" /><Slider label="Music" k="music" />
+        <Slider label="Master" k="master" /><Slider label="Effects" k="effects" /><Slider label="Radio" k="radio" /><Slider label="Sirens & rotors" k="sirens" /><Slider label="Ambience" k="ambience" /><Slider label="Music" k="music" />
         <p className="muted small">All audio is synthesised in your browser — phone rings, radio squelch, dispatch tones and call-context ambience. Callers are text-based; there is no microphone and nothing is recorded.</p>
       </div>
       <div className="setcol">

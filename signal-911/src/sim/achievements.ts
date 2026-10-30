@@ -25,7 +25,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'prank_buster', name: 'Not Funny', desc: 'Realise a joke call was real — and save the day.', icon: 'alert', tier: 'silver', check: (c) => incidents(c).some((i) => i.templateId === 'prank_or_real' && i.requires.length > 0 && i.outcome === 'success') },
   { id: 'lifeline', name: 'Lifeline', desc: 'Coach a caller through CPR and get the patient to hospital alive.', icon: 'cross', tier: 'gold', check: (c) => incidents(c).some((i) => i.templateId === 'cardiac_arrest' && i.aid?.kind === 'cpr' && i.aid.fit === 'good' && i.outcome === 'success') },
   { id: 'first_aid', name: 'Talk Them Through It', desc: 'Give a caller the right first-aid instruction.', icon: 'phone', tier: 'bronze', check: (c) => (c.st?.stats.aidGood ?? 0) >= 1 },
-  { id: 'code2', name: 'No Need to Rush', desc: 'Send a unit Code 2 (no lights) to a low-priority call.', icon: 'car', tier: 'bronze', check: (c) => !!c.st && Object.values(c.st.units).some((u) => u.code === 2 && u.deployments > 0) },
+  { id: 'code2', name: 'No Need to Rush', desc: 'Send a unit Code 2 (no lights) to a low-priority call.', icon: 'car', tier: 'bronze', check: (c) => !!c.st?.flags.code2 },
   { id: 'clean_close', name: 'Nothing to See Here', desc: 'Close a false alarm without sending a unit.', icon: 'check', tier: 'bronze', check: (c) => (c.st?.stats.cleanFalseAlarms ?? 0) >= 1 },
   { id: 'read_back', name: 'Read-Back Pro', desc: 'Confirm 25 locations by reading them back.', icon: 'pin', tier: 'silver', check: (c) => tot(c, 'verifies', 'verifiedOk') >= 25 },
   { id: 'first_pursuit', name: 'Hot Pursuit', desc: 'Stop a fleeing vehicle.', icon: 'car', tier: 'bronze', check: (c) => tot(c, 'pursuits', 'pursuitsCaught') >= 1 },
@@ -50,6 +50,11 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'campaign', name: 'The Whole Story', desc: 'Complete the campaign.', icon: 'book', tier: 'gold', check: (c) => CHAPTERS.every((ch) => c.profile.campaign.completed.includes(ch.id)) },
   { id: 'endless5', name: 'Endurance', desc: 'Survive 5 shifts in one Endless run.', icon: 'bolt', tier: 'silver', check: (c) => Math.max(c.profile.endless.bestWave, c.profile.endless.current.wave) >= 5 },
   { id: 'daily', name: 'Daily Habit', desc: 'Complete a Daily Challenge.', icon: 'clock', tier: 'bronze', check: (c) => Object.keys(c.profile.daily ?? {}).length >= 1 },
+  { id: 'eye_sky', name: 'Eye in the Sky', desc: 'Relay the helicopter’s position to ground units 5 times in one shift.', icon: 'heli', tier: 'silver', check: (c) => (c.st?.stats.heliRelays ?? 0) >= 5 },
+  { id: 'records', name: 'Ten-Twenty-Nine', desc: 'Give officers 10 correct records returns in one shift.', icon: 'terminal', tier: 'silver', check: (c) => (c.st?.stats.checksOk ?? 0) >= 10 },
+  { id: 'touchdown', name: 'Wheels Down', desc: 'Have crews in position before an emergency landing.', icon: 'clock', tier: 'silver', check: (c) => incidents(c).some((i) => i.deadlineMet === true) },
+  { id: 'heist', name: 'Box Them In', desc: 'Catch the getaway van after a bank robbery.', icon: 'shield', tier: 'gold', check: (c) => incidents(c).some((i) => i.templateId === 'getaway' && i.outcome === 'success') },
+  { id: 'guardian', name: 'Guardian Angel', desc: 'Keep 3 patients alive with your instructions in one shift.', icon: 'heart', tier: 'gold', check: (c) => (c.st?.stats.guidanceSaves ?? 0) >= 3 },
   { id: 'daily7', name: 'Regular', desc: 'Complete 7 different Daily Challenges.', icon: 'clock', tier: 'gold', check: (c) => Object.keys(c.profile.daily ?? {}).length >= 7 },
 ];
 export const ACHIEVEMENT_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a])) as Record<string, AchievementDef>;

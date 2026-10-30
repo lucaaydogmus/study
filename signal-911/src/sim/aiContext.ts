@@ -18,7 +18,9 @@ export function buildAiContext(engine: GameEngine, callId: string, lineIds: numb
   const events: string[] = [];
   if (call.isCallback) events.push('this is a callback — the caller already phoned earlier');
   if (assigned.some((u) => u.status === 'ON_SCENE')) events.push('responders have arrived and the caller can see them');
-  else if (assigned.length) events.push('responders have been sent but have not arrived yet');
+  else if (assigned.length && call.heardSirens) events.push('responders are on the way and the caller can now hear sirens getting close');
+  else if (assigned.length) events.push('responders have been sent but are still some distance away — the caller cannot hear or see them yet');
+  if (inc.deadlineAt != null && inc.deadlineMet == null) events.push(`the critical moment happens in about ${Math.max(0, Math.round(inc.deadlineAt - st.time))} seconds`);
   if (call.promises.length) events.push('the dispatcher promised that help is coming');
   if (inc.stage > 0) events.push('the situation has got worse since the call began');
   if (inc.aid) events.push(`the caller is doing what the dispatcher instructed: ${inc.aid.kind}`);

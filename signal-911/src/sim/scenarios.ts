@@ -1,5 +1,5 @@
 // Handcrafted shifts: campaign chapters, scenario challenges and the interactive tutorial.
-import type { CityEventType, Difficulty, Objective, ShiftConfig, WeatherType } from './types';
+import type { CityEventType, Difficulty, Objective, Service, ShiftConfig, WeatherType } from './types';
 import { Rng, hashString } from './rng';
 import { CONTRACTS, MODIFIERS } from './extras';
 
@@ -58,6 +58,9 @@ export const CHAPTERS: Chapter[] = [
 export interface ScenarioDef {
   id: string; title: string; tagline: string; description: string; difficulty: Difficulty; minutes: number; accent: string;
   config: Partial<ShiftConfig>; reducedFleet?: boolean;
+  /** extra stations ([service, district]) and vehicles ([type, station id]) for this set piece */
+  fleet?: { stations?: Array<[Service, string]>; units?: Array<[string, string]> };
+  /** marks the new set-piece scenarios in the menu */ special?: boolean;
 }
 export const SCENARIOS: ScenarioDef[] = [
   { id: 'night_shift', title: 'The Night Shift', tagline: 'Few units. Long drives. Quiet city — until it isn’t.', description: 'Half your crews are off sick. It is 2 AM, fog is rolling in, and the calls start slow before piling up.', difficulty: 'hard', minutes: 12, accent: '#4A9CD6',
@@ -68,6 +71,22 @@ export const SCENARIOS: ScenarioDef[] = [
     config: { startHour: 18, weather: 'heat', incidentRate: 1.1, events: [{ type: 'festival', at: 20, duration: 660 }], objectives: [obj('a', 'Resolve 8 incidents', 'resolved', 8), obj('b', 'Shift score of 65+', 'grade', 65)] } },
   { id: 'power_failure', title: 'Power Failure', tagline: 'Lights out across the city.', description: 'A grid failure blacks out most districts. Lifts stall, signals die and electrical fires erupt.', difficulty: 'hard', minutes: 12, accent: '#D65353',
     config: { startHour: 21, weather: 'clear', incidentRate: 1.15, events: [{ type: 'blackout', at: 20, duration: 640 }], objectives: [obj('a', 'Resolve 8 incidents', 'resolved', 8), obj('b', 'Answer every call', 'no_missed', 0)] } },
+  { id: 'the_heist', title: 'The Heist', special: true, tagline: 'Armed robbers, a getaway van and a city to box in.', description: 'A crew has been hitting banks across Ravenport. Today they go for the Savings Bank in the Financial District. Get tactical units there fast — and when they run, put the helicopter on the van and talk your patrols onto it.', difficulty: 'hard', minutes: 12, accent: '#4A9CD6',
+    config: { startHour: 14, weather: 'clear', incidentRate: 0.85, districts: ['financial', 'downtown', 'oldtown', 'riverside', 'westres', 'university'], forced: [{ at: 35, template: 'bank_robbery', district: 'financial' }, { at: 230, template: 'carjacking', district: 'downtown' }, { at: 400, template: 'kidnapping', district: 'westres' }, { at: 520, template: 'hostage_barricade', district: 'riverside' }],
+      objectives: [obj('a', 'Catch 2 fleeing suspects', 'pursuits', 2), obj('b', 'Relay air support to ground units 3 times', 'relays', 3, true), obj('c', 'No casualties', 'no_deaths', 0)] },
+    fleet: { units: [['tactical', 'police-downtown'], ['police_supervisor', 'police-westres'], ['patrol', 'police-westres']] } },
+  { id: 'code_red', title: 'Code Red', special: true, tagline: 'Shots fired. A bomb threat. Phones exploding.', description: 'Something is very wrong in Ravenport today. A shooting at a shopping centre, a threat against the central station and casualties everywhere. Coach callers to hide, stop bleeding and keep people alive until your crews reach them.', difficulty: 'hard', minutes: 13, accent: '#D65353',
+    config: { startHour: 12.5, weather: 'clear', incidentRate: 0.65, districts: ['westres', 'downtown', 'oldtown', 'riverside', 'financial', 'university'], forced: [{ at: 45, template: 'active_shooter', district: 'westres' }, { at: 300, template: 'bomb_threat', district: 'downtown' }, { at: 470, template: 'house_explosion', district: 'oldtown' }, { at: 600, template: 'crowd_crush', district: 'university' }],
+      objectives: [obj('a', 'Resolve 7 incidents', 'resolved', 7), obj('b', 'Give 3 correct life-saving instructions', 'aid_good', 3), obj('c', 'No casualties', 'no_deaths', 0, true)] },
+    fleet: { units: [['tactical', 'police-downtown'], ['med_supervisor', 'medical-downtown'], ['advanced_ambulance', 'medical-westres'], ['advanced_ambulance', 'medical-downtown'], ['command', 'fire-downtown'], ['patrol', 'police-westres']] } },
+  { id: 'airport_alert', title: 'Airport Alert', special: true, tagline: 'An airliner on fire, three minutes out.', description: 'Ravenport International is having the worst day of its life. Stage your fire and medical units on the runway before every emergency landing — the aircraft will not wait for you.', difficulty: 'standard', minutes: 12, accent: '#9a8cd6',
+    config: { startHour: 7.5, weather: 'fog', incidentRate: 0.75, districts: ['airport', 'northsub', 'financial', 'eastwood', 'downtown'], forced: [{ at: 30, template: 'aircraft_emergency', district: 'airport' }, { at: 210, template: 'unruly_passenger', district: 'airport' }, { at: 300, template: 'bomb_threat', district: 'airport' }, { at: 410, template: 'airport_medical', district: 'airport' }, { at: 520, template: 'aircraft_emergency', district: 'airport' }],
+      objectives: [obj('a', 'Have crews in position for every landing', 'deadlines', 2), obj('b', 'Resolve 7 incidents', 'resolved', 7), obj('c', 'No casualties', 'no_deaths', 0, true)] },
+    fleet: { stations: [['fire', 'airport'], ['medical', 'airport'], ['police', 'airport']], units: [['engine', 'fire-airport'], ['engine', 'fire-airport'], ['ladder', 'fire-airport'], ['advanced_ambulance', 'medical-airport'], ['ambulance', 'medical-airport'], ['patrol', 'police-airport'], ['tactical', 'police-airport']] } },
+  { id: 'eye_in_the_sky', title: 'Eye in the Sky', special: true, tagline: 'Night. Fleeing cars. One helicopter.', description: 'Car thieves are running riot after dark. Ground units keep losing them in traffic — get Air One overhead, listen to the observer and talk your patrols onto the intercept.', difficulty: 'standard', minutes: 11, accent: '#E5AC4D',
+    config: { startHour: 22, weather: 'clear', incidentRate: 0.7, districts: ['downtown', 'oldtown', 'westres', 'riverside', 'financial', 'southside'], forced: [{ at: 30, template: 'pursuit', district: 'downtown' }, { at: 170, template: 'carjacking', district: 'oldtown' }, { at: 320, template: 'pursuit', district: 'riverside' }, { at: 430, template: 'kidnapping', district: 'westres' }, { at: 540, template: 'street_racing', district: 'southside' }],
+      objectives: [obj('a', 'Catch 3 fleeing suspects', 'pursuits', 3), obj('b', 'Relay air support 4 times', 'relays', 4), obj('c', 'Answer 3 officer records requests correctly', 'checks', 3, true)] },
+    fleet: { units: [['patrol', 'police-westres'], ['motorcycle', 'police-westres'], ['traffic', 'police-downtown']] } },
   { id: 'rush_hour', title: 'Rush Hour', tagline: 'Every route is a crawl.', description: 'Peak traffic and rain. Collisions climb as ambulances crawl. Positioning units well before the call is your edge.', difficulty: 'standard', minutes: 10, accent: '#98A6B5',
     config: { startHour: 17, weather: 'rain', incidentRate: 1.1, events: [{ type: 'rush_hour', at: 10, duration: 560 }], objectives: [obj('a', 'Resolve 8 incidents', 'resolved', 8), obj('b', 'Average response under 160 s', 'avg_response', 160)] } },
 ];
