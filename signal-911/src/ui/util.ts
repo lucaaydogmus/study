@@ -1,0 +1,1 @@
+export const fmtMoneyShort = (n: number) => { const a = Math.abs(n); const s = a >= 1e6 ? `${(a / 1e6).toFixed(2)}M` : a >= 1e4 ? `${Math.round(a / 1000)}k` : a.toLocaleString('en-US'); return (n < 0 ? '−$' : '$') + s; };
