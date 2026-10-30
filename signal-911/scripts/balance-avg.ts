@@ -1,0 +1,50 @@
+// Averages a competent bot over many career seeds: npx vite-node scripts/balance-avg.ts
+import { GameEngine, DT, recommendFor } from '../src/sim/engine';
+import { careerConfig, newProfile, setupFromProfile, computeResult } from '../src/sim/profile';
+import { rankForXp } from '../src/sim/progression';
+
+function play(rank: number, seed: number) {
+  const p = newProfile('Bot', seed);
+  p.xp = [0, 0, 450, 1200, 2400, 4200, 6800, 10000][rank]; p.rank = rankForXp(p.xp);
+  p.flags.duration = 15 * 60;
+  const e = GameEngine.fromConfig(careerConfig(p, { seed }), setupFromProfile(p));
+  const st = e.state;
+  let guard = 0;
+  while (st.phase === 'running' && guard++ < 20000) {
+    for (const c of Object.values(st.calls)) {
+      if (c.state === 'ringing' && !st.activeCallId && st.time - c.ringStart > 3) e.answerCall(c.id);
+      else if (c.state === 'active') {
+        const inc = st.incidents[c.incidentId];
+        const since = st.time - (c.answeredAt ?? st.time);
+        if (c.pending.length === 0 && c.transcript.length) {
+          const order = ['address', 'landmark', 'injuries', 'fire', 'trapped', 'suspect', 'conscious', 'breathing', 'safe', 'promise'];
+          const next = order.find((k) => !c.asked[k] && !(k === 'landmark' && inc.reportedNode !== null));
+          if (next && since > 2) e.ask(c.id, { intent: next as never });
+          else if (!inc.aid && inc.facts.some((f) => f.key === 'breathing' && f.value === false)) e.ask(c.id, { intent: 'inst_cpr' as never });
+          if (!c.trace && since > 6 && inc.reportedNode === null) e.startTrace(c.id);
+        }
+        const best = c.heard.filter((h) => h.reliability !== 'contradicted').sort((a, b) => (b.reliability === 'sure' ? 1 : 0) - (a.reliability === 'sure' ? 1 : 0))[0];
+        if (best && (inc.reportedNode === null || (best.reliability === 'sure' && inc.reportedNode !== best.nodeId))) e.setIncidentLocation(inc.id, best.nodeId, 'candidate');
+        if ((since > 28 && inc.reportedNode !== null) || since > 45) e.endCall(c.id);
+      }
+    }
+    for (const inc of Object.values(st.incidents)) {
+      if (inc.reportedNode === null || ['RESOLVED', 'CLOSED'].includes(inc.status) || inc.hidden || inc.templateId === 'traffic_stop') continue;
+      for (const r of recommendFor(inc, st.rank)) {
+        const have = inc.assignedUnits.filter((id) => st.units[id]?.capabilities.includes(r.cap)).length;
+        for (let k = have; k < r.n; k++) {
+          const u = Object.values(st.units).filter((x) => x.status === 'AVAILABLE' && x.type !== 'helicopter' && x.capabilities.includes(r.cap) && !inc.assignedUnits.includes(x.id)).sort((a, b) => (e.estimate(a.id, inc.reportedNode!)?.eta ?? 1e9) - (e.estimate(b.id, inc.reportedNode!)?.eta ?? 1e9))[0];
+          if (u) e.dispatch(u.id, inc.id);
+        }
+      }
+    }
+    for (const r of st.requests ?? []) if (r.status === 'open' && st.time >= r.at + 8) { e.runRequest(r.id); e.answerRequest(r.id, e.rng.chance(0.85) ? r.truth : 'clear', r.db.findIndex((h) => h.match)); }
+    e.step(DT);
+  }
+  return { score: st.scoreBreakdown!.total, cas: st.stats.casualties, money: computeResult(st).money, calls: st.stats.callsReceived };
+}
+for (const rank of [1, 3, 5]) {
+  const rows = Array.from({ length: 10 }, (_, i) => play(rank, 1000 + i * 37));
+  const avg = (k: 'score' | 'cas' | 'money' | 'calls') => Math.round(rows.reduce((s, r) => s + r[k], 0) / rows.length * 10) / 10;
+  console.log(`rank ${rank}: score ${avg('score')} cas ${avg('cas')} money ${avg('money')} calls ${avg('calls')}`);
+}

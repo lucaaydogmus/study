@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { audio } from '../audio/audioManager';
-import { GameEngine, DIFFICULTY } from '../sim/engine';
+import { GameEngine, DIFFICULTY, gameClock } from '../sim/engine';
 import { temporarySetup } from '../sim/profile';
 import { CHAPTERS, SCENARIOS, ALL_DISTRICTS, baseConfig } from '../sim/scenarios';
 import { getCity } from '../sim/city';
@@ -44,42 +44,118 @@ function autopilot(e: GameEngine) {
     }
   }
 }
-export function DemoMap({ dim = true }: { dim?: boolean }) {
-  const engine = useDemoEngine();
+export function DemoMap({ dim = true, engine: given, cinematic = false, sounds = false }: { dim?: boolean; engine?: GameEngine; cinematic?: boolean; sounds?: boolean }) {
+  const own = useDemoEngine();
+  const engine = given ?? own;
+  const [focus, setFocus] = useState<{ x: number; y: number; zoom?: number; key: number } | null>(null);
   useEffect(() => {
     let raf = 0, last = performance.now(), acc = 0;
     const loop = (now: number) => { raf = requestAnimationFrame(loop); const dt = (now - last) / 1000; last = now; engine.update(dt); acc += dt; if (acc > 1) { acc = 0; autopilot(engine); } if (engine.state.time > 1400 || engine.state.phase === 'ended') { engine.state.time = 0; } };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, [engine]);
+  // a slow camera drifting between whatever is happening in the city
+  useEffect(() => {
+    if (!cinematic) return;
+    const city = getCity();
+    let k = 0;
+    const pick = () => {
+      const st = engine.state;
+      const busy = Object.values(st.units).filter((u) => ['EN_ROUTE', 'ON_SCENE', 'TRANSPORTING'].includes(u.status));
+      const lm = city.landmarks[(k * 7) % city.landmarks.length];
+      const target = busy.length && k % 2 === 0 ? busy[k % busy.length] : city.nodes[lm.nodeId];
+      setFocus({ x: target.x, y: target.y, zoom: 1.85 + (k % 3) * 0.35, key: ++k });
+    };
+    pick();
+    const t = window.setInterval(pick, 9000);
+    return () => window.clearInterval(t);
+  }, [engine, cinematic]);
   return (
     <div className={`demo ${dim ? 'dim' : ''}`} aria-hidden="true">
-      <MapView engine={engine} layer="normal" mode="select" selected={{ kind: null, id: null }} onSelect={() => undefined} reduceMotion={false} lockedLabel={false} />
+      <MapView engine={engine} layer="normal" mode="select" selected={{ kind: null, id: null }} onSelect={() => undefined} reduceMotion={false} lockedLabel={false} focus={focus} camEase={cinematic ? 0.008 : undefined} sounds={sounds} showIncidents />
     </div>
   );
 }
 
+function useClockTick(ms = 1000) { const [, set] = useState(0); useEffect(() => { const t = window.setInterval(() => set((x) => x + 1), ms); return () => window.clearInterval(t); }, [ms]); }
+
 export function MainMenu() {
-  const { profile, saveList, hasShiftSnapshot, go, resumeShift } = useApp();
+  const { profile, saveList, hasShiftSnapshot, go, resumeShift, settings } = useApp();
   const auto = saveList.find((s) => s.slot === 'auto');
   const loadSlot = useApp((s) => s.loadSlot);
   const startTutorial = useApp((s) => s.startTutorial);
+  const startDaily = useApp((s) => s.startDaily);
+  const engine = useMemo(() => {
+    const cfg = baseConfig({ title: 'Demo', briefing: '', durationSec: 99999, incidentRate: 1.5, seed: 31337, weather: 'clear', startHour: 21.3, ignoreGovernor: false, districts: ALL_DISTRICTS });
+    const e = GameEngine.fromConfig(cfg, temporarySetup({ rank: 7 }));
+    e.setSpeed(1.5);
+    for (let i = 0; i < 200; i++) e.step(0.5);
+    return e;
+  }, []);
+  const [started, setStarted] = useState(() => { try { return sessionStorage.getItem('signal911.started') === '1'; } catch { return false; } });
+  useClockTick(1000);
+  const start = () => {
+    if (started) return;
+    audio.unlock(); audio.radioBlip(); window.setTimeout(() => audio.dispatchConfirm(), 220);
+    try { sessionStorage.setItem('signal911.started', '1'); } catch { /* ignore */ }
+    setStarted(true);
+  };
+  useEffect(() => { if (started) return; const k = () => start(); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [started]);
+  const st = engine.state;
+  const live = Object.values(st.incidents).filter((i) => !['RESOLVED', 'CLOSED'].includes(i.status) && !i.hidden).length;
+  const rolling = Object.values(st.units).filter((u) => u.status !== 'AVAILABLE' || u.route.length).length;
+  const feed = st.radio.slice(-5).reverse();
+  const daily = dailyConfig().config;
+  const dailyDone = !!profile?.daily?.[todayKey()];
+  const cont = profile || auto;
+  const tile = (icon: string, title: string, desc: string, onClick: () => void, kind = '') => (
+    <button className={`htile ${kind}`} onClick={() => { audio.click(); onClick(); }}>
+      <span className="ht-ic"><Icon n={icon} size={20} /></span>
+      <span className="ht-main"><b>{title}</b><span>{desc}</span></span>
+      <Icon n="chevR" size={14} className="ht-go" />
+    </button>
+  );
   return (
-    <div className="menu">
-      <DemoMap />
-      <div className="menu-panel">
-        <div className="title"><span className="logo big">◉</span><div><h1>SIGNAL 911</h1><div className="sub">EMERGENCY DISPATCH SIMULATOR · RAVENPORT</div></div></div>
-        <nav className="menu-list" aria-label="Main menu">
-          {hasShiftSnapshot && <Btn kind="success" size="lg" icon="play" onClick={() => resumeShift()}>Resume interrupted shift</Btn>}
-          {(profile || auto) && <Btn kind="primary" size="lg" icon="play" onClick={async () => { if (profile) go('hub'); else await loadSlot('auto'); }}>Continue career{profile ? ` — ${profile.name}` : auto ? ` — ${auto.name}` : ''}</Btn>}
-          <Btn size="lg" kind={profile || auto ? 'default' : 'primary'} icon="plus" onClick={() => go('newCareer')}>New career</Btn>
-          <Btn size="lg" icon="save" onClick={() => go('load')}>Load career</Btn>
-          <Btn size="lg" icon="layers" onClick={() => go('modes')}>Game modes</Btn>
-          <Btn size="lg" icon="book" onClick={() => startTutorial()}>Tutorial</Btn>
-          <Btn size="lg" icon="gear" onClick={() => go('settings')}>Settings</Btn>
-        </nav>
-        <p className="disclaimer">{DISCLAIMER}</p>
+    <div className={`home ${started ? 'started' : ''}`}>
+      <DemoMap engine={engine} cinematic dim={false} sounds={started && !settings.muted} />
+      <div className="home-shade" />
+      <div className="home-top">
+        <span className="live"><i /> LIVE</span>
+        <span>RAVENPORT CITY</span><span className="sep" />
+        <span className="mono">{gameClock(st).slice(0, 5)}</span><span className="sep" />
+        <span>{live} active incident{live === 1 ? '' : 's'}</span><span className="sep" />
+        <span>{rolling} units on the road</span>
+        <span className="grow" />
+        <button className="icon-btn" onClick={() => go('settings')} aria-label="Settings"><Icon n="gear" size={16} stroke={false} /></button>
       </div>
+      <div className="home-hero">
+        <div className="home-mark" aria-hidden="true"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" /><circle cx="60" cy="60" r="38" /><circle cx="60" cy="60" r="22" /><path d="M60 60 L60 6" className="sweep" /><circle cx="60" cy="60" r="5" className="dot" /></svg></div>
+        <h1 className="home-title">SIGNAL<span>911</span></h1>
+        <div className="home-sub">EMERGENCY DISPATCH SIMULATOR</div>
+        <div className="lightbar" aria-hidden="true"><i className="r" /><i className="b" /></div>
+      </div>
+      <nav className="home-menu" aria-label="Main menu">
+        {hasShiftSnapshot && tile('play', 'Resume shift', 'Pick up the shift you left mid-way', () => void resumeShift(), 'hot')}
+        {cont && tile('play', `Continue career`, profile ? `${profile.name} · ${rankDef(profile.rank).title} · ${fmtMoney(profile.money)}` : `${auto!.name} · rank ${auto!.rank}`, () => { if (profile) go('hub'); else void loadSlot('auto'); }, hasShiftSnapshot ? '' : 'primary')}
+        {tile('plus', 'New career', 'Start as a trainee dispatcher in Ravenport', () => go('newCareer'), cont ? '' : 'primary')}
+        {tile('layers', 'Game modes', 'Scenarios, free play, endless, campaign', () => go('modes'))}
+        {tile('save', 'Load career', 'Continue another save', () => go('load'))}
+        {tile('book', 'Tutorial', 'Five minutes: answer, locate, dispatch', () => startTutorial())}
+      </nav>
+      <aside className="home-side">
+        <div className="hcard radiofeed">
+          <div className="hc-head"><span className="wave" aria-hidden="true"><i /><i /><i /><i /><i /></span><b>CITY RADIO</b><span className="grow" /><span className="mono small">CH 1</span></div>
+          {feed.map((m) => <div key={m.id} className={`rf ${m.kind}`}><span className="rf-from">{m.from}</span><span className="rf-text">{m.text}</span></div>)}
+        </div>
+        <div className="hcard daily">
+          <div className="hc-head"><Icon n="clock" size={14} /><b>DAILY CHALLENGE</b><span className="grow" />{dailyDone && <Badge tone="green">DONE</Badge>}</div>
+          <div className="small muted">{todayKey()} · <Icon n={weatherIcon(daily.weather)} size={11} /> {WEATHER_LABEL[daily.weather]} · {DIFFICULTY[daily.difficulty].label}</div>
+          <div className="small">Same city, same calls for everyone today.{daily.storyline ? ' A major incident is coming.' : ''}</div>
+          <Btn size="sm" kind="primary" icon="play" onClick={() => startDaily()}>Play today’s shift</Btn>
+        </div>
+      </aside>
+      <footer className="home-foot"><span>{DISCLAIMER}</span></footer>
+      {!started && <button className="press-start" onClick={start} autoFocus><span className="ps-title">SIGNAL<b>911</b></span><span className="ps-key">PRESS ANY KEY</span><span className="ps-note">Headphones recommended · sirens are positional</span></button>}
       <Toast />
     </div>
   );

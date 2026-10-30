@@ -4,7 +4,7 @@ import { evaluateObjectives, computeScore, averageOf } from './scoring';
 import { Rng } from './rng';
 import { buildStartingFleet, UNIT_TYPE_BY_ID, UPGRADE_BY_ID, hireCost, makePersonnel, makeStation, makeUnit, BUILD_STATION_COST, primarySkill, personnelSalary } from './fleet';
 import { rankDef, rankForXp, RANKS } from './progression';
-import { ALL_DISTRICTS, CHAPTERS, baseConfig } from './scenarios';
+import { ALL_DISTRICTS, CHAPTERS, baseConfig, rollStoryline } from './scenarios';
 import { CONTRACT_BY_ID, contractProgress, modProduct, rollExtras } from './extras';
 import type { CityState, GameState, Personnel, Service, ShiftConfig, ShiftScore, Station, Unit, UpgradeLevels } from './types';
 import type { ShiftSetup } from './engine';
@@ -115,12 +115,12 @@ export function careerConfig(p: Profile, over: Partial<ShiftConfig> = {}): Shift
   const rankRate = 0.8 + rank * 0.07;
   const seed = (p.counters.seed + p.counters.shift * 7919) % 2 ** 31;
   const extras = rollExtras(seed, rank);
-  return baseConfig({
+  return rollStoryline(baseConfig({
     mode: 'career', title: `Shift ${p.counters.shift}`, briefing: `${rankDef(rank).title} — routine shift`, difficulty: p.flags.difficulty, durationSec: p.flags.duration,
     districts: unlockedDistricts(rank), incidentRate: rankRate, startHour: [8, 12, 16, 20, 2][p.counters.shift % 5], weather: (['clear', 'clear', 'rain', 'clear', 'fog', 'heat', 'clear'] as const)[p.counters.shift % 7],
     seed, modifiers: extras.modifiers, contracts: extras.contracts,
     ...over,
-  });
+  }), rank, seed);
 }
 
 export interface ShiftResult {

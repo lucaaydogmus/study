@@ -49,7 +49,7 @@ function play(id: string, seed: number, smart: boolean) {
         if (inc.mover?.heliId && st.time - (inc.relayedAt ?? -99) > 12) e.relayAir(inc.id);
       }
     }
-    if (smart) for (const r of st.requests) if (r.status === 'open' && st.time - r.at > 6 && st.time >= r.at) { e.runRequest(r.id); e.answerRequest(r.id, r.hits.find((h) => h.match)!.flag); }
+    if (smart) for (const r of st.requests) if (r.status === 'open' && st.time - r.at > 6 && st.time >= r.at) { e.runRequest(r.id); e.answerRequest(r.id, r.truth, r.db.findIndex((h) => h.match)); }
     e.step(DT);
   }
   if (process.env.DETAIL === id) for (const i of Object.values(e.state.incidents)) if (i.casualties || i.outcome === 'failed') console.log('   ', i.templateId, i.outcome, 'cas', i.casualties, 'stage', i.stage, 'surv', i.survival?.toFixed(0), 'first', i.firstArrivalAt && Math.round(i.firstArrivalAt - i.createdAt), 'loc', i.reportedNode !== null, (i.consequences ?? []).join('; '));

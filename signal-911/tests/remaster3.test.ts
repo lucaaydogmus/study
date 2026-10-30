@@ -110,9 +110,17 @@ describe('remaster 3', () => {
     answer(e, inc); locate(e, inc);
     const cop = Object.values(e.state.units).find((u) => u.capabilities.includes('patrol') && !isAir(u))!;
     const r = (e as unknown as { officerRequest: (...a: unknown[]) => import('../src/sim/types').OfficerRequest }).officerRequest(cop, inc, 'person', false);
-    expect(r.hits.some((h) => h.match)).toBe(true);
-    expect(e.runRequest(r.id)!.ran).toBe(true);
-    const res = e.answerRequest(r.id, r.truth);
+    expect(r.db.some((h) => h.match)).toBe(true);
+    // typing the officer's details finds the subject; a wrong date of birth does not
+    const g = r.given as { last: string; first: string; dob: string; sex: string };
+    const found = e.searchRequest(r.id, { last: g.last.toLowerCase(), first: g.first, dob: g.dob });
+    expect(found.some((i) => r.db[i].match)).toBe(true);
+    expect(e.searchRequest(r.id, { last: g.last, first: g.first, dob: '01/01/1901' }).some((i) => r.db[i].match)).toBe(false);
+    expect(r.ran).toBe(true);
+    // relaying a namesake's record is caught by the officer and the request stays open
+    const wrong = r.db.findIndex((h) => !h.match);
+    if (wrong >= 0) { expect(e.answerRequest(r.id, r.db[wrong].flag, wrong).mismatch).toBe(true); expect(r.status).toBe('open'); }
+    const res = e.answerRequest(r.id, r.truth, r.db.findIndex((h) => h.match));
     expect(res.correct).toBe(true);
     expect(e.state.stats.checksOk).toBe(1);
     expect(e.answerRequest(r.id, r.truth).ok).toBe(false);

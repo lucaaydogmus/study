@@ -8,8 +8,9 @@ import { useApp } from '../store';
 import { Badge, Bar, Btn, Icon, fmtEta, fmtTime, SERVICE_ICON } from './common';
 import { StatusBadge } from './RightPanel';
 import { DeadlineBanner, LifeMeter } from './Ops';
+import { TraceStatus } from './Field';
 
-export type BottomTab = 'call' | 'radio' | 'units' | 'log' | 'transcripts';
+export type BottomTab = 'call' | 'radio' | 'units' | 'hospitals' | 'log' | 'transcripts';
 
 export function BottomPanel({ engine, tab, setTab, openDispatch, tutorialHint }: { engine: GameEngine; tab: BottomTab; setTab: (t: BottomTab) => void; openDispatch: () => void; tutorialHint?: string }) {
   const st = engine.state;
@@ -20,7 +21,7 @@ export function BottomPanel({ engine, tab, setTab, openDispatch, tutorialHint }:
   const unread = st.radio.length - radioSeen;
   const tabs: Array<{ id: BottomTab; label: string; icon: string; badge?: number }> = [
     { id: 'call', label: 'Call', icon: 'phone', badge: live || undefined }, { id: 'radio', label: 'Radio', icon: 'radio', badge: tab === 'radio' ? undefined : Math.min(unread, 99) || undefined },
-    { id: 'units', label: 'Units', icon: 'car' }, { id: 'log', label: 'Timeline', icon: 'clock' }, { id: 'transcripts', label: 'Transcripts', icon: 'note' },
+    { id: 'units', label: 'Units', icon: 'car' }, { id: 'hospitals', label: 'Hospitals', icon: 'hosp' }, { id: 'log', label: 'Timeline', icon: 'clock' }, { id: 'transcripts', label: 'Transcripts', icon: 'note' },
   ];
   return (
     <div className="bottom">
@@ -37,6 +38,7 @@ export function BottomPanel({ engine, tab, setTab, openDispatch, tutorialHint }:
         {tab === 'call' && <CallConsole engine={engine} setTab={setTab} openDispatch={openDispatch} />}
         {tab === 'radio' && <RadioLog engine={engine} />}
         {tab === 'units' && <UnitRoster engine={engine} />}
+        {tab === 'hospitals' && <HospitalBoard engine={engine} />}
         {tab === 'log' && <Timeline engine={engine} />}
         {tab === 'transcripts' && <Transcripts engine={engine} />}
       </div>
@@ -93,6 +95,7 @@ function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngine; set
           </div>
         </div>
         <LifeMeter inc={inc} compact />
+        <TraceStatus call={call} />
         {inc.deadlineAt != null && inc.deadlineMet == null && <DeadlineBanner engine={engine} inc={inc} />}
         <div className="transcript" ref={scroll} aria-live="polite" aria-label="Call transcript">
           {call.transcript.map((l, i) => (
@@ -123,7 +126,8 @@ function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngine; set
           <Btn size="sm" kind="danger" icon="phoneoff" onClick={() => { engine.endCall(call.id); bump(); }} title="End call (E)">End call</Btn>
           <Btn size="sm" icon="hold" onClick={() => { engine.holdCall(call.id); bump(); }} title="Hold call (H)">Hold</Btn>
           <Btn size="sm" icon="transfer" onClick={() => { const m = engine.transferCall(call.id); useApp.getState().showToast(m, 'info'); bump(); }} title={inc.truth.outside ? 'Hand the caller to the neighbouring agency' : 'Hand the call to a dispatch assistant'}>{transferLabel}</Btn>
-          <Btn size="sm" icon="pin" disabled={(st.upgrades.ali ?? 0) === 0 || call.aliUsed} onClick={() => { const m = engine.requestLocation(call.id); useApp.getState().showToast(m, 'info'); bump(); }} title="Automatic caller location lookup">Locate caller</Btn>
+          <Btn size="sm" icon="pin" disabled={!!call.trace} onClick={() => { const r = engine.startTrace(call.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }} title="Ask the carrier for the caller's location — keep them on the line while it refines">{call.trace ? (call.trace.done ? 'Traced' : 'Tracing…') : 'Trace call'}</Btn>
+          {call.profile.language && <Btn size="sm" kind={call.interpreter ? 'default' : 'primary'} icon="users" disabled={!!call.interpreter} onClick={() => { const r = engine.requestInterpreter(call.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }} title="Conference a Language Line interpreter">{call.interpreter === 'on' ? 'Interpreter on' : call.interpreter ? 'Connecting…' : `${call.profile.language} interpreter`}</Btn>}
           <Btn size="sm" icon="map" onClick={openDispatch} title="Open the incident and dispatch panel">Dispatch panel</Btn>
           <Btn size="sm" icon="note" onClick={() => setTab('transcripts')} title="View full transcript">Transcript</Btn>
         </div>
@@ -150,11 +154,40 @@ function RadioLog({ engine }: { engine: GameEngine }) {
         {msgs.map((m) => (
           <div key={m.id} className={`rline ${m.kind}`}>
             <span className="mono tt">{m.clock}</span>
-            <span className="rfrom">{m.from}</span>
+            <span className="rfrom">{m.from}{m.to ? <span className="rto"> → {m.to}</span> : null}</span>
             <span>{m.text}</span>
           </div>
         ))}
         {!msgs.length && <p className="muted pad">No radio traffic yet. Select a unit and use “Radio check” for a status report.</p>}
+      </div>
+    </div>
+  );
+}
+
+/** live hospital capacity: departments, ER load and diversions, as of the last bed-board refresh */
+function HospitalBoard({ engine }: { engine: GameEngine }) {
+  const st = engine.state;
+  const bump = useApp((s) => s.bump);
+  const hs = Object.values(st.hospitals ?? {});
+  const inbound = (node: number) => Object.values(st.units).filter((u) => u.status === 'TRANSPORTING' && u.destNode === node);
+  const oldest = hs.reduce((m, h) => Math.max(m, h.known ? st.time - h.known.at : 999), 0);
+  return (
+    <div className="listpane">
+      <div className="listhead"><b>HOSPITAL BED BOARD</b><span className={`small ${oldest > 120 ? 'warn' : 'muted'}`}>{oldest > 900 ? 'never refreshed' : `updated ${fmtTime(oldest)} ago`}</span><div className="grow" /><Btn size="sm" icon="radio" onClick={() => { engine.refreshHospitalBoard(); bump(); }}>Refresh</Btn></div>
+      <div className="scrolly hboard">
+        {hs.map((h) => {
+          const k = h.known;
+          const ins = inbound(h.node);
+          return (
+            <div key={h.node} className={`hrow ${k?.diversion ? 'divert' : ''}`}>
+              <div className="hr-name"><b>{h.name}</b><span className="small muted">{addressOf(engine.city, h.node)}</span></div>
+              <div className="depts">{h.has.length ? h.has.map((d) => <i key={d} className={`dept ${k?.down.includes(d) ? 'down' : 'up'}`}>{d}</i>) : <i className="dept none">minor injuries only</i>}</div>
+              <div className="hr-er"><span className="small">ER</span><Bar value={k?.er ?? 0} max={h.erCap} tone={(k?.er ?? 0) >= h.erCap ? 'red' : (k?.er ?? 0) >= h.erCap * 0.75 ? 'amber' : 'green'} label="ER load" /><span className="mono small">{k ? `${k.er}/${h.erCap}` : '?'}</span></div>
+              <div className="hr-in small">{k?.diversion ? <Badge tone="red">ON DIVERSION</Badge> : null}{ins.length ? <span>{ins.map((u) => `${u.callsign}${h.prealerts.includes(u.assignedIncidentId ?? '') ? ' ✓' : ''}`).join(', ')} inbound</span> : <span className="muted">no ambulances inbound</span>}</div>
+            </div>
+          );
+        })}
+        <p className="muted small pad">Departments go down and ERs fill up during the shift — the board only shows what you knew at the last refresh. Pre-alert the hospital from a transporting ambulance so the team is waiting.</p>
       </div>
     </div>
   );

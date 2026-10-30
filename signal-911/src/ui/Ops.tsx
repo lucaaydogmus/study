@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { addressOf } from '../sim/city';
 import { AIR_HELPS, type GameEngine } from '../sim/engine';
 import { isAir } from '../sim/fleet';
-import { CHECK_LABEL, PERSON_ANSWERS, PLATE_ANSWERS } from '../sim/records';
+import { CHECK_LABEL, PERSON_ANSWERS, PLATE_ANSWERS, recordLines } from '../sim/records';
 import type { CheckResult, Incident, OfficerRequest } from '../sim/types';
 import { audio } from '../audio/audioManager';
 import { useApp } from '../store';
@@ -134,31 +134,48 @@ export function RecordsDock({ engine, onOpen }: { engine: GameEngine; onOpen: ()
 export function RecordsTerminal({ engine, onClose }: { engine: GameEngine; onClose: () => void }) {
   const st = engine.state;
   const bump = useApp((s) => s.bump);
-  const reqs = st.requests.filter((r) => r.at <= st.time).slice(-12).reverse();
+  const reqs = st.requests.filter((r) => r.at <= st.time && r.announced).slice(-14).reverse();
   const open = reqs.filter((r) => r.status === 'open');
   const [sel, setSel] = useState<string | null>(open[0]?.id ?? reqs[0]?.id ?? null);
-  const [query, setQuery] = useState('');
-  const [searching, setSearching] = useState<string | null>(null);
-  const r: OfficerRequest | undefined = reqs.find((x) => x.id === sel) ?? open[0];
-  useEffect(() => { if (r) setQuery(r.kind === 'plate' ? `PLATE/${r.subject}` : `NAME/${r.subject.split(' ').reverse().join(', ').toUpperCase()}`); }, [r?.id]);
-  useEffect(() => { if (!searching) return; const t = setTimeout(() => { engine.runRequest(searching); setSearching(null); audio.click(); bump(); }, 900); return () => clearTimeout(t); }, [searching]);
+  const r: OfficerRequest | undefined = reqs.find((x) => x.id === sel) ?? open[0] ?? reqs[0];
+  const [q, setQ] = useState({ last: '', first: '', dob: '', sex: '', plate: '' });
+  const [results, setResults] = useState<number[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [pick, setPick] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  // a fresh form for every request
+  useEffect(() => { setQ({ last: '', first: '', dob: '', sex: '', plate: '' }); setResults(null); setPick(null); setFeedback(null); }, [r?.id]);
+  const run = () => {
+    if (!r || searching) return;
+    setSearching(true); setPick(null);
+    window.setTimeout(() => { setResults(engine.searchRequest(r.id, r.kind === 'plate' ? { plate: q.plate } : q)); setSearching(false); audio.click(); bump(); }, 750);
+  };
   const unit = r ? st.units[r.unitId] : undefined;
   const answers: CheckResult[] = r?.kind === 'plate' ? PLATE_ANSWERS : PERSON_ANSWERS;
-  const answer = (a: CheckResult) => { if (!r) return; const res = engine.answerRequest(r.id, a); if (res.ok) { if (res.correct) audio.dispatchConfirm(); else audio.error(); } bump(); const next = openReqs(engine).find((x) => x.id !== r.id); if (next) setSel(next.id); };
+  const transmit = (a: CheckResult) => {
+    if (!r) return;
+    const res = engine.answerRequest(r.id, a, pick ?? -1);
+    if (res.mismatch) { audio.error(); setFeedback('The officer says that is not their subject — compare the details again.'); }
+    else if (res.ok) { if (res.correct) audio.dispatchConfirm(); else audio.error(); const next = openReqs(engine).find((x) => x.id !== r.id); if (next) setSel(next.id); }
+    bump();
+  };
+  const field = (k: keyof typeof q, label: string, ph: string, w = 1) => (
+    <label className="tf" style={{ flex: w }}><span>{label}</span><input value={q[k]} placeholder={ph} spellCheck={false} disabled={!r || r.status !== 'open'} onChange={(e) => setQ({ ...q, [k]: e.target.value.toUpperCase() })} /></label>
+  );
   return (
     <div className="term-back" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="term" role="dialog" aria-label="Records terminal" onKeyDown={(e) => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }}>
-        <div className="term-head"><span className="term-logo">RCIS</span><span>Ravenport Criminal Information System</span><span className="grow" /><span className="mono small">{open.length} pending</span><button className="icon-btn" onClick={onClose} aria-label="Close terminal"><Icon n="x" size={14} /></button></div>
+        <div className="term-head"><span className="term-logo">RCIS</span><span>Ravenport Criminal Information System · NCIC link</span><span className="grow" /><span className="mono small">{open.length} pending</span><button className="icon-btn" onClick={onClose} aria-label="Close terminal"><Icon n="x" size={14} /></button></div>
         <div className="term-body">
           <div className="term-list">
-            {!reqs.length && <div className="term-empty">No requests yet. Officers on traffic stops and at scenes will radio for checks.</div>}
+            {!reqs.length && <div className="term-empty">No requests yet. Officers on patrol, on traffic stops and at scenes radio in for checks.</div>}
             {reqs.map((x) => {
               const u = st.units[x.unitId];
               const wait = (x.answeredAt ?? st.time) - x.at;
               return (
                 <button key={x.id} className={`term-req ${x.id === r?.id ? 'sel' : ''} ${x.status}`} onClick={() => setSel(x.id)}>
                   <span className="mono">{u?.callsign ?? '—'}</span>
-                  <span className="grow">{x.kind === 'plate' ? 'PLATE' : 'PERSON'} · {x.subject}</span>
+                  <span className="grow">{x.kind === 'plate' ? '10-28 PLATE' : '10-29 PERSON'}</span>
                   <span className={`mono small ${x.status === 'open' && wait > 35 ? 'late' : ''}`}>{x.status === 'open' ? fmtTime(wait) : x.status === 'expired' ? 'NO RETURN' : x.correct ? '✓' : '✗'}</span>
                 </button>
               );
@@ -166,37 +183,43 @@ export function RecordsTerminal({ engine, onClose }: { engine: GameEngine; onClo
           </div>
           {r && (
             <div className="term-main">
-              <div className="term-radio"><Icon n="radio" size={13} /> <b>{unit?.spoken ?? 'Unit'}:</b> {r.kind === 'plate' ? `Run plate ${r.subject}, ${r.detail}.` : `Wants and warrants on ${r.subject}, ${r.detail}.`}</div>
-              <form className="term-query" onSubmit={(e) => { e.preventDefault(); if (!r.ran && !searching) setSearching(r.id); }}>
-                <span className="prompt">&gt;</span>
-                <input aria-label="Records query" value={query} onChange={(e) => setQuery(e.target.value)} disabled={r.ran} spellCheck={false} />
-                <Btn size="sm" kind="primary" icon="search" disabled={r.ran || !!searching} onClick={() => { if (!r.ran && !searching) setSearching(r.id); }}>RUN</Btn>
+              <div className="term-radio">
+                <Icon n="radio" size={13} /> <span className="grow">{r.text ?? `${unit?.spoken}: request on file.`}{(() => { const last = st.radio.filter((m) => m.unitId === r.unitId && m.t > r.at + 1 && m.kind !== 'dispatch').slice(-1)[0]; return last && r.status === 'open' ? <span className="term-last"><br />Latest: {last.text}</span> : null; })()}</span>
+                {r.status === 'open' && <Btn size="sm" kind="ghost" icon="radio" onClick={() => { engine.repeatRequest(r.id); bump(); }}>Say again</Btn>}
+              </div>
+              <form className="term-form" onSubmit={(e) => { e.preventDefault(); run(); }}>
+                {r.kind === 'person' ? (<>{field('last', 'LAST NAME', 'SANDOVAL', 1.4)}{field('first', 'FIRST', 'RUBEN', 1.1)}{field('dob', 'DOB (MM/DD/YYYY)', '09/23/1960', 1.2)}{field('sex', 'SEX', 'M', 0.4)}</>)
+                  : (<>{field('plate', 'PLATE', '7KQ482', 1.4)}<label className="tf" style={{ flex: 0.5 }}><span>STATE</span><input value="RV" disabled /></label></>)}
+                <Btn size="sm" kind="primary" icon="search" disabled={!r || r.status !== 'open' || searching} onClick={run}>QUERY</Btn>
               </form>
               <div className="term-out" aria-live="polite">
-                {searching === r.id && <div className="blink">QUERYING RCIS / NCIC…</div>}
-                {!r.ran && searching !== r.id && <div className="dim">Press RUN to query the database. Read the return carefully — names repeat; the date of birth decides.</div>}
-                {r.ran && (
+                {searching && <div className="blink">QUERYING RCIS / NCIC…</div>}
+                {!searching && results === null && <div className="dim">Type what the officer gave you and press QUERY (Enter). Names repeat and spellings are close — the date of birth decides.</div>}
+                {!searching && results !== null && results.length === 0 && <div className="flag">NO RECORD ON FILE FOR THAT QUERY — check the spelling, date of birth or plate.</div>}
+                {!searching && results !== null && results.length > 0 && (
                   <>
-                    <div className="dim">{r.hits.length} RECORD{r.hits.length > 1 ? 'S' : ''} RETURNED{r.hits.length > 1 ? ' — VERIFY DATE OF BIRTH' : ''}</div>
-                    {r.hits.map((h, i) => (
-                      <div key={i} className="hit">
-                        <div className="dim">── RECORD {i + 1} ──────────────</div>
-                        {h.lines.map((l, k) => <div key={k} className={/\*\*\*|!!!|SUSPENDED|EXPIRED/.test(l) ? 'flag' : ''}>{l}</div>)}
-                      </div>
+                    <div className="dim">{results.length} RECORD{results.length > 1 ? 'S' : ''} RETURNED{results.length > 1 ? ' — SELECT YOUR SUBJECT' : ''}</div>
+                    {results.map((i) => (
+                      <button key={i} type="button" className={`hit ${pick === i ? 'picked' : ''}`} onClick={() => { setPick(i); audio.click(); }}>
+                        {recordLines(r.db[i]).map((l, k) => <div key={k} className={/\*\*\*|!!!|SUSPENDED|EXPIRED|NONE ON FILE$/.test(l) && !/WANTS\/WARRANTS: NONE/.test(l) ? 'flag' : ''}>{l}</div>)}
+                        <div className="hit-sel">{pick === i ? '▶ SELECTED AS SUBJECT' : 'click to select'}</div>
+                      </button>
                     ))}
                   </>
                 )}
               </div>
+              {feedback && r.status === 'open' && <div className="term-result bad">{feedback}</div>}
               {r.status === 'open' ? (
                 <div className="term-answers">
-                  <span className="small">Radio the return to {unit?.callsign ?? 'the unit'}:</span>
-                  {answers.map((a) => <Btn key={a} size="sm" kind={a === 'caution' || a === 'stolen' ? 'danger' : a === 'clear' ? 'success' : 'default'} onClick={() => answer(a)}>{CHECK_LABEL[a]}</Btn>)}
+                  <span className="small">{pick !== null ? `Relay return on the selected record to ${unit?.callsign ?? 'the unit'}:` : results && results.length === 0 ? 'Nothing found — you can relay "no record", or correct the query.' : 'Select a record, then relay the return:'}</span>
+                  {pick !== null ? answers.map((a) => <Btn key={a} size="sm" kind={a === 'caution' || a === 'stolen' ? 'danger' : a === 'clear' ? 'success' : 'default'} onClick={() => transmit(a)}>{CHECK_LABEL[a]}</Btn>)
+                    : <Btn size="sm" disabled={results === null} onClick={() => transmit('clear')}>No record on file</Btn>}
                 </div>
               ) : (
                 <div className={`term-result ${r.correct ? 'ok' : 'bad'}`}>
-                  {r.status === 'expired' ? <>No return was given — the officer acted without it. Record showed: <b>{CHECK_LABEL[r.truth]}</b>.</>
-                    : r.correct ? <>Correct return: <b>{CHECK_LABEL[r.truth]}</b>.</>
-                    : <>You radioed <b>{CHECK_LABEL[r.answer!]}</b> — the record showed <b>{CHECK_LABEL[r.truth]}</b>.</>}
+                  {r.status === 'expired' ? <>No return was given — the officer acted without it. The record showed: <b>{CHECK_LABEL[r.truth]}</b>.</>
+                    : r.correct ? <>Correct return: <b>{CHECK_LABEL[r.truth]}</b>{r.mistakes ? ' (after a wrong record)' : ''}.</>
+                    : <>You radioed <b>{CHECK_LABEL[r.answer!]}</b> — the subject's record showed <b>{CHECK_LABEL[r.truth]}</b>.</>}
                 </div>
               )}
             </div>

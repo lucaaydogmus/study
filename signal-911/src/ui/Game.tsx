@@ -17,6 +17,7 @@ import { computeScore } from '../sim/scoring';
 import { contractProgress, MODIFIER_BY_ID } from '../sim/extras';
 import { GRADE_COLOR } from './common';
 import { RecordsDock, RecordsTerminal, threatKnown } from './Ops';
+import { CctvViewer, DecisionCards, NewsTicker, useCctvSink } from './Field';
 
 const CAT_ICON: Record<string, string> = { medical: 'cross', fire: 'flame', police: 'shield', unusual: 'help' };
 
@@ -44,6 +45,8 @@ export function GameScreen() {
   const [preview, setPreview] = useState<Preview>(null);
   const [collapsed, setCollapsed] = useState({ l: false, r: false, b: false });
   const [terminal, setTerminal] = useState(false);
+  const [cctv, setCctv] = useState<Parameters<typeof CctvViewer>[0]['view'] | null>(null);
+  useCctvSink(setCctv);
   const st = engine.state;
   const focusKey = useRef(0);
   const doFocus = useCallback((x: number, y: number, zoom?: number) => setFocus({ x, y, zoom, key: ++focusKey.current }), []);
@@ -162,6 +165,9 @@ export function GameScreen() {
           </div>
           <IncomingBanner engine={engine} />
           <RecordsDock engine={engine} onOpen={() => setTerminal(true)} />
+          <DecisionCards engine={engine} />
+          <NewsTicker engine={engine} />
+          {cctv && <CctvViewer engine={engine} view={cctv} onClose={() => setCctv(null)} />}
           {terminal && <RecordsTerminal engine={engine} onClose={() => setTerminal(false)} />}
           <GoalsCard engine={engine} />
           <Legend layer={layer} />

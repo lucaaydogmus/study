@@ -10,6 +10,7 @@ import { useApp } from '../store';
 import { averageOf } from '../sim/scoring';
 import { DispatchConsole, type Preview } from './DispatchConsole';
 import { AirSupport, Consequences, DeadlineBanner, LifeMeter } from './Ops';
+import { CrewBriefing, UnitCommands, openCctv } from './Field';
 import { AIR_HELPS } from '../sim/engine';
 
 export interface PanelCtx { setPreview: (p: Preview) => void; engine: GameEngine; pickLocation: (incId: string | null) => void; pickingFor: string | null; repositioning: string | null; startReposition: (unitId: string | null) => void; focus: (x: number, y: number, zoom?: number) => void; openCall: () => void; setBottom: (t: string) => void }
@@ -144,6 +145,7 @@ function UnitPanel({ engine, unit, startReposition, repositioning, focus, setBot
           <Btn size="sm" icon="pin" kind={repositioning === unit.id ? 'primary' : 'default'} disabled={!['AVAILABLE', 'RETURNING'].includes(unit.status)} onClick={() => startReposition(repositioning === unit.id ? null : unit.id)}>{repositioning === unit.id ? 'Click map…' : 'Reposition'}</Btn>
           <Btn size="sm" icon="map" onClick={() => focus(unit.x, unit.y, 1.8)}>Locate</Btn>
         </div>
+        <UnitCommands engine={engine} unit={unit} />
       </Section>
       <Section title="Crew" id="crew">
         {crew.map((p) => (
@@ -188,7 +190,11 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
         {inc.stage > 0 && <div className="kv"><span>Escalation</span><Badge tone="red">STAGE {inc.stage}</Badge></div>}
         {inc.relatedIds.length > 0 && <div className="kv"><span>Related</span><b>{inc.relatedIds.map((r) => st.incidents[r] && `INC-${String(st.incidents[r].num).padStart(4, '0')}`).join(', ')}</b></div>}
         {call && <div className="kv"><span>Caller</span><span><b>{call.profile.name}</b> · {call.callerId}</span></div>}
-        {call && (call.state === 'active' || call.state === 'hold') && <Btn size="sm" icon="phone" onClick={openCall}>Go to call</Btn>}
+        <div className="btnrow">
+          {call && (call.state === 'active' || call.state === 'hold') && <Btn size="sm" icon="phone" onClick={openCall}>Go to call</Btn>}
+          {!done && call && !['active', 'hold', 'ringing'].includes(call.state) && !inc.onView && <Btn size="sm" icon="phone" onClick={() => { const r = engine.redial(inc.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); else openCall(); bump(); }} title="Call the caller back on their number">Call back</Btn>}
+          {!done && !inc.truth.outside && <Btn size="sm" icon="map" onClick={() => { openCctv(engine, inc.id); bump(); }} title="Check the nearest city camera">CCTV</Btn>}
+        </div>
         {inc.truth.outside && <div className="note-line warn"><Icon n="alert" size={12} /> Caller is outside Ravenport. Use <b>TRANSFER</b> to hand them to the neighbouring agency.</div>}
         {inc.parentId && st.incidents[inc.parentId] && <div className="note-line"><Icon n="layers" size={12} /> Broke out of INC-{String(st.incidents[inc.parentId].num).padStart(4, '0')} {st.incidents[inc.parentId].label} — crews there can be sent straight here.</div>}
         <DeadlineBanner engine={engine} inc={inc} />
@@ -238,8 +244,8 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
                 <Btn size="sm" icon="pin" kind={pickingFor === inc.id ? 'primary' : 'default'} onClick={() => pickLocation(pickingFor === inc.id ? null : inc.id)}>{pickingFor === inc.id ? 'Click map…' : 'Pick on map'}</Btn>
               </div>
               {results.map((n) => (<button className="rowbtn" key={n} onClick={() => { engine.setIncidentLocation(inc.id, n, 'search'); setQ(''); bump(); }}><span>{fullAddress(city, n)}</span><span className="muted small">at {city.nodes[n].crossStreet}</span></button>))}
-              {liveCall && (st.upgrades.ali ?? 0) > 0 && !liveCall.aliUsed && <Btn size="sm" icon="radio" onClick={() => { const m = engine.requestLocation(liveCall.id); useApp.getState().showToast(m, 'info'); bump(); }}>Request caller location (ALI)</Btn>}
-              {liveCall && (st.upgrades.ali ?? 0) === 0 && <p className="muted small">Caller location lookup is not installed — buy Enhanced Caller Location.</p>}
+              {liveCall && !liveCall.trace && <Btn size="sm" icon="radio" onClick={() => { const r = engine.startTrace(liveCall.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }} title="Ask the carrier where the phone is — keep the caller on the line while it refines">Trace this call</Btn>}
+              {liveCall?.trace && <p className="muted small">Trace: {liveCall.trace.stage < 0 ? 'waiting for the carrier…' : liveCall.trace.label}{(st.upgrades.ali ?? 0) < 2 && liveCall.profile.callerIdType === 'mobile' ? ' · Enhanced Caller Location level 2+ adds a GPS fix.' : ''}</p>}
             </>
           )}
         </Section>
@@ -276,6 +282,7 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
           </div>
         ))}
         {inc.status === 'ON_SCENE' && here.length > 0 && !done && <div className="small muted">Work in progress on scene…</div>}
+        {!done && <CrewBriefing engine={engine} inc={inc} />}
       </Section>
 
       <Section title={`Information (${inc.facts.length})`} id="facts">

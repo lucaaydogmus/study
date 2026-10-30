@@ -663,6 +663,18 @@ export const TEMPLATES: Template[] = [
     resolved: 'The shooter was stopped and every casualty reached hospital.', failed: 'The attack claimed many lives.',
   }),
   base({
+    id: 'silent_call', category: 'police', label: 'Silent open line', hint: 'crime_progress', cls: 'crime_progress', w: { residential: 0.7, suburb: 0.6, dense: 0.4 },
+    intense: true, sev: [4, 4], minRank: 1, transport: true,
+    truth: { people: 2, suspect: true, safe: false, injured: 1, weapon: 'knife', suspect_desc: 'a man shouting in the same room', cause: 'a domestic assault — the caller is hiding and cannot speak' }, reported: [],
+    requires: [R('patrol', 2), R('bls'), R('transport')], escalate: [{ reqs: [R('als'), R('transport')], text: 'The caller has been hurt again', sev: 1, casualties: 0 }],
+    threat: [30, 0.42, 1.3], work: 50,
+    archetypes: [['silent', 1]],
+    open: ['(silence on the line — someone is breathing close to the phone; a man is shouting in the background)', '(an open line: muffled crying, a door banging, a man yelling "Who are you calling?!")'],
+    cause: ['(the caller cannot speak)'],
+    scene: 'Forced entry — one assailant detained, caller has injuries.', ambience: 'indoor',
+    resolved: 'Officers got in, arrested the attacker and the caller was treated.', failed: 'Nobody reached the caller in time.',
+  }),
+  base({
     id: 'traffic_stop', category: 'police', label: 'Traffic stop', hint: 'disturbance', cls: 'disturbance', w: {}, spawnOnly: true,
     sev: [1, 1], truth: { vehicles: 1, suspect: false, people: 2, injured: 0, safe: true, cause: 'an officer has pulled a vehicle over' }, reported: ['vehicles'],
     requires: [R('patrol')], threat: [3, 0.01, 2], work: 26,

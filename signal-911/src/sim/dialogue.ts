@@ -7,13 +7,14 @@ import type { Rng } from './rng';
 import { ARCHETYPES, FIRST_NAMES, LAST_NAMES } from './content/vocab';
 import type { Template } from './content/templates';
 import type { Call, CallerProfile, FactVal, HeardLocation, Incident, PendingLine } from './types';
+import { bankLine, makeVoice, type SoftKind } from './voices';
 
 export type Intent =
   | 'emergency' | 'address' | 'landmark' | 'district' | 'name' | 'callback' | 'injuries' | 'breathing' | 'conscious'
   | 'age' | 'people' | 'fire' | 'hazard' | 'weapon' | 'suspect' | 'vehicles' | 'trapped' | 'safe' | 'cause'
   | 'calm' | 'promise' | 'stay' | 'move' | 'repeat' | 'thanks' | 'unknown'
   | 'inst_cpr' | 'inst_recovery' | 'inst_pressure' | 'inst_still' | 'inst_lock'
-  | 'inst_water' | 'inst_lift' | 'inst_goback' | 'inst_confront';
+  | 'inst_water' | 'inst_lift' | 'inst_goback' | 'inst_confront' | 'access';
 
 export interface QuickQ { group: 'Opening' | 'Location' | 'Situation' | 'Guidance' | 'Instructions'; intent: Intent; label: string; text: string }
 export const QUICK_QUESTIONS: QuickQ[] = [
@@ -22,6 +23,7 @@ export const QUICK_QUESTIONS: QuickQ[] = [
   { group: 'Location', intent: 'address', label: 'Address?', text: 'What is the address of the emergency, please?' },
   { group: 'Location', intent: 'landmark', label: 'Cross street / landmark?', text: 'Can you tell me the nearest cross street or a landmark, please?' },
   { group: 'Location', intent: 'district', label: 'Which area?', text: 'What neighbourhood or area are you in, please?' },
+  { group: 'Location', intent: 'access', label: 'How do crews get in?', text: 'How will the crews get in? Is there a flat number, a gate code or a particular entrance?' },
   { group: 'Location', intent: 'name', label: 'Your name?', text: 'May I have your name, please?' },
   { group: 'Location', intent: 'callback', label: 'Callback number?', text: 'What number are you calling from, please?' },
   { group: 'Situation', intent: 'injuries', label: 'Anyone injured?', text: 'Is anyone injured, please?' },
@@ -69,6 +71,7 @@ const RULES: Array<[RegExp, Intent]> = [
   [/get out|leave (the|your)|evacuat|move (away|to|out)|go outside|back away|stay away|safe place|(get|go|move) to (a )?safe/, 'move'],
   [/calm|breathe|relax|take a (deep )?breath|i'?m here|it'?s (ok|okay|alright)|you('?re| are) doing (really |so )?(great|well|good)|i understand|i hear you|listen to me|keep listening|slow down|you'?re not alone|we'?ve got this/, 'calm'],
   [/repeat|say that again|pardon|come again|didn'?t (catch|hear)/, 'repeat'],
+  [/gate|door code|buzzer|flat number|apartment number|unit number|which (door|entrance|floor)|how (do|will|can) (we|they|the crews?|the paramedics|the officers) get in|get inside|access/, 'access'],
   [/address|where (are|is|exactly)|what street|which street|street name|your location|where do you live/, 'address'],
   [/landmark|cross ?street|intersection|nearby|near (what|by|which)|what can you see|corner|close to|next to (what|which)|what'?s around/, 'landmark'],
   [/district|neighbou?rhood|part of (town|the city)|what (city|town|area)|which area|what area/, 'district'],
@@ -160,8 +163,18 @@ export function makeCallerProfile(rng: Rng, tpl: Template, archetypeId: string, 
     emotionalState: stateLabel, panicLevel: panic, cooperationLevel: coop, speakingStyle: a.style,
     knownFacts: [...tpl.reported], unknownFacts: [...(tpl.blind ?? [])], relationshipToIncident: a.label, scenarioId: tpl.id,
     locationAccuracy: acc, callerIdType: idType, ambience: tpl.ambience, phone: `555-${String(rng.int(100, 999))}-${String(rng.int(1000, 9999))}`,
+    voice: makeVoice(rng, a.id),
+    language: !['child_caller', 'professional', 'silent', 'terse', 'confused_elderly'].includes(a.id) && rng.chance(0.06) ? rng.pick(Object.keys(FOREIGN)) : undefined,
   };
 }
+
+/** what a caller says in their own language before an interpreter joins */
+export const FOREIGN: Record<string, string[]> = {
+  Spanish: ['¡Ayuda, por favor! ¡Es una emergencia!', 'No hablo inglés... ¡por favor, rápido!', '¡Mi familia! ¡Necesitamos ayuda!', '¿Español? ¿Alguien habla español?'],
+  Polish: ['Pomocy! Proszę, szybko!', 'Nie mówię po angielsku... proszę!', 'To jest nagły wypadek!', 'Czy ktoś mówi po polsku?'],
+  Portuguese: ['Socorro! Por favor, rápido!', 'Não falo inglês... por favor!', 'É uma emergência!', 'Alguém fala português?'],
+  Vietnamese: ['Cứu tôi với! Làm ơn nhanh lên!', 'Tôi không nói được tiếng Anh...', 'Khẩn cấp! Làm ơn!', 'Có ai nói tiếng Việt không?'],
+};
 
 // ── Variation helpers ───────────────────────────────────────────────────────
 function pickVariant(call: Call, key: string, options: string[], rng: Rng): string {
@@ -173,7 +186,8 @@ function pickVariant(call: Call, key: string, options: string[], rng: Rng): stri
   return options[idx];
 }
 
-const lcFirst = (s: string) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+// keep the pronoun "I" (and names after it) capitalised
+const lcFirst = (s: string) => (!s || /^I\b/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1));
 const HEDGES = ['I think ', "I'm not sure, but ", 'It looks like ', 'Maybe — ', 'I believe '];
 const PANIC_PRE = ['Please — ', 'Oh god — ', 'Hurry, please! ', "I don't — I don't know — ", 'Oh my god, ', 'Please, please — '];
 const ANGRY_PRE = ['Look, ', 'I already told you — ', 'Come on! ', 'Are you even listening? ', 'Seriously? '];
@@ -186,6 +200,8 @@ const CHILD_POST = [' ...I think.', ' *sniff*', ' I want my mummy.'];
 export function flavor(text: string, call: Call, rng: Rng, opts: { unsure?: boolean; neutral?: boolean } = {}): string {
   let t = text;
   const m = call.mood, a = call.profile.archetype;
+  // stage directions and silent callers are never "spoken"
+  if (/^\s*[([*]/.test(t) || a === 'silent') return t;
   if (opts.unsure) t = rng.pick(HEDGES) + lcFirst(t);
   if (opts.neutral) return t;
   if (m.panic > 68 && a !== 'calm_serious' && a !== 'professional' && rng.chance(0.55)) {
@@ -290,6 +306,7 @@ export function openingLines(env: DialogueEnv): PendingLine[] {
   const facts: Record<string, FactVal> = {};
   for (const k of tpl.reported) if (k in inc.truth && !inc.knows.includes('~') ) facts[k] = inc.truth[k];
   if (call.isCallback) return [];
+  if (call.profile.language && call.interpreter !== 'on') return [{ at: 0, text: `${rng.pick(FOREIGN[call.profile.language])} (${call.profile.language})` }];
   const text = tpl.id === 'accidental_call' ? base : flavor(base, call, rng);
   return [{ at: 0, text, facts, unsure: tpl.unsure?.filter((k) => k in facts) }];
 }
@@ -321,19 +338,27 @@ export function replyTo(env: DialogueEnv, intent: Intent, rawText: string): Repl
   const line = (text: string, extra: Partial<PendingLine> = {}, o: { neutral?: boolean; unsure?: boolean } = {}) => r.lines.push({ at: 0, text: flavor(fill(text, v), call, rng, o), ...extra });
 
   // Soft intents (guidance)
+  const own = (kind: SoftKind) => bankLine(call.profile.archetype, kind, rng);
+  // language barrier: nothing useful until an interpreter is on the line
+  if (call.profile.language && call.interpreter !== 'on') {
+    r.lines.push({ at: 0, text: `${pickVariant(call, 'foreign', FOREIGN[call.profile.language], rng)} (${call.profile.language})` });
+    mood.frustration = (mood.frustration ?? 0) + 4; mood.panic = (mood.panic ?? 0) + 2;
+    return r;
+  }
+  if (call.profile.archetype === 'silent') return silentReply(env, intent, rawText, r);
   if (intent === 'calm') {
     const hi = call.mood.panic > 60;
-    line(pickVariant(call, 'calm', hi ? ["Okay... okay. I'm trying. I'm trying to breathe.", 'Yes. Yes, okay. Okay. Just... please stay here.', 'I— okay. Okay. I can do this.'] : ['Okay, thank you.', "Alright. I appreciate that.", 'Okay. That helps, thank you.'], rng), {}, { neutral: true });
+    line(own(hi ? 'calm_hi' : 'calm') ?? pickVariant(call, 'calm', hi ? ["Okay... okay. I'm trying. I'm trying to breathe.", 'Yes. Yes, okay. Okay. Just... please stay here.', 'I— okay. Okay. I can do this.'] : ['Okay, thank you.', "Alright. I appreciate that.", 'Okay. That helps, thank you.'], rng), {}, { neutral: true });
     mood.base = -9; mood.panic = -(hi ? 11 : 5); mood.cooperation = 5; mood.trust = 3;
     return r;
   }
   if (intent === 'promise') {
-    line(pickVariant(call, 'promise', ['Thank God. Please hurry.', "Okay. Okay, thank you. We'll be here.", "Oh, thank you. I'll watch for them.", "Right. Right, we'll wait. Please be quick."], rng), {}, { neutral: true });
+    line(own('promise') ?? pickVariant(call, 'promise', ['Thank God. Please hurry.', "Okay. Okay, thank you. We'll be here.", "Oh, thank you. I'll watch for them.", "Right. Right, we'll wait. Please be quick."], rng), {}, { neutral: true });
     mood.base = -14; mood.panic = -12; mood.cooperation = 7; mood.trust = 4;
     r.promise = true; return r;
   }
   if (intent === 'stay') {
-    line(pickVariant(call, 'stay', ["Okay, I'm not going anywhere.", "I'll stay on the line. Please don't go.", 'Yes. Yes, I will.'], rng), {}, { neutral: true });
+    line(own('stay') ?? pickVariant(call, 'stay', ["Okay, I'm not going anywhere.", "I'll stay on the line. Please don't go.", 'Yes. Yes, I will.'], rng), {}, { neutral: true });
     mood.panic = -4; mood.cooperation = 5; mood.trust = 3; return r;
   }
   if (intent.startsWith('inst_') || (intent === 'move' && aidVerdict(tpl, inc, 'evacuate').fit !== 'neutral')) {
@@ -356,8 +381,13 @@ export function replyTo(env: DialogueEnv, intent: Intent, rawText: string): Repl
     line(text, cat === 'medical' ? {} : { facts: { safe: true } }, { neutral: true });
     mood.panic = -4; mood.cooperation = 4; mood.trust = 2; return r;
   }
+  if (intent === 'access') {
+    const a = inc.vars.access ?? (inc.vars.access = accessInfo(rng, tpl));
+    line(a, { facts: { access: a.replace(/^.*?(flat|unit|gate|door|side|back|front|lift|stairs)/i, '$1').slice(0, 70) } }, { neutral: true });
+    return r;
+  }
   if (intent === 'thanks') {
-    line(pickVariant(call, 'hello', ["Yes? Hello? Can you hear me?", 'Yes — I need help. Please.', 'I— yes, hello? Are you sending someone?'], rng));
+    line(own('hello') ?? pickVariant(call, 'hello', ["Yes? Hello? Can you hear me?", 'Yes — I need help. Please.', 'I— yes, hello? Are you sending someone?'], rng));
     return r;
   }
   if (intent === 'repeat') {
@@ -366,7 +396,7 @@ export function replyTo(env: DialogueEnv, intent: Intent, rawText: string): Repl
     return r;
   }
   if (intent === 'unknown') {
-    line(pickVariant(call, 'unk', UNKNOWN_Q, rng));
+    line(own('unknown') ?? pickVariant(call, 'unk', UNKNOWN_Q, rng));
     mood.frustration = (mood.frustration ?? 0) + 6; mood.cooperation = (mood.cooperation ?? 0) - 2;
     return r;
   }
@@ -375,7 +405,7 @@ export function replyTo(env: DialogueEnv, intent: Intent, rawText: string): Repl
   if (rng.chance(arch.misunderstand) && call.misunderstood < 3 && intent !== 'emergency') {
     call.misunderstood++;
     r.misunderstood = true;
-    line(pickVariant(call, 'misu', MISUNDERSTAND, rng), {}, { neutral: true });
+    line(own('misunderstand') ?? pickVariant(call, 'misu', MISUNDERSTAND, rng), {}, { neutral: true });
     mood.frustration = (mood.frustration ?? 0) + 2;
     return r;
   }
@@ -594,13 +624,67 @@ export function verifyReply(env: DialogueEnv, candidate: number): { text: string
   return { text: flavor(fill(pickVariant(call, 'ver_no', ["No, that's not right. That's nowhere near us.", "No, that's wrong — we're not there at all.", 'No no no — not there!'], rng), v), call, rng), ok: false };
 }
 
+/** how crews get to the patient: flat numbers, gate codes, side doors */
+export function accessInfo(rng: Rng, tpl: Template): string {
+  const code = `${rng.int(1, 9)}${rng.int(0, 9)}${rng.int(0, 9)}${rng.int(0, 9)}`;
+  const flat = `${rng.int(1, 9)}${'ABCDEF'[rng.int(0, 5)]}`;
+  const opts = tpl.category === 'police' ? [
+    `Come round the back — the front door's barricaded. It's the green gate.`,
+    `We're on the second floor, flat ${flat}. The street door is propped open.`,
+    `The main gate is locked — the code is ${code.split('').join('-')}.`,
+  ] : [
+    `It's flat ${flat}, fourth floor. The lift is broken — use the stairs on the left.`,
+    `There's a gate — the code is ${code.split('').join('-')}. Then it's the blue door at the end.`,
+    `Side entrance — the front's locked. I'll leave the side door open.`,
+    `We're in the back garden, go down the alley next to number ${rng.int(2, 60)}.`,
+    `Flat ${flat}. Buzz ${flat} and I'll let them in — I'm right by the door.`,
+  ];
+  return rng.pick(opts);
+}
+
+// ── Silent callers: yes/no by tapping ───────────────────────────────────────
+const TAP_PROTOCOL = /\btap\b|press (a |any |the )?(key|button|number)|can'?t (talk|speak)|cannot (talk|speak)|if you can hear me|make a (noise|sound)|cough/;
+function silentReply(env: DialogueEnv, intent: Intent, rawText: string, r: Reply): Reply {
+  const { call, inc, rng } = env;
+  const t = inc.truth;
+  const say = (text: string, facts?: Record<string, FactVal>) => r.lines.push({ at: 0, text, ...(facts ? { facts } : {}) });
+  const YES = '*tap tap*', NO = '(silence)';
+  if (TAP_PROTOCOL.test(rawText.toLowerCase())) {
+    call.tapProtocol = true;
+    say(`${YES}  (two soft taps on the handset)`);
+    r.mood.trust = 6; r.mood.panic = -3;
+    return r;
+  }
+  if (!call.tapProtocol) {
+    say(rng.pick(['(no answer — just frightened breathing)', '(silence... a man\'s voice in the background: "Who are you talking to?")', '(the line stays open, nobody answers)']));
+    return r;
+  }
+  const n = (k: string) => (typeof t[k] === 'number' ? (t[k] as number) : 0);
+  switch (intent) {
+    case 'injuries': say(n('injured') > 0 ? YES : NO, { injured: n('injured') }); break;
+    case 'weapon': say(t.weapon && t.weapon !== 'none' ? YES : NO, { weapon: t.weapon && t.weapon !== 'none' ? 'yes (taps)' : false }); break;
+    case 'suspect': say(YES, { suspect: true }); break;
+    case 'safe': say(NO, { safe: false }); break;
+    case 'people': say(`*${Array.from({ length: Math.min(5, n('people') || 2) }, () => 'tap').join(' ')}*`, { people: n('people') || 2 }); break;
+    case 'conscious': case 'breathing': say(YES); break;
+    case 'emergency': case 'cause': say(YES, { cause: 'assault in progress (caller tapping)' }); break;
+    case 'address': case 'landmark': case 'district': case 'name': case 'callback':
+      say('(silence — the caller cannot say it out loud)'); r.lines.push({ at: 0, text: 'A silent caller cannot give an address out loud — trace the call to find them.', system: true }); break;
+    case 'promise': case 'stay': case 'calm': say('*tap*'); r.mood.panic = -6; r.promise = intent === 'promise'; break;
+    case 'inst_lock': say(`${YES}  (a door clicks shut)`); r.aid = { kind: 'lock', fit: 'good' }; r.safety = true; break;
+    default: say(rng.pick([NO, '*tap*... (uncertain)'])); break;
+  }
+  return r;
+}
+
 // ── Spontaneous lines ───────────────────────────────────────────────────────
 export type SpontKind = 'sirens' | 'escalated' | 'arrived' | 'dispatched' | 'waiting' | 'nothing_found' | 'resolved' | 'broken_promise' | 'hold' | 'callback';
 export function spontaneous(env: DialogueEnv, kind: SpontKind, extra = ''): string {
   const { tpl, rng, call, inc } = env;
   const v = inc.vars;
   const cat = tpl.category;
-  const pick = (a: string[]) => fill(pickVariant(call, 'sp_' + kind, a, rng), v);
+  const own = kind === 'escalated' || kind === 'nothing_found' || kind === 'callback' ? null : bankLine(call.profile.archetype, kind, rng);
+  const pick = (a: string[]) => fill(own ?? pickVariant(call, 'sp_' + kind, a, rng), v);
   switch (kind) {
     case 'escalated': {
       const esc = tpl.escalate?.[Math.max(0, inc.stage - 1)];

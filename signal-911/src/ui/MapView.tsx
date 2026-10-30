@@ -5,7 +5,7 @@ import { audio, type SirenVoice } from '../audio/audioManager';
 import { WEATHER_LABEL, WEATHER_SPEED } from '../sim/events';
 import type { GameEngine } from '../sim/engine';
 import type { GameState, HeardLocation, Incident, Unit } from '../sim/types';
-import { drawBuildings3D, drawCity, drawNightLights, drawParked, drawTraffic, getScenery } from './scenery';
+import { BASE_TILT, drawBuildings3D, drawCity, drawModels, drawNightLights, drawParked, drawTraffic, getScenery } from './scenery';
 
 export type LayerId = 'normal' | 'traffic' | 'coverage' | 'police' | 'fire' | 'medical' | 'incidents' | 'weather';
 export const LAYERS: Array<{ id: LayerId; label: string; key: string }> = [
@@ -24,6 +24,8 @@ export interface MapProps {
   preview?: { unitId: string; path: number[] } | null;
   /** play positional sirens and rotor noise for what is on screen */
   sounds?: boolean;
+  /** camera easing per frame (lower = slower, cinematic) */
+  camEase?: number;
 }
 
 // ── cached city layers ───────────────────────────────────────────────────────
@@ -38,7 +40,10 @@ function cityCanvas(scale: number, active: Set<string>, key: string): HTMLCanvas
   const ctx = c.getContext('2d')!;
   ctx.fillStyle = '#0b2133'; ctx.fillRect(0, 0, c.width, c.height);
   ctx.setTransform(scale, 0, 0, scale, PAD * scale, PAD * scale);
-  drawCity(ctx, scale >= 1.5 ? 1 : 0, null, active, scale);
+  // buildings always stand up a little: the overview is rendered with the base camera tilt
+  drawCity(ctx, scale >= 1.5 ? 1 : 0, null, active, scale, { skipRoofs: true, tilt: BASE_TILT });
+  drawBuildings3D(ctx, null, BASE_TILT, 0, scale, scale >= 1.5);
+  drawModels(ctx, null, BASE_TILT, 0, scale);
   // keep memory bounded: drop other caches for other district sets
   for (const old of [...cacheStore.keys()]) if (!old.endsWith(`|${key}`)) cacheStore.delete(old);
   cacheStore.set(k, c);
@@ -51,7 +56,7 @@ function lightsCanvas(): HTMLCanvasElement {
   c.width = WORLD_W + PAD * 2; c.height = WORLD_H + PAD * 2;
   const ctx = c.getContext('2d')!;
   ctx.translate(PAD, PAD);
-  drawNightLights(ctx, null);
+  drawNightLights(ctx, null, { tilt: BASE_TILT });
   nightCanvas = c;
   return c;
 }
@@ -123,6 +128,7 @@ export function MapView(props: MapProps) {
         if (Math.hypot(p.x - sx, p.y - sy) < 13) return { kind: 'heard', id: h.id, label: h.label };
       }
       for (const u of Object.values(st.units)) {
+        if (parkedAtBase(st, u) && !(st.selected.kind === 'unit' && st.selected.id === u.id)) continue;
         const p = toScreen(u.x, u.y); const o = offs.current.get(u.id) ?? { dx: 0, dy: 0 };
         if (Math.hypot(p.x + o.dx - sx, p.y + o.dy - sy) < 12) return { kind: 'unit', id: u.id, label: `${u.callsign} · ${u.typeLabel} — ${u.status.replace(/_/g, ' ')}${u.note ? ` (${u.note})` : ''}` };
       }
@@ -211,7 +217,7 @@ export function MapView(props: MapProps) {
       const pr = P.current, eng = pr.engine, st = eng.state, c = cam.current;
       const motion = !pr.reduceMotion;
       if (pr.focus && pr.focus.key !== lastFocus.current) { lastFocus.current = pr.focus.key; c.tx = pr.focus.x; c.ty = pr.focus.y; if (pr.focus.zoom) c.tz = Math.max(c.fit, pr.focus.zoom); }
-      const ease = motion ? 0.18 : 1;
+      const ease = motion ? (pr.camEase ?? 0.18) : 1;
       c.z += (c.tz - c.z) * ease; if (!drag.current?.moved) { c.x += (c.tx - c.x) * ease; c.y += (c.ty - c.y) * ease; }
       const ctx = canvas.getContext('2d')!;
       const active = new Set(st.config.districts);
@@ -228,15 +234,16 @@ export function MapView(props: MapProps) {
       ctx.save();
       ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-c.x, -c.y);
       // zooming in tilts the camera: buildings rise into 2.5D and the streets come alive
-      const tilt = pr.layer === 'normal' || pr.layer === 'incidents' || pr.layer === 'traffic' ? Math.max(0, Math.min(1, (z - 1.7) / 1.6)) : 0;
-      const liveView = { x0: view.x0 - 10, y0: view.y0 - 10, x1: view.x1 + 10, y1: view.y1 + (tilt > 0 ? 45 : 10) };
+      const tilt = BASE_TILT + (1 - BASE_TILT) * Math.max(0, Math.min(1, (z - 1.7) / 1.6));
+      const live3d = tilt > BASE_TILT + 0.001;
+      const liveView = { x0: view.x0 - 10, y0: view.y0 - 10, x1: view.x1 + 10, y1: view.y1 + 60 };
       if (!st.paused && st.phase === 'running') ambT += (dtMs / 1000) * Math.max(1, st.speed);
-      if (tilt <= 0 && eff <= 1.15) ctx.drawImage(cityCanvas(1, active, activeKey), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
-      else if (tilt <= 0 && eff <= 2.6) ctx.drawImage(cityCanvas(2, active, activeKey), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
-      else drawCity(ctx, 2, liveView, active, z, { skipRoofs: tilt > 0 });
+      if (!live3d && eff <= 1.15) ctx.drawImage(cityCanvas(1, active, activeKey), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
+      else if (!live3d && eff <= 2.6) ctx.drawImage(cityCanvas(2, active, activeKey), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
+      else drawCity(ctx, 2, liveView, active, z, { skipRoofs: true, tilt });
       if (z > 2.1 && pr.layer === 'normal' && !lowDetail) drawParked(ctx, view, active);
       if (z > 1.2 && motion && !lowDetail && (pr.layer === 'normal' || pr.layer === 'traffic')) drawTraffic(ctx, view, ambT, st.districtTraffic, night, z, active);
-      if (tilt > 0) drawBuildings3D(ctx, liveView, tilt, night, z, !lowDetail);
+      if (live3d || eff > 2.6) { drawBuildings3D(ctx, liveView, tilt, night, z, !lowDetail); drawModels(ctx, liveView, tilt, night, z); }
       // water glints
       if (motion) {
         ctx.strokeStyle = 'rgba(170,215,240,0.16)'; ctx.lineWidth = 1.2; ctx.beginPath();
@@ -258,7 +265,7 @@ export function MapView(props: MapProps) {
       if (night > 0) {
         ctx.fillStyle = `rgba(3,7,20,${0.42 * night})`; ctx.fillRect(-PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
         ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.85 * night;
-        if (tilt > 0) drawNightLights(ctx, view, { windows: false }); else ctx.drawImage(lightsCanvas(), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
+        if (live3d || eff > 2.6) drawNightLights(ctx, view, { windows: false }); else ctx.drawImage(lightsCanvas(), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
         ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
       }
       const layer = pr.layer;
@@ -337,8 +344,17 @@ export function MapView(props: MapProps) {
           if (z > 2) { ctx.font = '500 10px Inter, system-ui, sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,18,0.8)'; ctx.strokeText(l.name, p.x, p.y + 12); ctx.fillStyle = 'rgba(200,210,222,0.9)'; ctx.fillText(l.name, p.x, p.y + 12); }
         }
       }
-      // stations
+      // stations, with a dot per vehicle parked inside (green ready, amber busy, red out of service)
+      const parkedBy = new Map<string, Unit[]>();
+      for (const u of Object.values(st.units)) if (parkedAtBase(st, u)) { const g = parkedBy.get(u.stationId); if (g) g.push(u); else parkedBy.set(u.stationId, [u]); }
       for (const s of Object.values(st.stations)) {
+        const here = parkedBy.get(s.id) ?? [];
+        if (here.length) {
+          const n = city.nodes[s.nodeId]; const p = S(n.x, n.y);
+          const show = here.slice(0, 8), w = show.length * 6;
+          ctx.fillStyle = 'rgba(8,12,18,0.82)'; roundRect(ctx, p.x - w / 2 - 3, p.y + 12, w + 6, 8, 4); ctx.fill();
+          show.forEach((u, i) => { ctx.fillStyle = u.status === 'AVAILABLE' ? '#54B889' : u.status === 'OUT_OF_SERVICE' ? '#D65353' : '#E5AC4D'; ctx.beginPath(); ctx.arc(p.x - w / 2 + 3 + i * 6, p.y + 16, 2.2, 0, 7); ctx.fill(); });
+        }
         const n = city.nodes[s.nodeId]; const p = S(n.x, n.y); const m = SERVICE_META[s.service];
         const off = s.disabledShifts > 0;
         ctx.globalAlpha = off ? 0.45 : 1;
@@ -386,6 +402,28 @@ export function MapView(props: MapProps) {
         ctx.fillStyle = 'rgba(8,12,18,0.7)'; ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, 7); ctx.fill();
         ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.setLineDash(h.reliability === 'sure' ? [] : [4, 3]); ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, 7); ctx.stroke(); ctx.setLineDash([]);
         ctx.fillStyle = col; ctx.font = '800 11px Inter, system-ui, sans-serif'; ctx.fillText(h.reliability === 'contradicted' ? '×' : '?', p.x, p.y + 0.5);
+      }
+
+      // carrier location traces: the uncertainty circle tightens as the trace refines
+      for (const call of Object.values(st.calls)) {
+        const tr = call.trace;
+        if (!tr || tr.stage < 0) continue;
+        const live = call.state === 'active' || call.state === 'hold' || (sel.kind === 'incident' && sel.id === call.incidentId);
+        const inc = st.incidents[call.incidentId];
+        if (!live || !inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
+        const p = S(tr.x, tr.y), r = Math.max(6, tr.radius * z);
+        ctx.fillStyle = tr.done ? 'rgba(74,156,214,0.10)' : 'rgba(229,172,77,0.09)'; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill();
+        ctx.strokeStyle = tr.done ? 'rgba(124,192,240,0.9)' : 'rgba(240,192,112,0.9)'; ctx.lineWidth = 1.6; ctx.setLineDash([6, 5]); ctx.lineDashOffset = motion ? -now / 50 : 0;
+        ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+        if (!tr.done && motion) { const ping = (now % 1600) / 1600; ctx.strokeStyle = `rgba(240,192,112,${0.6 * (1 - ping)})`; ctx.beginPath(); ctx.arc(p.x, p.y, r * ping, 0, 7); ctx.stroke(); }
+        ctx.font = '700 10px Inter, system-ui, sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,18,0.85)';
+        const lbl = `TRACE ±${Math.max(10, Math.round(tr.radius * 4 / 10) * 10)} m`;
+        ctx.strokeText(lbl, p.x, p.y - r - 8); ctx.fillStyle = tr.done ? '#9fd3f5' : '#f0c070'; ctx.fillText(lbl, p.x, p.y - r - 8);
+      }
+      // city cameras
+      if (z > 1.6 && layer === 'normal') {
+        ctx.fillStyle = 'rgba(200,210,222,0.55)';
+        for (const cam of eng.cameras()) { const p = S(cam.x, cam.y); if (p.x < -10 || p.y < -10 || p.x > W + 10 || p.y > H + 10) continue; ctx.fillRect(p.x + 7, p.y - 9, 5, 3.5); ctx.beginPath(); ctx.moveTo(p.x + 12, p.y - 8.5); ctx.lineTo(p.x + 15, p.y - 10); ctx.lineTo(p.x + 15, p.y - 5.5); ctx.closePath(); ctx.fill(); }
       }
 
       // pursuit suspects
@@ -465,9 +503,11 @@ export function MapView(props: MapProps) {
       const groups = new Map<string, Unit[]>();
       for (const u of Object.values(st.units)) { const k = `${Math.round(u.x / 3)},${Math.round(u.y / 3)}`; const g = groups.get(k); if (g) g.push(u); else groups.set(k, [u]); }
       offs.current.clear();
-      for (const g of groups.values()) g.forEach((u, i) => { if (g.length > 1) { const ang = (i / g.length) * Math.PI * 2 - Math.PI / 2; offs.current.set(u.id, { dx: Math.cos(ang) * 14, dy: Math.sin(ang) * 14 + 4 }); } });
+      for (const g of groups.values()) { const vis = g.filter((u) => !parkedAtBase(st, u)); vis.forEach((u, i) => { if (vis.length > 1) { const row = Math.floor(i / 4), col = i % 4, inRow = Math.min(4, vis.length - row * 4); offs.current.set(u.id, { dx: (col - (inRow - 1) / 2) * 17, dy: 30 + row * 13 }); } }); }
       const vs = Math.max(0.75, Math.min(1.5, 0.6 + z * 0.45));
       for (const u of Object.values(st.units)) {
+        // parked vehicles are the dots under their station; only units out on the road are drawn
+        if (parkedAtBase(st, u) && !(sel.kind === 'unit' && sel.id === u.id)) continue;
         const o0 = offs.current.get(u.id) ?? { dx: 0, dy: 0 };
         const p0 = S(u.x, u.y); const p = { x: p0.x + o0.dx, y: p0.y + o0.dy };
         if (p.x < -40 || p.y < -40 || p.x > W + 40 || p.y > H + 40) continue;
@@ -570,7 +610,7 @@ export function MapView(props: MapProps) {
         const metersPer100px = (100 / z) * 4;
         const nice = [50, 100, 200, 250, 500, 1000, 2000].find((m) => m >= metersPer100px * 0.6) ?? 2000;
         const len = (nice / 4) * z;
-        const x = W - (pr.minimap ? 212 : 20) - len, y = H - 18;
+        const x = W - (pr.minimap ? 212 : 20) - len, y = H - (pr.sounds ? 38 : 18);
         ctx.strokeStyle = 'rgba(232,237,242,0.75)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(x, y); ctx.lineTo(x + len, y); ctx.lineTo(x + len, y - 5); ctx.stroke();
         ctx.font = '600 10px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(232,237,242,0.85)'; ctx.fillText(nice >= 1000 ? `${nice / 1000} km` : `${nice} m`, x + len / 2, y - 9);
       }
@@ -692,6 +732,14 @@ function drawHeli(ctx: CanvasRenderingContext2D, st: GameState, u: Unit, p: { x:
   ctx.strokeStyle = airborne ? 'rgba(220,228,236,0.55)' : 'rgba(220,228,236,0.85)'; ctx.lineWidth = 1.4;
   ctx.beginPath(); for (let k = 0; k < 2; k++) { const b = a + k * Math.PI / 2; ctx.moveTo(Math.cos(b) * 13 * s, Math.sin(b) * 13 * s); ctx.lineTo(-Math.cos(b) * 13 * s, -Math.sin(b) * 13 * s); } ctx.stroke();
   ctx.restore();
+}
+
+/** a vehicle sitting at its own station: drawn as a status dot under the station, not as a car */
+export function parkedAtBase(st: GameState, u: Unit): boolean {
+  if (u.route.length || u.speed > 0.05 || !['AVAILABLE', 'BUSY', 'OUT_OF_SERVICE'].includes(u.status)) return false;
+  const stn = st.stations[u.stationId];
+  const node = getCity().nodes[stn ? stn.nodeId : u.postNode];
+  return Math.hypot(u.x - node.x, u.y - node.y) < 6;
 }
 
 function glyph(ctx: CanvasRenderingContext2D, cat: string, x: number, y: number, s: number) {

@@ -8,8 +8,10 @@ import type { Vec } from '../sim/types';
 type Style = 'tower' | 'office' | 'house' | 'terrace' | 'warehouse' | 'campus' | 'hangar' | 'tank';
 export interface Lot { pts: Vec[]; h: number; roof: string; edge: string; style: Style; cx: number; cy: number; r: number; district: string; seed: number }
 export interface Tree { x: number; y: number; r: number; c: string }
-interface Feature { kind: 'runway' | 'apron' | 'containers' | 'rail' | 'stadium' | 'yard' | 'grass' | 'plaza' | 'pier'; pts: Vec[]; color?: string; extra?: number }
-export interface Scenery { lots: Lot[]; trees: Tree[]; features: Feature[]; lights: Vec[]; windows: Array<{ x: number; y: number; s: number }>; ground: Array<{ pts: Vec[]; color: string }> }
+interface Feature { kind: 'runway' | 'apron' | 'containers' | 'rail' | 'stadium' | 'yard' | 'grass' | 'plaza' | 'pier' | 'parking' | 'pool'; pts: Vec[]; color?: string; extra?: number }
+export type ModelKind = 'hospital' | 'cathedral' | 'clocktower' | 'cityhall' | 'terminal' | 'ctower' | 'plane' | 'crane' | 'ship' | 'train' | 'factory' | 'lighthouse' | 'gas' | 'bank' | 'mall' | 'school' | 'station' | 'supertall' | 'stadium' | 'market' | 'library';
+export interface Model { kind: ModelKind; x: number; y: number; rot: number; s: number; seed: number; pts?: Vec[] }
+export interface Scenery { lots: Lot[]; trees: Tree[]; features: Feature[]; lights: Vec[]; windows: Array<{ x: number; y: number; s: number; h: number; v: number }>; ground: Array<{ pts: Vec[]; color: string }>; models: Model[] }
 
 const lerp = (a: Vec, b: Vec, t: number): Vec => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
 /** point inside a quad [tl, tr, br, bl] from (u, v) in 0..1 */
@@ -50,13 +52,27 @@ export function getScenery(): Scenery {
   return cached;
 }
 
+const LM_MODEL: Record<string, ModelKind> = { hospital: 'hospital', church: 'cathedral', civic: 'cityhall', airport: 'terminal', cargo: 'plane', bank: 'bank', mall: 'mall', school: 'school', gas: 'gas', factory: 'factory', transit: 'station', tower: 'supertall', market: 'market', library: 'library', campus: 'school', terminal: 'crane', depot: 'factory', warehouse: 'factory', hotel: 'supertall', cinema: 'mall' };
+
 function build(city: City): Scenery {
-  const lots: Lot[] = [], trees: Tree[] = [], features: Feature[] = [], lights: Vec[] = [], windows: Scenery['windows'] = [], ground: Scenery['ground'] = [];
+  const lots: Lot[] = [], trees: Tree[] = [], features: Feature[] = [], lights: Vec[] = [], windows: Scenery['windows'] = [], ground: Scenery['ground'] = [], models: Model[] = [];
   const stadiumNode = city.landmarks.find((l) => l.kind === 'stadium')?.nodeId;
+  // landmark buildings take over the block beside their address
+  const lmBlock = new Map<number, { kind: ModelKind; seed: number; name: string }>();
+  for (const l of city.landmarks) {
+    const n = city.nodes[l.nodeId];
+    let kind: ModelKind | undefined = LM_MODEL[l.kind];
+    if (l.kind === 'monument') kind = /Lighthouse/.test(l.name) ? 'lighthouse' : 'clocktower';
+    if (!kind) continue;
+    let best = -1, bd = Infinity;
+    city.blocks.forEach((b, i) => { if (b.kind !== 'building' && kind !== 'hospital') return; const c = centroid(b.poly); const d = Math.hypot(c.x - (n.x + 22), c.y - (n.y + 22)); if (d < bd) { bd = d; best = i; } });
+    if (best >= 0 && bd < 60 && !lmBlock.has(best)) lmBlock.set(best, { kind, seed: hashString(l.id), name: l.name });
+  }
   const tree = (rng: Rng, x: number, y: number, r: number, forest = false) => trees.push({ x, y, r, c: rng.pick(forest ? ['#1d3a26', '#21422b', '#193322', '#244a2f'] : ['#22432c', '#264a31', '#1f3d29', '#2b5236']) });
 
   // blocks indexed by lattice coordinates (the block below/right of node i,j)
-  for (const b of city.blocks) {
+  for (let bi = 0; bi < city.blocks.length; bi++) {
+    const b = city.blocks[bi];
     const q = b.poly;
     const d = city.districtById[b.district];
     const tag = d.tags.includes('highrise') ? 'highrise' : d.tags[0];
@@ -74,10 +90,12 @@ function build(city: City): Scenery {
     if (d.id === 'airport' && (nj === 2 || nj === 4 || nj === 5 || nj === 7) && ni >= 30 && ni <= 39) {
       features.push({ kind: 'apron', pts: subQuad(q, 0, 0, 1, 1) });
       if (rng.chance(0.45)) lots.push(mkLot(subQuad(q, 0.15, 0.2, 0.85, 0.8), 5, '#3d4550', 'hangar', b.district, seed));
+      else if (rng.chance(0.75)) { const c = quadPt(q, 0.5, 0.5); models.push({ kind: 'plane', x: c.x, y: c.y, rot: rng.chance(0.5) ? 0 : Math.PI, s: rng.range(0.8, 1.15), seed }); }
       continue;
     }
     if (d.id === 'harbor' && nj >= 21) {
       features.push({ kind: 'apron', pts: subQuad(q, 0, 0, 1, 1) });
+      if (rng.chance(0.35)) { const c = quadPt(q, 0.5, 0.92); models.push({ kind: 'crane', x: c.x, y: c.y, rot: 0, s: 1, seed }); }
       // container stacks
       const cols = 4, rows = 3;
       for (let a = 0; a < cols; a++) for (let c = 0; c < rows; c++) {
@@ -89,10 +107,26 @@ function build(city: City): Scenery {
     }
     if (d.id === 'southside' && nj === 20) {
       features.push({ kind: 'rail', pts: subQuad(q, -0.02, 0.1, 1.02, 0.9), extra: 6 });
+      if (rng.chance(0.4)) { const a = quadPt(q, 0.02, 0.1 + (rng.int(0, 5) + 0.5) / 6 * 0.8), bb = quadPt(q, 0.98, 0.1 + 0.5 * 0.8); models.push({ kind: 'train', x: a.x, y: a.y, rot: Math.atan2(bb.y - a.y, bb.x - a.x), s: Math.hypot(bb.x - a.x, bb.y - a.y), seed }); }
       continue;
     }
     if (stadiumNode !== undefined && n0 === stadiumNode) {
-      features.push({ kind: 'stadium', pts: subQuad(q, 0.04, 0.06, 0.96, 0.94) });
+      const pts = subQuad(q, 0.04, 0.06, 0.96, 0.94);
+      features.push({ kind: 'stadium', pts });
+      const c = centroid(pts); models.push({ kind: 'stadium', x: c.x, y: c.y, rot: 0, s: 1, seed, pts });
+      continue;
+    }
+    // landmark buildings
+    const lm = lmBlock.get(bi);
+    if (lm) {
+      ground.push({ pts: q, color: '#222b35' });
+      const c = quadPt(q, 0.5, 0.5);
+      models.push({ kind: lm.kind, x: c.x, y: c.y, rot: 0, s: 1, seed: lm.seed, pts: subQuad(q, 0.08, 0.08, 0.92, 0.92) });
+      continue;
+    }
+    // surface car parks in busy districts
+    if (['commercial', 'dense', 'industrial', 'highrise'].includes(tag) && b.kind === 'building' && rng.chance(0.07)) {
+      features.push({ kind: 'parking', pts: subQuad(q, 0.04, 0.04, 0.96, 0.96), extra: seed });
       continue;
     }
 
@@ -140,6 +174,7 @@ function build(city: City): Scenery {
       const pts = subQuad(q, u0 + rng.range(0, jitter), v0 + rng.range(0, jitter), u1 - rng.range(0, jitter), v1 - rng.range(0, jitter));
       const h = rng.range(hmin, hmax);
       lots.push(mkLot(pts, h, rng.pick(pal), style, b.district, seed + a * 31 + c * 7));
+      if (style === 'house' && tag === 'suburb' && rng.chance(0.28)) { const pp = quadPt(q, (a + 0.5) / nx, (c + 0.97) / ny); features.push({ kind: 'pool', pts: [{ x: pp.x - 2.6, y: pp.y - 1.4 }, { x: pp.x + 2.6, y: pp.y - 1.4 }, { x: pp.x + 2.6, y: pp.y + 1.4 }, { x: pp.x - 2.6, y: pp.y + 1.4 }] }); }
       if (style === 'house' && rng.chance(0.7)) { const p = quadPt(q, (a + rng.range(0.1, 0.9)) / nx, (c + (rng.chance(0.5) ? 0.08 : 0.92)) / ny); tree(rng, p.x, p.y, rng.range(2.2, 3.6)); }
     }
     if (d.id === 'industrial' && rng.chance(0.2)) { const p = quadPt(q, 0.75, 0.75); lots.push({ ...mkLot([p, p, p, p], 6, '#4a5056', 'tank', b.district, seed + 99), cx: p.x, cy: p.y, r: 7 }); }
@@ -152,6 +187,7 @@ function build(city: City): Scenery {
     const x = hd.poly[3].x + 40 + k * ((hd.poly[2].x - hd.poly[3].x - 80) / 5);
     const y = city.coast[Math.min(city.coast.length - 1, Math.round((x / WORLD_W) * (city.coast.length - 1)))].y;
     features.push({ kind: 'pier', pts: [{ x: x - 7, y: y - 6 }, { x: x + 7, y: y - 6 }, { x: x + 7, y: y + 52 }, { x: x - 7, y: y + 52 }] });
+    if (k % 2 === 0) models.push({ kind: 'ship', x: x + 19, y: y + 34, rot: Math.PI / 2, s: 1 + (k % 3) * 0.15, seed: 7000 + k });
   }
 
   // street lights along arterials and highways
@@ -170,10 +206,10 @@ function build(city: City): Scenery {
     for (let k = 0; k < count; k++) {
       if (!rng.chance(0.55)) continue;
       const p = quadPt(l.pts, rng.range(0.15, 0.85), rng.range(0.15, 0.85));
-      windows.push({ x: p.x, y: p.y, s: rng.range(0.8, 1.6) });
+      windows.push({ x: p.x, y: p.y, s: rng.range(0.8, 1.6), h: l.h, v: rng.range(0.25, 0.9) });
     }
   }
-  return { lots, trees, features, lights, windows, ground };
+  return { lots, trees, features, lights, windows, ground, models };
 }
 
 function mkLot(pts: Vec[], h: number, roof: string, style: Style, district: string, seed: number): Lot {
@@ -196,7 +232,7 @@ export const MAP_COLORS = {
  * Draws the static city. `lod` 0 = overview cache, 1 = mid cache, 2 = live close-up with extra detail.
  * The context must already be transformed into world coordinates.
  */
-export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View | null, activeDistricts: Set<string>, scale: number, opts: { skipRoofs?: boolean } = {}) {
+export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View | null, activeDistricts: Set<string>, scale: number, opts: { skipRoofs?: boolean; tilt?: number } = {}) {
   const city = getCity();
   const sc = getScenery();
   const C = MAP_COLORS;
@@ -234,6 +270,21 @@ export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View 
       case 'plaza': ctx.fillStyle = '#2a333e'; ctx.beginPath(); poly(ctx, f.pts); ctx.fill(); { const m = centroid(f.pts); ctx.fillStyle = '#1d4766'; ctx.beginPath(); ctx.arc(m.x, m.y, 6, 0, 7); ctx.fill(); ctx.strokeStyle = '#3d5a73'; ctx.lineWidth = 1.2; ctx.stroke(); } break;
       case 'apron': ctx.fillStyle = '#242c35'; ctx.beginPath(); poly(ctx, f.pts); ctx.fill(); break;
       case 'yard': ctx.strokeStyle = '#2b3a2e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(f.pts[0].x, f.pts[0].y); ctx.lineTo(f.pts[1].x, f.pts[1].y); ctx.stroke(); break;
+      case 'parking': {
+        ctx.fillStyle = '#262c33'; ctx.beginPath(); poly(ctx, f.pts); ctx.fill();
+        const rr = f.extra ?? 1;
+        ctx.strokeStyle = 'rgba(220,226,232,0.28)'; ctx.lineWidth = 0.35; ctx.beginPath();
+        for (let row = 0; row < 3; row++) for (let k = 0; k <= 8; k++) { const a = quadPt(f.pts, 0.06 + k * 0.11, 0.08 + row * 0.32), b = quadPt(f.pts, 0.06 + k * 0.11, 0.08 + row * 0.32 + 0.2); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); }
+        ctx.stroke();
+        for (let row = 0; row < 3; row++) for (let k = 0; k < 8; k++) {
+          const hsh = ((rr + row * 31 + k * 17) * 2654435761) >>> 0;
+          if (hsh % 100 > 62) continue;
+          const c = quadPt(f.pts, 0.115 + k * 0.11, 0.18 + row * 0.32);
+          ctx.fillStyle = ['#c9ced6', '#8a929c', '#3d4450', '#e6e8eb', '#7a2f2f', '#2f4f7a', '#2f5a3f', '#1c2026'][hsh % 8]; ctx.fillRect(c.x - 1.6, c.y - 2.6, 3.2, 5.2);
+        }
+        break;
+      }
+      case 'pool': ctx.fillStyle = '#2f7fa8'; ctx.beginPath(); poly(ctx, f.pts); ctx.fill(); ctx.strokeStyle = 'rgba(220,240,250,0.5)'; ctx.lineWidth = 0.4; ctx.stroke(); break;
       case 'pier': ctx.fillStyle = '#3a3f45'; ctx.beginPath(); poly(ctx, f.pts); ctx.fill(); ctx.strokeStyle = '#1a1f24'; ctx.lineWidth = 1; ctx.stroke(); break;
       case 'rail': {
         ctx.fillStyle = '#20262c'; ctx.beginPath(); poly(ctx, f.pts); ctx.fill();
@@ -300,9 +351,11 @@ export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View 
   // trees (shadow, canopy, highlight)
   for (const t of sc.trees) {
     if (!visible(view, t.x, t.y, t.r)) continue;
+    const lift = (opts.tilt ?? 0) * LIFT * 3.2;
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.arc(t.x + t.r * 0.45, t.y + t.r * 0.55, t.r, 0, 7); ctx.fill();
-    ctx.fillStyle = t.c; ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, 7); ctx.fill();
-    if (lod >= 1) { ctx.fillStyle = 'rgba(140,200,140,0.12)'; ctx.beginPath(); ctx.arc(t.x - t.r * 0.3, t.y - t.r * 0.3, t.r * 0.5, 0, 7); ctx.fill(); }
+    if (lift > 0.3) { ctx.fillStyle = '#3a2e24'; ctx.fillRect(t.x - 0.4, t.y - lift, 0.8, lift); }
+    ctx.fillStyle = t.c; ctx.beginPath(); ctx.arc(t.x + lift * LEAN, t.y - lift, t.r, 0, 7); ctx.fill();
+    if (lod >= 1) { ctx.fillStyle = 'rgba(140,200,140,0.14)'; ctx.beginPath(); ctx.arc(t.x - t.r * 0.3 + lift * LEAN, t.y - t.r * 0.3 - lift, t.r * 0.5, 0, 7); ctx.fill(); }
   }
 
   // roads
@@ -334,10 +387,12 @@ export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View 
   roadPath('bridge'); ctx.strokeStyle = '#06090c'; ctx.lineWidth = 11; ctx.stroke(); ctx.strokeStyle = '#8a9bb0'; ctx.lineWidth = 9; ctx.stroke(); ctx.strokeStyle = C.bridge; ctx.lineWidth = 7; ctx.stroke();
 }
 
-export function drawNightLights(ctx: CanvasRenderingContext2D, view: View | null, opts: { windows?: boolean } = {}) {
+export function drawNightLights(ctx: CanvasRenderingContext2D, view: View | null, opts: { windows?: boolean; tilt?: number } = {}) {
   const sc = getScenery();
   ctx.fillStyle = 'rgba(255,214,140,0.9)';
-  if (opts.windows !== false) for (const w of sc.windows) { if (!visible(view, w.x, w.y, 2)) continue; ctx.fillRect(w.x - w.s / 2, w.y - w.s / 2, w.s, w.s); }
+  const k = LIFT * (opts.tilt ?? 0);
+  // in the tilted view the lit windows sit on the walls, part way up the building
+  if (opts.windows !== false) for (const w of sc.windows) { const lift = w.h * k * w.v; const x = w.x + lift * LEAN, y = w.y - lift; if (!visible(view, x, y, 2)) continue; ctx.fillRect(x - w.s / 2, y - w.s / 2, w.s, w.s); }
   for (const l of sc.lights) {
     if (!visible(view, l.x, l.y, 9)) continue;
     const g = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, 9);
@@ -357,11 +412,41 @@ export const LIFT = 1.25;
 const LEAN = 0.22;
 let sortedLots: Lot[] | null = null;
 
+/** the camera tilt of the cached overview: buildings always stand up a little */
+export const BASE_TILT = 0.35;
+
+type Pt = { x: number; y: number };
+/** an extruded box from height hb to ht above a footprint; walls facing the viewer, then the roof */
+function prism(ctx: CanvasRenderingContext2D, p: Pt[], hb: number, ht: number, k: number, roof: string, wallSouth: string, wallSide: string): Pt[] {
+  const lb = { x: hb * k * LEAN, y: -hb * k }, lt = { x: ht * k * LEAN, y: -ht * k };
+  const b = p.map((q) => ({ x: q.x + lb.x, y: q.y + lb.y })), r = p.map((q) => ({ x: q.x + lt.x, y: q.y + lt.y }));
+  const ox = lt.x - lb.x, oy = lt.y - lb.y;
+  for (let i = 0; i < p.length; i++) {
+    const a = b[i], c = b[(i + 1) % p.length];
+    const nx = c.y - a.y, ny = -(c.x - a.x);
+    if (-nx * ox - ny * oy <= 0) continue;
+    ctx.fillStyle = ny > Math.abs(nx) ? wallSouth : wallSide;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(c.x, c.y); ctx.lineTo(r[(i + 1) % p.length].x, r[(i + 1) % p.length].y); ctx.lineTo(r[i].x, r[i].y); ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = roof; ctx.beginPath(); poly(ctx, r); ctx.fill();
+  return r;
+}
+/** a cylinder (tanks, chimneys, towers) */
+function cylinder(ctx: CanvasRenderingContext2D, x: number, y: number, rad: number, hb: number, ht: number, k: number, top: string, side: string) {
+  const bx = x + hb * k * LEAN, by = y - hb * k, tx = x + ht * k * LEAN, ty = y - ht * k;
+  ctx.fillStyle = side;
+  ctx.beginPath(); ctx.moveTo(bx - rad, by); ctx.lineTo(tx - rad, ty); ctx.lineTo(tx + rad, ty); ctx.lineTo(bx + rad, by); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(bx, by, rad, rad * 0.55, 0, 0, Math.PI); ctx.fill();
+  ctx.fillStyle = top; ctx.beginPath(); ctx.ellipse(tx, ty, rad, rad * 0.55, 0, 0, 7); ctx.fill();
+}
+const rect = (cx: number, cy: number, w: number, h: number): Pt[] => [{ x: cx - w / 2, y: cy - h / 2 }, { x: cx + w / 2, y: cy - h / 2 }, { x: cx + w / 2, y: cy + h / 2 }, { x: cx - w / 2, y: cy + h / 2 }];
+
 /**
- * Extruded buildings for the zoomed-in view. Roofs are lifted "up" the screen by height × tilt so
- * the south and east walls become visible; drawn back to front so nearer blocks overlap farther ones.
+ * Extruded buildings. Roofs are lifted "up" the screen by height × tilt so the south and east walls
+ * show; drawn back to front so nearer blocks overlap farther ones. Used for the cached overview
+ * (BASE_TILT) and the live close-up (tilt grows with zoom).
  */
-export function drawBuildings3D(ctx: CanvasRenderingContext2D, view: View, tilt: number, night: number, scale: number, detail = true) {
+export function drawBuildings3D(ctx: CanvasRenderingContext2D, view: View | null, tilt: number, night: number, scale: number, detail = true) {
   const sc = getScenery();
   sortedLots ??= [...sc.lots].sort((a, b) => a.cy - b.cy);
   const k = LIFT * tilt;
@@ -370,65 +455,262 @@ export function drawBuildings3D(ctx: CanvasRenderingContext2D, view: View, tilt:
   for (const l of sortedLots) {
     const rise = l.h * k;
     if (!visible(view, l.cx, l.cy - rise, l.r + rise + 4)) continue;
-    const ox = rise * LEAN, oy = -rise;
-    if (l.style === 'tank') {
-      ctx.fillStyle = shade(l.roof, 0.62);
-      ctx.beginPath(); ctx.ellipse(l.cx + ox / 2, l.cy + oy / 2, l.r, Math.abs(oy) / 2 + l.r * 0.4, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = l.roof; ctx.beginPath(); ctx.arc(l.cx + ox, l.cy + oy, l.r, 0, 7); ctx.fill();
-      ctx.strokeStyle = l.edge; ctx.lineWidth = px(1); ctx.stroke();
-      continue;
-    }
+    if (l.style === 'tank') { cylinder(ctx, l.cx, l.cy, l.r, 0, l.h, k, l.roof, shade(l.roof, 0.62)); ctx.strokeStyle = l.edge; ctx.lineWidth = px(0.8); ctx.beginPath(); ctx.ellipse(l.cx + rise * LEAN, l.cy - rise, l.r * 0.6, l.r * 0.33, 0, 0, 7); ctx.stroke(); continue; }
     const p = l.pts;
-    const r = p.map((q) => ({ x: q.x + ox, y: q.y + oy }));
-    // walls facing the viewer
-    for (let i = 0; i < 4; i++) {
-      const a = p[i], b = p[(i + 1) % 4];
-      const nx = b.y - a.y, ny = -(b.x - a.x);
-      const facing = -nx * ox - ny * oy;
-      if (facing <= 0) continue;
-      const south = ny > Math.abs(nx);
-      ctx.fillStyle = shade(l.roof, south ? 0.52 : 0.68);
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(r[(i + 1) % 4].x, r[(i + 1) % 4].y); ctx.lineTo(r[i].x, r[i].y); ctx.closePath(); ctx.fill();
-      // floors and windows: daytime glass bands, lit windows at night (batched per building)
-      const floors = Math.max(1, Math.floor(l.h / (l.style === 'warehouse' || l.style === 'hangar' ? 4 : 2.4)));
-      const len = Math.hypot(b.x - a.x, b.y - a.y);
-      if (detail && rise * scale > 10 && l.style !== 'warehouse' && l.style !== 'hangar') {
-        const q = (u: number, v: number) => ({ x: a.x + (b.x - a.x) * u + ox * v, y: a.y + (b.y - a.y) * u + oy * v });
-        const quad = (path: Path2D, u0: number, u1: number, v0: number, v1: number) => { const w0 = q(u0, v0), w1 = q(u1, v0), w2 = q(u1, v1), w3 = q(u0, v1); path.moveTo(w0.x, w0.y); path.lineTo(w1.x, w1.y); path.lineTo(w2.x, w2.y); path.lineTo(w3.x, w3.y); path.closePath(); };
-        if (!lit) {
-          const glass = new Path2D();
-          for (let f = 0; f < floors; f++) quad(glass, 0.06, 0.94, (f + 0.3) / floors, (f + 0.72) / floors);
-          ctx.fillStyle = l.style === 'tower' ? 'rgba(150,190,220,0.26)' : 'rgba(140,175,205,0.16)'; ctx.fill(glass);
-        } else {
-          const cols = Math.max(1, Math.floor(len / (l.style === 'tower' ? 3.2 : 4.5)));
-          const on = new Path2D();
-          const rng = l.seed + i * 977;
-          for (let f = 0; f < floors; f++) for (let c = 0; c < cols; c++) if ((((rng + f * 131 + c * 71) * 2654435761) >>> 0) % 100 < 42) quad(on, (c + 0.25) / cols, (c + 0.75) / cols, (f + 0.3) / floors, (f + 0.75) / floors);
-          ctx.fillStyle = `rgba(255,212,140,${0.55 + 0.4 * night})`; ctx.fill(on);
-        }
-      } else if (l.style === 'warehouse' || l.style === 'hangar') {
-        // big roller doors
-        const q = (u: number, v: number) => ({ x: a.x + (b.x - a.x) * u + ox * v, y: a.y + (b.y - a.y) * u + oy * v });
-        ctx.fillStyle = 'rgba(0,0,0,0.25)';
-        const cols = Math.max(1, Math.min(3, Math.floor(len / 12)));
-        for (let c = 0; c < cols; c++) { const u0 = (c + 0.2) / cols, u1 = u0 + 0.5 / cols; const w0 = q(u0, 0), w1 = q(u1, 0), w2 = q(u1, 0.55), w3 = q(u0, 0.55); ctx.beginPath(); ctx.moveTo(w0.x, w0.y); ctx.lineTo(w1.x, w1.y); ctx.lineTo(w2.x, w2.y); ctx.lineTo(w3.x, w3.y); ctx.closePath(); ctx.fill(); }
-      }
+    const tiered = l.style === 'tower' && l.h > 13;
+    const wallS = l.style === 'tower' ? shade(l.roof, 0.72) : shade(l.roof, 0.52), wallE = l.style === 'tower' ? shade(l.roof, 0.88) : shade(l.roof, 0.68);
+    let r = prism(ctx, p, 0, tiered ? l.h * 0.62 : l.h, k, l.roof, wallS, wallE);
+    // windows on the walls facing the viewer
+    if (detail && rise * scale > 9 && l.style !== 'warehouse' && l.style !== 'hangar') windowsOn(ctx, p, tiered ? l.h * 0.62 : l.h, k, l, lit, night);
+    if (tiered) {
+      const upper = subQuad(p, 0.17, 0.17, 0.83, 0.83);
+      ctx.fillStyle = shade(l.roof, 1.12); ctx.beginPath(); poly(ctx, r); ctx.fill();
+      r = prism(ctx, upper, l.h * 0.62, l.h, k, l.roof, shade(l.roof, 0.78), shade(l.roof, 0.95));
+      if (detail && rise * scale > 9) windowsOn(ctx, upper, l.h, k, l, lit, night, l.h * 0.62);
     }
-    // roof
-    ctx.fillStyle = l.roof; ctx.beginPath(); poly(ctx, r); ctx.fill();
     ctx.strokeStyle = l.edge; ctx.lineWidth = Math.max(0.5, px(0.9));
     ctx.beginPath(); ctx.moveTo(r[3].x, r[3].y); ctx.lineTo(r[0].x, r[0].y); ctx.lineTo(r[1].x, r[1].y); ctx.stroke();
-    if (l.style === 'tower' || l.style === 'office') {
-      const inner = subQuad(r, 0.3, 0.3, 0.7, 0.7); ctx.fillStyle = shade(l.roof, 1.16); ctx.beginPath(); poly(ctx, inner); ctx.fill();
-      if (l.style === 'tower' && lit) { const m = centroid(r); ctx.fillStyle = (Math.floor(performance.now() / 900 + l.seed) % 2) ? 'rgba(255,70,70,0.95)' : 'rgba(120,20,20,0.6)'; ctx.beginPath(); ctx.arc(m.x, m.y, Math.max(0.6, px(1.6)), 0, 7); ctx.fill(); }
-    } else if (l.style === 'house' || l.style === 'terrace') {
-      ctx.strokeStyle = shade(l.roof, 0.7); ctx.lineWidth = Math.max(0.5, px(0.8));
-      const a = lerp(r[0], r[3], 0.5), b = lerp(r[1], r[2], 0.5); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-    } else if (l.style === 'warehouse' || l.style === 'hangar') {
-      ctx.strokeStyle = shade(l.roof, 0.82); ctx.lineWidth = Math.max(0.4, px(0.6));
-      ctx.beginPath(); for (let k2 = 1; k2 < 5; k2++) { const a = lerp(r[0], r[1], k2 / 5), b = lerp(r[3], r[2], k2 / 5); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); } ctx.stroke();
+    if (!detail) continue;
+    roofDetail(ctx, l, r, k, px, lit);
+  }
+}
+
+function windowsOn(ctx: CanvasRenderingContext2D, p: Pt[], h: number, k: number, l: Lot, lit: boolean, night: number, hb = 0) {
+  const ox = h * k * LEAN, oy = -h * k, bx = hb * k * LEAN, by = -hb * k;
+  for (let i = 0; i < 4; i++) {
+    const a = p[i], b = p[(i + 1) % 4];
+    const nx = b.y - a.y, ny = -(b.x - a.x);
+    if (-nx * (ox - bx) - ny * (oy - by) <= 0) continue;
+    const floors = Math.max(1, Math.floor((h - hb) / 2.4));
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const q = (u: number, v: number) => ({ x: a.x + (b.x - a.x) * u + bx + (ox - bx) * v, y: a.y + (b.y - a.y) * u + by + (oy - by) * v });
+    const path = new Path2D();
+    const quad = (u0: number, u1: number, v0: number, v1: number) => { const w0 = q(u0, v0), w1 = q(u1, v0), w2 = q(u1, v1), w3 = q(u0, v1); path.moveTo(w0.x, w0.y); path.lineTo(w1.x, w1.y); path.lineTo(w2.x, w2.y); path.lineTo(w3.x, w3.y); path.closePath(); };
+    if (!lit) {
+      for (let f = 0; f < floors; f++) quad(0.06, 0.94, (f + 0.3) / floors, (f + 0.72) / floors);
+      ctx.fillStyle = l.style === 'tower' ? 'rgba(150,195,230,0.3)' : 'rgba(140,175,205,0.16)'; ctx.fill(path);
+    } else {
+      const cols = Math.max(1, Math.floor(len / (l.style === 'tower' ? 3.2 : 4.5)));
+      for (let f = 0; f < floors; f++) for (let c = 0; c < cols; c++) if ((((l.seed + i * 977 + f * 131 + c * 71) * 2654435761) >>> 0) % 100 < 42) quad((c + 0.25) / cols, (c + 0.75) / cols, (f + 0.3) / floors, (f + 0.75) / floors);
+      ctx.fillStyle = `rgba(255,212,140,${0.55 + 0.4 * night})`; ctx.fill(path);
     }
   }
+}
+
+function roofDetail(ctx: CanvasRenderingContext2D, l: Lot, r: Pt[], k: number, px: (n: number) => number, lit: boolean) {
+  const hsh = (n: number) => (((l.seed + n * 7919) * 2654435761) >>> 0) % 1000;
+  if (l.style === 'tower') {
+    const m = centroid(r);
+    if (l.h > 18 && hsh(1) < 350) {
+      // rooftop helipad
+      ctx.fillStyle = '#2a323c'; ctx.beginPath(); ctx.arc(m.x, m.y, Math.min(5, l.r * 0.35), 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(230,236,242,0.8)'; ctx.lineWidth = px(0.9); ctx.stroke();
+      ctx.fillStyle = 'rgba(230,236,242,0.85)'; const hs = Math.min(2.4, l.r * 0.16); ctx.fillRect(m.x - hs, m.y - hs, hs * 0.35, hs * 2); ctx.fillRect(m.x + hs * 0.65, m.y - hs, hs * 0.35, hs * 2); ctx.fillRect(m.x - hs, m.y - hs * 0.18, hs * 2, hs * 0.36);
+    } else {
+      // plant room and antenna
+      const inner = subQuad(r, 0.3, 0.3, 0.7, 0.7);
+      prism(ctx, inner, 0, 1.4, k, shade(l.roof, 1.2), shade(l.roof, 0.6), shade(l.roof, 0.8));
+      if (hsh(2) < 500) { ctx.strokeStyle = 'rgba(200,210,220,0.8)'; ctx.lineWidth = px(0.8); ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(m.x + 6 * k * LEAN, m.y - 6 * k); ctx.stroke(); }
+    }
+    if (lit) { ctx.fillStyle = (Math.floor(performance.now() / 900 + l.seed) % 2) ? 'rgba(255,70,70,0.95)' : 'rgba(120,20,20,0.6)'; ctx.beginPath(); ctx.arc(m.x, m.y - 0.5, Math.max(0.6, px(1.6)), 0, 7); ctx.fill(); }
+  } else if (l.style === 'office') {
+    // HVAC boxes
+    for (let i = 0; i < 2 + (hsh(3) % 3); i++) { const c = quadPt(r, 0.2 + ((hsh(10 + i) % 600) / 1000), 0.2 + ((hsh(20 + i) % 600) / 1000)); prism(ctx, rect(c.x, c.y, 2.4, 1.8), 0, 0.9, k, '#5a6470', '#3a424c', '#48515c'); }
+  } else if (l.style === 'house' || l.style === 'terrace') {
+    // gabled roof: two planes either side of the ridge
+    const a = lerp(r[0], r[3], 0.5), b = lerp(r[1], r[2], 0.5);
+    const lift = { x: 1.6 * k * LEAN, y: -1.6 * k };
+    const ra = { x: a.x + lift.x, y: a.y + lift.y }, rb = { x: b.x + lift.x, y: b.y + lift.y };
+    ctx.fillStyle = shade(l.roof, 1.18); ctx.beginPath(); ctx.moveTo(r[0].x, r[0].y); ctx.lineTo(r[1].x, r[1].y); ctx.lineTo(rb.x, rb.y); ctx.lineTo(ra.x, ra.y); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade(l.roof, 0.86); ctx.beginPath(); ctx.moveTo(ra.x, ra.y); ctx.lineTo(rb.x, rb.y); ctx.lineTo(r[2].x, r[2].y); ctx.lineTo(r[3].x, r[3].y); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = shade(l.roof, 0.6); ctx.lineWidth = Math.max(0.4, px(0.7)); ctx.beginPath(); ctx.moveTo(ra.x, ra.y); ctx.lineTo(rb.x, rb.y); ctx.stroke();
+    if (hsh(4) < 450) { const c = lerp(ra, rb, 0.75); prism(ctx, rect(c.x, c.y - 0.8, 1.2, 1.2), 0, 1.4, k, '#3a2e2a', '#2a221f', '#332925'); }
+  } else if (l.style === 'warehouse' || l.style === 'hangar') {
+    ctx.strokeStyle = shade(l.roof, 0.78); ctx.lineWidth = Math.max(0.4, px(0.7));
+    ctx.beginPath(); for (let i = 1; i < 6; i++) { const a = lerp(r[0], r[1], i / 6), b = lerp(r[3], r[2], i / 6); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); } ctx.stroke();
+    if (l.style === 'warehouse') { ctx.fillStyle = 'rgba(160,200,230,0.18)'; for (let i = 0; i < 3; i++) { const c = quadPt(r, 0.25 + i * 0.25, 0.5); ctx.fillRect(c.x - 1, c.y - 2.5, 2, 5); } }
+  } else if (l.style === 'campus') {
+    const inner = subQuad(r, 0.22, 0.22, 0.78, 0.78); ctx.fillStyle = '#25402c'; ctx.beginPath(); poly(ctx, inner); ctx.fill();
+  }
+}
+
+/** landmark buildings and set dressing: hospitals, cathedral, terminal, planes, cranes, ships, trains... */
+export function drawModels(ctx: CanvasRenderingContext2D, view: View | null, tilt: number, night: number, scale: number) {
+  const sc = getScenery();
+  sortedModels ??= [...sc.models].sort((a, b) => a.y - b.y);
+  const k = LIFT * tilt;
+  const px = (n: number) => n / scale;
+  const lit = night > 0.25;
+  const now = performance.now();
+  for (const m of sortedModels) {
+    if (!visible(view, m.x, m.y - 30 * k, 70)) continue;
+    const { x, y } = m;
+    const box = (cx: number, cy: number, w: number, d: number, h0: number, h1: number, roof: string, wall: string) => prism(ctx, rect(cx, cy, w, d), h0, h1, k, roof, shade(wall, 0.8), wall);
+    const shadow = (w: number, d: number, h: number) => { ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.beginPath(); poly(ctx, rect(x + h * 0.3, y + h * 0.4, w, d)); ctx.fill(); };
+    switch (m.kind) {
+      case 'hospital': {
+        shadow(30, 30, 10);
+        box(x, y, 34, 12, 0, 9, '#dfe4ea', '#b9c2cc');
+        const top = box(x, y, 12, 32, 0, 11, '#e8edf2', '#c3ccd6');
+        const c = centroid(top);
+        ctx.fillStyle = '#d64545'; ctx.fillRect(c.x - 1.5, c.y - 5, 3, 10); ctx.fillRect(c.x - 5, c.y - 1.5, 10, 3);
+        const hp = { x: x + 12 + 9 * k * LEAN, y: y - 9 * k };
+        ctx.fillStyle = '#2b333d'; ctx.beginPath(); ctx.arc(hp.x, hp.y, 4, 0, 7); ctx.fill(); ctx.strokeStyle = lit ? '#ffd27a' : '#e8edf2'; ctx.lineWidth = px(0.8); ctx.stroke();
+        ctx.fillStyle = '#e8edf2'; ctx.font = `800 ${5}px Inter, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('H', hp.x, hp.y + 0.3);
+        break;
+      }
+      case 'cathedral': {
+        shadow(30, 14, 12);
+        box(x, y + 2, 32, 10, 0, 8, '#5b4a44', '#6e5a52');
+        box(x + 4, y + 2, 9, 22, 0, 8, '#5b4a44', '#6e5a52');
+        const t = box(x - 13, y + 2, 7, 7, 0, 22, '#4f403b', '#6e5a52');
+        const c = centroid(t); ctx.fillStyle = '#7a6a5f'; ctx.beginPath(); ctx.moveTo(c.x - 3.5, c.y + 1.5); ctx.lineTo(c.x + 3.5, c.y + 1.5); ctx.lineTo(c.x + 2 * k * LEAN * 4, c.y - 10 * k); ctx.closePath(); ctx.fill();
+        if (lit) { ctx.fillStyle = 'rgba(255,200,120,0.6)'; ctx.beginPath(); ctx.arc(x, y + 7, 2, 0, 7); ctx.fill(); }
+        break;
+      }
+      case 'clocktower': {
+        shadow(10, 10, 26);
+        const t = box(x, y, 9, 9, 0, 26, '#6b5544', '#7d6450');
+        const c = centroid(t);
+        ctx.fillStyle = '#e8dcc0'; ctx.beginPath(); ctx.arc(x + 20 * k * LEAN, y + 4.5 - 20 * k, 2.6, 0, 7); ctx.fill();
+        ctx.strokeStyle = '#3a2e24'; ctx.lineWidth = px(0.6); ctx.beginPath(); ctx.moveTo(x + 20 * k * LEAN, y + 4.5 - 20 * k); ctx.lineTo(x + 20 * k * LEAN, y + 3 - 20 * k); ctx.stroke();
+        ctx.fillStyle = '#4a3a30'; ctx.beginPath(); ctx.moveTo(t[0].x, t[0].y); ctx.lineTo(t[1].x, t[1].y); ctx.lineTo(c.x + 6 * k * LEAN, c.y - 6 * k); ctx.closePath(); ctx.fill();
+        break;
+      }
+      case 'cityhall': {
+        shadow(34, 20, 10);
+        const t = box(x, y, 36, 20, 0, 9, '#c9c4b8', '#b1aa9c');
+        const c = centroid(t);
+        ctx.fillStyle = '#d8b25a'; ctx.beginPath(); ctx.ellipse(c.x, c.y, 7, 4.5, 0, Math.PI, 0); ctx.ellipse(c.x, c.y, 7, 7 * k + 2, 0, 0, Math.PI, true); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.35)'; for (let i = -3; i <= 3; i++) ctx.fillRect(x + i * 4.5, y + 10 - 0.5, 1, -7 * k);
+        break;
+      }
+      case 'terminal': {
+        shadow(70, 20, 7);
+        box(x, y, 74, 18, 0, 7, '#6f8aa3', '#4b6a86');
+        ctx.strokeStyle = 'rgba(220,235,245,0.35)'; ctx.lineWidth = px(0.6); ctx.beginPath(); for (let i = -6; i <= 6; i++) { const xx = x + i * 5.5 + 7 * k * LEAN; ctx.moveTo(xx, y - 9 - 7 * k); ctx.lineTo(xx, y + 9 - 7 * k); } ctx.stroke();
+        for (let i = -2; i <= 2; i++) { ctx.strokeStyle = '#9aa6b2'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x + i * 14, y + 9); ctx.lineTo(x + i * 14, y + 17); ctx.stroke(); }
+        cylinder(ctx, x + 44, y - 4, 2.2, 0, 26, k, '#9aa6b2', '#6b7885');
+        cylinder(ctx, x + 44, y - 4, 4.2, 24, 28, k, lit ? '#ffd88a' : '#7fb0d0', '#4f6f8c');
+        break;
+      }
+      case 'plane': planeSprite(ctx, x, y, m.rot, m.s, k, lit, now); break;
+      case 'crane': {
+        const leg = (dx: number) => { ctx.strokeStyle = '#c96a2c'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.lineTo(x + dx + 22 * k * LEAN, y - 22 * k); ctx.stroke(); };
+        ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x - 6 + 6, y + 4, 14, 26);
+        leg(-6); leg(6);
+        ctx.strokeStyle = '#e07b38'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 8 + 22 * k * LEAN, y - 22 * k - 6); ctx.lineTo(x + 8 + 22 * k * LEAN, y - 22 * k + 30); ctx.stroke();
+        ctx.fillStyle = '#3d4450'; ctx.fillRect(x - 4 + 22 * k * LEAN, y - 22 * k - 4, 8, 5);
+        break;
+      }
+      case 'ship': {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(m.rot); ctx.scale(m.s, m.s);
+        ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.moveTo(-30, 4); ctx.lineTo(24, 4); ctx.lineTo(32, 9); ctx.lineTo(24, 14); ctx.lineTo(-30, 14); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = m.seed % 2 ? '#6a2b2b' : '#24425f'; ctx.beginPath(); ctx.moveTo(-30, -5); ctx.lineTo(24, -5); ctx.lineTo(32, 0); ctx.lineTo(24, 5); ctx.lineTo(-30, 5); ctx.closePath(); ctx.fill();
+        const cols = ['#7a3b33', '#2f5a7a', '#3f6b45', '#8a6a2e', '#5d4a7a'];
+        for (let i = 0; i < 7; i++) for (let j = 0; j < 2; j++) { ctx.fillStyle = cols[(i + j + m.seed) % cols.length]; ctx.fillRect(-18 + i * 5.5, -4 + j * 4, 5, 3.6); }
+        ctx.fillStyle = '#e8edf2'; ctx.fillRect(-28, -4, 7, 8); ctx.fillStyle = '#2a3038'; ctx.fillRect(-27, -3, 5, 2);
+        if (lit) { ctx.fillStyle = 'rgba(255,220,140,0.9)'; ctx.fillRect(-27, -1, 1, 1); ctx.fillRect(-24, -1, 1, 1); }
+        ctx.restore();
+        break;
+      }
+      case 'train': {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(m.rot);
+        const n = Math.max(3, Math.floor(m.s / 7));
+        for (let i = 0; i < n; i++) { const loco = i === 0; ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(i * 7 + 1, -1, 6, 4.6); ctx.fillStyle = loco ? '#d6a032' : ['#5a3a2a', '#3d4a5a', '#4a5a3a'][(i + m.seed) % 3]; ctx.fillRect(i * 7, -2.3, 6.2, 4.6); if (loco) { ctx.fillStyle = '#2a3038'; ctx.fillRect(4.6, -1.6, 1.2, 3.2); } }
+        ctx.restore();
+        break;
+      }
+      case 'factory': {
+        shadow(30, 20, 9);
+        box(x - 2, y + 2, 30, 18, 0, 8, '#4a5056', '#565e66');
+        cylinder(ctx, x + 9, y - 5, 2.2, 0, 24, k, '#2a2e33', '#5a6066');
+        cylinder(ctx, x + 15, y - 3, 2, 0, 20, k, '#2a2e33', '#5a6066');
+        if (lit) { ctx.fillStyle = 'rgba(255,60,60,0.9)'; ctx.beginPath(); ctx.arc(x + 9 + 24 * k * LEAN, y - 5 - 24 * k, 0.9, 0, 7); ctx.fill(); }
+        break;
+      }
+      case 'lighthouse': {
+        cylinder(ctx, x, y, 3, 0, 20, k, '#e8edf2', '#d6dde4');
+        for (let i = 0; i < 3; i++) { ctx.fillStyle = '#c63a3a'; const yy = y - (4 + i * 6) * k; ctx.fillRect(x - 3 + (4 + i * 6) * k * LEAN, yy - 1.5 * k, 6, 1.6 * k + 0.5); }
+        const lx = x + 21 * k * LEAN, ly = y - 21 * k;
+        ctx.fillStyle = lit ? '#fff2b0' : '#9fb8c8'; ctx.beginPath(); ctx.arc(lx, ly, 2, 0, 7); ctx.fill();
+        if (lit) { const a = now / 1400; ctx.fillStyle = 'rgba(255,240,180,0.12)'; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.arc(lx, ly, 90, a, a + 0.25); ctx.closePath(); ctx.fill(); }
+        break;
+      }
+      case 'gas': {
+        shadow(20, 12, 4);
+        box(x - 8, y + 4, 10, 8, 0, 4, '#5a6470', '#6b7684');
+        const c = box(x + 6, y, 18, 12, 4, 5, '#c63a3a', '#9a2e2e');
+        if (lit) { ctx.fillStyle = 'rgba(255,250,220,0.35)'; ctx.beginPath(); poly(ctx, rect(x + 6, y, 16, 10)); ctx.fill(); }
+        void c;
+        break;
+      }
+      case 'bank': {
+        shadow(28, 18, 10);
+        const t = box(x, y, 30, 18, 0, 10, '#d8d4ca', '#c3bdb0');
+        ctx.fillStyle = 'rgba(120,110,95,0.6)'; for (let i = -3; i <= 3; i++) ctx.fillRect(x + i * 4 - 0.5, y + 9, 1, -9 * k);
+        ctx.fillStyle = '#b8b0a0'; ctx.beginPath(); ctx.moveTo(t[3].x, t[3].y); ctx.lineTo(t[2].x, t[2].y); ctx.lineTo((t[2].x + t[3].x) / 2, t[3].y - 4 * k); ctx.closePath(); ctx.fill();
+        break;
+      }
+      case 'mall': case 'market': {
+        shadow(40, 26, 6);
+        const t = box(x, y, 40, 26, 0, 6, m.kind === 'market' ? '#6b4a3a' : '#59636f', m.kind === 'market' ? '#7d5a46' : '#6c7784');
+        ctx.fillStyle = 'rgba(170,210,235,0.35)'; for (let i = 0; i < 4; i++) { const c = quadPt(t, 0.2 + i * 0.2, 0.5); ctx.fillRect(c.x - 2, c.y - 6, 4, 12); }
+        break;
+      }
+      case 'school': case 'library': {
+        shadow(30, 20, 6);
+        box(x - 6, y, 26, 10, 0, 6, '#7a5a48', '#8a6a55');
+        box(x + 10, y + 4, 10, 18, 0, 6, '#7a5a48', '#8a6a55');
+        ctx.fillStyle = '#2d5a3a'; ctx.fillRect(x - 18, y + 8, 14, 9);
+        break;
+      }
+      case 'station': {
+        shadow(46, 18, 7);
+        const t = box(x, y, 48, 18, 0, 7, '#5c6a78', '#6e7d8c');
+        ctx.strokeStyle = 'rgba(200,220,235,0.4)'; ctx.lineWidth = px(0.7); ctx.beginPath(); for (let i = 1; i < 10; i++) { const a = lerp(t[0], t[1], i / 10), b = lerp(t[3], t[2], i / 10); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); } ctx.stroke();
+        break;
+      }
+      case 'supertall': {
+        shadow(16, 16, 40);
+        box(x, y, 18, 18, 0, 24, '#2d3e55', '#3a5070');
+        box(x, y, 13, 13, 24, 36, '#34485f', '#456183');
+        const t = box(x, y, 8, 8, 36, 44, '#3a5068', '#4d6a8a');
+        const c = centroid(t);
+        ctx.strokeStyle = '#c8d4de'; ctx.lineWidth = px(1); ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(c.x + 10 * k * LEAN, c.y - 10 * k); ctx.stroke();
+        if (lit) { ctx.fillStyle = (Math.floor(now / 700) % 2) ? '#ff4d4d' : '#701c1c'; ctx.beginPath(); ctx.arc(c.x + 10 * k * LEAN, c.y - 10 * k, 1.2, 0, 7); ctx.fill(); }
+        break;
+      }
+      case 'stadium': {
+        if (!m.pts) break;
+        const w = Math.hypot(m.pts[1].x - m.pts[0].x, m.pts[1].y - m.pts[0].y) / 2, h = Math.hypot(m.pts[3].x - m.pts[0].x, m.pts[3].y - m.pts[0].y) / 2;
+        const lift = 7 * k;
+        ctx.fillStyle = '#4b525c'; ctx.beginPath(); ctx.ellipse(x, y, w, h, 0, 0, Math.PI); ctx.lineTo(x - w + lift * LEAN, y - lift); ctx.ellipse(x + lift * LEAN, y - lift, w, h, 0, Math.PI, 0, true); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#6a3a3a'; ctx.beginPath(); ctx.ellipse(x + lift * LEAN, y - lift, w, h, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = '#2f7a46'; ctx.beginPath(); ctx.ellipse(x + lift * LEAN * 0.4, y - lift * 0.4, w * 0.66, h * 0.56, 0, 0, 7); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = px(0.7); ctx.strokeRect(x + lift * LEAN * 0.4 - w * 0.45, y - lift * 0.4 - h * 0.35, w * 0.9, h * 0.7);
+        if (lit) for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { ctx.fillStyle = 'rgba(255,255,230,0.9)'; ctx.beginPath(); ctx.arc(x + dx * w * 0.95 + 14 * k * LEAN, y + dy * h * 0.95 - 14 * k, 1.6, 0, 7); ctx.fill(); }
+        break;
+      }
+      case 'ctower': break;
+    }
+  }
+}
+let sortedModels: Model[] | null = null;
+
+function planeSprite(ctx: CanvasRenderingContext2D, x: number, y: number, rot: number, s: number, k: number, lit: boolean, now: number) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s);
+  const draw = (fill: string, dx: number, dy: number) => {
+    ctx.fillStyle = fill;
+    ctx.beginPath(); ctx.ellipse(dx, dy, 14, 2.3, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(dx - 2, dy); ctx.lineTo(dx + 3, dy - 12); ctx.lineTo(dx + 6, dy - 12); ctx.lineTo(dx + 4, dy); ctx.lineTo(dx + 6, dy + 12); ctx.lineTo(dx + 3, dy + 12); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(dx - 12, dy); ctx.lineTo(dx - 10, dy - 5); ctx.lineTo(dx - 8.5, dy - 5); ctx.lineTo(dx - 9, dy); ctx.lineTo(dx - 8.5, dy + 5); ctx.lineTo(dx - 10, dy + 5); ctx.closePath(); ctx.fill();
+  };
+  draw('rgba(0,0,0,0.3)', 2, 3);
+  draw('#e8edf2', 0, -0.5 * k);
+  ctx.fillStyle = '#2f5a8a'; ctx.fillRect(-10, -0.8 - 0.5 * k, 20, 1.2);
+  if (lit && Math.floor(now / 600) % 2) { ctx.fillStyle = '#ff4d4d'; ctx.beginPath(); ctx.arc(4.5, -12, 0.8, 0, 7); ctx.fill(); ctx.fillStyle = '#4dff7a'; ctx.beginPath(); ctx.arc(4.5, 12, 0.8, 0, 7); ctx.fill(); }
+  ctx.restore();
 }
 
 // ── street life: parked cars and ambient traffic ─────────────────────────────

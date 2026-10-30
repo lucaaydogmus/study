@@ -91,6 +91,39 @@ export const SCENARIOS: ScenarioDef[] = [
     config: { startHour: 17, weather: 'rain', incidentRate: 1.1, events: [{ type: 'rush_hour', at: 10, duration: 560 }], objectives: [obj('a', 'Resolve 8 incidents', 'resolved', 8), obj('b', 'Average response under 160 s', 'avg_response', 160)] } },
 ];
 
+// ── Live storylines: the scenario set pieces, happening during ordinary shifts ──
+export interface Storyline { id: string; title: string; headline: string; minRank: number; needs: string[]; night?: boolean; steps: Array<{ dt: number; template: string; district?: string }> }
+export const STORYLINES: Storyline[] = [
+  { id: 'heist', title: 'The Heist', headline: 'Armed crew storms Ravenport Savings Bank', minRank: 2, needs: ['financial', 'downtown'], steps: [{ dt: 0, template: 'bank_robbery' }, { dt: 210, template: 'carjacking' }] },
+  { id: 'code_red', title: 'Code Red', headline: 'Shots fired inside a shopping centre', minRank: 3, needs: ['westres', 'northsub', 'downtown', 'university'], steps: [{ dt: 0, template: 'active_shooter' }, { dt: 270, template: 'bomb_threat', district: 'downtown' }] },
+  { id: 'airport', title: 'Airport Alert', headline: 'Airliner declares an emergency over Ravenport', minRank: 4, needs: ['airport'], steps: [{ dt: 0, template: 'aircraft_emergency' }, { dt: 170, template: 'unruly_passenger' }, { dt: 300, template: 'airport_medical' }] },
+  { id: 'joyriders', title: 'Joyriders', headline: 'Stolen cars racing through the city', minRank: 1, needs: [], night: true, steps: [{ dt: 0, template: 'pursuit' }, { dt: 160, template: 'carjacking' }, { dt: 320, template: 'street_racing' }] },
+  { id: 'chemical', title: 'Chemical Spill', headline: 'Tanker overturns and ignites on the expressway', minRank: 3, needs: ['industrial', 'harbor', 'airport'], steps: [{ dt: 0, template: 'tanker_fire' }, { dt: 150, template: 'gas_leak' }, { dt: 290, template: 'industrial_accident' }] },
+  { id: 'derail', title: 'Derailment', headline: 'Freight train derails at Rail Yard 4', minRank: 4, needs: ['southside'], steps: [{ dt: 0, template: 'train_derailment' }, { dt: 220, template: 'gas_leak' }] },
+  { id: 'match_night', title: 'Match Night', headline: 'Crush at Corvid Stadium after the final whistle', minRank: 3, needs: ['university'], steps: [{ dt: 0, template: 'crowd_crush' }, { dt: 140, template: 'public_disturbance' }, { dt: 260, template: 'fireworks' }] },
+  { id: 'blaze', title: 'The Big Blaze', headline: 'Explosion rocks a residential street', minRank: 1, needs: ['westres', 'oldtown', 'riverside', 'northsub', 'southside'], steps: [{ dt: 0, template: 'house_explosion' }, { dt: 190, template: 'apartment_fire' }] },
+  { id: 'amber', title: 'Amber Alert', headline: 'Child snatched from a playground', minRank: 2, needs: [], steps: [{ dt: 0, template: 'kidnapping' }, { dt: 240, template: 'missing_person' }] },
+  { id: 'open_line', title: 'Open Line', headline: 'Silent 911 calls under investigation', minRank: 1, needs: ['westres', 'riverside', 'northsub', 'oldtown'], steps: [{ dt: 0, template: 'silent_call' }, { dt: 230, template: 'domestic_disturbance' }] },
+];
+
+/** roll a storyline for an ordinary shift and turn it into scheduled spawns */
+export function rollStoryline(cfg: ShiftConfig, rank: number, seed: number, chance?: number): ShiftConfig {
+  const rng = new Rng(seed ^ 0x5f3759df);
+  if (cfg.durationSec < 7 * 60 || cfg.mode === 'tutorial' || cfg.script) return cfg;
+  const p = chance ?? (rank <= 1 ? 0.25 : rank <= 3 ? 0.45 : 0.6);
+  if (!rng.chance(p)) return cfg;
+  const night = cfg.startHour >= 20 || cfg.startHour < 5;
+  const pool = STORYLINES.filter((s) => s.minRank <= Math.max(1, rank) && (!s.needs.length || s.needs.some((d) => cfg.districts.includes(d))) && (!s.night || night || rng.chance(0.3)));
+  const story = rng.pick(pool);
+  if (!story) return cfg;
+  const home = story.needs.filter((d) => cfg.districts.includes(d));
+  const district = home.length ? rng.pick(home) : rng.pick(cfg.districts);
+  const at = Math.round(cfg.durationSec * rng.range(0.22, 0.5));
+  const forced = [...(cfg.forced ?? []), ...story.steps.map((st, i) => ({ at: at + st.dt, template: st.template, district: st.district && cfg.districts.includes(st.district) ? st.district : district, story: story.id, first: i === 0 }))]
+    .filter((f) => f.at < cfg.durationSec - 60).sort((a, b) => a.at - b.at);
+  return { ...cfg, forced, storyline: { id: story.id, title: story.title, headline: story.headline, at } };
+}
+
 export const TUTORIAL_CONFIG = (): ShiftConfig => baseConfig({
   mode: 'tutorial', title: 'Tutorial — Your First Shift', briefing: 'Learn the dispatcher’s loop: answer, gather, locate, dispatch, monitor.',
   durationSec: 10 * 60, difficulty: 'casual', incidentRate: 0, districts: ['downtown', 'oldtown', 'westres', 'riverside'], weather: 'clear', startHour: 10,
@@ -115,12 +148,13 @@ export function dailyConfig(key = todayKey()): { config: ShiftConfig; units: num
   const modifier = rng.pick(MODIFIERS.filter((m) => m.id !== 'quiet')).id;
   const contracts = rng.shuffle(CONTRACTS).slice(0, 3).map((c) => ({ id: c.id, target: c.target(5) }));
   const units = 11 + rng.int(0, 4);
-  const config = baseConfig({
+  const config0 = baseConfig({
     mode: 'scenario', daily: key, title: `Daily Challenge — ${key}`, difficulty, durationSec: 12 * 60, weather, startHour: rng.pick([2, 7, 12, 17, 21]),
     incidentRate: 1 + rng.range(0, 0.2), seed, modifiers: [modifier], contracts,
     events: [{ type: ev, at: 60 + rng.int(0, 120), duration: 420 }],
     briefing: 'Everyone gets the same shift today. Same calls, same city, same conditions — how well can you run it?',
     objectives: [obj('a', 'Resolve 8 incidents', 'resolved', 8), obj('b', 'No casualties', 'no_deaths', 0, true)],
   });
+  const config = rollStoryline(config0, 7, seed, 0.85);
   return { config, units };
 }

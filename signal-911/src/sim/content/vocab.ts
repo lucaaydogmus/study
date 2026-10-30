@@ -6,7 +6,7 @@ export const FACT_LABELS: Record<string, string> = {
   fire: 'Flames visible', smoke: 'Smoke visible', hazard: 'Other hazard', weapon: 'Weapon', suspect: 'Suspect present',
   suspect_desc: 'Suspect description', vehicles: 'Vehicles involved', trapped: 'People trapped', safe: 'Caller safe',
   cause: 'What happened', district: 'District (caller)', animal: 'Animal involved', crowd: 'Crowd', water: 'Person in water',
-  outside: 'Out of jurisdiction', false_alarm: 'Not an emergency',
+  outside: 'Out of jurisdiction', false_alarm: 'Not an emergency', access: 'Access / entry',
 };
 
 export interface ClassDef { id: string; label: string; rec: Req[]; service: 'medical' | 'fire' | 'police' | 'none' }
@@ -75,6 +75,7 @@ export const ARCHETYPES: Record<string, Archetype> = {
   worried_neighbor: { id: 'worried_neighbor', label: 'Worried neighbour', personality: 'Kindly, nosy, afraid of overreacting', style: 'Chatty, hedging', age: [30, 74], panic: [26, 46], coop: [66, 84], frustration: [0, 8], accuracy: { exact: 5, street: 4, landmark: 2, wrong: 1, unknown: 0 }, idType: { mobile: 5, landline: 5, voip: 0, payphone: 0 }, misunderstand: 0.05, contradict: 0.1, slow: 0 },
   drunk_caller: { id: 'drunk_caller', label: 'Intoxicated caller', personality: 'Rambling, over-friendly, then irritable', style: 'Slurred, repetitive', age: [22, 55], panic: [14, 30], coop: [28, 46], frustration: [18, 34], accuracy: { exact: 1, street: 4, landmark: 3, wrong: 3, unknown: 1 }, idType: { mobile: 9, landline: 0, voip: 0, payphone: 1 }, misunderstand: 0.15, contradict: 0.35, slow: 0 },
   shopkeeper: { id: 'shopkeeper', label: 'Shop owner', personality: 'Practical and annoyed; knows the address by heart', style: 'Direct, a bit weary', age: [30, 66], panic: [18, 38], coop: [64, 82], frustration: [4, 16], accuracy: { exact: 9, street: 1, landmark: 0, wrong: 0, unknown: 0 }, idType: { mobile: 3, landline: 7, voip: 0, payphone: 0 }, misunderstand: 0.02, contradict: 0.05, slow: 0 },
+  silent: { id: 'silent', label: 'Caller cannot speak', personality: 'Hiding from someone in the room; cannot risk talking', style: 'Silence, breathing, taps', age: [19, 48], panic: [66, 84], coop: [70, 86], frustration: [0, 4], accuracy: { exact: 0, street: 0, landmark: 0, wrong: 0, unknown: 1 }, idType: { mobile: 9, landline: 1, voip: 0, payphone: 0 }, misunderstand: 0, contradict: 0, slow: 0 },
   terse: { id: 'terse', label: 'Guarded caller', personality: 'Refuses to explain, fears being overheard', style: 'Whispery, one-word replies', age: [24, 55], panic: [40, 58], coop: [16, 28], frustration: [14, 26], accuracy: { exact: 3, street: 3, landmark: 2, wrong: 0, unknown: 3 }, idType: { mobile: 8, landline: 2, voip: 0, payphone: 0 }, misunderstand: 0.03, contradict: 0.1, slow: 0 },
 };
 

@@ -70,6 +70,10 @@ export interface Unit {
   code?: 2 | 3; crashAt?: number | null; stoppedUntil?: number;
   /** aircraft only: fuel 0..100 */
   fuel?: number;
+  /** police cars cruise their beat while available; false = wait at the station */
+  patrol?: boolean;
+  /** fire/EMS told to stage short of an unsafe scene until police secure it */
+  staging?: boolean; stagedAt?: number | null;
 }
 
 export interface Station {
@@ -87,6 +91,14 @@ export interface CallerProfile {
   callerIdType: 'mobile' | 'landline' | 'voip' | 'payphone';
   ambience: string; phone: string;
   persona?: { occupation: string; quirk: string; background: string; catchphrase: string; voice: string };
+  /** how this person talks (see voices.ts) */
+  voice?: CallerVoice;
+  /** the caller does not speak English: nothing useful until an interpreter joins */
+  language?: string;
+}
+export interface CallerVoice {
+  tic: string | null; address: string | null; catchphrase: string | null; tangents: string[];
+  formal: boolean; slang: boolean; caps: boolean; stutter: boolean; trail: boolean; short: boolean;
 }
 
 export interface TranscriptLine { t: number; clock: string; who: 'CALLER' | 'DISPATCHER' | 'SYSTEM'; text: string }
@@ -101,7 +113,7 @@ export interface Mood { panic: number; base: number; cooperation: number; frustr
 export interface PendingLine {
   at: number; text: string; facts?: Record<string, FactVal>; unsure?: string[]; heard?: Omit<HeardLocation, 'id' | 'at'>[];
   /** AI voicing: line ids are held until the dialogue model rewrites them (or a timeout releases the scripted text) */
-  id?: number; hold?: boolean;
+  id?: number; hold?: boolean; ai?: boolean; system?: boolean;
   twist?: boolean; hangup?: boolean;
 }
 
@@ -119,6 +131,28 @@ export interface Call {
   lastSpontaneous: number; stateNote: string;
   /** the caller has heard the first siren approaching (said once, only when a unit is actually close) */
   heardSirens?: boolean;
+  /** Language Line interpreter */
+  interpreter?: 'connecting' | 'on'; interpreterAt?: number;
+  /** carrier location trace: an uncertainty circle that tightens over time */
+  trace?: CallTrace | null;
+  /** silent caller: the dispatcher set up "tap twice for yes" */
+  tapProtocol?: boolean;
+  outbound?: boolean;
+}
+export type Dept = 'trauma' | 'cardiac' | 'stroke' | 'pediatric' | 'burns';
+export interface HospitalState {
+  node: number; name: string; has: Dept[]; down: Partial<Record<Dept, number>>; er: number; erCap: number; nextEvent: number; lastDecay: number;
+  /** what the dispatcher's bed board shows (it goes stale until refreshed) */
+  known: { at: number; er: number; down: Dept[]; diversion: boolean } | null;
+  prealerts: string[];
+}
+export interface Decision {
+  id: string; incId: string; unitId: string; at: number; expiresAt: number; kind: string; prompt: string;
+  options: Array<{ id: string; label: string; hint: string }>; defaultId: string; chosen?: string; outcome?: string; auto?: boolean;
+}
+export interface CallTrace {
+  startedAt: number; stage: number; stages: Array<{ at: number; radius: number; label: string }>;
+  x: number; y: number; radius: number; label: string; done: boolean; wrongNode?: number | null;
 }
 
 export interface Fact {
@@ -169,16 +203,37 @@ export interface Incident {
   survival?: number; lifeThreat?: 'arrest' | 'bleed' | 'airway' | null; careAt?: number | null;
   /** what the dispatcher's guidance did, for the report */
   consequences?: string[]; relayedAt?: number; checkRolled?: boolean;
+  /** crews were given the caller's information on the radio */
+  briefedAt?: number | null; briefedFacts?: number;
+  /** officer-initiated (on-view) incident */
+  onView?: boolean; hospitalNode?: number | null;
+  cctvAt?: number; decided?: boolean; spread?: boolean; storyline?: string;
+  /** crews asked for access details (flat number, gate code) on the way in */
+  accessNeeded?: { at: number; relayed: boolean } | null; accessDelayUntil?: number;
+  /** how well the receiving hospital matched the patient */
+  hospitalOutcome?: 'ideal' | 'ok' | 'unsuitable'; hospitalAsked?: boolean;
 }
 
 /** an officer on the radio asking dispatch to run someone or something through records */
-export interface RecordHit { name: string; dob: string; lines: string[]; flag: CheckResult; match: boolean }
 export type CheckResult = 'clear' | 'warrant' | 'caution' | 'suspended' | 'missing' | 'stolen' | 'expired';
+export interface PersonRecord {
+  last: string; first: string; middle: string; dob: string; sex: 'M' | 'F'; height: string; weight: number; hair: string; eyes: string; address: string;
+  oln: string; olnStatus: 'VALID' | 'SUSPENDED' | 'EXPIRED'; warrants: Array<{ num: string; charge: string; level: 'FELONY' | 'MISD' }>;
+  priors: Array<{ year: number; charge: string }>; caution: string | null; marks: string; missing: boolean;
+}
+export interface VehicleRecord {
+  plate: string; state: string; year: number; make: string; model: string; color: string; owner: string; ownerAddress: string;
+  reg: 'VALID' | 'EXPIRED'; insured: boolean; stolen: { date: string; caseNo: string } | null; ownerWarrant: boolean;
+}
+export interface RecordHit { person?: PersonRecord; vehicle?: VehicleRecord; flag: CheckResult; match: boolean }
 export interface OfficerRequest {
   id: string; unitId: string; incidentId: string | null; kind: 'person' | 'plate';
   at: number; status: 'open' | 'answered' | 'expired';
-  subject: string; detail: string; truth: CheckResult; hits: RecordHit[]; ran: boolean; ranAt?: number;
-  answer?: CheckResult; answeredAt?: number; reminded: number; correct?: boolean;
+  subject: string; detail: string;
+  /** what the officer read out on the radio */
+  given: { last: string; first: string; dob: string; sex: 'M' | 'F' } | { plate: string; state: string; vehicle: string };
+  truth: CheckResult; db: RecordHit[]; ran: boolean; ranAt?: number; searches: number; mistakes: number;
+  answer?: CheckResult; answeredAt?: number; reminded: number; correct?: boolean; announced?: boolean; text?: string;
 }
 
 // ── City events / weather / config ──────────────────────────────────────────
@@ -214,7 +269,9 @@ export interface ShiftConfig {
   contracts?: Array<{ id: string; target: number }>;
   daily?: string;
   /** guaranteed incidents on top of the random ones (scenario set pieces) */
-  forced?: Array<{ at: number; template: string; district?: string; archetype?: string }>;
+  forced?: Array<{ at: number; template: string; district?: string; archetype?: string; story?: string; first?: boolean }>;
+  /** a live storyline (major incident chain) rolled for this shift */
+  storyline?: { id: string; title: string; headline: string; at: number };
 }
 
 export interface TimelineEntry {
@@ -222,7 +279,7 @@ export interface TimelineEntry {
   text: string; incidentId?: string; unitId?: string; good?: boolean | null;
 }
 
-export interface RadioMsg { id: string; t: number; clock: string; from: string; text: string; unitId?: string; incidentId?: string; kind: 'unit' | 'dispatch' | 'alert' }
+export interface RadioMsg { id: string; t: number; clock: string; from: string; text: string; unitId?: string; incidentId?: string; kind: 'unit' | 'dispatch' | 'alert' | 'hospital' | 'chatter'; to?: string }
 
 export interface Notification { id: string; t: number; text: string; level: 'info' | 'good' | 'warn' | 'bad'; incidentId?: string }
 
@@ -256,7 +313,16 @@ export interface GameState {
   scoreBreakdown?: ShiftScore;
   streak: number; fx: Fx[]; fxCounter: number; closedHospitals: number[]; lineCounter: number;
   forcedIndex?: number;
-  requests: OfficerRequest[]; requestCounter: number; nextStopAt: number;
+  requests: OfficerRequest[]; requestCounter: number; nextStopAt: number; nextOnViewAt?: number;
+  /** recent admissions per hospital node (times), for capacity and diversion */
+  hospitalLoad?: Record<number, number[]>;
+  /** tactical questions from crews on scene */
+  decisions?: Decision[];
+  /** headlines for the news ticker */
+  news?: Array<{ t: number; text: string; tone: 'good' | 'bad' | 'info' }>;
+  /** hospital departments, beds and diversions, keyed by hospital node */
+  hospitals?: Record<string, HospitalState>;
+  lastChatter?: number;
 }
 
 export interface ShiftScore {

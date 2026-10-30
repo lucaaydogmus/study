@@ -80,6 +80,43 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 
 ## What is in the game
 
+### Remaster 4: a living city
+
+- **New look**: a cinematic home screen (a night flyover of the live city, radio feed and daily challenge) and a
+  reworked HUD-style interface throughout.
+- **Real buildings**: the whole map is now 3D — tiered towers with helipads and plant rooms, gabled houses with
+  chimneys and pools, warehouses, car parks — plus landmark models: hospitals with rooftop helipads, the cathedral,
+  the clock tower, City Hall's dome, the airport terminal and control tower with parked airliners, harbour cranes and
+  container ships, freight trains, factories, the lighthouse and the stadium bowl. Parked vehicles appear as status
+  dots under their station; only units out on the road are drawn as vehicles.
+- **Callers with their own voices**: every caller gets a speech profile (verbal tics, how they address you,
+  formality, slang, a catchphrase, personal tangents), and each caller type has its own lines for the quiet moments.
+  AI callers receive the same profile.
+- **Storylines during ordinary shifts**: the set pieces — bank heists, active shooters, emergency landings,
+  derailments, chemical spills, stadium crushes, joyriders, Amber alerts — can break out mid-shift, with a BREAKING
+  banner and a city news ticker that reports how you handled them.
+- **Police on patrol**: patrol cars cruise their beat instead of waiting at the station, respond from the road, pull
+  cars over on their own, run rolling plate checks (stolen cars run), and come across incidents themselves (on-view).
+  You can order a stop yourself.
+- **Records terminal, for real**: officers read out the surname (spelled phonetically), first name, date of birth and
+  sex, or the plate and vehicle. You type the query; the database returns full records — address, physical
+  description, licence status, warrants, criminal history, caution flags — including namesakes and near-miss
+  spellings. Pick the right record and relay the return; the officer catches a wrong date of birth.
+- **Unit commands**: upgrade/downgrade Code 2/3, stage EMS until police secure an armed scene (crews walking into an
+  unsecured scene can be attacked), brief responding crews with what the caller said, divert units, request a sitrep.
+- **While units are en route**: crews ask how to get in — flat number, gate code, which door. Get it from the caller
+  and brief them, or they lose time at the door.
+- **Hospital coordination**: hospitals have trauma, cardiac, stroke, paediatric and burns capability, live ER load and
+  departments that go down mid-shift. Medics ask where to take specialist patients; your bed board only shows what you
+  knew at the last refresh. Pre-alert the hospital for a faster handover and better outcome; the wrong destination
+  means a secondary transfer.
+- **Dispatcher tools**: wireless call trace with an uncertainty circle that tightens while the caller stays on the
+  line (VoIP addresses can be wrong), silent callers who answer by tapping, Language Line interpreters, calling back
+  dropped callers, and city CCTV cameras with a live feed.
+- **Tactical decisions**: crews ask you to choose — interior attack or defensive, negotiate or breach, go in now or
+  wait for tactical, treat on scene or load and go, evacuate or search. Fires that get away spread next door.
+- **A living radio**: units coordinate with each other, hospitals announce diversions, patrols chat between calls.
+
 ### Remaster 3: air support, major incidents and consequences
 
 - **2.5D city when you zoom in**: the camera tilts and buildings rise with lit windows at night, rooftop beacons,

@@ -2,6 +2,7 @@
 // Only information the caller's character could know goes in; hidden twists never do.
 import { ARCHETYPES } from './content/vocab';
 import { describeKnowledge, fill } from './dialogue';
+import { describeVoice } from './voices';
 import type { GameEngine } from './engine';
 
 const REVEALABLE = ['injuries', 'breathing', 'conscious', 'age', 'people', 'fire', 'hazard', 'weapon', 'suspect', 'vehicles', 'trapped', 'safe', 'cause', 'address', 'landmark'];
@@ -31,6 +32,7 @@ export function buildAiContext(engine: GameEngine, callId: string, lineIds: numb
       name: p.name, age: p.age, type: arch?.label ?? p.archetype, personality: p.personality, speakingStyle: p.speakingStyle,
       relationshipToEmergency: inc.vars.self === '1' ? 'the caller is the patient' : `talking about ${fill('{who}', inc.vars)} (${inc.vars.he}/${inc.vars.him})`,
       persona: p.persona ?? null,
+      voice: describeVoice(p.voice),
     },
     mood: { stress: Math.round(call.mood.panic), cooperation: Math.round(call.mood.cooperation), frustration: Math.round(call.mood.frustration), trust: Math.round(call.mood.trust), state: p.emotionalState },
     situation: { whatTheyReported: call.transcript.find((l) => l.who === 'CALLER')?.text ?? tpl.open[0], theirAccount: tpl.cause.map((c) => fill(c, inc.vars)), location: sheet.location },
