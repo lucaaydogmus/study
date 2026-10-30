@@ -44,11 +44,20 @@ function play(rank: number, diff: 'casual' | 'standard' | 'hard' | 'expert', see
     e.step(DT);
   }
   const s = e.state.stats, sc = e.state.scoreBreakdown!;
-  return { calls: s.callsReceived, ans: s.callsAnswered, resolved: s.resolved, failed: s.failed, cas: s.casualties, rt: Math.round(averageOf(s.responseTimes)), wrong: s.wrongLocations, unn: s.unnecessary, score: sc.total, grade: sc.grade };
+  return { calls: s.callsReceived, ans: s.callsAnswered, resolved: s.resolved, failed: s.failed, cas: s.casualties, rt: Math.round(averageOf(s.responseTimes)), wrong: s.wrongLocations, unn: s.unnecessary, score: sc.total, grade: sc.grade, money: computeResult(e.state).money };
 }
 for (const [rank, diff] of [[1, 'standard'], [3, 'standard'], [5, 'hard'], [6, 'expert']] as const) {
   for (const competent of [true, false]) {
     const rows = [1, 2, 3].map((i) => play(rank, diff, 100 * i + rank, competent));
-    console.log(`rank ${rank} ${diff} ${competent ? 'BOT ' : 'IDLE'} `, rows.map((r) => `calls ${r.calls}/${r.ans} ok ${r.resolved} fail ${r.failed} cas ${r.cas} rt ${r.rt}s wrong ${r.wrong} unn ${r.unn} → ${r.score}${r.grade}`).join(' | '));
+    console.log(`rank ${rank} ${diff} ${competent ? 'BOT ' : 'IDLE'} `, rows.map((r) => `calls ${r.calls}/${r.ans} ok ${r.resolved} fail ${r.failed} cas ${r.cas} rt ${r.rt}s wrong ${r.wrong} unn ${r.unn} → ${r.score}${r.grade} $${r.money}`).join(' | '));
   }
+}
+
+// economy check: net funds of a competent 15-minute shift at rank 1
+import { computeResult } from '../src/sim/profile';
+{
+  const p = newProfile('Eco', 7);
+  const e = GameEngine.fromConfig(careerConfig(p, { seed: 7 }), setupFromProfile(p));
+  while (e.state.phase === 'running') e.step(DT);
+  console.log('idle shift net funds:', computeResult(e.state).money);
 }

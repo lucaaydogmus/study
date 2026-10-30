@@ -1,5 +1,7 @@
 // Handcrafted shifts: campaign chapters, scenario challenges and the interactive tutorial.
-import type { Difficulty, Objective, ShiftConfig } from './types';
+import type { CityEventType, Difficulty, Objective, ShiftConfig, WeatherType } from './types';
+import { Rng, hashString } from './rng';
+import { CONTRACTS, MODIFIERS } from './extras';
 
 export const ALL_DISTRICTS = ['westres', 'university', 'northsub', 'airport', 'oldtown', 'downtown', 'financial', 'eastwood', 'southside', 'riverside', 'industrial', 'harbor'];
 
@@ -81,3 +83,25 @@ export const TUTORIAL_CONFIG = (): ShiftConfig => baseConfig({
   ],
   objectives: [obj('a', 'Resolve all three incidents', 'resolved', 3)],
 });
+
+// ── Daily challenge: the same shift for everyone on a given date ─────────────
+export function todayKey(d = new Date()): string { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+export function dailyConfig(key = todayKey()): { config: ShiftConfig; units: number } {
+  const seed = hashString(`signal911-daily-${key}`);
+  const rng = new Rng(seed);
+  const weather = rng.pick<WeatherType>(['clear', 'clear', 'rain', 'fog', 'storm', 'snow', 'heat']);
+  const eventPool: CityEventType[] = ['storm', 'blackout', 'festival', 'rush_hour', 'flood', 'heat_wave', 'winter_storm', 'industrial_fire'];
+  const ev = rng.pick(eventPool);
+  const difficulty = rng.pick<Difficulty>(['standard', 'standard', 'hard']);
+  const modifier = rng.pick(MODIFIERS.filter((m) => m.id !== 'quiet')).id;
+  const contracts = rng.shuffle(CONTRACTS).slice(0, 3).map((c) => ({ id: c.id, target: c.target(5) }));
+  const units = 11 + rng.int(0, 4);
+  const config = baseConfig({
+    mode: 'scenario', daily: key, title: `Daily Challenge — ${key}`, difficulty, durationSec: 12 * 60, weather, startHour: rng.pick([2, 7, 12, 17, 21]),
+    incidentRate: 1 + rng.range(0, 0.2), seed, modifiers: [modifier], contracts,
+    events: [{ type: ev, at: 60 + rng.int(0, 120), duration: 420 }],
+    briefing: 'Everyone gets the same shift today. Same calls, same city, same conditions — how well can you run it?',
+    objectives: [obj('a', 'Resolve 8 incidents', 'resolved', 8), obj('b', 'No casualties', 'no_deaths', 0, true)],
+  });
+  return { config, units };
+}

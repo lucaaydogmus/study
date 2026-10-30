@@ -69,6 +69,14 @@ export function migrate(raw: SaveEnvelope): SaveEnvelope {
     p.upgrades = p.upgrades ?? { ali: 1 };
     v = 2;
   }
+  if (v < 3) {
+    p.achievements = (p.achievements as Profile['achievements']) ?? {};
+    p.daily = (p.daily as Profile['daily']) ?? {};
+    const L = ((p.stats as unknown) as Record<string, number>) ?? {};
+    for (const k of ['merges', 'pursuits', 'verifies', 'gradeA', 'calmed', 'bestStreak', 'contracts']) L[k] = L[k] ?? 0;
+    p.stats = L as unknown as Profile['stats'];
+    v = 3;
+  }
   out.version = v;
   out.profile.version = PROFILE_VERSION;
   out.settings = { ...DEFAULT_SETTINGS, ...(out.settings ?? {}) };

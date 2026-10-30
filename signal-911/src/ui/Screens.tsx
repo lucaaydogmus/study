@@ -11,6 +11,8 @@ import { Badge, Btn, Confirm, DISCLAIMER, Grade, Icon, Toast, fmtMoney, weatherI
 import { MapView } from './MapView';
 import { rankDef } from '../sim/progression';
 import { CATEGORY_NAMES } from './report-helpers';
+import { ExtrasList } from './Extras';
+import { todayKey, dailyConfig } from '../sim/scenarios';
 
 // ── Living backdrop: an autopiloted city behind the menu ─────────────────────
 function useDemoEngine() {
@@ -145,9 +147,12 @@ export function LoadScreen() {
 }
 
 export function ModeSelect() {
-  const { go, profile, startTutorial } = useApp();
+  const { go, profile, startTutorial, startDaily } = useApp();
+  const key = todayKey();
+  const today = profile?.daily?.[key];
   const cards: Array<{ t: string; d: string; icon: string; act: () => void; tag?: string }> = [
     { t: 'Career', d: 'Progress through seven ranks, run the campaign, build stations and grow your fleet.', icon: 'trophy', act: () => (profile ? go('hub') : go('newCareer')), tag: profile ? rankDef(profile.rank).title : 'New' },
+    { t: 'Daily challenge', d: `Today’s shift (${key}) is the same for everyone: fixed weather, events, conditions and contracts. Beat your best score.`, icon: 'clock', act: () => startDaily(), tag: today ? `Best today: ${today.score} (${today.grade})` : 'New today' },
     { t: 'Free play', d: 'Configure budget, units, call frequency, weather, districts and events.', icon: 'gear', act: () => go('freeplay') },
     { t: 'Endless', d: 'Each shift is busier than the last. Survive as long as you can and chase a high score.', icon: 'bolt', act: () => go('endless'), tag: profile?.endless.bestScore ? `Best ${profile.endless.bestScore}` : undefined },
     { t: 'Scenarios', d: 'Handcrafted challenges: The Night Shift, Storm Warning, City Festival, Power Failure, Rush Hour.', icon: 'layers', act: () => go('scenarios') },
@@ -158,7 +163,7 @@ export function ModeSelect() {
       <header className="screen-head"><Btn kind="ghost" icon="chevL" onClick={() => go('menu')}>Menu</Btn><h1>Game modes</h1></header>
       <div className="screen-body">
         <div className="modegrid">{cards.map((c) => (
-          <button className="modecard" key={c.t} onClick={() => { audio.unlock(); c.act(); }}>
+          <button className={`modecard ${c.t === 'Daily challenge' ? 'daily' : ''}`} key={c.t} onClick={() => { audio.unlock(); c.act(); }}>
             <Icon n={c.icon} size={26} /><h2>{c.t}</h2>{c.tag && <Badge tone="blue">{c.tag}</Badge>}<p>{c.d}</p>
           </button>))}</div>
       </div>
@@ -266,6 +271,7 @@ export function BriefingScreen() {
               <div className="kv"><span>Districts</span><b>{c.districts.length} / 12</b></div>
               <div className="kv"><span>Units</span><b>{Object.keys(engine.state.units).length}</b></div>
               {c.events.length > 0 && <div className="note-line warn"><Icon n="alert" size={12} /> Expect: {c.events.map((e) => e.type.replace('_', ' ')).join(', ')}</div>}
+              <ExtrasList config={c} />
               {c.objectives.length > 0 && <><h4>Objectives</h4><ul className="objs">{c.objectives.map((o) => <li key={o.id}><Icon n="chevR" size={11} /> {o.text}{o.optional ? ' (optional)' : ''}</li>)}</ul></>}
               <div className="btnrow col"><Btn kind="primary" size="lg" icon="play" onClick={() => { audio.unlock(); beginPending(); }}>BEGIN SHIFT</Btn></div>
             </div>

@@ -183,6 +183,7 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall 
   const missing = inc.sceneSeen ? matchCoverage(inc.requires, assigned.concat(here)).missing : [];
   const recommendedSvcs = new Set<Service>();
   for (const r of rec) { const def = Object.values(UNIT_TYPE_BY_ID).find((d) => d.caps.includes(r.cap)); if (def) recommendedSvcs.add(def.service); }
+  const dupCands = done ? [] : engine.duplicateCandidates(inc.id);
   const dispatch = (u: Unit) => { const r = engine.dispatch(u.id, inc.id); if (!r.ok) useApp.getState().showToast(r.reason ?? 'Cannot dispatch', 'warn'); else bump(); };
 
   return (
@@ -196,6 +197,27 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall 
         {call && (call.state === 'active' || call.state === 'hold') && <Btn size="sm" icon="phone" onClick={openCall}>Go to call</Btn>}
         {inc.truth.outside && <div className="note-line warn"><Icon n="alert" size={12} /> Caller is outside Ravenport. Use <b>TRANSFER</b> to hand them to the neighbouring agency.</div>}
       </Section>
+
+      {inc.pursuit && inc.mover && !done && (
+        <Section title="Pursuit" id="pursuit" right={<Badge tone={inc.mover.contact ? 'green' : inc.mover.tracked ? 'blue' : 'amber'}>{inc.mover.contact ? `IN CONTACT ×${inc.mover.contact}` : inc.mover.tracked ? 'TRACKING' : 'LOST VISUAL'}</Badge>}>
+          <p className="small muted">{inc.mover.contact ? 'Units are on the suspect’s tail. A second unit boxes it in much faster.' : inc.mover.tracked ? 'The location updates live while the caller follows the car or crews have it in sight.' : 'Nobody has eyes on the vehicle. Sightings will update its last known position — keep units moving toward it.'}</p>
+          <div className="kv"><span>Box-in</span><Bar value={inc.workProgress} max={inc.work} tone="green" label="Box-in progress" /></div>
+          <div className="kv"><span>Public risk</span><Bar value={inc.threat} tone={inc.threat > 70 ? 'red' : inc.threat > 40 ? 'amber' : 'blue'} label="Public risk" /></div>
+          {inc.reportedNode === null && <div className="note-line warn"><Icon n="pin" size={12} /> Set an initial location from the caller to start tracking.</div>}
+        </Section>
+      )}
+
+      {!done && !inc.truth.outside && dupCands.length > 0 && (
+        <Section title="Same incident?" id="dups" right={<Badge tone="blue">{dupCands.length} NEARBY</Badge>}>
+          <p className="small muted">Big incidents draw many callers. If this call is about an incident you already have, link it — the units already assigned cover it. Linking unrelated emergencies loses the call.</p>
+          {dupCands.map(({ inc: o, dist }) => (
+            <div key={o.id} className="dupc">
+              <div className="grow"><b>INC-{String(o.num).padStart(4, '0')} {o.label}</b><div className="small muted">{Math.round(dist)} m away · {statusLabel(o.status)} · {o.assignedUnits.length} unit{o.assignedUnits.length === 1 ? '' : 's'}</div></div>
+              <Btn size="sm" kind="primary" icon="layers" onClick={() => { const r = engine.linkIncident(inc.id, o.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }}>Link</Btn>
+            </div>
+          ))}
+        </Section>
+      )}
 
       {!inc.truth.outside && (
         <Section title="Location" id="loc" right={inc.reportedNode !== null ? <Badge tone={inc.locationConfirmed ? 'green' : 'amber'}>{inc.locationConfirmed ? 'VERIFIED' : 'UNVERIFIED'}</Badge> : <Badge tone="red">NOT SET</Badge>}>

@@ -108,7 +108,7 @@ export interface Call {
   heard: HeardLocation[]; usedLines: Record<string, number>; pending: PendingLine[];
   holdSince: number | null; holdTotal: number; aliUsed: boolean; verifyAsked: number[];
   locPlan: { wrong: number; approx: number; landmark: string | null; wrongDistrict: string };
-  typing: boolean; endReason?: string; spokeFirst: boolean; callbackOf?: string; misunderstood: number;
+  typing: boolean; endReason?: string; spokeFirst: boolean; callbackOf?: string; misunderstood: number; peakPanic?: number; calmed?: boolean;
   /** last time the caller volunteered something */
   lastSpontaneous: number; stateNote: string;
 }
@@ -119,7 +119,12 @@ export interface Fact {
 }
 
 // ── Incidents ───────────────────────────────────────────────────────────────
-export type Outcome = 'success' | 'partial' | 'failed' | 'false_alarm' | 'mishandled' | 'handover' | 'lost';
+export type Outcome = 'success' | 'partial' | 'failed' | 'false_alarm' | 'mishandled' | 'handover' | 'lost' | 'merged';
+
+/** a fleeing suspect vehicle that moves along the road network */
+export interface Mover { x: number; y: number; prev: number; next: number; came: number; speed: number; tracked: boolean; trail: Vec[]; startAt: number; lastUpdate: number; lastSighting: number; contact: number; heading: number }
+
+export interface Fx { id: number; t: number; kind: 'good' | 'bad' | 'warn' | 'info'; x: number; y: number; text: string }
 
 export interface Incident {
   id: string; num: number; templateId: string; category: Category; label: string; severity: number;
@@ -142,6 +147,7 @@ export interface Incident {
   workProgress: number; patientsTransported: number; mislocated: boolean; scenarioTag?: string;
   firstDispatchAt: number | null; timelineBlock: boolean; callerProfile: CallerProfile;
   vars: Record<string, string>; blockedEdge: number | null; sceneSeen: boolean; twist: import('./content/templates').Twist | null; sceneAt: number | null; escalatedAt: number | null; mutualAid: number;
+  duplicateOf: string | null; dupPlan: number[]; pursuit: boolean; mover: Mover | null; mergedInto: string | null;
 }
 
 // ── City events / weather / config ──────────────────────────────────────────
@@ -173,6 +179,9 @@ export interface ShiftConfig {
   reducedFleet?: boolean;
   noSpawnAfterSec?: number;
   unusualBias?: number;
+  modifiers?: string[];
+  contracts?: Array<{ id: string; target: number }>;
+  daily?: string;
 }
 
 export interface TimelineEntry {
@@ -192,6 +201,7 @@ export interface ShiftStats {
   coverageSamples: Record<Service, number[]>; districtCoverage: Record<string, number[]>;
   serviceResponse: Record<Service, number[]>; unitBusySeconds: number; unitSeconds: number; handedOver: number;
   byCategory: Record<string, { n: number; ok: number }>; callbacks: number; escalations: number; promisesBroken: number;
+  merges: number; wrongLinks: number; pursuitsCaught: number; verifiedOk: number; cleanFalseAlarms: number; bestStreak: number; calmedCallers: number; transfersOk: number; mutualAid: number; contractBonus: number;
 }
 
 export interface GameState {
@@ -209,6 +219,7 @@ export interface GameState {
   flags: Record<string, boolean>; dispatcherLoad: number;
   assistantFreeAt: number; lastCoverage: number; uniqueNameCounter: number; endingAt: number | null;
   scoreBreakdown?: ShiftScore;
+  streak: number; fx: Fx[]; fxCounter: number; closedHospitals: number[];
 }
 
 export interface ShiftScore {

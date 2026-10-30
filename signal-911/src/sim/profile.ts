@@ -5,10 +5,11 @@ import { Rng } from './rng';
 import { buildStartingFleet, UNIT_TYPE_BY_ID, UPGRADE_BY_ID, hireCost, makePersonnel, makeStation, makeUnit, BUILD_STATION_COST, primarySkill, personnelSalary } from './fleet';
 import { rankDef, rankForXp, RANKS } from './progression';
 import { ALL_DISTRICTS, CHAPTERS, baseConfig } from './scenarios';
+import { CONTRACT_BY_ID, contractProgress, modProduct, rollExtras } from './extras';
 import type { CityState, GameState, Personnel, Service, ShiftConfig, ShiftScore, Station, Unit, UpgradeLevels } from './types';
 import type { ShiftSetup } from './engine';
 
-export const PROFILE_VERSION = 2;
+export const PROFILE_VERSION = 3;
 
 export interface Settings {
   master: number; effects: number; radio: number; music: number; ambience: number; muted: boolean;
@@ -19,6 +20,7 @@ export const DEFAULT_SETTINGS: Settings = { master: 0.8, effects: 0.8, radio: 0.
 export interface Lifetime {
   shifts: number; calls: number; answered: number; resolved: number; failed: number; casualties: number; livesHelped: number; falseAlarms: number;
   moneyEarned: number; responseSum: number; responseN: number; bestScore: number; bestGrade: string; playSeconds: number; dispatches: number;
+  merges: number; pursuits: number; verifies: number; gradeA: number; calmed: number; bestStreak: number; contracts: number;
 }
 export interface ShiftSummary { n: number; title: string; mode: string; score: number; grade: string; resolved: number; failed: number; avgResponse: number; money: number; xp: number; at: number; difficulty: string }
 
@@ -32,9 +34,12 @@ export interface Profile {
   endless: { bestWave: number; bestScore: number; current: { wave: number; score: number; active: boolean } };
   counters: { unit: number; person: number; shift: number; seed: number };
   flags: { tutorialDone: boolean; difficulty: ShiftConfig['difficulty']; duration: number };
+  achievements: Record<string, number>;
+  daily: Record<string, { score: number; grade: string }>;
 }
 
-const emptyLifetime = (): Lifetime => ({ shifts: 0, calls: 0, answered: 0, resolved: 0, failed: 0, casualties: 0, livesHelped: 0, falseAlarms: 0, moneyEarned: 0, responseSum: 0, responseN: 0, bestScore: 0, bestGrade: '-', playSeconds: 0, dispatches: 0 });
+const emptyLifetime = (): Lifetime => ({ shifts: 0, calls: 0, answered: 0, resolved: 0, failed: 0, casualties: 0, livesHelped: 0, falseAlarms: 0, moneyEarned: 0, responseSum: 0, responseN: 0, bestScore: 0, bestGrade: '-', playSeconds: 0, dispatches: 0, merges: 0, pursuits: 0, verifies: 0, gradeA: 0, calmed: 0, bestStreak: 0, contracts: 0 });
+export const emptyLifetimeStats = emptyLifetime;
 
 export function newProfile(name = 'Dispatcher', seed = Date.now() % 2 ** 31): Profile {
   const rng = new Rng(seed);
@@ -45,6 +50,7 @@ export function newProfile(name = 'Dispatcher', seed = Date.now() % 2 ** 31): Pr
     city: { closedRoads: [], districtTraffic: {}, damagedStations: {}, log: [] }, stats: emptyLifetime(), history: [],
     campaign: { completed: [], grades: {} }, scenarios: {}, endless: { bestWave: 0, bestScore: 0, current: { wave: 0, score: 0, active: false } },
     counters: { unit: fleet.units.length + 1, person: fleet.personnel.length + 1, shift: 1, seed }, flags: { tutorialDone: false, difficulty: 'standard', duration: 15 * 60 },
+    achievements: {}, daily: {},
   };
 }
 
@@ -90,10 +96,12 @@ export function temporarySetup(opts: { units?: number; budget?: number; rank?: n
 export function careerConfig(p: Profile, over: Partial<ShiftConfig> = {}): ShiftConfig {
   const rank = p.rank;
   const rankRate = 0.8 + rank * 0.07;
+  const seed = (p.counters.seed + p.counters.shift * 7919) % 2 ** 31;
+  const extras = rollExtras(seed, rank);
   return baseConfig({
     mode: 'career', title: `Shift ${p.counters.shift}`, briefing: `${rankDef(rank).title} — routine shift`, difficulty: p.flags.difficulty, durationSec: p.flags.duration,
     districts: unlockedDistricts(rank), incidentRate: rankRate, startHour: [8, 12, 16, 20, 2][p.counters.shift % 5], weather: (['clear', 'clear', 'rain', 'clear', 'fog', 'heat', 'clear'] as const)[p.counters.shift % 7],
-    seed: (p.counters.seed + p.counters.shift * 7919) % 2 ** 31,
+    seed, modifiers: extras.modifiers, contracts: extras.contracts,
     ...over,
   });
 }
@@ -110,26 +118,33 @@ export function computeResult(st: GameState): ShiftResult {
   evaluateObjectives(st);
   const s = st.stats;
   const mult = DIFF_MULT[st.config.difficulty];
-  const contract = Math.round(32000 * mult * (0.5 + 0.5 * score.total / 100) * (0.8 + st.reputation / 250));
+  const cfg = st.config;
+  const len = cfg.durationSec / 900; // pay and costs scale with shift length (15 min = 1)
+  const contract = Math.round(44000 * Math.max(0.6, len) * mult * (0.5 + 0.5 * score.total / 100) * (0.8 + st.reputation / 250) * modProduct(cfg, 'pay'));
   const bonus = Math.round(s.bonus * mult);
   let salaries = 0;
   for (const u of Object.values(st.units)) if (!u.temp) for (const pid of u.personnelIds) salaries += st.personnel[pid]?.salary ?? 0;
   for (const p of Object.values(st.personnel)) if (!p.unitId) salaries += p.salary;
-  const maintenance = Object.values(st.units).filter((u) => !u.temp).length * 260;
+  salaries = Math.round(salaries * modProduct(cfg, 'salary') * len);
+  const maintenance = Math.round(Object.values(st.units).filter((u) => !u.temp).length * 260 * len);
   const dispatchCosts = Math.round(s.costs);
   const penalties = s.casualties * 4000;
-  const money = contract + bonus - salaries - maintenance - dispatchCosts - penalties;
+  const contracts = (cfg.contracts ?? []).map((c) => ({ c, p: contractProgress(st, c), def: CONTRACT_BY_ID[c.id] })).filter((x) => x.def);
+  const contractMoney = contracts.filter((x) => x.p.done).reduce((a, x) => a + x.def.reward, 0);
+  const contractXp = contracts.filter((x) => x.p.done).reduce((a, x) => a + x.def.xp, 0);
+  s.contractBonus = contracts.filter((x) => x.p.done).length;
+  const money = contract + bonus + contractMoney - salaries - maintenance - dispatchCosts - penalties;
   const objDone = st.config.objectives.filter((o) => o.done).length;
   const objBonus = st.config.objectives.filter((o) => o.done && !o.optional).length * 40 + st.config.objectives.filter((o) => o.done && o.optional).length * 25;
   const xpBreakdown: Array<[string, number]> = [
     ['Performance score', Math.round(score.total * 2.1)], ['Incidents resolved', s.resolved * 12], ['Objectives', objBonus],
-    ['Grade bonus', { S: 120, A: 70, B: 35, C: 10, D: 0, F: 0 }[score.grade]],
+    ['Grade bonus', { S: 120, A: 70, B: 35, C: 10, D: 0, F: 0 }[score.grade]], ['Contracts', contractXp], ['Best streak', Math.min(60, s.bestStreak * 6)],
   ];
   const xp = Math.max(10, Math.round(xpBreakdown.reduce((a, [, v]) => a + v, 0) * (0.8 + mult * 0.2)));
-  const repDelta = Math.round(((score.total - 62) / 9 - s.casualties * 1.2) * 10) / 10;
+  const repDelta = Math.round(((score.total - 62) / 9 - s.casualties * 1.2) * modProduct(cfg, 'rep') * 10) / 10;
   return {
     score, xp, xpBreakdown, money,
-    moneyBreakdown: [['City contract', contract], ['Incident bonuses', bonus], ['Salaries', -salaries], ['Vehicle maintenance', -maintenance], ['Dispatch operating costs', -dispatchCosts], ['Casualty settlements', -penalties]],
+    moneyBreakdown: [['City contract', contract], ['Incident bonuses', bonus], ...contracts.filter((x) => x.p.done).map((x) => [`Contract — ${x.p.text}`, x.def.reward] as [string, number]), ['Salaries', -salaries], ['Vehicle maintenance', -maintenance], ['Dispatch operating costs', -dispatchCosts], ['Casualty settlements', -penalties]],
     repDelta, unlocked: [], log: [], newRank: rankForXp(0), objectivesMet: objDone,
   };
 }
@@ -206,6 +221,9 @@ export function applyShift(p: Profile, st: GameState): ShiftResult {
   L.shifts++; L.calls += s.callsReceived; L.answered += s.callsAnswered; L.resolved += s.resolved; L.failed += s.failed; L.casualties += s.casualties; L.livesHelped += s.livesHelped; L.falseAlarms += s.falseAlarms;
   L.moneyEarned += Math.max(0, res.money); L.responseSum += s.responseTimes.reduce((a, b) => a + b, 0); L.responseN += s.responseTimes.length; L.dispatches += s.dispatches;
   L.playSeconds += Math.round(st.time);
+  L.merges = (L.merges ?? 0) + s.merges; L.pursuits = (L.pursuits ?? 0) + s.pursuitsCaught; L.verifies = (L.verifies ?? 0) + s.verifiedOk;
+  L.calmed = (L.calmed ?? 0) + s.calmedCallers; L.bestStreak = Math.max(L.bestStreak ?? 0, s.bestStreak); L.contracts = (L.contracts ?? 0) + s.contractBonus;
+  if (res.score.grade === 'A' || res.score.grade === 'S') L.gradeA = (L.gradeA ?? 0) + 1;
   if (res.score.total > L.bestScore) { L.bestScore = res.score.total; L.bestGrade = res.score.grade; }
   p.history.push({ n: p.counters.shift, title: st.config.title, mode: st.config.mode, score: res.score.total, grade: res.score.grade, resolved: s.resolved, failed: s.failed, avgResponse: Math.round(averageOf(s.responseTimes)), money: res.money, xp: res.xp, at: Date.now(), difficulty: st.config.difficulty });
   if (p.history.length > 40) p.history.shift();

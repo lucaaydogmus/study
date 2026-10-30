@@ -24,7 +24,7 @@ Other commands:
 ```bash
 npm run build      # type-check + production build into dist/
 npm run preview    # serve the production build
-npm test           # 23 simulation/persistence tests (vitest)
+npm test           # 39 simulation/persistence/mechanics tests (vitest)
 npx vite-node scripts/balance.ts   # headless balance harness (bot vs. idle dispatcher)
 ```
 
@@ -54,6 +54,22 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 
 ## What is in the game
 
+### Remaster highlights
+
+- **Living map**: procedurally detailed city — buildings with heights and shadows, terracotta Old Town, glass towers,
+  warehouses and chemical tanks, container yards, piers, airport runways, rail yard, stadium, parks and forests,
+  animated water. At night the windows and street lights come on. Vehicles are oriented sprites with flashing light
+  bars and headlights; fires glow and smoke; floating score popups; minimap and scale bar.
+- **Pursuits**: fleeing vehicles drive the road network in real time. Keep the caller on the line (or get crews in
+  sight) to track them; two units in contact box the car in.
+- **Duplicate callers**: big incidents bring several callers from different viewpoints. Spot them and *link* them to
+  the existing incident — or waste units; linking unrelated emergencies loses the call.
+- **Shift conditions & bonus contracts**: every career shift can roll a condition (Quiet Night, Holiday Weekend,
+  Short-Staffed, Hospital Diversion, Media Spotlight, Roadworks, Overtime…) and two optional contracts for cash and XP.
+- **Streaks**: consecutive successful incidents raise bonuses up to ×1.5. A live shift rating sits in the top bar.
+- **34 achievements**, a **Daily Challenge** that is identical for everyone on a given date, and 5 new incident types
+  (power line down, carbon monoxide, boat fire, loose horse, “gunshots” that may be fireworks).
+
 - **Ravenport**: 12 districts, ~1,000 road nodes (highways, arterials, local streets, bridges over a river, a harbor),
   hospitals, landmarks, addresses with cross streets. Map layers: normal, traffic, emergency/police/fire/medical coverage,
   active incidents, weather.
@@ -61,7 +77,7 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
   incident state machine (REPORTED → … → RESOLVED), threat/escalation model, unit status machine, fatigue, weather,
   time-of-day traffic, citywide events (storm, blackout, flood, festival, rush hour, industrial fire, winter storm, heat wave),
   persistent city consequences (road closures, damaged stations, lingering congestion).
-- **Content**: 49 incident templates (medical, fire & rescue, police, unusual) with procedural variation in location,
+- **Content**: 55 incident templates (medical, fire & rescue, police, unusual) with procedural variation in location,
   caller, patient, severity, accuracy of information, escalation and twists (e.g. a “burglar” that is a raccoon,
   a joke call that turns out to be real, a faint burning smell that is a wall fire, out-of-area callers who must be transferred).
 - **Fleet**: 17 vehicle types across three services, 12 starting vehicles, personnel with skills/fatigue/morale, recruitment,

@@ -9,11 +9,12 @@ import type { Service, TimelineEntry } from '../sim/types';
 import { useApp } from '../store';
 import { Badge, Bar, Btn, Grade, Icon, fmtEta, fmtMoney, fmtTime } from './common';
 import { CATEGORY_NAMES } from './report-helpers';
+import { AchievementCard, ExtrasList } from './Extras';
 
 const KIND_COLOR: Record<string, string> = { call: '#4A9CD6', dispatch: '#98A6B5', arrival: '#54B889', escalation: '#E5AC4D', resolved: '#54B889', failed: '#D65353', event: '#c58bd6', info: '#6b7a8a', missed: '#D65353', radio: '#6b7a8a' };
 
 export function ReportScreen() {
-  const { result, endState: st, session, profile, go, endlessOver } = useApp();
+  const { result, endState: st, session, profile, go, endlessOver, newAchievements } = useApp();
   const [filter, setFilter] = useState<Record<string, boolean>>({ call: true, dispatch: true, arrival: true, escalation: true, resolved: true, failed: true, event: true, missed: true, info: false });
   const [hot, setHot] = useState<number | null>(null);
   const city = getCity();
@@ -59,6 +60,8 @@ export function ReportScreen() {
           </div>
         </div>
 
+        {newAchievements.length > 0 && <div className="card"><h3><Icon n="trophy" size={14} /> Achievements unlocked</h3><div className="newach">{newAchievements.map((id) => <AchievementCard key={id} id={id} got />)}</div></div>}
+        {((st.config.contracts?.length ?? 0) > 0 || (st.config.modifiers?.length ?? 0) > 0) && <div className="card"><h3>Conditions & contracts</h3><ExtrasList config={st.config} st={st} /><div className="kv"><span>Best streak</span><b>{st.stats.bestStreak}</b></div></div>}
         {st.config.objectives.length > 0 && <div className="card"><h3>Objectives</h3><div className="objrow">{st.config.objectives.map((o) => <div key={o.id} className={`obj ${o.done ? 'ok' : 'no'}`}><Icon n={o.done ? 'check' : 'x'} size={14} /> {o.text}{o.optional ? ' (optional)' : ''}<span className="mono small muted"> {o.value !== undefined ? `· ${o.value}` : ''}</span></div>)}</div></div>}
 
         <div className="cols3">
@@ -66,6 +69,7 @@ export function ReportScreen() {
             <Row k="Calls received" v={s.callsReceived} /><Row k="Calls answered" v={s.callsAnswered} /><Row k="Calls missed" v={s.callsMissed} tone={s.callsMissed ? 'red' : ''} />
             <Row k="Avg time to answer" v={s.answerTimes.length ? `${averageOf(s.answerTimes).toFixed(1)} s` : '—'} /><Row k="Incidents resolved" v={s.resolved} /><Row k="Incidents failed" v={s.failed} tone={s.failed ? 'red' : ''} />
             <Row k="Handed to next shift" v={s.handedOver} /><Row k="Escalations" v={s.escalations} /><Row k="Callbacks" v={s.callbacks} />
+            <Row k="Duplicate calls linked" v={s.merges} /><Row k="Pursuits stopped" v={s.pursuitsCaught} /><Row k="Callers calmed" v={s.calmedCallers} /><Row k="Best streak" v={s.bestStreak} />
           </div>
           <div className="card"><h3>Response & dispatch</h3>
             <Row k="Avg response time" v={s.responseTimes.length ? fmtEta(averageOf(s.responseTimes)) : '—'} />
@@ -89,7 +93,7 @@ export function ReportScreen() {
         <div className="card"><h3>Incident log</h3>
           <table className="tbl"><thead><tr><th>#</th><th>Incident</th><th>District</th><th>Severity</th><th>Outcome</th><th>Response</th><th>Notes</th></tr></thead>
             <tbody>{incs.map((i) => (<tr key={i.id}><td className="mono">{String(i.num).padStart(3, '0')}</td><td>{i.label}</td><td>{city.districtById[i.district].name}</td><td>{'●'.repeat(i.severity)}</td>
-              <td><Badge tone={i.outcome === 'success' || i.outcome === 'false_alarm' ? 'green' : i.outcome === 'partial' || i.outcome === 'handover' ? 'amber' : 'red'}>{(i.outcome ?? 'open').replace('_', ' ').toUpperCase()}</Badge></td>
+              <td><Badge tone={i.outcome === 'success' || i.outcome === 'false_alarm' ? 'green' : i.outcome === 'merged' ? 'blue' : i.outcome === 'partial' || i.outcome === 'handover' ? 'amber' : 'red'}>{(i.outcome ?? 'open').replace('_', ' ').toUpperCase()}</Badge></td>
               <td className="mono">{i.firstArrivalAt !== null ? fmtEta(i.firstArrivalAt - (i.answeredAt ?? i.createdAt)) : '—'}</td>
               <td className="small muted">{[i.stage ? `escalated ×${i.stage}` : '', i.casualties ? `${i.casualties} casualt${i.casualties > 1 ? 'ies' : 'y'}` : '', i.mislocated ? 'wrong address' : '', i.unnecessary ? `${i.unnecessary} unneeded unit(s)` : '', i.twistRevealed && i.requires.length === 0 ? 'false alarm' : ''].filter(Boolean).join(' · ')}</td></tr>))}
               {!incs.length && <tr><td colSpan={7} className="muted">No incidents.</td></tr>}</tbody></table></div>

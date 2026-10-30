@@ -12,6 +12,9 @@ import { RightPanel, StatusBadge } from './RightPanel';
 import { Coach, coachHint } from './Coach';
 import { PauseMenu } from './PauseMenu';
 import { SERVICE_META } from '../sim/fleet';
+import { computeScore } from '../sim/scoring';
+import { contractProgress, MODIFIER_BY_ID } from '../sim/extras';
+import { GRADE_COLOR } from './common';
 
 const CAT_ICON: Record<string, string> = { medical: 'cross', fire: 'flame', police: 'shield', unusual: 'help' };
 
@@ -43,7 +46,7 @@ export function GameScreen() {
 
   // ── simulation loop (decoupled from React rendering) ──
   useEffect(() => {
-    let raf = 0, last = performance.now(), lastBump = 0, wasCalls = '';
+    let raf = 0, last = performance.now(), lastBump = 0, wasCalls = '', lastAch = 0;
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
       const dt = (now - last) / 1000; last = now;
@@ -51,6 +54,7 @@ export function GameScreen() {
       engine.update(dt);
       const ringing = Object.values(engine.state.calls).some((c) => c.state === 'ringing');
       audio.setRinging(ringing && engine.state.phase === 'running' && !engine.state.paused);
+      if (now - lastAch > 3000) { lastAch = now; useApp.getState().checkLiveAchievements(); }
       if (now - lastBump > 120) { lastBump = now; useApp.getState().bump(); const key = engine.state.activeCallId ?? ''; if (key !== wasCalls) { wasCalls = key; updateAmbience(engine); } }
     };
     raf = requestAnimationFrame(loop);
@@ -137,7 +141,7 @@ export function GameScreen() {
             onSelect={(k, id) => { engine.select(k, id); setCollapsed((c) => ({ ...c, r: false })); bump(); }}
             onPickNode={onPickNode} onContext={onContext} heard={heardForMap}
             onPickHeard={(h) => { const s = engine.state; if (s.selected.kind === 'incident' && s.selected.id) { engine.setIncidentLocation(s.selected.id, h.nodeId, 'candidate'); audio.dispatchConfirm(); bump(); } }}
-            focus={focus} reduceMotion={settings.reduceMotion} />
+            focus={focus} reduceMotion={settings.reduceMotion} minimap />
           <div className="maptools">
             <div className="layerbtn">
               <Btn size="sm" icon="layers" onClick={() => setLayerMenu(!layerMenu)}>{LAYERS.find((l) => l.id === layer)!.label}</Btn>
@@ -145,6 +149,8 @@ export function GameScreen() {
             </div>
             {target && <div className="banner"><Icon n="pin" size={14} /> {target.kind === 'loc' ? 'Click the map to set the incident location' : 'Click the map to reposition the unit'} <button className="linkish" onClick={() => setTarget(null)}>Cancel (Esc)</button></div>}
           </div>
+          <IncomingBanner engine={engine} />
+          <GoalsCard engine={engine} />
           <Legend layer={layer} />
           {session.kind === 'tutorial' && <Coach engine={engine} onSkip={() => { useApp.getState().abandon(); }} />}
           <Toast />
@@ -180,6 +186,7 @@ function TopBar({ engine, title, onMenu, onHelp }: { engine: GameEngine; title: 
       <div className="stat" title="Budget"><Icon n="coins" size={13} /> <span className="mono">{fmtMoneyShort(st.budget)}</span></div>
       <div className="stat" title="Reputation"><Icon n="star" size={13} /> <span className="mono">{Math.round(st.reputation)}</span></div>
       <div className="stat" title="Weather"><Icon n={weatherIcon(st.weather)} size={13} /> {WEATHER_LABEL[st.weather]}</div>
+      <LiveRating engine={engine} />
       <div className="grow" />
       <div className="speed" role="group" aria-label="Time controls">
         <button className={speed === 0 ? 'on' : ''} onClick={() => set(0)} aria-label="Pause (Space)" title="Pause (Space)"><Icon n="pause" size={14} /></button>
@@ -238,7 +245,7 @@ function LeftSidebar({ engine, doFocus }: { engine: GameEngine; doFocus: (x: num
           const loc = i.reportedNode !== null ? addressOf(engine.city, i.reportedNode) : null;
           return (
             <button key={i.id} className={`inc ${st.selected.id === i.id ? 'sel' : ''} sev${i.severity}`} onClick={() => { engine.select('incident', i.id); if (i.reportedNode !== null) { const n = engine.city.nodes[i.reportedNode]; doFocus(n.x, n.y, 1.6); } bump(); }}>
-              <span className="inc-ic"><Icon n={CAT_ICON[i.category]} size={14} stroke={false} /></span>
+              <span className="inc-ic"><Icon n={CAT_ICON[i.category]} size={14} /></span>
               <span className="inc-main"><b>{i.label}</b><span className="small muted">{loc ?? 'Location unknown'}</span></span>
               <span className="inc-side"><StatusBadge s={i.status} /><span className="small mono muted">{i.assignedUnits.length ? `${i.assignedUnits.length} unit${i.assignedUnits.length > 1 ? 's' : ''}` : 'no units'} · {fmtTime(st.time - i.createdAt)}</span></span>
             </button>
@@ -277,3 +284,58 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
   );
 }
 void SERVICE_META;
+
+function LiveRating({ engine }: { engine: GameEngine }) {
+  const st = engine.state;
+  const sc = computeScore(st);
+  const mult = 1 + Math.min(0.5, 0.05 * Math.max(0, st.streak - 1));
+  return (
+    <>
+      {st.stats.resolved + st.stats.failed + st.stats.callsMissed > 0
+        ? <div className="rating" title="Live shift rating — updates as you work" style={{ borderColor: GRADE_COLOR[sc.grade], color: GRADE_COLOR[sc.grade] }}><b>{sc.grade}</b><span className="mono">{sc.total}</span></div>
+        : <div className="rating" title="Your live rating appears once the first incident is handled" style={{ borderColor: 'var(--line2)', color: 'var(--text2)' }}><b>–</b><span className="mono">rating</span></div>}
+      <div className={`streak ${st.streak >= 3 ? 'hot' : ''}`} title="Streak: consecutive incidents handled without a failure. Raises incident bonuses."><Icon n="bolt" size={12} /> <b className="mono">{st.streak}</b>{st.streak >= 2 && <span className="mono small">×{mult.toFixed(2)}</span>}</div>
+    </>
+  );
+}
+
+function IncomingBanner({ engine }: { engine: GameEngine }) {
+  const st = engine.state;
+  const bump = useApp((s) => s.bump);
+  const ringing = Object.values(st.calls).filter((c) => c.state === 'ringing').sort((a, b) => a.ringStart - b.ringStart);
+  if (!ringing.length || st.activeCallId) return null;
+  const c = ringing[0];
+  const left = Math.max(0, c.ringTimeout - (st.time - c.ringStart));
+  return (
+    <div className="incoming" role="alert">
+      <span className="ring-ic"><Icon n="phone" size={18} /></span>
+      <div className="grow"><div className="inc-title">{c.isCallback ? 'CALLBACK' : 'INCOMING 911 CALL'}{ringing.length > 1 ? ` · ${ringing.length} waiting` : ''}</div><div className="mono small">{c.callerId}</div></div>
+      <div className="inc-timer"><i style={{ width: `${(left / c.ringTimeout) * 100}%` }} /></div>
+      <Btn kind="success" icon="phone" onClick={() => { engine.answerCall(c.id); bump(); }}>Answer <kbd>A</kbd></Btn>
+    </div>
+  );
+}
+
+function GoalsCard({ engine }: { engine: GameEngine }) {
+  const st = engine.state;
+  const [open, setOpen] = useState(true);
+  const contracts = st.config.contracts ?? [];
+  const mods = (st.config.modifiers ?? []).map((m) => MODIFIER_BY_ID[m]).filter(Boolean);
+  const objs = st.config.objectives;
+  if (!contracts.length && !mods.length && !objs.length) return null;
+  return (
+    <div className={`goals ${open ? '' : 'closed'}`}>
+      <button className="goals-head" onClick={() => setOpen(!open)} aria-expanded={open}><Icon n="trophy" size={13} /> <b>Shift goals</b><span className="grow" /><Icon n={open ? 'chevU' : 'chevD'} size={12} /></button>
+      {open && (
+        <div className="goals-body">
+          {mods.map((m) => <div key={m.id} className={`mod ${m.tone}`} title={m.desc}><Icon n="alert" size={11} /> {m.name}</div>)}
+          {objs.map((o) => <div key={o.id} className="goal"><Icon n="chevR" size={10} /> <span className="grow">{o.text}{o.optional ? ' (opt.)' : ''}</span></div>)}
+          {contracts.map((c) => {
+            const p = contractProgress(st, c);
+            return <div key={c.id} className={`goal ${p.done ? 'ok' : p.failed ? 'no' : ''}`}><Icon n={p.done ? 'check' : p.failed ? 'x' : 'coins'} size={11} /> <span className="grow">{p.text}</span><span className="mono small">{p.done ? '✓' : p.failed ? '✗' : `${p.value}/${c.target}`}</span></div>;
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

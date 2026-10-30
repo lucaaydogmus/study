@@ -26,7 +26,7 @@ export interface Template {
   /** weather / event multipliers */
   weather?: Partial<Record<string, number>>;
   accuracyBias?: Partial<Record<string, number>>;
-  outside?: boolean; noMap?: boolean;
+  outside?: boolean; noMap?: boolean; pursuit?: boolean;
   /** chance that the real situation differs; build() mutates a fresh copy */
   build?: (rnd: () => number, t: Template) => Template;
 }
@@ -522,6 +522,85 @@ export const TEMPLATES: Template[] = [
     cause: ["Visibility was bad and the cars just kept coming. Now everyone's stopped.", "A truck jackknifed and the rest piled in."],
     scene: 'Multiple vehicles, multiple casualties. Triage underway.', ambience: 'traffic',
     resolved: 'All casualties triaged and transported.', failed: 'The response was overwhelmed.',
+  }),
+
+  base({
+    id: 'pursuit', category: 'police', label: 'Fleeing vehicle', hint: 'crime_progress', cls: 'crime_progress', w: { commercial: 1.3, dense: 1.1, suburb: 1, industrial: 1.1, airport: 1.3, residential: 0.6 },
+    sev: [3, 3], pursuit: true, weather: { rain: 1.2, fog: 1.2 },
+    truth: { vehicles: 1, suspect: true, weapon: false, suspect_desc: 'a silver hatchback with one headlight out', people: 1, injured: 0, safe: true, cause: 'a driver hit a parked car and is fleeing' }, reported: ['suspect', 'vehicles'], unsure: ['weapon'],
+    requires: [R('patrol', 2)], escalate: [{ reqs: [R('patrol', 3)], text: 'Suspect driving recklessly through crowded streets', say: ["He just went through a red light — people had to jump out of the way!"], sev: 1 }],
+    threat: [16, 0.55, 1.0], work: 12,
+    archetypes: [['witness', 4], ['angry_motorist', 4], ['professional', 1]],
+    open: ["A car just smashed into a parked van and took off — I'm right behind it, it's flying down the road!", "Someone just robbed the corner shop and jumped into a silver car — it's speeding away, I can still see it!", "This lunatic just sideswiped me and kept going! I'm keeping it in sight!"],
+    cause: ["He clipped a van, didn't even slow down. Now he's weaving through traffic.", "Grabbed money from the till, ran to a silver car, gone."],
+    say: { suspect: ["Silver hatchback, one headlight out, dented door. Young guy driving.", "Small silver car, broken headlight — I think one person inside."] },
+    scene: 'Suspect vehicle in sight. In pursuit.', ambience: 'traffic',
+    resolved: 'Suspect vehicle boxed in and the driver detained.', failed: 'The suspect escaped.',
+  }),
+
+  base({
+    id: 'power_line_down', category: 'fire', label: 'Power line down', hint: 'hazmat', cls: 'hazmat', w: { suburb: 1.4, residential: 1.2, forest: 1.4, industrial: 1 },
+    sev: [3, 3], closesRoad: true, weather: { storm: 5, snow: 2.5, rain: 1.6 },
+    truth: { fire: false, smoke: true, people: 0, injured: 0, safe: true, hazard: 'a live power line sparking on the road', vehicles: 0, cause: 'a cable came down across the street' }, reported: ['hazard'],
+    requires: [R('fire_suppression'), R('patrol')], escalate: [{ reqs: [R('fire_suppression', 2)], text: 'The sparking cable set a hedge alight', sev: 0 }],
+    threat: [22, 0.42, 1.4], work: 50,
+    archetypes: [['worried_neighbor', 4], ['witness', 3], ['angry_motorist', 2]],
+    open: ["There's a power line down across the road and it's sparking like crazy!", "A cable just fell off the pole — it's lying on the street, jumping around and spitting sparks!"],
+    cause: ["The wind brought a branch down onto the wires.", "There was a bang, the lights flickered, and now it's on the road."],
+    scene: 'Live conductor across the carriageway. Making safe and holding traffic.', ambience: 'wind',
+    resolved: 'Area secured until the utility isolated the line.', failed: 'The sparking line started a fire.',
+  }),
+  base({
+    id: 'carbon_monoxide', category: 'fire', label: 'Carbon monoxide alarm', hint: 'hazmat', cls: 'hazmat', w: { residential: 1.6, suburb: 1.3, historic: 1.3, dense: 1 },
+    sev: [3, 4], intense: false, transport: true, weather: { snow: 2, clear: 0.8 },
+    truth: { fire: false, smoke: false, people: 4, injured: 2, conscious: true, safe: false, hazard: 'a carbon monoxide alarm sounding', cause: 'a faulty boiler is leaking fumes' }, reported: ['hazard'], unsure: ['injured'],
+    requires: [R('fire_suppression'), R('bls'), R('transport')],
+    twist: { topics: ['conscious', 'injuries', 'people'], say: ["Wait — my daughter won't wake up properly. She's really groggy and floppy. Is that the gas?"], facts: { conscious: 'drifting', injured: 2 }, requires: [R('fire_suppression'), R('als'), R('transport')], hint: 'medical_critical', severity: 4, scene: 'CO readings high, one occupant barely responsive.', minCooperation: 20 },
+    threat: [24, 0.4, 1.4], work: 55,
+    archetypes: [['panicked_parent', 4], ['calm_serious', 2], ['worried_neighbor', 2]],
+    open: ["Our carbon monoxide alarm keeps going off and we've all got splitting headaches.", "The CO detector is beeping and my whole family feels sick and dizzy. What do we do?"],
+    cause: ["It started after we turned the heating on. Everyone feels sleepy.", "The boiler's been making noises all week."],
+    scene: 'Elevated CO readings. Ventilating and assessing occupants.', ambience: 'indoor',
+    resolved: 'Family evacuated and treated; boiler isolated.', failed: 'Occupants were overcome by fumes.',
+    build: (rnd, t) => (rnd() < 0.5 ? t : { ...t, twist: undefined }),
+  }),
+  base({
+    id: 'boat_fire', category: 'fire', label: 'Boat fire', hint: 'fire_other', cls: 'fire_other', w: { harbor: 3.5, river: 2 },
+    sev: [4, 4], minRank: 3, lethal: true, transport: true,
+    truth: { fire: true, smoke: true, people: 3, injured: 1, trapped: 0, water: true, safe: false, hazard: 'fuel on the water', cause: 'a moored boat caught fire at the pier' }, reported: ['fire'],
+    requires: [R('fire_suppression', 2), R('water_rescue'), R('bls'), R('transport')], escalate: [{ reqs: [R('fire_suppression', 3)], text: 'Fire spread to a neighbouring boat', sev: 0, casualties: 1 }],
+    threat: [30, 0.5, 1.3], work: 80,
+    archetypes: [['witness', 5], ['professional', 3]],
+    open: ["A boat's on fire at the pier! People jumped into the water to get away from it!", "Harbourmaster here — we have a vessel well alight at Pier 9 and persons in the water."],
+    cause: ["There was an explosion in the engine bay, then flames everywhere.", "Fuel caught while they were filling up."],
+    scene: 'Vessel fully involved, casualties in the water. Deploying boat.', ambience: 'wind',
+    resolved: 'Fire out and everyone pulled from the water.', failed: 'The fire and water claimed lives.',
+  }),
+  base({
+    id: 'escaped_animal', category: 'unusual', label: 'Loose animal on the road', hint: 'welfare', cls: 'welfare', w: { suburb: 1.8, forest: 2, residential: 1, campus: 1.2, airport: 0.8 },
+    sev: [2, 2], closesRoad: true,
+    truth: { animal: true, vehicles: 0, injured: 0, people: 0, safe: true, suspect: false, cause: 'a horse has escaped and is running through traffic' }, reported: ['animal'],
+    requires: [R('patrol')], escalate: [{ reqs: [R('patrol'), R('bls'), R('transport')], text: 'A car swerved to avoid the horse and crashed', sev: 1 }],
+    threat: [14, 0.3, 1.2], work: 40,
+    archetypes: [['angry_motorist', 3], ['witness', 3], ['child_caller', 1], ['confused_elderly', 1]],
+    open: ["There's a horse. On the avenue. Just galloping between the cars! I'm not joking!", "Um, hello? A really big horse is running down our street and the cars are honking at it."],
+    cause: ["No rider, no saddle — it must've got out of a field somewhere.", "It came out of the park and now it's on the main road."],
+    scene: 'Horse contained — traffic resuming.', ambience: 'traffic',
+    resolved: 'The horse was caught and returned to its stables.', failed: 'The loose horse caused a crash.',
+  }),
+  base({
+    id: 'fireworks', category: 'unusual', label: 'Gunshots reported (?)', hint: 'crime_progress', cls: 'no_response', w: { residential: 1.4, campus: 1.8, dense: 1, suburb: 1 },
+    sev: [2, 3],
+    truth: { suspect: false, weapon: false, people: 6, injured: 0, safe: true, false_alarm: true, cause: 'teenagers setting off fireworks in a back lot' }, reported: ['weapon'], unsure: ['weapon'],
+    requires: [],
+    twist: { topics: ['suspect', 'weapon', 'cause', 'injuries'], say: ["Hang on — there's coloured sparks going up over the rooftops. Oh. It's fireworks, isn't it. Kids in the car park."], facts: { false_alarm: true, weapon: false }, requires: [], hint: 'no_response', label: 'False alarm — fireworks', scene: 'Fireworks being let off. Moved the group on.' },
+    threat: [2, 0.02, 1.0], work: 10,
+    archetypes: [['worried_neighbor', 4], ['confused_elderly', 2], ['witness', 2]],
+    open: ["I just heard gunshots! Five or six, really close together, behind the flats!", "Shots fired, I think — bang bang bang — I've locked the door and I'm on the floor."],
+    cause: ["Loud cracks, one after another. Now people are shouting.", "It came from the car park behind us."],
+    scene: 'Checked the area — fireworks.', ambience: 'quiet',
+    resolved: 'It was fireworks; no one hurt.', failed: 'A genuine shooting was missed.',
+    build: (rnd, t) => rnd() < 0.25 ? { ...t, truth: { ...t.truth, false_alarm: false, weapon: 'handgun', suspect: true, injured: 1, suspect_desc: 'two men running toward the river' }, requires: [R('patrol', 2), R('als'), R('transport')], twist: { ...t.twist!, say: ["Someone's screaming — there's a man on the ground by the bins. He's bleeding. Those weren't fireworks."], facts: { injured: 1, weapon: true }, requires: null, hint: 'crime_progress', label: 'Shooting', severity: 4, scene: 'Gunshot victim on scene, suspects fled. Securing.' }, threat: [28, 0.42, 1.4], lethal: true, transport: true, intense: true } : t,
   }),
 
   // ───────────────────────── UNUSUAL ─────────────────────────

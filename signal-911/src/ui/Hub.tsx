@@ -14,11 +14,12 @@ import type { Difficulty, Personnel, Service } from '../sim/types';
 import { useApp, type HubTab } from '../store';
 import { Badge, Bar, Btn, Grade, Icon, SERVICE_ICON, Tabs, Toast, fmtEta, fmtMoney, weatherIcon } from './common';
 import { LAYERS, MapView, type LayerId } from './MapView';
+import { AchievementsPage, ExtrasList } from './Extras';
 
 const TABS: Array<{ id: HubTab; label: string; icon: string }> = [
   { id: 'overview', label: 'City overview', icon: 'map' }, { id: 'prep', label: 'Shift preparation', icon: 'clock' }, { id: 'fleet', label: 'Fleet & stations', icon: 'car' },
   { id: 'crew', label: 'Personnel', icon: 'users' }, { id: 'shop', label: 'Vehicle shop', icon: 'coins' }, { id: 'upgrades', label: 'Upgrades', icon: 'wrench' },
-  { id: 'career', label: 'Career & campaign', icon: 'trophy' }, { id: 'stats', label: 'Statistics', icon: 'book' },
+  { id: 'career', label: 'Career & campaign', icon: 'trophy' }, { id: 'achievements', label: 'Achievements', icon: 'star' }, { id: 'stats', label: 'Statistics', icon: 'book' },
 ];
 
 export function HubScreen() {
@@ -56,6 +57,7 @@ export function HubScreen() {
           {tab === 'shop' && <Shop p={p} />}
           {tab === 'upgrades' && <Upgrades p={p} />}
           {tab === 'career' && <CareerTab p={p} />}
+          {tab === 'achievements' && <AchievementsPage p={p} />}
           {tab === 'stats' && <StatsTab p={p} />}
         </main>
       </div>
@@ -169,6 +171,7 @@ function Prep({ p }: { p: Profile }) {
             <small className="muted">{{ casual: 'Calmer callers, fewer calls, slower escalation.', standard: 'The intended experience.', hard: 'More calls, less cooperative callers, faster escalation.', expert: 'Short fuses, wrong addresses and relentless volume.' }[p.flags.difficulty]}</small></div>
           <div className="field"><label>Shift length</label>
             <div className="seg">{[10, 15, 20, 30].map((m) => <button key={m} className={p.flags.duration === m * 60 ? 'on' : ''} onClick={() => mutate((pp) => { pp.flags.duration = m * 60; })}>{m} min</button>)}</div></div>
+          <ExtrasList config={cfg} />
           <h4>Readiness check</h4>
           {(['police', 'fire', 'medical'] as Service[]).map((s) => <div className="kv" key={s}><span style={{ color: SERVICE_META[s].color }}><Icon n={SERVICE_ICON[s]} size={12} /> {SERVICE_META[s].label}: {Object.values(st.units).filter((u) => u.service === s && u.status !== 'OUT_OF_SERVICE').length} units</span><Bar value={cov(s) * 100} tone={cov(s) > 0.6 ? 'green' : cov(s) > 0.35 ? 'amber' : 'red'} /><span className="mono small">{Math.round(cov(s) * 100)}%</span></div>)}
           {under.length > 0 && <div className="note-line warn"><Icon n="alert" size={12} /> {under.length} unit(s) out of service: {under.map((u) => `${u.callsign} (${u.note ?? 'unavailable'})`).join(', ')}</div>}

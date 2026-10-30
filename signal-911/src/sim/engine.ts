@@ -11,6 +11,7 @@ import { EVENT_DEFS, WEATHER_SPEED, WEATHER_TRAFFIC, WEATHER_LABEL, nextWeather 
 import { numWord, UNIT_TYPE_BY_ID, makeUnit } from './fleet';
 import { edgeSpeed, findRoute, makeClosedMask, multiSourceTimes, routeTime, TIME_COMPRESS, type TrafficModel } from './routing';
 import { computeScore, evaluateObjectives } from './scoring';
+import { modProduct, MODIFIER_BY_ID } from './extras';
 import type {
   Call, CallerProfile, CityEvent, CityState, Capability, Fact, FactVal, GameState, HeardLocation, Incident, IncidentStatus, Outcome, Personnel, Req,
   Service, ShiftConfig, ShiftStats, Station, Unit, UpgradeLevels, TimelineEntry,
@@ -40,6 +41,7 @@ const emptyStats = (): ShiftStats => ({
   casualties: 0, livesHelped: 0, unnecessary: 0, dispatches: 0, correctDispatches: 0, wrongLocations: 0, locationChecks: 0, costs: 0, income: 0, bonus: 0,
   coverageSamples: { police: [], fire: [], medical: [] }, districtCoverage: {}, serviceResponse: { police: [], fire: [], medical: [] },
   unitBusySeconds: 0, unitSeconds: 0, handedOver: 0, byCategory: {}, callbacks: 0, escalations: 0, promisesBroken: 0,
+  merges: 0, wrongLinks: 0, pursuitsCaught: 0, verifiedOk: 0, cleanFalseAlarms: 0, bestStreak: 0, calmedCallers: 0, transfersOk: 0, mutualAid: 0, contractBonus: 0,
 });
 
 export function createShiftState(config: ShiftConfig, setup: ShiftSetup): GameState {
@@ -62,6 +64,7 @@ export function createShiftState(config: ShiftConfig, setup: ShiftSetup): GameSt
     stats: emptyStats(), upgrades: { ...setup.upgrades }, rank: setup.rank, reputation: setup.reputation, budget: setup.budget,
     nextSpawnAt: config.script ? Infinity : rng.range(5, 9), spawnedScripted: 0, scriptIndex: 0,
     selected: { kind: null, id: null }, flags: {}, dispatcherLoad: 0, assistantFreeAt: 0, lastCoverage: 0, uniqueNameCounter: 0, endingAt: null,
+    streak: 0, fx: [], fxCounter: 0, closedHospitals: [],
   };
   // persistent consequences: stations that are damaged keep their units out of service
   for (const sid of Object.keys(setup.city.damagedStations)) {
@@ -163,6 +166,11 @@ export class GameEngine {
 
   constructor(state: GameState) {
     this.state = state;
+    // tolerate snapshots from older versions
+    state.fx ??= []; state.streak ??= 0; state.fxCounter ??= 0; state.closedHospitals ??= [];
+    const base = emptyStats() as unknown as Record<string, unknown>;
+    for (const k of Object.keys(base)) if ((state.stats as unknown as Record<string, unknown>)[k] === undefined) (state.stats as unknown as Record<string, unknown>)[k] = base[k];
+    for (const inc of Object.values(state.incidents)) { inc.dupPlan ??= []; inc.duplicateOf ??= null; inc.pursuit ??= false; inc.mover ??= null; inc.mergedInto ??= null; }
     this.city = getCity();
     this.rng = new Rng(state.rngState);
     this.closedMask = makeClosedMask(this.city, state.closedEdges);
@@ -173,6 +181,8 @@ export class GameEngine {
   static fromConfig(config: ShiftConfig, setup: ShiftSetup): GameEngine {
     const e = new GameEngine(createShiftState(config, setup));
     e.log('info', `Shift started — ${config.title}`);
+    e.applyModifiers();
+    e.sampleCoverage();
     e.scheduleEvents();
     return e;
   }
@@ -198,6 +208,44 @@ export class GameEngine {
     st.radio.push({ id: `r${st.radio.length}-${Math.floor(st.time * 10)}`, t: st.time, clock: gameClock(st), from, text, unitId, incidentId, kind });
     if (st.radio.length > 250) st.radio.shift();
     this.emit({ type: 'radio', unitId });
+  }
+
+  /** floating map feedback (score popups etc.) */
+  fx(kind: 'good' | 'bad' | 'warn' | 'info', nodeId: number, text: string) {
+    const st = this.state;
+    const n = this.city.nodes[nodeId];
+    if (!n) return;
+    st.fx.push({ id: ++st.fxCounter, t: st.time, kind, x: n.x, y: n.y, text });
+    if (st.fx.length > 40) st.fx.shift();
+  }
+
+  private applyModifiers() {
+    const st = this.state;
+    for (const id of st.config.modifiers ?? []) {
+      const m = MODIFIER_BY_ID[id];
+      if (!m) continue;
+      if (m.oos) {
+        const pool = this.rng.shuffle(Object.values(st.units).filter((u) => u.status === 'AVAILABLE' && !u.temp));
+        // never take out a service's last unit
+        let taken = 0;
+        for (const u of pool) {
+          if (taken >= m.oos) break;
+          if (Object.values(st.units).filter((x) => x.service === u.service && x.status === 'AVAILABLE').length <= 1) continue;
+          u.status = 'OUT_OF_SERVICE'; u.note = 'Crew shortage'; u.timer = 240; taken++;
+        }
+      }
+      if (m.fresh) for (const p of Object.values(st.personnel)) { p.fatigue = 0; p.morale = Math.min(100, p.morale + 10); }
+      if (m.roadworks) {
+        const cands = this.city.edges.filter((e) => e.cls === 'local' && st.config.districts.includes(this.city.nodes[e.a].district) && !st.closedEdges.includes(e.id));
+        for (let i = 0; i < m.roadworks && cands.length; i++) st.closedEdges.push(this.rng.pick(cands).id);
+        this.closedMask = makeClosedMask(this.city, st.closedEdges);
+      }
+      if (m.closeHospital && this.city.hospitals.length > 1) {
+        const open = this.city.hospitals.filter((h) => st.config.districts.includes(this.city.nodes[h].district));
+        st.closedHospitals = [this.rng.pick(open.length > 1 ? open : this.city.hospitals)];
+      }
+      this.notify(`Shift condition: ${m.name} — ${m.desc}`, m.tone === 'good' ? 'good' : m.tone === 'bad' ? 'warn' : 'info');
+    }
   }
 
   // ── main loop ─────────────────────────────────────────────────────────────
@@ -236,6 +284,7 @@ export class GameEngine {
     this.updateCallbacks();
     this.updatePersonnel();
     this.updateWorkload();
+    this.spawnDuplicates();
   }
 
   // ── Weather, events, traffic ──────────────────────────────────────────────
@@ -379,7 +428,7 @@ export class GameEngine {
     const up = this.state.upgrades;
     const equip = 1 + 0.12 * (u.service === 'medical' ? up.medkit ?? 0 : u.service === 'fire' ? up.firegear ?? 0 : up.policegear ?? 0);
     const seatFactor = Math.sqrt(Math.min(1, crew.length / u.crewSeats));
-    return Math.max(0.35, Math.min(2, eff * fatigue * morale * equip * seatFactor));
+    return Math.max(0.35, Math.min(2.2, eff * fatigue * morale * equip * seatFactor * modProduct(this.state.config, 'eff')));
   }
   private updatePersonnel() {
     const st = this.state;
@@ -436,7 +485,7 @@ export class GameEngine {
     const ramp = Math.max(0.4, Math.min(1.45, 0.45 + 1.15 * (st.time / cfg.durationSec)));
     let evM = 1;
     for (const e of st.events) if (e.active) evM *= e.incidentMult;
-    const perMin = 0.92 * diff.rate * cfg.incidentRate * ramp * evM * (1 + (cfg.endlessWave ?? 0) * 0.06);
+    const perMin = 0.92 * diff.rate * cfg.incidentRate * ramp * evM * (1 + (cfg.endlessWave ?? 0) * 0.06) * modProduct(cfg, 'rate');
     const mean = 60 / perMin;
     st.nextSpawnAt = st.time + Math.max(4, -Math.log(1 - this.rng.next() * 0.98) * mean * 0.7 + mean * 0.35);
   }
@@ -478,21 +527,24 @@ export class GameEngine {
   }
 
   /** create an incident plus its ringing call */
-  spawnIncident(templateId: string, districtId: string, opts: { archetype?: string; accuracy?: CallerProfile['locationAccuracy']; severity?: number; forceEvent?: string; tutorial?: boolean } = {}): Incident {
+  spawnIncident(templateId: string, districtId: string, opts: { archetype?: string; accuracy?: CallerProfile['locationAccuracy']; severity?: number; forceEvent?: string; tutorial?: boolean; duplicateOf?: Incident } = {}): Incident {
     const st = this.state;
     const rng = this.rng;
     const diff = DIFFICULTY[st.config.difficulty];
     const base = TEMPLATE_BY_ID[templateId];
-    const tpl: Template = base.build ? base.build(() => rng.next(), base) : base;
+    const src = opts.duplicateOf;
+    let tpl: Template = src ? { ...base, twist: undefined } : base.build ? base.build(() => rng.next(), base) : base;
+    if (st.config.hideIntense && tpl.intense && !base.intense) tpl = base;
     // location
     const dNodes = this.city.nodesInDistrict[districtId] ?? this.city.nodesInDistrict.downtown;
     let candidates = dNodes.filter((n) => this.city.adj[n].some((e) => this.city.edges[e].cls !== 'highway'));
     if (templateId === 'water_rescue') { const w = candidates.filter((n) => [17, 24].includes(this.city.nodes[n].j)); if (w.length) candidates = w; }
     if (!candidates.length) candidates = dNodes;
-    const nodeId = rng.pick(candidates);
+    const nodeId = src ? src.nodeId : rng.pick(candidates);
     // caller
     const archetypeId = opts.archetype ?? (rng.weighted(tpl.archetypes, (a) => a[1]) ?? tpl.archetypes[0])[0];
     const vars = makeVars(rng, tpl, archetypeId);
+    if (src) for (const k of ['he', 'him', 'his', 'He', 'Him', 'His', 'age', 'kid', 'pname']) vars[k] = src.vars[k];
     let accuracy = opts.accuracy;
     const profile = makeCallerProfile(rng, tpl, archetypeId, this.city, nodeId, accuracy, vars);
     if (!accuracy && profile.locationAccuracy !== 'exact' && !rng.chance(Math.min(0.97, diff.wrong * 0.9 + 0.1))) profile.locationAccuracy = 'exact';
@@ -503,8 +555,9 @@ export class GameEngine {
     const truth: Record<string, FactVal> = {};
     for (const [k, v] of Object.entries(tpl.truth)) truth[k] = typeof v === 'string' ? fill(v, vars) : v;
     if (tpl.patient && tpl.patient !== 'none') truth.age = parseInt(vars.age, 10);
-    const sev = opts.severity ?? Math.max(1, Math.min(5, rng.int(tpl.sev[0], tpl.sev[1]) + (st.config.difficulty === 'expert' && rng.chance(0.25) ? 1 : 0)));
-    const requires = tpl.requires.map((r) => adaptReqForRank(r, st.rank));
+    if (src) Object.assign(truth, src.truth);
+    const sev = src ? src.severity : opts.severity ?? Math.max(1, Math.min(5, rng.int(tpl.sev[0], tpl.sev[1]) + (st.config.difficulty === 'expert' && rng.chance(0.25) ? 1 : 0)));
+    const requires = src ? [] : tpl.requires.map((r) => adaptReqForRank(r, st.rank));
     const num = ++st.incidentCounter;
     const id = `i${num}`;
     const esc = DIFFICULTY[st.config.difficulty].esc;
@@ -520,8 +573,20 @@ export class GameEngine {
       wrongLocationArrivals: 0, sceneReported: false, unnecessary: 0, relatedIds: [], eventId: opts.forceEvent ?? this.activeEventFor(districtId)?.id, workProgress: 0, patientsTransported: 0,
       mislocated: false, firstDispatchAt: null, timelineBlock: false, callerProfile: profile, vars, blockedEdge: null, sceneSeen: false, twist: tpl.twist ?? null, sceneAt: null,
       escalatedAt: null, mutualAid: 0,
+      duplicateOf: src ? src.id : null, dupPlan: [], pursuit: !!tpl.pursuit && !src, mover: null, mergedInto: null,
     };
-    if (tpl.closesRoad) {
+    if (src) { inc.label = src.label; inc.maxStage = 0; inc.growth = 0; inc.threat = 0; inc.district = src.district; inc.blockedEdge = null; }
+    if (inc.pursuit) {
+      const n = this.city.nodes[nodeId];
+      inc.mover = { x: n.x, y: n.y, prev: nodeId, next: -1, came: -1, speed: 5.6, tracked: true, trail: [], startAt: st.time + 10, lastUpdate: st.time, lastSighting: st.time, contact: 0, heading: 0 };
+    }
+    // big incidents draw more than one caller
+    const dupable = !src && !opts.tutorial && !tpl.pursuit && !tpl.outside && sev >= 3 && (tpl.category === 'fire' || tpl.id.startsWith('collision') || ['robbery', 'public_disturbance', 'domestic_disturbance', 'water_rescue', 'industrial_accident'].includes(tpl.id));
+    if (dupable && rng.chance(Math.min(0.95, 0.5 * modProduct(st.config, 'dupes')))) {
+      inc.dupPlan.push(st.time + rng.range(18, 40));
+      if (sev >= 4 && rng.chance(Math.min(0.9, 0.45 * modProduct(st.config, 'dupes')))) inc.dupPlan.push(st.time + rng.range(45, 75));
+    }
+    if (tpl.closesRoad && !src) {
       const eid = this.city.adj[nodeId].find((e) => this.city.edges[e].cls === 'local' || this.city.edges[e].cls === 'arterial');
       if (eid !== undefined && !st.closedEdges.includes(eid) && rng.chance(0.5)) { inc.blockedEdge = eid; }
     }
@@ -584,6 +649,8 @@ export class GameEngine {
       const target = Math.min(100, m.base + danger * 12);
       m.panic += (target - m.panic) * 0.05 * dt * 2;
       m.panic = Math.max(0, Math.min(100, m.panic));
+      call.peakPanic = Math.max(call.peakPanic ?? 0, m.panic);
+      if (!call.calmed && call.state === 'active' && (call.peakPanic ?? 0) > 72 && m.panic < 38) { call.calmed = true; st.stats.calmedCallers++; this.notify(`${call.profile.name.split(' ')[0]} has calmed down`, 'good', inc?.id); }
       m.frustration = Math.max(0, m.frustration - 0.04 * dt);
       m.cooperation = Math.max(0, Math.min(100, m.cooperation + (call.profile.cooperationLevel - m.cooperation) * 0.004 * dt));
       call.profile.emotionalState = m.panic > 72 ? 'Panicked' : m.frustration > 58 ? 'Angry' : m.panic > 48 ? 'Frightened' : m.cooperation < 30 ? 'Uncooperative' : m.panic < 15 ? 'Calm' : 'Shaken';
@@ -603,6 +670,7 @@ export class GameEngine {
     const inc = st.incidents[call.incidentId];
     call.state = 'missed'; call.endedAt = st.time;
     st.stats.callsMissed++;
+    st.streak = 0;
     inc.missedCalls++;
     this.log('missed', `Missed call — ${call.callerId}`, { incidentId: inc.id, good: false });
     this.notify('Missed call — the caller hung up', 'bad', inc.id);
@@ -614,6 +682,7 @@ export class GameEngine {
   private loseIncident(inc: Incident, reason: string) {
     const st = this.state;
     inc.hidden = true; inc.dismissed = true; inc.lostReason = reason;
+    st.streak = 0;
     if (inc.callbackCount < 2) { inc.callbackAt = st.time + 50 + this.rng.range(0, 15); inc.callbackCount++; }
     this.log('failed', `${inc.label}: unhandled (${reason})`, { incidentId: inc.id, good: false });
   }
@@ -764,7 +833,7 @@ export class GameEngine {
     st.stats.locationChecks++;
     const at = st.time + 1.6;
     call.pending.push({ at, text: v.text });
-    if (v.ok === true) { inc.locationConfirmed = inc.reportedNode === nodeId; this.addHeard(call, { nodeId: inc.nodeId, label: `${addressOf(this.city, nodeId)} (read-back confirmed)`, source: 'address', reliability: 'sure' }); }
+    if (v.ok === true) { st.stats.verifiedOk++; inc.locationConfirmed = inc.reportedNode === nodeId; this.addHeard(call, { nodeId: inc.nodeId, label: `${addressOf(this.city, nodeId)} (read-back confirmed)`, source: 'address', reliability: 'sure' }); }
     if (v.ok === false) for (const h of call.heard) if (h.nodeId === nodeId) h.reliability = 'contradicted';
   }
 
@@ -852,7 +921,7 @@ export class GameEngine {
     inc.status = 'CLOSED'; inc.resolvedAt = st.time; inc.outcome = ok ? 'success' : 'mishandled';
     st.stats.byCategory.unusual = st.stats.byCategory.unusual ?? { n: 0, ok: 0 };
     st.stats.byCategory.unusual.n++;
-    if (ok) { st.stats.byCategory.unusual.ok++; st.stats.resolved++; st.stats.bonus += 400; this.notify('Out-of-area call transferred correctly', 'good', inc.id); this.log('resolved', 'Out-of-area call transferred', { incidentId: inc.id, good: true }); }
+    if (ok) { st.stats.byCategory.unusual.ok++; st.stats.resolved++; st.stats.transfersOk++; st.streak++; st.stats.bestStreak = Math.max(st.stats.bestStreak, st.streak); st.stats.bonus += 400; this.notify('Out-of-area call transferred correctly', 'good', inc.id); this.log('resolved', 'Out-of-area call transferred', { incidentId: inc.id, good: true }); }
     else { st.stats.mishandled++; this.notify('Out-of-area caller was dropped without a transfer', 'bad', inc.id); this.log('failed', 'Out-of-area caller dropped', { incidentId: inc.id, good: false }); }
   }
 
@@ -920,7 +989,7 @@ export class GameEngine {
     // redirect units
     for (const uid of inc.assignedUnits) {
       const u = st.units[uid];
-      if (u && (u.status === 'EN_ROUTE' || u.status === 'DISPATCHED' || (u.status === 'ON_SCENE' && !this.unitAtScene(u, inc)))) {
+      if (u && (u.status === 'EN_ROUTE' || u.status === 'DISPATCHED' || (u.status === 'ON_SCENE' && !inc.pursuit && !this.unitAtScene(u, inc)))) {
         if (u.status === 'ON_SCENE') { u.status = 'EN_ROUTE'; this.radio(u.spoken, `Copy, redirecting to ${addressOf(this.city, nodeId)}.`, 'unit', u.id, inc.id); }
         this.routeUnit(u, nodeId, true);
       }
@@ -954,7 +1023,8 @@ export class GameEngine {
     const st = this.state;
     const inc = st.incidents[incId];
     if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) return;
-    if (inc.requires.length === 0) {
+    if (inc.requires.length === 0 && !inc.duplicateOf) {
+      if (inc.everAssigned.length === 0) st.stats.cleanFalseAlarms++;
       this.closeIncident(inc, 'false_alarm');
       return;
     }
@@ -1008,7 +1078,8 @@ export class GameEngine {
     if (inc.firstDispatchAt === null) inc.firstDispatchAt = st.time;
     if (['REPORTED', 'AWAITING_INFORMATION', 'CLASSIFIED', 'AWAITING_DISPATCH', 'ESCALATING'].includes(inc.status) || !inc.assignedUnits.length) inc.status = inc.status === 'ESCALATING' ? 'ESCALATING' : 'UNITS_EN_ROUTE';
     if (inc.status === 'AWAITING_DISPATCH' || inc.status === 'CLASSIFIED') inc.status = 'UNITS_EN_ROUTE';
-    const useful = inc.requires.some((r) => u.capabilities.includes(r.cap));
+    const reqs = inc.duplicateOf ? (st.incidents[inc.duplicateOf]?.requires ?? []) : inc.requires;
+    const useful = reqs.some((r) => u.capabilities.includes(r.cap));
     st.stats.dispatches++;
     if (useful) st.stats.correctDispatches++;
     const cost = u.service === 'fire' ? 320 : u.service === 'medical' ? 220 : 150;
@@ -1148,6 +1219,15 @@ export class GameEngine {
           if (u.status === 'EN_ROUTE') {
             const inc = u.assignedIncidentId ? st.incidents[u.assignedIncidentId] : undefined;
             if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) { u.assignedIncidentId = undefined; u.status = 'RETURNING'; this.routeUnit(u, u.postNode, false); break; }
+            if (inc.pursuit && inc.mover) {
+              // crews who can see the suspect chase it directly; others head for the last known position
+              const m = inc.mover;
+              const near = Math.hypot(u.x - m.x, u.y - m.y) < 230;
+              const target = near ? (m.next >= 0 ? m.next : m.prev) : inc.reportedNode;
+              if (target !== null && target !== u.destNode) this.routeUnit(u, target, true);
+              if (u.route.length) this.advance(u, dt); else { u.speed = 0; u.note = 'Searching area'; }
+              break;
+            }
             if (inc.reportedNode !== null && u.destNode !== inc.reportedNode) this.routeUnit(u, inc.reportedNode, true);
           }
           this.advance(u, dt);
@@ -1163,7 +1243,7 @@ export class GameEngine {
           if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) {
             if (u.temp) { delete st.units[u.id]; break; }
             u.assignedIncidentId = undefined; u.status = 'RETURNING'; this.routeUnit(u, u.postNode, false);
-          } else if (inc.reportedNode !== null && !this.unitAtScene(u, inc) && Math.hypot(this.city.nodes[inc.reportedNode].x - u.x, this.city.nodes[inc.reportedNode].y - u.y) > 90) {
+          } else if (!inc.pursuit && inc.reportedNode !== null && !this.unitAtScene(u, inc) && Math.hypot(this.city.nodes[inc.reportedNode].x - u.x, this.city.nodes[inc.reportedNode].y - u.y) > 90) {
             u.status = 'EN_ROUTE'; this.routeUnit(u, inc.reportedNode, true);
           }
           break;
@@ -1226,6 +1306,7 @@ export class GameEngine {
     if (u.status === 'EN_ROUTE') {
       const inc = u.assignedIncidentId ? st.incidents[u.assignedIncidentId] : undefined;
       if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) { u.status = 'RETURNING'; u.assignedIncidentId = undefined; this.routeUnit(u, u.postNode, false); return; }
+      if (inc.pursuit) { u.note = 'Searching area'; u.speed = 0; return; }
       u.status = 'ON_SCENE';
       this.emit({ type: 'arrive', unitId: u.id });
       if (!this.unitAtScene(u, inc)) {
@@ -1234,6 +1315,7 @@ export class GameEngine {
         inc.mislocated = true;
         st.stats.wrongLocations++;
         u.note = 'Nothing found';
+        this.fx('bad', inc.reportedNode ?? u.prevNode, 'Nothing here');
         this.radio(u.spoken, `Dispatch, ${u.spoken}. Nothing found at ${addressOf(this.city, inc.reportedNode ?? inc.nodeId)}. Please verify the location.`, 'unit', u.id, inc.id);
         this.notify(`${u.callsign} found nothing at the reported address — verify the location`, 'bad', inc.id);
         this.log('arrival', `${u.callsign} arrived at wrong location`, { incidentId: inc.id, unitId: u.id, good: false });
@@ -1265,8 +1347,9 @@ export class GameEngine {
   }
   private nearestHospitalNode(fromNode: number): number {
     const n = this.city.nodes[fromNode];
-    let best = this.city.hospitals[0], bd = Infinity;
-    for (const h of this.city.hospitals) { const m = this.city.nodes[h]; const d = Math.hypot(m.x - n.x, m.y - n.y); if (d < bd) { bd = d; best = h; } }
+    const open = this.city.hospitals.filter((h) => !this.state.closedHospitals.includes(h));
+    let best = open[0] ?? this.city.hospitals[0], bd = Infinity;
+    for (const h of open.length ? open : this.city.hospitals) { const m = this.city.nodes[h]; const d = Math.hypot(m.x - n.x, m.y - n.y); if (d < bd) { bd = d; best = h; } }
     return best;
   }
   private transportsNeeded(inc: Incident): number {
@@ -1284,6 +1367,8 @@ export class GameEngine {
     for (const inc of Object.values(st.incidents)) {
       if (['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
       if (inc.truth.outside) continue;
+      if (inc.duplicateOf) { this.updateDuplicate(inc); continue; }
+      if (inc.pursuit && inc.mover) { this.updatePursuit(inc, dt); continue; }
       const here = this.onScene(inc);
       // scene size-up report
       if (here.length && inc.sceneAt !== null && st.time >= inc.sceneAt && !inc.sceneSeen) this.sceneReport(inc, here[0]);
@@ -1359,6 +1444,7 @@ export class GameEngine {
     inc.workProgress *= 0.6;
     if (esc.casualties) { inc.casualties += esc.casualties; st.stats.casualties += esc.casualties; }
     st.stats.escalations++;
+    this.fx('bad', inc.reportedNode ?? inc.nodeId, 'Escalating!');
     this.log('escalation', `${inc.label} escalated: ${esc.text}`, { incidentId: inc.id, good: false });
     this.notify(`ESCALATION — ${inc.label}: ${esc.text}`, 'bad', inc.id);
     this.emit({ type: 'alert', text: esc.text });
@@ -1375,6 +1461,7 @@ export class GameEngine {
     let cas = 0;
     if (tpl.lethal) cas = 1 + (inc.category === 'fire' || inc.severity >= 5 ? 1 : 0);
     else if (inc.category === 'fire') cas = this.rng.chance(inc.safetyAdvised ? 0.2 : 0.6) ? 1 : 0;
+    else if (inc.pursuit) cas = this.rng.chance(0.2) ? 1 : 0;
     else if (inc.category === 'police' && inc.severity >= 3) cas = this.rng.chance(0.4) ? 1 : 0;
     if (inc.safetyAdvised && cas > 1) cas--;
     inc.casualties += cas; st.stats.casualties += cas;
@@ -1463,19 +1550,223 @@ export class GameEngine {
     inc.outcome = outcome; inc.status = 'RESOLVED'; inc.resolvedAt = st.time;
     inc.assignedUnits = [];
     if (inc.blockedEdge !== null) inc.blockedEdge = null;
+    if (outcome === 'merged') return;
     const cat = st.stats.byCategory[inc.category] ?? { n: 0, ok: 0 };
     cat.n++; if (outcome === 'success' || outcome === 'false_alarm') cat.ok++;
     st.stats.byCategory[inc.category] = cat;
+    const where = inc.reportedNode ?? inc.nodeId;
+    if (outcome === 'success' || outcome === 'false_alarm') { st.streak++; st.stats.bestStreak = Math.max(st.stats.bestStreak, st.streak); }
+    else st.streak = 0;
     if (outcome !== 'failed') {
       st.stats.resolved++;
       const q = outcome === 'success' || outcome === 'false_alarm' ? 1 : 0.55;
-      const bonus = outcome === 'false_alarm' ? 250 : Math.round(700 * inc.severity * q);
+      const streakMult = 1 + Math.min(0.5, 0.05 * Math.max(0, st.streak - 1));
+      const bonus = Math.round((outcome === 'false_alarm' ? 250 : 900 * inc.severity * q) * streakMult * modProduct(st.config, 'bonus'));
       st.stats.bonus += bonus; st.budget += bonus;
-    }
+      this.fx(q === 1 ? 'good' : 'warn', where, `+$${bonus.toLocaleString('en-US')}${st.streak >= 3 ? `  ×${streakMult.toFixed(2)}` : ''}`);
+    } else this.fx('bad', where, 'Failed');
+    // remaining duplicate callers are folded into this record
+    for (const o of Object.values(st.incidents)) if (o.duplicateOf === inc.id && !['RESOLVED', 'CLOSED'].includes(o.status)) this.mergeDuplicate(o, inc, false, true);
     // callers who were told help is coming but nothing happened: nothing more to do
     for (const c of Object.values(st.calls)) if (c.incidentId === inc.id && (c.state === 'hold')) this.endCall(c.id, 'resolved');
     // close any temporary mutual-aid units
     // then archive after a short delay (status CLOSED is set by cleanup)
+  }
+
+  // ── Duplicate callers ─────────────────────────────────────────────────────
+  private spawnDuplicates() {
+    const st = this.state;
+    for (const inc of Object.values(st.incidents)) {
+      if (!inc.dupPlan?.length || st.time < inc.dupPlan[0]) continue;
+      inc.dupPlan.shift();
+      if (['RESOLVED', 'CLOSED'].includes(inc.status) || inc.hidden || st.time > st.config.durationSec - 25) continue;
+      const archetype = this.rng.pick(['witness', 'witness', 'worried_neighbor', 'angry_motorist', 'shopkeeper', 'calm_serious']);
+      this.spawnIncident(inc.templateId, inc.district, { duplicateOf: inc, archetype });
+    }
+  }
+
+  private updateDuplicate(inc: Incident) {
+    const st = this.state;
+    const src = inc.duplicateOf ? st.incidents[inc.duplicateOf] : undefined;
+    if (!src || ['RESOLVED', 'CLOSED'].includes(src.status)) { this.mergeDuplicate(inc, src ?? null, false, true); return; }
+    // units sent to the duplicate discover the original response there
+    const here = inc.assignedUnits.map((id) => st.units[id]).filter((u) => u && u.status === 'ON_SCENE' && this.unitAtScene(u, inc));
+    if (here.length) {
+      this.radio(here[0].spoken, `Dispatch, ${here[0].spoken}. This is the same incident as INC-${String(src.num).padStart(4, '0')} — joining that response.`, 'unit', here[0].id, src.id);
+      this.mergeDuplicate(inc, src, false);
+    }
+  }
+
+  /** fold a duplicate record into its source incident */
+  private mergeDuplicate(dup: Incident, src: Incident | null, linked: boolean, quiet = false) {
+    const st = this.state;
+    const srcOpen = !!src && !['RESOLVED', 'CLOSED'].includes(src.status);
+    for (const uid of [...dup.assignedUnits]) {
+      const u = st.units[uid];
+      dup.assignedUnits = dup.assignedUnits.filter((x) => x !== uid);
+      if (!u) continue;
+      if (srcOpen && src) {
+        u.assignedIncidentId = src.id;
+        if (!src.assignedUnits.includes(uid)) src.assignedUnits.push(uid);
+        if (!src.everAssigned.includes(uid)) src.everAssigned.push(uid);
+        if (src.firstDispatchAt === null) src.firstDispatchAt = dup.firstDispatchAt;
+      } else if (['ON_SCENE', 'EN_ROUTE', 'DISPATCHED'].includes(u.status)) {
+        u.assignedIncidentId = undefined; u.status = 'RETURNING'; this.routeUnit(u, u.postNode, false);
+      }
+    }
+    if (srcOpen && src) {
+      if (src.reportedNode === null && dup.reportedNode !== null) { src.reportedNode = dup.reportedNode; src.locatedAt = st.time; src.mislocated = Math.hypot(this.city.nodes[dup.reportedNode].x - this.city.nodes[src.nodeId].x, this.city.nodes[dup.reportedNode].y - this.city.nodes[src.nodeId].y) > 90; }
+      for (const f of dup.facts) if (!src.facts.some((x) => x.key === f.key && x.value === f.value)) src.facts.push({ ...f });
+      for (const c of Object.values(st.calls)) if (c.incidentId === dup.id && ['active', 'hold', 'ringing'].includes(c.state)) c.incidentId = src.id;
+      if (src.assignedUnits.length && ['REPORTED', 'AWAITING_INFORMATION', 'CLASSIFIED', 'AWAITING_DISPATCH'].includes(src.status)) src.status = 'UNITS_EN_ROUTE';
+      if (this.onScene(src).length && src.status === 'UNITS_EN_ROUTE') src.status = 'ON_SCENE';
+      this.refreshIncidentStatus(src);
+    }
+    dup.mergedInto = src?.id ?? null;
+    this.finishIncident(dup, 'merged');
+    if (linked && src) {
+      st.stats.merges++;
+      const b = Math.round(600 * modProduct(st.config, 'bonus'));
+      st.stats.bonus += b; st.budget += b;
+      this.fx('info', src.reportedNode ?? src.nodeId, `Linked +$${b}`);
+      this.notify(`Linked duplicate call to INC-${String(src.num).padStart(4, '0')}`, 'good', src.id);
+      this.log('resolved', `Duplicate call linked to ${src.label}`, { incidentId: src.id, good: true });
+    } else if (!quiet && src) this.log('info', `Duplicate report merged into ${src.label}`, { incidentId: src.id });
+    if (st.selected.kind === 'incident' && st.selected.id === dup.id && src) this.select('incident', src.id);
+  }
+
+  /** dispatcher decision: "this call is about that incident" */
+  linkIncident(aId: string, bId: string): { ok: boolean; reason?: string } {
+    const st = this.state;
+    const a = st.incidents[aId], b = st.incidents[bId];
+    const open = (i?: Incident) => !!i && !['RESOLVED', 'CLOSED'].includes(i.status);
+    if (!open(a) || !open(b) || aId === bId) return { ok: false, reason: 'Both incidents must be open' };
+    const related = a.duplicateOf === b.id || b.duplicateOf === a.id || (a.duplicateOf !== null && a.duplicateOf === b.duplicateOf);
+    if (related) {
+      if (a.duplicateOf === b.id) this.mergeDuplicate(a, b, true);
+      else if (b.duplicateOf === a.id) this.mergeDuplicate(b, a, true);
+      else { const src = st.incidents[a.duplicateOf!]; this.mergeDuplicate(a, open(src) ? src : b, true); }
+      return { ok: true };
+    }
+    // they were different emergencies: the linked call drops out of sight and will get worse
+    a.hidden = true; a.dismissed = true; a.callbackAt = st.time + 40 + this.rng.range(0, 12);
+    for (const uid of [...a.assignedUnits]) this.recall(uid);
+    for (const c of Object.values(st.calls)) if (c.incidentId === a.id && (c.state === 'active' || c.state === 'hold')) this.endCall(c.id);
+    st.stats.wrongLinks++; st.streak = 0;
+    this.notify(`Linked to INC-${String(b.num).padStart(4, '0')}`, 'info', b.id);
+    this.log('failed', `${a.label} linked to an unrelated incident`, { incidentId: a.id, good: false });
+    this.select('incident', b.id);
+    return { ok: true };
+  }
+
+  /** open incidents near this one that could be the same emergency */
+  duplicateCandidates(incId: string): Array<{ inc: Incident; dist: number }> {
+    const st = this.state;
+    const a = st.incidents[incId];
+    if (!a) return [];
+    const anchors: number[] = [];
+    if (a.reportedNode !== null) anchors.push(a.reportedNode);
+    for (const c of Object.values(st.calls)) if (c.incidentId === a.id) for (const h of c.heard) if (h.reliability !== 'contradicted' && h.source !== 'district') anchors.push(h.nodeId);
+    if (!anchors.length) return [];
+    const out: Array<{ inc: Incident; dist: number }> = [];
+    for (const b of Object.values(st.incidents)) {
+      if (b.id === a.id || b.hidden || b.reportedNode === null || ['RESOLVED', 'CLOSED'].includes(b.status)) continue;
+      const bn = this.city.nodes[b.reportedNode];
+      const d = Math.min(...anchors.map((n) => Math.hypot(this.city.nodes[n].x - bn.x, this.city.nodes[n].y - bn.y)));
+      if (d < 280) out.push({ inc: b, dist: d * 4 });
+    }
+    return out.sort((x, y) => x.dist - y.dist).slice(0, 3);
+  }
+
+  // ── Pursuits ──────────────────────────────────────────────────────────────
+  private chooseEscape(m: NonNullable<Incident['mover']>, chasers: Unit[]): number {
+    const city = this.city;
+    const opts = city.adj[m.prev].map((eid) => city.edges[eid]).filter((e) => !this.closedMask[e.id]);
+    if (!opts.length) return m.prev;
+    let best = -1, bs = -Infinity;
+    for (const e of opts) {
+      const n = e.a === m.prev ? e.b : e.a;
+      const nn = city.nodes[n];
+      let score = this.rng.next() * 22 + (e.cls === 'arterial' || e.cls === 'highway' ? 9 : 0) + (n === m.came ? -60 : 0);
+      if (chasers.length) score += Math.min(...chasers.map((u) => Math.hypot(u.x - nn.x, u.y - nn.y))) * 0.05;
+      if (score > bs) { bs = score; best = n; }
+    }
+    return best;
+  }
+
+  private updatePursuit(inc: Incident, dt: number) {
+    const st = this.state, city = this.city, m = inc.mover!;
+    if (inc.status === 'STABILIZING') return;
+    const assigned = inc.assignedUnits.map((id) => st.units[id]).filter((u): u is Unit => !!u);
+    const contacts = assigned.filter((u) => (u.status === 'ON_SCENE' && u.note === 'In pursuit') || (u.status === 'EN_ROUTE' && Math.hypot(u.x - m.x, u.y - m.y) < 42));
+    if (contacts.length && m.contact === 0) {
+      const u = contacts[0];
+      this.radio(u.spoken, `Dispatch, ${u.spoken}. Suspect vehicle in sight — in pursuit!`, 'alert', u.id, inc.id);
+      inc.sceneSeen = true; inc.sceneReported = true; inc.knownReqs = inc.requires.map((r) => ({ ...r }));
+      if (inc.firstArrivalAt === null) { inc.firstArrivalAt = st.time; const rt = st.time - (inc.answeredAt ?? inc.createdAt); st.stats.responseTimes.push(rt); st.stats.serviceResponse.police.push(rt); }
+      if (inc.status !== 'ESCALATING') inc.status = 'ON_SCENE';
+    }
+    m.contact = contacts.length;
+    // the suspect keeps driving unless boxed in
+    if (st.time >= m.startAt && contacts.length < 2) {
+      let remaining = m.speed * TIME_COMPRESS / 2.4 * WEATHER_SPEED[st.weather] * (contacts.length ? 0.45 : 1) * dt;
+      let guard = 0;
+      while (remaining > 1e-6 && guard++ < 8) {
+        if (m.next < 0) m.next = this.chooseEscape(m, assigned);
+        const tgt = city.nodes[m.next];
+        const dx = tgt.x - m.x, dy = tgt.y - m.y, d = Math.hypot(dx, dy);
+        if (d <= remaining || d < 1e-3) { m.x = tgt.x; m.y = tgt.y; remaining -= d; m.came = m.prev; m.prev = m.next; m.next = -1; if (d < 1e-3 && guard > 3) break; }
+        else { m.x += (dx / d) * remaining; m.y += (dy / d) * remaining; m.heading = Math.atan2(dy, dx); remaining = 0; }
+      }
+      const last = m.trail[m.trail.length - 1];
+      if (!last || Math.hypot(last.x - m.x, last.y - m.y) > 10) { m.trail.push({ x: m.x, y: m.y }); if (m.trail.length > 26) m.trail.shift(); }
+    }
+    const dPrev = Math.hypot(city.nodes[m.prev].x - m.x, city.nodes[m.prev].y - m.y);
+    inc.nodeId = m.next >= 0 && Math.hypot(city.nodes[m.next].x - m.x, city.nodes[m.next].y - m.y) < dPrev ? m.next : m.prev;
+    inc.district = city.nodes[inc.nodeId].district;
+    // crews in contact stay on the suspect's tail
+    contacts.forEach((u, i) => {
+      u.status = 'ON_SCENE'; u.note = 'In pursuit'; u.route = []; u.eta = 0; u.destNode = null;
+      const ang = m.heading + Math.PI + (i - (contacts.length - 1) / 2) * 0.7;
+      u.x = m.x + Math.cos(ang) * 14; u.y = m.y + Math.sin(ang) * 14; u.prevNode = m.prev;
+    });
+    // tracking: a caller still following, or crews with eyes on it, keep the location live
+    const call = this.callFor(inc);
+    const following = !!call && call.state === 'active' && st.time - (call.answeredAt ?? st.time) < 160;
+    m.tracked = following || contacts.length > 0 || assigned.some((u) => Math.hypot(u.x - m.x, u.y - m.y) < 230);
+    if (inc.reportedNode !== null) {
+      if (m.tracked && st.time - m.lastUpdate >= 2.5) { m.lastUpdate = st.time; inc.reportedNode = inc.nodeId; }
+      else if (!m.tracked && st.time - m.lastSighting > 22) {
+        m.lastSighting = st.time;
+        if (this.rng.chance(0.6)) {
+          inc.reportedNode = inc.nodeId;
+          this.radio('DISPATCH', `All units, suspect vehicle sighted near ${addressOf(city, inc.nodeId)}.`, 'dispatch', undefined, inc.id);
+          this.notify(`Sighting: suspect vehicle near ${addressOf(city, inc.nodeId)}`, 'warn', inc.id);
+        }
+      }
+    }
+    if (following && call && st.time >= m.startAt && st.time - call.lastSpontaneous > 11 && !call.pending.length) {
+      const n = city.nodes[inc.nodeId];
+      const lines = [`He's on ${n.addrStreet} now, near ${n.crossStreet}!`, `Turning onto ${n.addrStreet}! He's still going!`, `We're passing ${n.crossStreet} — he's not stopping!`, `${n.addrStreet}, heading toward ${n.crossStreet}. I can't keep up much longer!`];
+      call.pending.push({ at: st.time + 0.4, text: this.rng.pick(lines), heard: [{ nodeId: inc.nodeId, label: `Suspect at ${n.addrStreet} & ${n.crossStreet} (live)`, source: 'cross', reliability: 'sure' }] });
+      call.lastSpontaneous = st.time;
+    }
+    // risk to the public grows until the car is stopped
+    if (contacts.length) {
+      inc.threat = Math.max(0, inc.threat - 0.6 * dt);
+      const eff = contacts.reduce((s, u) => s + this.unitEffectiveness(u), 0) / contacts.length;
+      inc.workProgress += dt * eff * (contacts.length >= 2 ? 3 : 1);
+      if (inc.workProgress >= inc.work) {
+        this.radio(contacts[0].spoken, `Dispatch, ${contacts[0].spoken}. Suspect vehicle stopped, driver in custody.`, 'unit', contacts[0].id, inc.id);
+        st.stats.pursuitsCaught++;
+        this.fx('good', inc.nodeId, 'Suspect detained');
+        inc.reportedNode = inc.nodeId;
+        this.resolveIncident(inc, 'success');
+        return;
+      }
+    } else if (st.time >= m.startAt) inc.threat += inc.growth * dt;
+    if (inc.status === 'ESCALATING' && st.time - (inc.escalatedAt ?? 0) > 10) inc.status = contacts.length ? 'ON_SCENE' : inc.assignedUnits.length ? 'UNITS_EN_ROUTE' : inc.reportedNode !== null ? 'AWAITING_DISPATCH' : inc.status;
+    if (inc.threat >= 100) this.escalate(inc);
   }
 
   // ── Mutual aid ────────────────────────────────────────────────────────────
@@ -1488,7 +1779,7 @@ export class GameEngine {
     const def = defs[0];
     if (!def) return { ok: false, reason: 'No such resource' };
     const cost = 4000;
-    inc.mutualAid++;
+    inc.mutualAid++; st.stats.mutualAid++;
     st.stats.costs += cost; st.budget -= cost;
     // enters from the nearest edge of the city
     const n = this.city.nodes[inc.reportedNode];
@@ -1550,7 +1841,7 @@ export class GameEngine {
     this.covCache[service] = { t: this.state.time, times };
     return times;
   }
-  private sampleCoverage() {
+  sampleCoverage() {
     const st = this.state;
     const thr = 100;
     const active = st.config.districts;
@@ -1596,6 +1887,7 @@ export class GameEngine {
     for (const inc of Object.values(st.incidents)) {
       if (['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
       if (inc.truth.outside) continue;
+      if (inc.duplicateOf) { inc.outcome = 'merged'; inc.status = 'RESOLVED'; continue; }
       inc.outcome = inc.hidden ? 'lost' : 'handover';
       if (inc.hidden) { st.stats.mishandled++; if (TEMPLATE_BY_ID[inc.templateId].lethal) { st.stats.casualties++; inc.casualties++; } } else st.stats.handedOver++;
       this.log('failed', `${inc.label}: ${inc.hidden ? 'never handled' : 'handed over to the next shift'}`, { incidentId: inc.id, good: false });

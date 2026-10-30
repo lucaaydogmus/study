@@ -8,7 +8,7 @@ export function avgResponse(st: GameState): number { return avg(st.stats.respons
 export function computeScore(st: GameState): ShiftScore {
   const s = st.stats;
   const diffTarget = { casual: 150, standard: 120, hard: 105, expert: 90 }[st.config.difficulty];
-  const handled = Object.values(st.incidents).filter((i) => !i.truth.outside);
+  const handled = Object.values(st.incidents).filter((i) => !i.truth.outside && !i.duplicateOf && i.outcome !== 'merged');
   const needResponse = handled.filter((i) => i.requires.length > 0 || i.outcome === 'false_alarm');
 
   // response time: full marks at/under target, zero at 2.2x target
@@ -42,7 +42,7 @@ export function computeScore(st: GameState): ShiftScore {
   const cov = (s.coverageSamples.police.length ? (avg(s.coverageSamples.police) + avg(s.coverageSamples.fire) + avg(s.coverageSamples.medical)) / 3 : 0.5);
   const coverage = Math.max(0, Math.min(1, cov / 0.85));
 
-  const penalties = s.casualties * 5 + s.promisesBroken * 1.5 + s.mishandled * 3;
+  const penalties = s.casualties * 5 + s.promisesBroken * 1.5 + s.mishandled * 3 + (s.wrongLinks ?? 0) * 2;
   let total = 100 * (0.27 * response + 0.34 * outcomes + 0.17 * accuracy + 0.12 * calls + 0.10 * coverage) - penalties;
   total = Math.max(0, Math.min(100, total));
   const grade: ShiftScore['grade'] = total >= 91 && s.casualties === 0 ? 'S' : total >= 80 ? 'A' : total >= 68 ? 'B' : total >= 55 ? 'C' : total >= 42 ? 'D' : 'F';

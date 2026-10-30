@@ -6,12 +6,14 @@ import { GameEngine, type EngineEvent } from './sim/engine';
 import {
   applyShift, careerConfig, computeResult, newProfile, setupFromProfile, temporarySetup, DEFAULT_SETTINGS, type Profile, type Settings, type ShiftResult,
 } from './sim/profile';
-import { CHAPTERS, SCENARIOS, TUTORIAL_CONFIG, baseConfig, ALL_DISTRICTS } from './sim/scenarios';
+import { CHAPTERS, SCENARIOS, TUTORIAL_CONFIG, baseConfig, ALL_DISTRICTS, dailyConfig } from './sim/scenarios';
+import { evaluateAchievements, ACHIEVEMENT_BY_ID } from './sim/achievements';
+import { rollExtras } from './sim/extras';
 import type { GameState, ShiftConfig } from './sim/types';
 
 export type Screen = 'menu' | 'briefing' | 'newCareer' | 'load' | 'modes' | 'hub' | 'game' | 'report' | 'settings' | 'freeplay' | 'scenarios' | 'campaign' | 'endless';
-export type HubTab = 'overview' | 'prep' | 'fleet' | 'crew' | 'shop' | 'upgrades' | 'career' | 'stats';
-export type SessionKind = 'career' | 'chapter' | 'free' | 'scenario' | 'endless' | 'tutorial';
+export type HubTab = 'overview' | 'prep' | 'fleet' | 'crew' | 'shop' | 'upgrades' | 'career' | 'achievements' | 'stats';
+export type SessionKind = 'career' | 'chapter' | 'free' | 'scenario' | 'endless' | 'tutorial' | 'daily';
 
 export interface Session { kind: SessionKind; config: ShiftConfig; setupOpts?: Parameters<typeof temporarySetup>[0]; chapterId?: string; scenarioId?: string }
 
@@ -33,7 +35,8 @@ interface AppStore {
   mutateProfile: (fn: (p: Profile) => unknown) => void;
   startSession: (s: Session) => void; resumeShift: () => Promise<void>; abandon: () => void; finishShift: () => void;
   startCareerShift: () => void; startChapter: (id: string) => void; startScenario: (id: string) => void; startFree: (cfg: ShiftConfig, opts: Session['setupOpts']) => void;
-  startTutorial: () => void; startEndless: (reset?: boolean) => void; setPauseMenu: (b: boolean) => void;
+  startTutorial: () => void; startEndless: (reset?: boolean) => void; setPauseMenu: (b: boolean) => void; startDaily: () => void;
+  newAchievements: string[]; checkLiveAchievements: () => void;
 }
 
 let toastId = 0;
@@ -44,6 +47,13 @@ export const useApp = create<AppStore>((set, get) => ({
   screen: 'menu', back: [], hubTab: 'overview', profile: null, slot: 'auto', settings: DEFAULT_SETTINGS, saveList: [], hasShiftSnapshot: false,
   brief: (s) => { set({ pending: s }); get().go('briefing'); },
   pending: null, setPending: (s) => set({ pending: s }), beginPending: () => { const s = get().pending; if (s) get().startSession(s); },
+  newAchievements: [],
+  checkLiveAchievements: () => {
+    const { profile, engine, session } = get();
+    if (!profile || !engine || !session) return;
+    const got = evaluateAchievements({ profile, st: engine.state, kind: session.kind, scenarioId: session.scenarioId, lifetimeIncludesShift: false });
+    if (got.length) { for (const id of got) { get().showToast(`Achievement unlocked — ${ACHIEVEMENT_BY_ID[id].name}`, 'good'); } audio.good(); set({ newAchievements: [...get().newAchievements, ...got] }); void get().autosave(); }
+  },
   engine: null, session: null, rev: 0, result: null, endState: null, endlessOver: false, toast: null, paused: false, pauseMenu: false, showHelp: false,
 
   go: (s, tab) => { audio.click(); set((st) => ({ screen: s, back: s === st.screen ? st.back : [...st.back, st.screen].slice(-8), hubTab: tab ?? st.hubTab })); },
@@ -135,7 +145,7 @@ export const useApp = create<AppStore>((set, get) => ({
     engine.setSpeed(settings.defaultSpeed);
     unsub = engine.on((e: EngineEvent) => handleEngineEvent(e, engine));
     audio.startOffice();
-    set({ engine, session: { ...s, config }, screen: 'game', result: null, endState: null, pauseMenu: false, rev: get().rev + 1 });
+    set({ engine, session: { ...s, config }, screen: 'game', result: null, endState: null, pauseMenu: false, rev: get().rev + 1, newAchievements: [] });
     if (snapshotTimer) clearInterval(snapshotTimer);
     if (s.kind === 'career' || s.kind === 'chapter') snapshotTimer = window.setInterval(() => {
       const st = get();
@@ -197,6 +207,15 @@ export const useApp = create<AppStore>((set, get) => ({
         set({ profile: { ...profile } }); void get().autosave();
       }
       if (profile && session.kind === 'tutorial') { profile.flags.tutorialDone = true; set({ profile: { ...profile } }); void get().autosave(); }
+      if (profile && session.kind === 'daily' && st.config.daily) {
+        const prev = profile.daily[st.config.daily];
+        if (!prev || result.score.total > prev.score) profile.daily[st.config.daily] = { score: result.score.total, grade: result.score.grade };
+        set({ profile: { ...profile } }); void get().autosave();
+      }
+    }
+    if (profile) {
+      const got = evaluateAchievements({ profile, st, result, kind: session.kind, scenarioId: session.scenarioId, lifetimeIncludesShift: session.kind === 'career' || session.kind === 'chapter' });
+      if (got.length) { set({ newAchievements: [...get().newAchievements, ...got], profile: { ...profile } }); void get().autosave(); }
     }
     set({ result, endState: st, endlessOver, screen: 'report' });
   },
@@ -212,7 +231,7 @@ export const useApp = create<AppStore>((set, get) => ({
     const ch = CHAPTERS.find((c) => c.id === id);
     if (!p || !ch) return;
     const districts = ALL_DISTRICTS.filter((d) => p.rank >= (d === 'airport' ? 6 : 1) || true);
-    const cfg = careerConfig(p, { ...ch.config(p.rank, districts), mode: 'career', chapterId: id, title: `${ch.subtitle}: ${ch.title}`, briefing: ch.story });
+    const cfg = careerConfig(p, { ...ch.config(p.rank, districts), modifiers: [], mode: 'career', chapterId: id, title: `${ch.subtitle}: ${ch.title}`, briefing: ch.story });
     cfg.districts = careerConfig(p).districts;
     get().startSession({ kind: 'chapter', config: cfg, chapterId: id });
   },
@@ -223,6 +242,7 @@ export const useApp = create<AppStore>((set, get) => ({
     get().brief({ kind: 'scenario', config: cfg, scenarioId: id, setupOpts: { reduced: sc.reducedFleet, rank: 7 } });
   },
   startFree: (cfg, opts) => get().brief({ kind: 'free', config: cfg, setupOpts: opts }),
+  startDaily: () => { const d = dailyConfig(); get().brief({ kind: 'daily', config: d.config, setupOpts: { units: d.units, rank: 7 } }); },
   startTutorial: () => get().brief({ kind: 'tutorial', config: TUTORIAL_CONFIG(), setupOpts: { units: 8, rank: 1 } }),
   startEndless: (reset) => {
     const p = get().profile ?? newProfile('Guest');
@@ -231,6 +251,7 @@ export const useApp = create<AppStore>((set, get) => ({
     const wave = p.endless.current.wave;
     const diff = wave < 2 ? 'standard' : wave < 5 ? 'hard' : 'expert';
     const cfg = baseConfig({ mode: 'endless', title: `Endless — Shift ${wave + 1}`, briefing: `Survive. Each shift is busier than the last. Score so far: ${p.endless.current.score}.`, difficulty: diff, durationSec: 8 * 60, incidentRate: 1 + wave * 0.12, endlessWave: wave, weather: (['clear', 'rain', 'fog', 'storm', 'heat', 'snow'] as const)[wave % 6], startHour: (6 + wave * 4) % 24, seed: 9000 + wave * 131 + (Date.now() % 997), events: wave >= 2 ? [{ type: wave % 2 ? 'storm' : 'rush_hour', at: 80, duration: 300 }] : [] });
+    const ex = rollExtras(cfg.seed, 5); cfg.modifiers = wave >= 1 ? ex.modifiers : []; cfg.contracts = ex.contracts;
     set({ endlessOver: false });
     get().brief({ kind: 'endless', config: cfg, setupOpts: { units: Math.min(18, 12 + Math.floor(wave / 2)), rank: 7 } });
   },
