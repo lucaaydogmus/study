@@ -2,7 +2,10 @@
 export const SAVE_KEY = 'signal911.save';
 export const SAVE_VERSION = 1;
 
+import type { Difficulty } from './types';
+
 export interface Settings {
+  difficulty: Difficulty;
   volume: number;
   muted: boolean;
   shiftMinutes: number;
@@ -23,7 +26,7 @@ export const defaultSave = (): SaveData => ({
   xp: 0,
   reputation: 50,
   completedShifts: 0,
-  settings: { volume: 0.6, muted: false, shiftMinutes: 10 },
+  settings: { difficulty: 'normal', volume: 0.6, muted: false, shiftMinutes: 10 },
 });
 
 export interface StorageLike {
@@ -52,6 +55,7 @@ export function migrate(raw: unknown): SaveData {
     reputation: num(r.reputation, d.reputation),
     completedShifts: num(r.completedShifts, d.completedShifts),
     settings: {
+      difficulty: r.settings?.difficulty === 'easy' || r.settings?.difficulty === 'hard' ? r.settings.difficulty : 'normal',
       volume: Math.min(1, Math.max(0, num(r.settings?.volume, d.settings.volume))),
       muted: typeof r.settings?.muted === 'boolean' ? r.settings.muted : d.settings.muted,
       shiftMinutes: num(r.settings?.shiftMinutes, d.settings.shiftMinutes),

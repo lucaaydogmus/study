@@ -1,3 +1,2 @@
-# Next: Stage 1 — Core gameplay (awaiting approval)
-Ravenport map data + road graph, pan/zoom canvas map, stations/units, A* routing with traffic, dispatch UI, simple incident spawning, unit statuses, ETA, basic call stub, shift end summary.
-Keep scope tight: placeholder incidents/calls only; dialogue is Stage 2.
+# Next: Stage 2 — Emergency conversations (awaiting approval)
+Branching dialogue per incident variation; caller personalities; confirmed / unconfirmed / hidden facts; incident notes that feed classification; wrong location, contradictions, disconnects; call panel replaces the one-click Answer. Hook: `answerCall` in `sim/world.ts` and `Spec.opening` in `sim/incidents.ts`. Include ringtone/answer/end-call sounds (Web Audio) if budget allows.

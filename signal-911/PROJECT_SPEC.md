@@ -8,4 +8,4 @@ Single-player browser emergency dispatch game set in fictional Ravenport. React 
 **Incidents:** data-driven families + variations; states REPORTED→…→RESOLVED/FAILED; escalation from sim variables; anti-repeat safeguards; pacing director.
 **Palette:** bg #111820, panel #1B2530, elevated #253240, text #E7EDF4, muted #96A6B5, accent #5A9CCB, police #5C91C9, fire #D76B54, medical #61B894, urgent #E8B65B, critical #E45A5A.
 **Excluded:** AI voices, multiplayer, real maps, 3D, backend, leaderboards, accounts.
-**Stages (each needs explicit approval):** 0 Foundation · 1 Core gameplay · 2 Conversations · 3 Dynamic incidents & on-scene decisions · 4 Management & upgrades · 5 Career & scenarios · 6 Polish & testing.
+**Stages (each needs explicit approval):** 0 Foundation ✔ · 1 Core gameplay ✔ · 2 Conversations · 3 Dynamic incidents & on-scene decisions · 4 Management & upgrades · 5 Career & scenarios · 6 Polish & testing.
