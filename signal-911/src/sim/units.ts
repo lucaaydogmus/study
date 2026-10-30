@@ -29,6 +29,8 @@ export interface Unit {
   x: number; y: number; node: number; status: UnitStatus; caps: Capability[];
   personnel: number; equipment: string[]; incidentId: number | null;
   legs: Leg[]; eta: number; busyUntil: number;
+  /** Arrived at an address the caller got wrong: not covering the real incident. */
+  wrongSite: boolean;
 }
 
 /** Starting fleet: station id + vehicle. Callsigns are numbered per vehicle type. */

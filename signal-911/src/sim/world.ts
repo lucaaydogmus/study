@@ -3,6 +3,8 @@ import { getCity } from './city';
 import { findPath } from './pathfinding';
 import { STARTING_FLEET, VEHICLES, type Leg, type Unit } from './units';
 import { TEMPLATES, type Template } from './incidents';
+import { PERSONALITIES, scriptFor, type Personality, type Twist } from './dialogueData';
+import { endCall, openSession, tickSession, type Session } from './calls';
 import type {
   Capability, City, DistrictId, Difficulty, Edge, IncidentStatus, Weather,
 } from './types';
@@ -12,21 +14,29 @@ export interface LogEntry { t: number; text: string; kind: 'info' | 'call' | 'di
 
 export interface Spec {
   templateId: string; variationId: string; district: DistrictId; nodeId: number; address: string; opening: string;
+  personality: Personality; twist: Twist; perceivedVariationId: string;
+  wrongNodeId: number | null; wrongAddress: string | null; discAfter: number | null;
 }
+export interface Note { text: string; kind: 'confirmed' | 'unconfirmed' | 'warning' | 'info'; t: number }
+export interface Turn { who: 'caller' | 'dispatcher' | 'system'; text: string; t: number }
+export interface Believed { caps: Capability[]; severity: number }
 export interface Call {
   id: number; ringAt: number; deadline: number; status: 'ringing' | 'answered' | 'missed'; spec: Spec; incidentId?: number;
 }
 export interface Incident {
   id: number; templateId: string; title: string; label: string; district: DistrictId; nodeId: number;
   x: number; y: number; address: string; severity: number; required: Capability[]; status: IncidentStatus;
-  callAt: number; notes: string[]; assigned: string[]; firstArrival: number | null;
+  /** Truth is hidden from the player until responders reach the real scene. */
+  trueAddress: string; believedNode: number | null; addrConfirmed: boolean; locFixAt: number | null;
+  believed: Believed; truthKnown: boolean; transcript: Turn[]; session: Session | null; callEndedAt: number | null;
+  callAt: number; notes: Note[]; assigned: string[]; firstArrival: number | null;
   pressure: number; failAfter: number; workProgress: number; duration: number;
   escalations: number; complication: boolean; resolvedAt: number | null; outcome: string;
   surplus: number;
 }
 export interface Stats {
   answered: number; missed: number; resolved: number; failed: number; dispatched: number; unnecessary: number;
-  responseTimes: number[]; spent: number; reward: number; fastResponses: number;
+  responseTimes: number[]; spent: number; reward: number; fastResponses: number; hungUp: number;
 }
 
 export interface World {
@@ -35,6 +45,7 @@ export interface World {
   nextIncidentId: number; nextCallId: number; nextCallAt: number;
   recentTemplates: string[]; recentOpenings: string[]; finalSpawned: boolean;
   blocked: Set<number>; trafficPhase: Record<DistrictId, number>;
+  activeCall: number | null; recentPersonalities: Personality[]; logSeq: number;
 }
 
 export const BASE_SPEED = 18;
@@ -61,7 +72,7 @@ export function createWorld(config: Config): World {
     return {
       id: `${v.prefix}-${n}`, callsign: `${v.prefix}-${n}`, vehicle, service: v.service, stationId,
       x: node.x, y: node.y, node: node.id, status: 'AVAILABLE', caps: [...v.caps], personnel: v.personnel,
-      equipment: [...v.equipment], incidentId: null, legs: [], eta: 0, busyUntil: 0,
+      equipment: [...v.equipment], incidentId: null, legs: [], eta: 0, busyUntil: 0, wrongSite: false,
     };
   });
   const phase = {} as Record<DistrictId, number>;
@@ -69,9 +80,10 @@ export function createWorld(config: Config): World {
   return {
     config, rng, city, time: 0, length: config.shiftMinutes * 60, over: false, units, incidents: [], calls: [],
     log: [{ t: 0, kind: 'info', text: 'Shift briefing complete. Ravenport dispatch is online.' }],
-    stats: { answered: 0, missed: 0, resolved: 0, failed: 0, dispatched: 0, unnecessary: 0, responseTimes: [], spent: 0, reward: 0, fastResponses: 0 },
+    stats: { answered: 0, missed: 0, resolved: 0, failed: 0, dispatched: 0, unnecessary: 0, responseTimes: [], spent: 0, reward: 0, fastResponses: 0, hungUp: 0 },
     nextIncidentId: 1, nextCallId: 1, nextCallAt: 6 + rng.next() * 6,
     recentTemplates: [], recentOpenings: [], finalSpawned: false, blocked: new Set(), trafficPhase: phase,
+    activeCall: null, recentPersonalities: [], logSeq: 0,
   };
 }
 
@@ -142,19 +154,64 @@ export function matchSlots(required: Capability[], units: Unit[]): (Unit | null)
   return out;
 }
 
+/** What the dispatcher believes is needed: the truth only once responders have assessed the scene. */
+export const shownCaps = (inc: Incident): Capability[] => (inc.truthKnown ? inc.required : inc.believed.caps);
+export const shownSeverity = (inc: Incident): number => (inc.truthKnown ? inc.severity : inc.believed.severity);
+/** Units that actually stand at the real incident (units at a wrong address do not count). */
+export const coverers = (w: World, inc: Incident) => w.units.filter((u) => u.incidentId === inc.id && !u.wrongSite);
+const onSceneUnits = (w: World, inc: Incident) => coverers(w, inc).filter((u) => u.status === 'ON SCENE');
+
 export type SlotState = 'met' | 'enroute' | 'open';
 export function slotStates(w: World, inc: Incident): SlotState[] {
-  const mine = w.units.filter((u) => u.incidentId === inc.id);
-  const onScene = matchSlots(inc.required, mine.filter((u) => u.status === 'ON SCENE'));
-  const all = matchSlots(inc.required, mine);
-  return inc.required.map((_, i) => (onScene[i] ? 'met' : all[i] ? 'enroute' : 'open'));
+  const caps = shownCaps(inc);
+  const onScene = matchSlots(caps, onSceneUnits(w, inc));
+  const all = matchSlots(caps, coverers(w, inc));
+  return caps.map((_, i) => (onScene[i] ? 'met' : all[i] ? 'enroute' : 'open'));
 }
 
 /* -------------------------------------------------------------- logging */
 
-function log(w: World, kind: LogEntry['kind'], text: string) {
+export function log(w: World, kind: LogEntry['kind'], text: string) {
+  w.logSeq++;
   w.log.push({ t: w.time, kind, text });
   if (w.log.length > 200) w.log.splice(0, w.log.length - 200);
+}
+
+export function say(w: World, inc: Incident, who: Turn['who'], text: string) { inc.transcript.push({ who, text, t: w.time }); }
+export function addNote(w: World, inc: Incident, text: string, kind: Note['kind']) { inc.notes.push({ text, kind, t: w.time }); }
+
+export function setBelieved(w: World, inc: Incident, nodeId: number, address: string) {
+  const n = w.city.nodes[nodeId];
+  inc.believedNode = nodeId; inc.address = address; inc.x = n.x; inc.y = n.y;
+}
+
+/** The real address becomes known: move the marker and send responders to the right place. */
+export function correctLocation(w: World, inc: Incident, noteText: string, kind: Note['kind']) {
+  if (inc.believedNode === inc.nodeId) return;
+  setBelieved(w, inc, inc.nodeId, inc.trueAddress);
+  inc.addrConfirmed = true; inc.locFixAt = null;
+  addNote(w, inc, noteText, kind);
+  for (const u of w.units.filter((x) => x.incidentId === inc.id && (x.status === 'EN ROUTE' || x.status === 'ON SCENE'))) {
+    const plan = planRoute(w, u, inc.nodeId);
+    if (!plan) continue;
+    u.legs = plan.legs; u.eta = plan.eta; u.wrongSite = false; u.status = 'EN ROUTE';
+    log(w, 'dispatch', `${u.callsign} redirected to ${inc.trueAddress}.`);
+    if (!u.legs.length) arrive(w, u);
+  }
+}
+
+/** Call ended with no address: the phone system gives an approximate position. */
+export function traceLocation(w: World, inc: Incident) {
+  const rng = createRng(w.config.seed * 13 + inc.id * 101);
+  const t = w.city.nodes[inc.nodeId];
+  const near = w.city.nodesByDistrict[inc.district].filter((id) => Math.hypot(w.city.nodes[id].x - t.x, w.city.nodes[id].y - t.y) <= 170);
+  const id = rng.pick(near);
+  const n = w.city.nodes[id];
+  setBelieved(w, inc, id, `near ${n.street}`);
+  inc.addrConfirmed = false;
+  addNote(w, inc, `No address obtained. Call trace places the caller near ${n.street} (approximate).`, 'unconfirmed');
+  if (id !== inc.nodeId) inc.locFixAt = w.time + 60;
+  else inc.address = inc.trueAddress;
 }
 
 /* --------------------------------------------------------------- calls */
@@ -174,12 +231,37 @@ function makeSpec(w: World, severe: boolean): Spec {
   const nodeId = rng.pick(city.nodesByDistrict[district]);
   const vars = tpl.variations.filter((v) => !severe || v.severity >= 3);
   const variation = vars[weighted(rng, vars.map((v) => v.weight))];
-  const fresh = variation.openings.filter((o) => !w.recentOpenings.includes(o));
-  const opening = rng.pick(fresh.length ? fresh : variation.openings);
+  // Misunderstandings: the caller's first impression can differ from the truth, or the address can be wrong.
+  const twistChance = { easy: 0.25, normal: 0.35, hard: 0.45 }[w.config.difficulty];
+  const higher = tpl.variations.filter((v) => v.severity > variation.severity);
+  const lower = tpl.variations.filter((v) => v.severity < variation.severity);
+  let twist: Twist = 'none';
+  if (rng.next() < twistChance) {
+    const opts: Twist[] = ['wrong_location', 'wrong_location', 'disconnect'];
+    if (higher.length) opts.push('milder');
+    if (lower.length) opts.push('worse');
+    twist = rng.pick(opts);
+  }
+  const perceived = twist === 'milder' ? rng.pick(higher) : twist === 'worse' ? rng.pick(lower) : variation;
+  const fresh = perceived.openings.filter((o) => !w.recentOpenings.includes(o));
+  const opening = rng.pick(fresh.length ? fresh : perceived.openings);
+  const pw = (Object.keys(PERSONALITIES) as Personality[]).map((k) => PERSONALITIES[k].weight * (w.recentPersonalities[0] === k ? 0.25 : 1));
+  const personality = (Object.keys(PERSONALITIES) as Personality[])[weighted(rng, pw)];
   w.recentTemplates = [tpl.id, ...w.recentTemplates].slice(0, 2);
   w.recentOpenings = [opening, ...w.recentOpenings].slice(0, 5);
+  w.recentPersonalities = [personality, ...w.recentPersonalities].slice(0, 2);
   const n = city.nodes[nodeId];
-  return { templateId: tpl.id, variationId: variation.id, district, nodeId, address: `${rng.int(10, 98) * 10} ${n.street}`, opening };
+  const address = `${rng.int(10, 98) * 10} ${n.street}`;
+  let wrongNodeId: number | null = null, wrongAddress: string | null = null;
+  if (twist === 'wrong_location') {
+    const far = city.nodesByDistrict[district].filter((id) => Math.hypot(city.nodes[id].x - n.x, city.nodes[id].y - n.y) >= 110);
+    wrongNodeId = rng.pick(far.length ? far : city.nodesByDistrict[district].filter((id) => id !== nodeId));
+    wrongAddress = `${rng.int(10, 98) * 10} ${city.nodes[wrongNodeId].street}`;
+  }
+  return {
+    templateId: tpl.id, variationId: variation.id, district, nodeId, address, opening, personality, twist,
+    perceivedVariationId: perceived.id, wrongNodeId, wrongAddress, discAfter: rng.int(2, 3),
+  };
 }
 
 function weighted(rng: Rng, weights: number[]): number {
@@ -224,30 +306,37 @@ function createIncident(w: World, call: Call, late: boolean): Incident {
   const spec = call.spec;
   const tpl = tplOf(spec.templateId);
   const v = tpl.variations.find((x) => x.id === spec.variationId)!;
-  const n = w.city.nodes[spec.nodeId];
+  const pv = tpl.variations.find((x) => x.id === spec.perceivedVariationId)!;
   const inc: Incident = {
     id: w.nextIncidentId++, templateId: tpl.id, title: tpl.title, label: v.label, district: spec.district,
-    nodeId: spec.nodeId, x: n.x, y: n.y, address: spec.address, severity: v.severity, required: [...v.caps],
-    status: 'AWAITING DISPATCH', callAt: call.ringAt,
-    notes: late
-      ? [`Reported late by a passerby (the call went unanswered). Location: ${spec.address}.`]
-      : [`Caller: ${spec.opening}`, `Location: ${spec.address}.`],
+    nodeId: spec.nodeId, x: 0, y: 0, address: 'Unknown', trueAddress: spec.address, believedNode: null,
+    addrConfirmed: false, locFixAt: null, severity: v.severity, required: [...v.caps], status: 'AWAITING DISPATCH',
+    believed: { caps: [...scriptFor(tpl.id, pv.id).hint], severity: pv.severity }, truthKnown: false,
+    transcript: [], session: null, callEndedAt: null, callAt: call.ringAt, notes: [],
     assigned: [], firstArrival: null, pressure: 0, failAfter: tpl.failAfter * DIFF[w.config.difficulty].fail,
     workProgress: 0, duration: tpl.duration * (0.8 + 0.2 * v.severity), escalations: 0, complication: false,
     resolvedAt: null, outcome: '', surplus: 0,
   };
   w.incidents.push(inc);
   call.incidentId = inc.id;
-  log(w, 'info', `Incident #${inc.id}: ${inc.title} (${inc.label}) at ${inc.address}.`);
+  if (late) {
+    setBelieved(w, inc, spec.nodeId, spec.address);
+    inc.addrConfirmed = true;
+    say(w, inc, 'system', 'The call went unanswered. A passerby reported the incident later.');
+    addNote(w, inc, `Reported late by a passerby at ${spec.address}.`, 'info');
+    log(w, 'info', `Incident #${inc.id}: ${inc.title} at ${inc.address} (late report).`);
+  }
   return inc;
 }
 
 export function answerCall(w: World, callId: number): Incident | null {
   const c = w.calls.find((x) => x.id === callId);
-  if (!c || c.status !== 'ringing' || w.over) return null;
+  if (!c || c.status !== 'ringing' || w.over || w.activeCall !== null) return null;
   c.status = 'answered';
   w.stats.answered++;
-  return createIncident(w, c, false);
+  const inc = createIncident(w, c, false);
+  openSession(w, inc, c.spec);
+  return inc;
 }
 
 /* ------------------------------------------------------------ dispatch */
@@ -258,15 +347,16 @@ const dispatchable = (u: Unit) => u.status === 'AVAILABLE' || u.status === 'RETU
 export function dispatch(w: World, incidentId: number, unitIds: string[]): { sent: number; error?: string } {
   const inc = w.incidents.find((i) => i.id === incidentId);
   if (!inc || !isOpen(inc)) return { sent: 0, error: 'Incident is no longer active.' };
+  if (inc.believedNode === null) return { sent: 0, error: 'Location unknown. Ask the caller for the address.' };
   let sent = 0;
   for (const id of unitIds) {
     const u = w.units.find((x) => x.id === id);
     if (!u || !dispatchable(u)) continue;
-    const plan = planRoute(w, u, inc.nodeId);
+    const plan = planRoute(w, u, inc.believedNode);
     if (!plan) { log(w, 'warn', `${u.callsign} cannot find a route to ${inc.address}.`); continue; }
     // Does this unit fill a still-open slot? Otherwise it is an unnecessary deployment.
-    const before = matchSlots(inc.required, w.units.filter((x) => x.incidentId === inc.id)).filter(Boolean).length;
-    const after = matchSlots(inc.required, [...w.units.filter((x) => x.incidentId === inc.id), u]).filter(Boolean).length;
+    const before = matchSlots(inc.required, coverers(w, inc)).filter(Boolean).length;
+    const after = matchSlots(inc.required, [...coverers(w, inc), u]).filter(Boolean).length;
     if (after === before) { w.stats.unnecessary++; inc.surplus++; }
     w.stats.dispatched++;
     w.stats.spent += VEHICLES[u.vehicle].cost;
@@ -282,7 +372,7 @@ export function dispatch(w: World, incidentId: number, unitIds: string[]): { sen
 
 function sendHome(w: World, u: Unit) {
   const station = w.city.stations.find((s) => s.id === u.stationId)!;
-  u.incidentId = null;
+  u.incidentId = null; u.wrongSite = false;
   const plan = planRoute(w, u, station.nodeId);
   if (!plan || (!plan.legs.length && u.node === station.nodeId)) {
     const n = w.city.nodes[station.nodeId];
@@ -307,6 +397,15 @@ function arrive(w: World, u: Unit) {
     const inc = w.incidents.find((i) => i.id === u.incidentId);
     if (!inc || !isOpen(inc)) { sendHome(w, u); return; }
     u.status = 'ON SCENE';
+    if (inc.believedNode !== inc.nodeId) {
+      // The caller gave the wrong address: nothing here. A call-back will correct it shortly.
+      u.wrongSite = true;
+      inc.locFixAt = Math.min(inc.locFixAt ?? Infinity, w.time + 20);
+      addNote(w, inc, `${u.callsign} found nothing at ${inc.address}. The address may be wrong.`, 'warning');
+      log(w, 'warn', `${u.callsign} at ${inc.address}: no sign of an incident. Address may be wrong.`);
+      return;
+    }
+    if (!inc.truthKnown) assess(w, inc);
     if (inc.firstArrival === null) {
       inc.firstArrival = w.time;
       const rt = w.time - inc.callAt;
@@ -321,10 +420,21 @@ function arrive(w: World, u: Unit) {
   }
 }
 
+/** First responders reach the real scene and report what is actually going on. */
+function assess(w: World, inc: Incident) {
+  inc.truthKnown = true;
+  const diff = (a: Capability[], b: Capability[]) => b.filter((c) => a.filter((x) => x === c).length < b.filter((x) => x === c).length);
+  const extra = diff(inc.believed.caps, inc.required), fewer = diff(inc.required, inc.believed.caps);
+  inc.believed = { caps: [...inc.required], severity: inc.severity };
+  const kind = extra.length ? 'warning' : 'confirmed';
+  addNote(w, inc, `On-scene assessment: ${inc.label}.${extra.length ? ` Additional capability needed: ${extra.join(', ')}.` : ''}${fewer.length ? ' Less serious than reported.' : ''}`, kind);
+  if (extra.length) log(w, 'warn', `#${inc.id}: responders report the scene needs more than first reported.`);
+}
+
 function refreshStatus(w: World, inc: Incident) {
   if (!isOpen(inc)) return;
   const mine = w.units.filter((u) => u.incidentId === inc.id);
-  const onScene = mine.filter((u) => u.status === 'ON SCENE');
+  const onScene = onSceneUnits(w, inc);
   const covered = matchSlots(inc.required, onScene).every(Boolean);
   if (mine.length === 0) inc.status = 'AWAITING DISPATCH';
   else if (onScene.length && covered) inc.status = 'STABILIZING';
@@ -357,6 +467,7 @@ function moveUnit(w: World, u: Unit, dt: number) {
 
 function finishIncident(w: World, inc: Incident, status: 'RESOLVED' | 'FAILED', outcome: string) {
   inc.status = status; inc.outcome = outcome; inc.resolvedAt = w.time;
+  if (inc.session) endCall(w, inc, 'system');
   for (const u of w.units.filter((x) => x.incidentId === inc.id)) {
     if (status === 'RESOLVED') { u.status = 'BUSY'; u.busyUntil = w.time + BUSY_SECONDS; u.legs = []; u.eta = 0; }
     else sendHome(w, u);
@@ -377,7 +488,7 @@ function finishIncident(w: World, inc: Incident, status: 'RESOLVED' | 'FAILED', 
 
 function updateIncident(w: World, inc: Incident, dt: number) {
   const tpl = tplOf(inc.templateId);
-  const onScene = w.units.filter((u) => u.incidentId === inc.id && u.status === 'ON SCENE');
+  const onScene = onSceneUnits(w, inc);
   const covered = matchSlots(inc.required, onScene).every(Boolean);
   if (covered) {
     inc.workProgress += dt / inc.duration;
@@ -388,8 +499,9 @@ function updateIncident(w: World, inc: Incident, dt: number) {
   if (inc.escalations < MAX_ESCALATIONS && inc.pressure >= tpl.escalateEvery * (inc.escalations + 1)) {
     inc.escalations++;
     inc.severity = Math.min(4, inc.severity + 1);
-    if (tpl.escalateAdd) { inc.required.push(tpl.escalateAdd); inc.complication = true; }
-    inc.notes.push(`Update: ${tpl.escalateText}`);
+    if (tpl.escalateAdd) { inc.required.push(tpl.escalateAdd); inc.believed.caps.push(tpl.escalateAdd); inc.complication = true; }
+    inc.believed.severity = Math.max(inc.believed.severity, inc.severity);
+    addNote(w, inc, `Update: ${tpl.escalateText}`, 'warning');
     log(w, 'warn', `#${inc.id} escalated: ${tpl.escalateText}`);
   }
   if (inc.workProgress >= 1) {
@@ -421,7 +533,15 @@ export function step(w: World, dt: number) {
       if (u.status === 'BUSY' && w.time >= u.busyUntil) sendHome(w, u);
       else if (u.legs.length) moveUnit(w, u, d);
     }
-    for (const inc of w.incidents) if (isOpen(inc)) updateIncident(w, inc, d);
+    for (const inc of w.incidents) {
+      if (!isOpen(inc)) continue;
+      tickSession(w, inc);
+      if (inc.locFixAt !== null && w.time >= inc.locFixAt && inc.believedNode !== inc.nodeId) {
+        log(w, 'info', `#${inc.id}: the caller called back with the correct address.`);
+        correctLocation(w, inc, `Caller called back: the real address is ${inc.trueAddress}.`, 'confirmed');
+      }
+      updateIncident(w, inc, d);
+    }
     if (w.time >= w.length) w.over = true;
   }
   if (w.calls.length > 60) w.calls = w.calls.filter((c) => c.status === 'ringing').concat(w.calls.slice(-20));
@@ -430,7 +550,7 @@ export function step(w: World, dt: number) {
 /* -------------------------------------------------------------- summary */
 
 export interface Summary {
-  answered: number; missed: number; resolved: number; failed: number; unresolved: number;
+  answered: number; missed: number; hungUp: number; resolved: number; failed: number; unresolved: number;
   avgResponse: number | null; accuracy: number; unnecessary: number; spent: number; reward: number;
   net: number; xp: number; reputation: number; grade: string; significant: string[];
 }
@@ -453,7 +573,7 @@ export function buildSummary(w: World): Summary {
     .slice(0, 5)
     .map((i) => `#${i.id} ${i.title} (${i.label}) in ${w.city.districts.find((d) => d.id === i.district)!.name}: ${i.status === 'RESOLVED' ? 'resolved' : i.status === 'FAILED' ? i.outcome : 'unresolved at end of shift'}`);
   return {
-    answered: s.answered, missed: s.missed, resolved: s.resolved, failed: s.failed, unresolved,
+    answered: s.answered, missed: s.missed, hungUp: s.hungUp, resolved: s.resolved, failed: s.failed, unresolved,
     avgResponse: avg, accuracy, unnecessary: s.unnecessary, spent: s.spent, reward: s.reward, net,
     xp: 40 + s.resolved * 20 - s.failed * 5, reputation, grade, significant,
   };

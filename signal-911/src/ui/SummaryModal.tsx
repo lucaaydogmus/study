@@ -9,6 +9,7 @@ export function SummaryModal() {
   const rows: [string, string][] = [
     ['Calls answered', String(s.answered)],
     ['Calls missed', String(s.missed)],
+    ['Callers lost (hung up or disconnected)', String(s.hungUp)],
     ['Incidents resolved', String(s.resolved)],
     ['Incidents failed', String(s.failed)],
     ['Unresolved at shift end', String(s.unresolved)],

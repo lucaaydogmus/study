@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactElement } from 'react';
 import { Crosshair, Minus, Plus, Shield, Flame, HeartPulse, Gauge, Radar } from 'lucide-react';
 import { useGame } from '../store/game';
 import { RIVER_HALF_WIDTH, WORLD_H, WORLD_W, riverY } from '../sim/city';
-import { BASE_SPEED, trafficAt, type World } from '../sim/world';
+import { BASE_SPEED, shownSeverity, trafficAt, type World } from '../sim/world';
 import { VEHICLES, type Unit } from '../sim/units';
 import type { CellKind, RoadClass, Service } from '../sim/types';
 
@@ -102,7 +102,7 @@ export function MapCanvas() {
         const o = off.get(u.id) ?? { dx: 0, dy: 0 };
         consider('unit', u.id, sx(u.x) + o.dx, sy(u.y) + o.dy, 11);
       }
-      for (const i of w.incidents) if (i.status !== 'RESOLVED' && i.status !== 'FAILED') consider('incident', String(i.id), sx(i.x), sy(i.y), 16);
+      for (const i of w.incidents) if (i.status !== 'RESOLVED' && i.status !== 'FAILED' && i.believedNode !== null) consider('incident', String(i.id), sx(i.x), sy(i.y), 16);
       for (const s of w.city.stations) if (visible(st.filters, s.service)) { const n = w.city.nodes[s.nodeId]; consider('station', s.id, sx(n.x), sy(n.y), 12); }
       const b = best as { kind: string; id: string } | null;
       if (b?.kind === 'unit') st.selectUnit(b.id);
@@ -189,7 +189,7 @@ export function MapCanvas() {
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       // district names
       ctx.font = '600 13px system-ui'; ctx.fillStyle = 'rgba(150,166,181,0.5)';
-      for (const d of city.districts) ctx.fillText(d.name.toUpperCase(), S(d.x + d.w / 2), SY(d.y + 14) - (k < 0.7 ? 0 : 0));
+      for (const d of city.districts) ctx.fillText(d.name.replace(' Suburbs', '').replace(' District', '').toUpperCase(), S(d.x + d.w / 2), SY(d.y + 14));
       // landmarks
       if (k > 0.55) {
         ctx.font = '11px system-ui';
@@ -220,12 +220,13 @@ export function MapCanvas() {
       // incidents
       const pulse = 0.5 + 0.5 * Math.sin(now / 250);
       for (const i of w.incidents) {
-        if (i.status === 'RESOLVED' || i.status === 'FAILED') continue;
-        const x = S(i.x), y = SY(i.y), col = SEV_COLOR[i.severity];
-        const r = 11 + (i.severity >= 4 ? pulse * 3 : 0);
+        if (i.status === 'RESOLVED' || i.status === 'FAILED' || i.believedNode === null) continue;
+        const sev = shownSeverity(i);
+        const x = S(i.x), y = SY(i.y), col = SEV_COLOR[sev];
+        const r = 11 + (sev >= 4 ? pulse * 3 : 0);
         ctx.beginPath(); ctx.arc(x, y, r + 5, 0, Math.PI * 2); ctx.fillStyle = col + '22'; ctx.fill();
         ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = '#111820'; ctx.fill();
-        ctx.lineWidth = 3; ctx.strokeStyle = col; ctx.stroke();
+        ctx.lineWidth = 3; ctx.strokeStyle = col; ctx.setLineDash(i.addrConfirmed ? [] : [4, 3]); ctx.stroke(); ctx.setLineDash([]);
         // danger meter: how close the incident is to failing
         const frac = Math.min(1, i.pressure / i.failAfter);
         if (frac > 0.02) { ctx.beginPath(); ctx.arc(x, y, r + 4, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.strokeStyle = '#E45A5A'; ctx.lineWidth = 2; ctx.stroke(); }
@@ -262,7 +263,7 @@ export function MapCanvas() {
           if (Math.hypot(hp.x - x, hp.y - y) < 11) { label = `${u.callsign} · ${u.status}${u.eta ? ` · ETA ${Math.round(u.eta)}s` : ''}`; lx = x; ly = y; }
         }
         for (const i of w.incidents) {
-          if (i.status === 'RESOLVED' || i.status === 'FAILED') continue;
+          if (i.status === 'RESOLVED' || i.status === 'FAILED' || i.believedNode === null) continue;
           if (Math.hypot(hp.x - S(i.x), hp.y - SY(i.y)) < 16) { label = `#${i.id} ${i.title} · ${i.status}`; lx = S(i.x); ly = SY(i.y); }
         }
         for (const s of city.stations) {

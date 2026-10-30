@@ -13,3 +13,16 @@ Vite/React/TS/Zustand/Lucide/Vitest scaffold; seeded RNG, game clock, versioned 
 - Verified in Chromium at 1440×900 and 1920×1080: full shift, dispatch, save reload, no console errors.
 
 Known/deferred: calls are a one-click stub (dialogue = Stage 2); sound not implemented (volume/mute stored only); no unit repositioning (Stage 4); on-scene decisions and road closures (Stage 3).
+
+## Stage 2 — Emergency conversations (done)
+- **Dialogue** (`sim/dialogueData.ts`, `sim/calls.ts`): data-driven. 5 generic questions (address, confirm address, describe, safety, calm the caller) + 2–3 domain questions per incident family; 16 variation scripts give each answer text, a note, a capability effect and a severity. Answers are applied with a count-aware merge, so a reply can add *or remove* a requirement.
+- **Personalities** (7): calm, panicked, confused, angry, uncooperative, uncertain, distracted. They change reply delay, patience (number of questions before hang-up), chance to deflect a question once (never twice, never after reassurance), reliability (unsure answers are *unconfirmed*; asking again confirms), and whether the address is volunteered.
+- **Twists**: wrong address, serious-looks-mild, mild-looks-serious, unexpected disconnect. All end in a recoverable state: a wrong address sends units to the wrong place until the caller confirms, calls back (20 s after a unit finds nothing, 60 s after the call ends), or is corrected on the line.
+- **Uncertainty model**: incidents keep the truth (`required`, `severity`, `nodeId`) separate from what the dispatcher believes (`believed`, `believedNode`). The UI shows only the believed values until first responders reach the real scene (on-scene assessment, may add requirements).
+- **Notes**: confirmed / unconfirmed / warning / info, stored on the incident with the full transcript, so they outlive the call.
+- **Calls are real time**: replies arrive after a sim-clock delay; one active call at a time; ringing calls can still be missed. Calls end by player (E), hang-up, or disconnect; a call can always be ended.
+- **Sound** (`audio.ts`, Web Audio, no assets): ring, answer, end, select, dispatch, arrival, warning, resolve, fail. Volume + mute now work.
+- **UI**: phone panel (transcript, patience meter, grouped questions with answered/ask-again state), notes list, "Reported/Verified" badge, dashed marker for unverified address, location-unknown banner, call transcript in incident panel.
+- **Tests**: 27 total. New: script data consistency for every perceived/truth pair, wrong-address flow end to end, confirm/correct, conflict & downgrade, disconnect trace, hang-up, "every call can always be completed" across 7 personalities × 5 twists, single active call.
+
+Known/deferred: only one call at a time (no hold); no on-scene decisions or road closures (Stage 3); caller answers are English-only strings in `dialogueData.ts`.

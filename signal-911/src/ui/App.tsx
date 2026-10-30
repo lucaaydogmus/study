@@ -9,6 +9,7 @@ import { SummaryModal } from './SummaryModal';
 
 export function App() {
   const phase = useGame((s) => s.phase);
+  const toast = useGame((s) => s.toast);
 
   // One animation-frame loop drives the simulation clock.
   useEffect(() => {
@@ -33,6 +34,7 @@ export function App() {
       else if (e.key.toLowerCase() === 'm') g.toggleMute();
       else if (e.key === 'Escape') g.clearSelection();
       else if (e.key === 'Enter') { if (t.tagName === 'BUTTON') return; g.confirmDispatch(); }
+      else if (e.key.toLowerCase() === 'e') g.hangUp();
       else if (e.key.toLowerCase() === 'a') {
         const c = g.world.calls.find((x) => x.status === 'ringing');
         if (c) g.answer(c.id);
@@ -50,6 +52,7 @@ export function App() {
       <RightPanel />
       <BottomPanel />
       {phase === 'summary' && <SummaryModal />}
+      {toast && <div className="toast" role="status">{toast}</div>}
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { loadSave, writeSave, type SaveData } from '../sim/save';
 import {
   answerCall, buildSummary, createWorld, dispatch, recall, step, type Config, type Summary, type World,
 } from '../sim/world';
+import { ask, endCall } from '../sim/calls';
+import { configureAudio, sfx, unlockAudio } from '../audio';
 import type { DistrictId, Difficulty, Weather } from '../sim/types';
 
 export type Phase = 'preshift' | 'shift' | 'summary';
@@ -36,6 +38,8 @@ interface GameState {
   endShift(): void;
   nextShift(): void;
   answer(callId: number): void;
+  askQuestion(key: string): void;
+  hangUp(): void;
   selectIncident(id: number | null): void;
   selectUnit(id: string | null): void;
   selectStation(id: string | null): void;
@@ -57,11 +61,16 @@ const config0: Config = {
 };
 
 let acc = 0;
+let lastSeq = 0;
+let lastRing = -10;
+configureAudio(save0.settings.volume, save0.settings.muted);
+const LOG_SOUND = { dispatch: sfx.dispatch, arrive: sfx.arrive, warn: sfx.warn, good: sfx.good, bad: sfx.bad } as const;
 
 export const useGame = create<GameState>((set, get) => {
   const bump = () => set({ rev: get().rev + 1 });
   const persistSettings = (patch: Partial<SaveData['settings']>) => {
     const save = { ...get().save, settings: { ...get().save.settings, ...patch } };
+    configureAudio(save.settings.volume, save.settings.muted);
     set({ save, saveOk: writeSave(save) });
   };
 
@@ -85,6 +94,14 @@ export const useGame = create<GameState>((set, get) => {
       const { clock, dt } = advance(st.clock, realDt);
       if (dt === 0) return;
       step(st.world, dt);
+      // Sound: ring while calls wait; one cue per kind of new log entry.
+      const w = st.world;
+      if (w.calls.some((c) => c.status === 'ringing') && w.time - lastRing >= 2.4) { lastRing = w.time; sfx.ring(); }
+      if (w.logSeq !== lastSeq) {
+        const fresh = w.log.slice(-Math.min(w.log.length, w.logSeq - lastSeq));
+        lastSeq = w.logSeq;
+        for (const k of new Set(fresh.map((l) => l.kind))) if (k in LOG_SOUND) LOG_SOUND[k as keyof typeof LOG_SOUND]();
+      }
       acc += realDt;
       set({ clock });
       if (acc >= 0.1) { acc = 0; bump(); }
@@ -112,7 +129,8 @@ export const useGame = create<GameState>((set, get) => {
     },
     startShift: () => {
       const config = get().config;
-      acc = 0;
+      acc = 0; lastSeq = 0; lastRing = -10;
+      unlockAudio();
       set({
         phase: 'shift', world: createWorld(config), sel: emptySel(), summary: null,
         clock: { ...initialClock(), paused: false, speed: 1 }, rev: get().rev + 1,
@@ -141,13 +159,31 @@ export const useGame = create<GameState>((set, get) => {
       const st = get();
       if (st.phase !== 'shift' || st.clock.paused) return;
       const inc = answerCall(st.world, callId);
-      if (inc) set({ sel: { ...emptySel(), incidentId: inc.id }, focus: { x: inc.x, y: inc.y, nonce: Date.now() } });
+      if (!inc) { set({ toast: 'Finish the current call first.' }); setTimeout(() => get().toast && set({ toast: null }), 2500); return; }
+      sfx.answer();
+      lastSeq = st.world.logSeq;
+      set({ sel: { ...emptySel(), incidentId: inc.id } });
       bump();
+    },
+    askQuestion: (key) => {
+      const st = get();
+      const inc = st.world.incidents.find((i) => i.id === st.world.activeCall);
+      if (st.phase !== 'shift' || st.clock.paused || !inc) return;
+      if (ask(st.world, inc, key)) { sfx.select(); bump(); }
+    },
+    hangUp: () => {
+      const st = get();
+      const inc = st.world.incidents.find((i) => i.id === st.world.activeCall);
+      if (!inc) return;
+      endCall(st.world, inc, 'player');
+      sfx.end();
+      bump();
+      if (inc.believedNode !== null) set({ focus: { x: inc.x, y: inc.y, nonce: Date.now() } });
     },
     selectIncident: (id) => {
       const inc = id === null ? null : get().world.incidents.find((i) => i.id === id);
       set({ sel: { ...emptySel(), incidentId: id } });
-      if (inc) set({ focus: { x: inc.x, y: inc.y, nonce: Date.now() } });
+      if (inc && inc.believedNode !== null) set({ focus: { x: inc.x, y: inc.y, nonce: Date.now() } });
     },
     selectUnit: (id) => {
       const st = get();

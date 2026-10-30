@@ -3,8 +3,8 @@ import { Send, X, Undo2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useGame } from '../store/game';
 import { SEVERITY_LABEL } from '../sim/incidents';
 import { CAP_LABEL, VEHICLES, type Unit } from '../sim/units';
-import { matchSlots, planRoute, slotStates, trafficAt, type Incident, type World } from '../sim/world';
-import { Bar, CapChip, SevChip, StatusChip, money } from './common';
+import { coverers, matchSlots, planRoute, shownCaps, shownSeverity, slotStates, trafficAt, type Incident, type World } from '../sim/world';
+import { Bar, CapChip, NoteList, SevChip, StatusChip, money } from './common';
 import { SERVICE_COLOR } from './MapCanvas';
 import type { Difficulty } from '../sim/types';
 
@@ -35,7 +35,7 @@ function Hint() {
       <h2>Dispatch</h2>
       <p className="muted">Select an incident from the queue or the map to see what it needs and who can get there.</p>
       <ul className="keys muted small">
-        <li><kbd>A</kbd> answer next call</li><li><kbd>Enter</kbd> confirm dispatch</li><li><kbd>Esc</kbd> clear selection</li>
+        <li><kbd>A</kbd> answer next call · <kbd>E</kbd> end call</li><li><kbd>Enter</kbd> confirm dispatch</li><li><kbd>Esc</kbd> clear selection</li>
         <li><kbd>Space</kbd> pause · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> speed</li>
       </ul>
     </>
@@ -67,8 +67,8 @@ function Briefing() {
 
 /** Would this unit cover a requirement that nobody assigned to the incident covers yet? */
 function fillsOpenSlot(w: World, inc: Incident, u: Unit) {
-  const mine = w.units.filter((x) => x.incidentId === inc.id);
-  const count = (us: Unit[]) => matchSlots(inc.required, us).filter(Boolean).length;
+  const mine = coverers(w, inc);
+  const count = (us: Unit[]) => matchSlots(shownCaps(inc), us).filter(Boolean).length;
   return count([...mine, u]) > count(mine);
 }
 
@@ -79,34 +79,39 @@ function IncidentView({ w, inc }: { w: World; inc: Incident }) {
   const closed = inc.status === 'RESOLVED' || inc.status === 'FAILED';
   const slots = slotStates(w, inc);
   const assigned = w.units.filter((u) => u.incidentId === inc.id);
-  const district = w.city.districts.find((d) => d.id === inc.district)!;
+  const district = w.city.districts.find((d) => d.id === (inc.believedNode === null ? inc.district : w.city.nodes[inc.believedNode].district))!;
 
   const rev = useGame((s) => s.rev);
   const cands = useMemo(() => {
     if (closed) return [];
     return w.units
       .filter((u) => u.status === 'AVAILABLE' || u.status === 'RETURNING')
-      .map((u) => ({ u, eta: planRoute(w, u, inc.nodeId)?.eta ?? Infinity, fills: fillsOpenSlot(w, inc, u) }))
+      .map((u) => ({ u, eta: (inc.believedNode === null ? Infinity : planRoute(w, u, inc.believedNode)?.eta ?? Infinity), fills: fillsOpenSlot(w, inc, u) }))
       // units that fill an open requirement first, then fastest
       .sort((a, b) => Number(b.fills) - Number(a.fills) || a.eta - b.eta);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rev, inc.id, closed]);
 
-  const open = inc.required.filter((_, i) => slots[i] === 'open');
-  const assignedAll = w.units.filter((u) => u.incidentId === inc.id);
+  const caps = shownCaps(inc);
+  const open = caps.filter((_, i) => slots[i] === 'open');
+  const assignedAll = coverers(w, inc);
   const pendU = pending.map((id) => w.units.find((u) => u.id === id)!).filter(Boolean);
-  const stillOpenAfter = inc.required.filter((_, i) => !matchSlots(inc.required, [...assignedAll, ...pendU])[i]);
+  const stillOpenAfter = caps.filter((_, i) => !matchSlots(caps, [...assignedAll, ...pendU])[i]);
   const cost = pendU.reduce((a, u) => a + VEHICLES[u.vehicle].cost, 0);
 
   return (
     <>
       <h2>Incident #{inc.id}</h2>
       <div className="title">{inc.title}</div>
-      <div className="row"><SevChip sev={inc.severity} /><StatusChip s={inc.status} /></div>
-      <div className="muted small">{inc.label} · {inc.address}, {district.name} · traffic ×{trafficAt(w, inc.district).toFixed(2)}</div>
+      <div className="row"><SevChip sev={shownSeverity(inc)} /><StatusChip s={inc.status} />
+        <span className={`chip ${inc.truthKnown ? 'cap met' : ''}`} title={inc.truthKnown ? 'Confirmed by responders on scene' : 'Based on what callers have said so far. Responders will confirm on scene.'}>{inc.truthKnown ? 'Verified' : 'Reported'}</span></div>
+      {inc.believedNode === null
+        ? <div className="locwarn"><AlertTriangle size={13} /> Location unknown. Ask the caller for the address.</div>
+        : <div className="muted small">{inc.truthKnown ? `${inc.label} · ` : ''}{inc.address}, {district.name} · {inc.addrConfirmed ? 'address confirmed' : 'address unverified'} · traffic ×{trafficAt(w, district.id).toFixed(2)}</div>}
 
-      <h3>Requires</h3>
-      <div className="wrapchips">{inc.required.map((c, i) => <CapChip key={i} cap={c} state={slots[i]} />)}</div>
+      <h3>Requires {!inc.truthKnown && <span className="muted small">(as reported)</span>}</h3>
+      <div className="wrapchips">{caps.map((c, i) => <CapChip key={i} cap={c} state={slots[i]} />)}</div>
+      {!inc.truthKnown && !closed && <p className="muted small">Not yet verified on scene. More units may be needed than the caller described.</p>}
       {open.length > 0 && !closed && <p className="small warnc">Unassigned: {open.map((c) => CAP_LABEL[c]).join(', ')}</p>}
 
       {!closed && (
@@ -119,8 +124,13 @@ function IncidentView({ w, inc }: { w: World; inc: Incident }) {
       )}
       {closed && <p className={inc.status === 'RESOLVED' ? 'goodc' : 'badc'}>{inc.status === 'RESOLVED' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />} {inc.outcome}</p>}
 
-      <h3>Notes</h3>
-      <ul className="notes">{inc.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+      <h3>Incident notes</h3>
+      <NoteList notes={inc.notes} />
+      {inc.transcript.length > 0 && (
+        <details className="transcriptbox"><summary>Call transcript</summary>
+          {inc.transcript.map((t, i) => <div key={i} className={`line ${t.who}`}><span className="who">{t.who === 'caller' ? 'Caller' : t.who === 'dispatcher' ? 'You' : '·'}</span>{t.text}</div>)}
+        </details>
+      )}
 
       {assigned.length > 0 && (
         <>
@@ -136,7 +146,7 @@ function IncidentView({ w, inc }: { w: World; inc: Incident }) {
         </>
       )}
 
-      {!closed && phase === 'shift' && (
+      {!closed && phase === 'shift' && inc.believedNode !== null && (
         <>
           <h3>Available responders <span className="muted small">(click to select)</span></h3>
           {cands.length === 0 && <p className="muted small">No free units. Recall or wait for a unit to clear a scene.</p>}

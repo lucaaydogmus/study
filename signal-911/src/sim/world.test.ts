@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { getCity } from './city';
 import { findPath } from './pathfinding';
-import { answerCall, buildSummary, createWorld, dispatch, edgeSpeed, matchSlots, planRoute, recall, step, type World } from './world';
+import { answerCall, buildSummary, createWorld, dispatch, edgeSpeed, matchSlots, planRoute, recall, shownCaps, coverers, step, type Incident, type World } from './world';
+import { ask, endCall, questionStates } from './calls';
 
 const cfg = { seed: 5, shiftMinutes: 10, difficulty: 'normal', weather: 'clear' } as const;
 
@@ -48,16 +49,27 @@ describe('capability matching', () => {
   });
 });
 
+/** Run a short, sensible conversation: address first, then a few questions, then hang up. */
+function converse(w: World, inc: Incident, max = 4) {
+  for (let n = 0; n < max && inc.session; n++) {
+    const q = questionStates(inc).find((v) => v.state !== 'done' && (inc.believedNode === null ? v.q.key === 'ADDRESS' : v.q.group === 'Situation'));
+    if (!q) break;
+    ask(w, inc, q.q.key);
+    for (let i = 0; i < 40 && inc.session?.pending; i++) step(w, 0.5);
+  }
+  if (inc.session) endCall(w, inc, 'player');
+}
+
 /** Naive bot: for each open incident, send the fastest units that fill open slots. */
 function bot(w: World) {
   for (const inc of w.incidents) {
-    if (inc.status === 'RESOLVED' || inc.status === 'FAILED') continue;
-    const mine = w.units.filter((u) => u.incidentId === inc.id);
-    const open = matchSlots(inc.required, mine).map((u, i) => (u ? null : inc.required[i])).filter(Boolean);
+    if (inc.status === 'RESOLVED' || inc.status === 'FAILED' || inc.believedNode === null) continue;
+    const caps = shownCaps(inc);
+    const open = matchSlots(caps, coverers(w, inc)).map((u, i) => (u ? null : caps[i])).filter(Boolean);
     if (!open.length) continue;
     const cands = w.units
       .filter((u) => u.status === 'AVAILABLE' || u.status === 'RETURNING')
-      .map((u) => ({ u, eta: planRoute(w, u, inc.nodeId)?.eta ?? Infinity }))
+      .map((u) => ({ u, eta: planRoute(w, u, inc.believedNode!)?.eta ?? Infinity }))
       .filter((c) => c.u.caps.some((cap) => open.includes(cap)))
       .sort((a, b) => a.eta - b.eta);
     if (cands.length) dispatch(w, inc.id, [cands[0].u.id]);
@@ -83,7 +95,7 @@ describe('full shift', () => {
     const w = createWorld(cfg);
     let steps = 0;
     while (!w.over && steps++ < 20000) {
-      for (const c of w.calls) if (c.status === 'ringing' && w.time - c.ringAt > 3) answerCall(w, c.id);
+      for (const c of w.calls) if (c.status === 'ringing' && w.time - c.ringAt > 3) { const inc = answerCall(w, c.id); if (inc) converse(w, inc); }
       bot(w);
       step(w, 0.25);
       if (steps % 20 === 0) invariants(w);
@@ -117,6 +129,8 @@ describe('full shift', () => {
     const w = createWorld(cfg);
     while (!w.calls.length) step(w, 0.5);
     const inc = answerCall(w, w.calls[0].id)!;
+    converse(w, inc, 1);
+    expect(inc.believedNode).not.toBeNull();
     const amb = w.units.find((u) => u.vehicle === 'ambulance')!;
     expect(dispatch(w, inc.id, [amb.id]).sent).toBe(1);
     expect(amb.status).toBe('EN ROUTE');
