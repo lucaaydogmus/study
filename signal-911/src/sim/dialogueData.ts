@@ -159,6 +159,22 @@ export const SCRIPTS: Record<string, VarScript> = {
       SYMPTOMS: info('No warning. She just dropped.', 'Sudden collapse.'),
     },
   },
+  'fire.access': {
+    hint: ['FIRE'], describe: info('Fire in an old row house and the street is far too narrow.', 'Fire in a row house; narrow street.', 3),
+    answers: {
+      INSIDE: A('No, everyone is out.', 'Everyone has evacuated.', [], ['RESCUE']),
+      SPREAD: A('It\'s going to the next house. An engine can\'t get round the parked cars!', 'Spreading; access is difficult, extra engine needed.', ['FIRE', 'FIRE'], undefined, 3),
+      HURT: A('No, nobody is hurt.', 'No injuries reported.', [], ['MEDICAL']),
+    },
+  },
+  'medical.multi': {
+    hint: ['MEDICAL'], describe: info('Several people feel faint and sick all at once.', 'Several people unwell.', 3),
+    answers: {
+      AWAKE: info('A couple are on the floor but talking.', 'Awake and responsive.'),
+      BREATHING: info('Yes, nobody has trouble breathing.', 'Breathing normally.'),
+      SYMPTOMS: A('Three people nauseous and weak.', '3 people unwell: two crews needed.', ['MEDICAL', 'MEDICAL'], ['ADV_MEDICAL'], 3),
+    },
+  },
   'disturbance.noise': {
     hint: ['LAW'], describe: info('Loud music and shouting from the flat next door.', 'Noise complaint.', 1),
     answers: {

@@ -168,6 +168,14 @@ export function MapCanvas() {
         }
         ctx.globalAlpha = 1;
       }
+      // closed roads
+      for (const id of w.blocked) {
+        const e = city.edges[id], a = city.nodes[e.a], b = city.nodes[e.b];
+        ctx.strokeStyle = '#E45A5A'; ctx.lineWidth = ROAD_W[e.cls] * 0.7; ctx.setLineDash([5, 4]);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
+        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, r = 6;
+        ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(mx - r, my - r); ctx.lineTo(mx + r, my + r); ctx.moveTo(mx + r, my - r); ctx.lineTo(mx - r, my + r); ctx.stroke();
+      }
       // selected district outline
       const selD = city.districts.find((d) => d.id === st.sel.districtId);
       if (selD) { ctx.strokeStyle = '#5A9CCB'; ctx.lineWidth = 2 / k; ctx.setLineDash([8 / k, 6 / k]); ctx.strokeRect(selD.x - 8, selD.y - 8, selD.w + 16, selD.h + 16); ctx.setLineDash([]); }
@@ -232,6 +240,7 @@ export function MapCanvas() {
         if (frac > 0.02) { ctx.beginPath(); ctx.arc(x, y, r + 4, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.strokeStyle = '#E45A5A'; ctx.lineWidth = 2; ctx.stroke(); }
         if (i.status === 'STABILIZING') { ctx.beginPath(); ctx.arc(x, y, r + 4, 0, Math.PI * 2); ctx.strokeStyle = '#61B894'; ctx.lineWidth = 2; ctx.stroke(); }
         ctx.fillStyle = '#E7EDF4'; ctx.font = '700 11px system-ui'; ctx.fillText(String(i.id), x, y + 0.5);
+        if (i.decision) { ctx.beginPath(); ctx.arc(x + 11, y - 11, 6, 0, Math.PI * 2); ctx.fillStyle = pulse > 0.5 ? '#E8B65B' : '#b98d3e'; ctx.fill(); ctx.fillStyle = '#111820'; ctx.font = '700 9px system-ui'; ctx.fillText('!', x + 11, y - 10.5); }
         if (i.id === selInc) { ctx.beginPath(); ctx.arc(x, y, r + 9, 0, Math.PI * 2); ctx.strokeStyle = '#E7EDF4'; ctx.lineWidth = 1.5; ctx.stroke(); }
       }
       // units

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { getCity } from './city';
 import { findPath } from './pathfinding';
-import { answerCall, buildSummary, createWorld, dispatch, edgeSpeed, matchSlots, planRoute, recall, shownCaps, coverers, step, type Incident, type World } from './world';
+import { answerCall, buildSummary, createWorld, dispatch, edgeSpeed, matchSlots, planRoute, recall, decide, decisionOptions, optionBlocked, shownCaps, coverers, step, type Incident, type World } from './world';
 import { ask, endCall, questionStates } from './calls';
+import { isConnected } from './pathfinding';
 
 const cfg = { seed: 5, shiftMinutes: 10, difficulty: 'normal', weather: 'clear' } as const;
 
@@ -63,6 +64,7 @@ function converse(w: World, inc: Incident, max = 4) {
 /** Naive bot: for each open incident, send the fastest units that fill open slots. */
 function bot(w: World) {
   for (const inc of w.incidents) {
+    if (inc.decision) { const o = decisionOptions(inc).filter((x) => !optionBlocked(w, inc, x)); decide(w, inc.id, o[(inc.id * 7) % o.length].id); }
     if (inc.status === 'RESOLVED' || inc.status === 'FAILED' || inc.believedNode === null) continue;
     const caps = shownCaps(inc);
     const open = matchSlots(caps, coverers(w, inc)).map((u, i) => (u ? null : caps[i])).filter(Boolean);
@@ -85,6 +87,8 @@ function invariants(w: World) {
     }
     expect(Number.isFinite(u.x) && Number.isFinite(u.y)).toBe(true);
   }
+  expect(isConnected(w.city, w.blocked)).toBe(true);
+  for (const id of w.blocked) expect(w.incidents.some((i) => i.blockEdge === id && i.blockActive)).toBe(true);
   for (const i of w.incidents) for (const id of i.assigned) {
     expect(w.units.find((u) => u.id === id)!.incidentId).toBe(i.id);
   }

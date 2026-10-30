@@ -1,6 +1,7 @@
 import { createRng, type Rng } from './rng';
 import { getCity } from './city';
-import { findPath } from './pathfinding';
+import { findPath, isConnected } from './pathfinding';
+import { COMPLICATION_TEXT, CONTINUE, DECISIONS, DECISION_SECONDS, LINKED, SUPERVISOR, SUPERVISORS_PER_SHIFT, type DecisionOption } from './decisions';
 import { STARTING_FLEET, VEHICLES, type Leg, type Unit } from './units';
 import { TEMPLATES, type Template } from './incidents';
 import { PERSONALITIES, scriptFor, type Personality, type Twist } from './dialogueData';
@@ -19,6 +20,7 @@ export interface Spec {
 }
 export interface Note { text: string; kind: 'confirmed' | 'unconfirmed' | 'warning' | 'info'; t: number }
 export interface Turn { who: 'caller' | 'dispatcher' | 'system'; text: string; t: number }
+export interface Mod { id: string; label: string; speed: number; risk: number; unitId: string | null }
 export interface Believed { caps: Capability[]; severity: number }
 export interface Call {
   id: number; ringAt: number; deadline: number; status: 'ringing' | 'answered' | 'missed'; spec: Spec; incidentId?: number;
@@ -29,6 +31,9 @@ export interface Incident {
   /** Truth is hidden from the player until responders reach the real scene. */
   trueAddress: string; believedNode: number | null; addrConfirmed: boolean; locFixAt: number | null;
   believed: Believed; truthKnown: boolean; transcript: Turn[]; session: Session | null; callEndedAt: number | null;
+  /** Scene dynamics: complication risk, decisions taken, a possible road closure, links to other incidents. */
+  risk: number; mods: Mod[]; decision: { expiresAt: number } | null; decided: boolean; complications: number;
+  blockEdge: number | null; blockActive: boolean; linkedTo: number | null; linkSpawned: boolean; rng: Rng;
   callAt: number; notes: Note[]; assigned: string[]; firstArrival: number | null;
   pressure: number; failAfter: number; workProgress: number; duration: number;
   escalations: number; complication: boolean; resolvedAt: number | null; outcome: string;
@@ -37,6 +42,7 @@ export interface Incident {
 export interface Stats {
   answered: number; missed: number; resolved: number; failed: number; dispatched: number; unnecessary: number;
   responseTimes: number[]; spent: number; reward: number; fastResponses: number; hungUp: number;
+  decisions: number; complications: number; linked: number; supervisorsLeft: number;
 }
 
 export interface World {
@@ -80,7 +86,7 @@ export function createWorld(config: Config): World {
   return {
     config, rng, city, time: 0, length: config.shiftMinutes * 60, over: false, units, incidents: [], calls: [],
     log: [{ t: 0, kind: 'info', text: 'Shift briefing complete. Ravenport dispatch is online.' }],
-    stats: { answered: 0, missed: 0, resolved: 0, failed: 0, dispatched: 0, unnecessary: 0, responseTimes: [], spent: 0, reward: 0, fastResponses: 0, hungUp: 0 },
+    stats: { answered: 0, missed: 0, resolved: 0, failed: 0, dispatched: 0, unnecessary: 0, responseTimes: [], spent: 0, reward: 0, fastResponses: 0, hungUp: 0, decisions: 0, complications: 0, linked: 0, supervisorsLeft: SUPERVISORS_PER_SHIFT },
     nextIncidentId: 1, nextCallId: 1, nextCallAt: 6 + rng.next() * 6,
     recentTemplates: [], recentOpenings: [], finalSpawned: false, blocked: new Set(), trafficPhase: phase,
     activeCall: null, recentPersonalities: [], logSeq: 0,
@@ -302,26 +308,31 @@ function directorStep(w: World) {
   w.nextCallAt = w.time + base * phaseFactor(p) * DIFF[w.config.difficulty].interval * (1 + 0.35 * Math.max(0, load - 2)) * (free === 0 ? 1.5 : 1);
 }
 
-function createIncident(w: World, call: Call, late: boolean): Incident {
-  const spec = call.spec;
+function createIncident(w: World, spec: Spec, callAt: number, kind: 'call' | 'late' | 'linked', linkedTo: number | null = null): Incident {
   const tpl = tplOf(spec.templateId);
   const v = tpl.variations.find((x) => x.id === spec.variationId)!;
   const pv = tpl.variations.find((x) => x.id === spec.perceivedVariationId)!;
+  const id = w.nextIncidentId++;
+  const rng = createRng(w.config.seed * 17 + id * 131);
   const inc: Incident = {
-    id: w.nextIncidentId++, templateId: tpl.id, title: tpl.title, label: v.label, district: spec.district,
+    id, templateId: tpl.id, title: tpl.title, label: v.label, district: spec.district,
     nodeId: spec.nodeId, x: 0, y: 0, address: 'Unknown', trueAddress: spec.address, believedNode: null,
     addrConfirmed: false, locFixAt: null, severity: v.severity, required: [...v.caps], status: 'AWAITING DISPATCH',
     believed: { caps: [...scriptFor(tpl.id, pv.id).hint], severity: pv.severity }, truthKnown: false,
-    transcript: [], session: null, callEndedAt: null, callAt: call.ringAt, notes: [],
+    transcript: [], session: null, callEndedAt: null, callAt, notes: [],
+    risk: v.risk, mods: [], decision: null, decided: false, complications: 0,
+    blockEdge: null, blockActive: false, linkedTo, linkSpawned: false, rng,
     assigned: [], firstArrival: null, pressure: 0, failAfter: tpl.failAfter * DIFF[w.config.difficulty].fail,
     workProgress: 0, duration: tpl.duration * (0.8 + 0.2 * v.severity), escalations: 0, complication: false,
     resolvedAt: null, outcome: '', surplus: 0,
   };
+  if (v.blockRoad && rng.next() < v.blockRoad) inc.blockEdge = pickBlockEdge(w, inc);
   w.incidents.push(inc);
-  call.incidentId = inc.id;
-  if (late) {
+  if (kind !== 'call') {
     setBelieved(w, inc, spec.nodeId, spec.address);
     inc.addrConfirmed = true;
+  }
+  if (kind === 'late') {
     say(w, inc, 'system', 'The call went unanswered. A passerby reported the incident later.');
     addNote(w, inc, `Reported late by a passerby at ${spec.address}.`, 'info');
     log(w, 'info', `Incident #${inc.id}: ${inc.title} at ${inc.address} (late report).`);
@@ -329,12 +340,143 @@ function createIncident(w: World, call: Call, late: boolean): Incident {
   return inc;
 }
 
+/** Choose a road at the incident that can be closed without cutting the city in two. */
+function pickBlockEdge(w: World, inc: Incident): number | null {
+  const edges = w.city.adj[inc.nodeId].map((a) => a.edge).filter((e) => e.cls !== 'bridge' && !w.blocked.has(e.id));
+  while (edges.length) {
+    const e = edges.splice(inc.rng.int(0, edges.length - 1), 1)[0];
+    if (isConnected(w.city, w.blocked, e.id) && w.city.adj[inc.nodeId].some((a) => a.edge.id !== e.id && !w.blocked.has(a.edge.id))) return e.id;
+  }
+  return null;
+}
+
+/** Re-plan every moving unit so routes respect the current road closures. */
+function replanAll(w: World) {
+  for (const u of w.units) {
+    if ((u.status !== 'EN ROUTE' && u.status !== 'RETURNING') || !u.legs.length) continue;
+    const dest = u.legs[u.legs.length - 1].to;
+    const plan = planRoute(w, u, dest);
+    if (plan) { u.legs = plan.legs; u.eta = plan.eta; }
+  }
+}
+
+export function activateBlock(w: World, inc: Incident) {
+  if (inc.blockEdge === null || inc.blockActive) return;
+  inc.blockActive = true;
+  w.blocked.add(inc.blockEdge);
+  const e = w.city.edges[inc.blockEdge];
+  const street = w.city.nodes[e.a].street === w.city.nodes[e.b].street ? w.city.nodes[e.a].street : w.city.nodes[inc.nodeId].street;
+  addNote(w, inc, `Road closure: ${street} is blocked. Routes updated.`, 'warning');
+  log(w, 'warn', `#${inc.id}: ${street} closed by the incident. Units are being re-routed.`);
+  replanAll(w);
+}
+
+function liftBlock(w: World, inc: Incident, why: string) {
+  if (!inc.blockActive || inc.blockEdge === null) return;
+  inc.blockActive = false;
+  w.blocked.delete(inc.blockEdge);
+  addNote(w, inc, `Road reopened: ${why}.`, 'info');
+  log(w, 'info', `#${inc.id}: road reopened (${why}).`);
+  replanAll(w);
+}
+
+function spawnLinked(w: World, parent: Incident, rule: { templateId: string; variationId: string; text: string }) {
+  if (parent.linkSpawned) return;
+  parent.linkSpawned = true;
+  const near = w.city.adj[parent.nodeId].map((a) => a.to);
+  const nodeId = parent.rng.pick(near);
+  const n = w.city.nodes[nodeId];
+  const spec: Spec = {
+    templateId: rule.templateId, variationId: rule.variationId, perceivedVariationId: rule.variationId,
+    district: n.district, nodeId, address: `${parent.rng.int(10, 98) * 10} ${n.street}`, opening: '',
+    personality: 'calm', twist: 'none', wrongNodeId: null, wrongAddress: null, discAfter: null,
+  };
+  const inc = createIncident(w, spec, w.time, 'linked', parent.id);
+  inc.truthKnown = false;
+  addNote(w, inc, `Linked to #${parent.id}: ${rule.text}`, 'warning');
+  addNote(w, parent, `Linked incident #${inc.id} opened: ${rule.text}`, 'warning');
+  say(w, inc, 'system', rule.text);
+  w.stats.linked++;
+  log(w, 'warn', `New incident #${inc.id} linked to #${parent.id}: ${rule.text}`);
+}
+
+/* ------------------------------------------------------------ decisions */
+
+export function decisionOptions(inc: Incident): DecisionOption[] {
+  const dp = DECISIONS[inc.templateId];
+  return dp ? [...dp.options, SUPERVISOR, CONTINUE] : [SUPERVISOR, CONTINUE];
+}
+
+/** Why an option cannot be chosen right now (null when it can). */
+export function optionBlocked(w: World, inc: Incident, o: DecisionOption): string | null {
+  if (o.supervisor && w.stats.supervisorsLeft <= 0) return 'No supervisors left this shift';
+  if (o.needs && !onSceneUnits(w, inc).some((u) => u.caps.includes(o.needs!))) return `Needs a ${o.needs} unit on scene`;
+  if (o.fetch && !nearestFree(w, inc, o.fetch)) return `No free ${o.fetch} unit`;
+  return null;
+}
+
+function nearestFree(w: World, inc: Incident, cap: Capability): Unit | null {
+  if (inc.believedNode === null) return null;
+  let best: { u: Unit; eta: number } | null = null;
+  for (const u of w.units) {
+    if (!dispatchable(u) || !u.caps.includes(cap)) continue;
+    const eta = planRoute(w, u, inc.believedNode)?.eta ?? Infinity;
+    if (isFinite(eta) && (!best || eta < best.eta)) best = { u, eta };
+  }
+  return best ? best.u : null;
+}
+
+function maybeOffer(w: World, inc: Incident) {
+  const dp = DECISIONS[inc.templateId];
+  if (!dp || inc.decided || inc.decision) return;
+  const variation = tplOf(inc.templateId).variations.find((v) => v.label === inc.label)!;
+  const chance = dp.chance[variation.id] ?? 0;
+  if (inc.rng.next() >= chance) { inc.decided = true; return; }
+  inc.decision = { expiresAt: w.time + DECISION_SECONDS };
+  addNote(w, inc, `Decision needed: ${dp.prompt}`, 'warning');
+  log(w, 'warn', `#${inc.id}: decision needed on scene.`);
+}
+
+export function decide(w: World, incidentId: number, optionId: string): { ok: boolean; error?: string } {
+  const inc = w.incidents.find((i) => i.id === incidentId);
+  if (!inc || !inc.decision || !isOpen(inc)) return { ok: false, error: 'No decision pending.' };
+  const o = decisionOptions(inc).find((x) => x.id === optionId);
+  if (!o) return { ok: false, error: 'Unknown option.' };
+  const blocked = optionBlocked(w, inc, o);
+  if (blocked) return { ok: false, error: blocked };
+  inc.decision = null; inc.decided = true;
+  w.stats.decisions++;
+  w.stats.spent += o.cost ?? 0;
+  let unitId: string | null = null;
+  if (o.fetch) {
+    const u = nearestFree(w, inc, o.fetch)!;
+    dispatch(w, inc.id, [u.id], { support: true });
+    unitId = u.id;
+  }
+  if (o.supervisor) {
+    w.stats.supervisorsLeft--;
+    inc.pressure = Math.max(0, inc.pressure - 20);
+  }
+  if (o.liftBlock) liftBlock(w, inc, 'traffic diverted');
+  if (o.speed || o.risk) inc.mods.push({ id: o.id, label: o.label, speed: o.speed ?? 1, risk: o.risk ?? 0, unitId });
+  addNote(w, inc, o.id === 'continue' ? 'Decision: continue with current resources.' : `Decision: ${o.label}.`, 'info');
+  log(w, 'dispatch', `#${inc.id}: ${o.label}.`);
+  return { ok: true };
+}
+
+export const modActive = (w: World, inc: Incident, m: Mod) =>
+  m.unitId === null || onSceneUnits(w, inc).some((u) => u.id === m.unitId);
+const workRate = (w: World, inc: Incident) => inc.mods.reduce((r, m) => (modActive(w, inc, m) ? r * m.speed : r), 1);
+export const currentRisk = (w: World, inc: Incident) =>
+  Math.max(0, inc.mods.reduce((r, m) => (modActive(w, inc, m) ? r + m.risk : r), inc.risk));
+
 export function answerCall(w: World, callId: number): Incident | null {
   const c = w.calls.find((x) => x.id === callId);
   if (!c || c.status !== 'ringing' || w.over || w.activeCall !== null) return null;
   c.status = 'answered';
   w.stats.answered++;
-  const inc = createIncident(w, c, false);
+  const inc = createIncident(w, c.spec, c.ringAt, 'call');
+  c.incidentId = inc.id;
   openSession(w, inc, c.spec);
   return inc;
 }
@@ -344,7 +486,7 @@ export function answerCall(w: World, callId: number): Incident | null {
 const isOpen = (i: Incident) => i.status !== 'RESOLVED' && i.status !== 'FAILED';
 const dispatchable = (u: Unit) => u.status === 'AVAILABLE' || u.status === 'RETURNING';
 
-export function dispatch(w: World, incidentId: number, unitIds: string[]): { sent: number; error?: string } {
+export function dispatch(w: World, incidentId: number, unitIds: string[], opts: { support?: boolean } = {}): { sent: number; error?: string } {
   const inc = w.incidents.find((i) => i.id === incidentId);
   if (!inc || !isOpen(inc)) return { sent: 0, error: 'Incident is no longer active.' };
   if (inc.believedNode === null) return { sent: 0, error: 'Location unknown. Ask the caller for the address.' };
@@ -357,7 +499,7 @@ export function dispatch(w: World, incidentId: number, unitIds: string[]): { sen
     // Does this unit fill a still-open slot? Otherwise it is an unnecessary deployment.
     const before = matchSlots(inc.required, coverers(w, inc)).filter(Boolean).length;
     const after = matchSlots(inc.required, [...coverers(w, inc), u]).filter(Boolean).length;
-    if (after === before) { w.stats.unnecessary++; inc.surplus++; }
+    if (after === before && !opts.support) { w.stats.unnecessary++; inc.surplus++; }
     w.stats.dispatched++;
     w.stats.spent += VEHICLES[u.vehicle].cost;
     u.legs = plan.legs; u.eta = plan.eta; u.incidentId = inc.id; u.status = 'EN ROUTE';
@@ -429,6 +571,8 @@ function assess(w: World, inc: Incident) {
   const kind = extra.length ? 'warning' : 'confirmed';
   addNote(w, inc, `On-scene assessment: ${inc.label}.${extra.length ? ` Additional capability needed: ${extra.join(', ')}.` : ''}${fewer.length ? ' Less serious than reported.' : ''}`, kind);
   if (extra.length) log(w, 'warn', `#${inc.id}: responders report the scene needs more than first reported.`);
+  activateBlock(w, inc);
+  maybeOffer(w, inc);
 }
 
 function refreshStatus(w: World, inc: Incident) {
@@ -468,6 +612,8 @@ function moveUnit(w: World, u: Unit, dt: number) {
 function finishIncident(w: World, inc: Incident, status: 'RESOLVED' | 'FAILED', outcome: string) {
   inc.status = status; inc.outcome = outcome; inc.resolvedAt = w.time;
   if (inc.session) endCall(w, inc, 'system');
+  inc.decision = null;
+  if (inc.blockActive) liftBlock(w, inc, status === 'RESOLVED' ? 'scene cleared' : 'incident closed');
   for (const u of w.units.filter((x) => x.incidentId === inc.id)) {
     if (status === 'RESOLVED') { u.status = 'BUSY'; u.busyUntil = w.time + BUSY_SECONDS; u.legs = []; u.eta = 0; }
     else sendHome(w, u);
@@ -477,7 +623,8 @@ function finishIncident(w: World, inc: Incident, status: 'RESOLVED' | 'FAILED', 
     w.stats.resolved++;
     const tpl = tplOf(inc.templateId);
     const fast = inc.firstArrival !== null && inc.firstArrival - inc.callAt <= 45 ? 1.25 : 1;
-    const gain = Math.round(tpl.reward * (0.7 + 0.3 * inc.severity) * fast);
+    const clean = Math.max(0.4, 1 - 0.15 * inc.complications);
+    const gain = Math.round(tpl.reward * (0.7 + 0.3 * inc.severity) * fast * clean);
     w.stats.reward += gain;
     log(w, 'good', `#${inc.id} ${inc.title} resolved. ${outcome} (+$${gain})`);
   } else {
@@ -490,26 +637,54 @@ function updateIncident(w: World, inc: Incident, dt: number) {
   const tpl = tplOf(inc.templateId);
   const onScene = onSceneUnits(w, inc);
   const covered = matchSlots(inc.required, onScene).every(Boolean);
+
+  // An undecided decision lapses into "continue with current resources".
+  if (inc.decision && w.time >= inc.decision.expiresAt) {
+    inc.decision = null; inc.decided = true;
+    addNote(w, inc, 'No decision made: continuing with current resources.', 'info');
+  }
+  // Traffic units on scene direct vehicles and reopen the road.
+  if (inc.blockActive && onScene.some((u) => u.caps.includes('TRAFFIC'))) liftBlock(w, inc, 'traffic unit directing vehicles');
+
   if (covered) {
-    inc.workProgress += dt / inc.duration;
+    inc.workProgress += (dt / inc.duration) * workRate(w, inc);
     inc.complication = false;
   } else {
     inc.pressure += dt * (onScene.length ? 0.4 : 1);
   }
+
+  // Neglect escalation: depends on how long needed capabilities were missing.
   if (inc.escalations < MAX_ESCALATIONS && inc.pressure >= tpl.escalateEvery * (inc.escalations + 1)) {
     inc.escalations++;
-    inc.severity = Math.min(4, inc.severity + 1);
-    if (tpl.escalateAdd) { inc.required.push(tpl.escalateAdd); inc.believed.caps.push(tpl.escalateAdd); inc.complication = true; }
-    inc.believed.severity = Math.max(inc.believed.severity, inc.severity);
-    addNote(w, inc, `Update: ${tpl.escalateText}`, 'warning');
+    raise(w, inc, tpl.escalateAdd, `Update: ${tpl.escalateText}`);
     log(w, 'warn', `#${inc.id} escalated: ${tpl.escalateText}`);
+    const link = LINKED[inc.templateId];
+    if (link?.on === 'escalation2' && inc.escalations >= 2) spawnLinked(w, inc, link);
   }
+  // Scene complication: depends on the scene's risk, which decisions change.
+  if (onScene.length && inc.complications < 2 && inc.rng.next() < currentRisk(w, inc) * 0.008 * dt) {
+    inc.complications++; w.stats.complications++;
+    const text = COMPLICATION_TEXT[inc.templateId] ?? 'The situation changes on scene.';
+    raise(w, inc, tpl.escalateAdd, `Complication: ${text}`);
+    log(w, 'warn', `#${inc.id} complication: ${text}`);
+    const link = LINKED[inc.templateId];
+    if (link?.on === 'complication1') spawnLinked(w, inc, link);
+  }
+
   if (inc.workProgress >= 1) {
-    const mins = inc.surplus ? ` (${inc.surplus} unit(s) sent were not needed)` : '';
-    finishIncident(w, inc, 'RESOLVED', `Scene cleared${mins}.`);
+    const mins = inc.surplus ? ` ${inc.surplus} unit(s) sent were not needed.` : '';
+    const comp = inc.complications ? ` Resolved despite ${inc.complications} complication(s).` : '';
+    finishIncident(w, inc, 'RESOLVED', `Scene cleared.${comp}${mins}`);
   } else if (inc.pressure >= inc.failAfter) {
     finishIncident(w, inc, 'FAILED', tpl.failText);
   } else refreshStatus(w, inc);
+}
+
+function raise(w: World, inc: Incident, add: Capability | null, note: string) {
+  inc.severity = Math.min(4, inc.severity + 1);
+  if (add) { inc.required.push(add); inc.believed.caps.push(add); inc.complication = true; }
+  inc.believed.severity = Math.max(inc.believed.severity, inc.severity);
+  addNote(w, inc, note, 'warning');
 }
 
 const SUBSTEP = 0.5;
@@ -526,7 +701,7 @@ export function step(w: World, dt: number) {
         c.status = 'missed';
         w.stats.missed++;
         log(w, 'bad', `Call missed. A passerby reports an incident instead.`);
-        createIncident(w, c, true);
+        c.incidentId = createIncident(w, c.spec, c.ringAt, 'late').id;
       }
     }
     for (const u of w.units) {
@@ -551,7 +726,7 @@ export function step(w: World, dt: number) {
 
 export interface Summary {
   answered: number; missed: number; hungUp: number; resolved: number; failed: number; unresolved: number;
-  avgResponse: number | null; accuracy: number; unnecessary: number; spent: number; reward: number;
+  avgResponse: number | null; accuracy: number; unnecessary: number; decisions: number; complications: number; linked: number; spent: number; reward: number;
   net: number; xp: number; reputation: number; grade: string; significant: string[];
 }
 
@@ -574,7 +749,7 @@ export function buildSummary(w: World): Summary {
     .map((i) => `#${i.id} ${i.title} (${i.label}) in ${w.city.districts.find((d) => d.id === i.district)!.name}: ${i.status === 'RESOLVED' ? 'resolved' : i.status === 'FAILED' ? i.outcome : 'unresolved at end of shift'}`);
   return {
     answered: s.answered, missed: s.missed, hungUp: s.hungUp, resolved: s.resolved, failed: s.failed, unresolved,
-    avgResponse: avg, accuracy, unnecessary: s.unnecessary, spent: s.spent, reward: s.reward, net,
+    avgResponse: avg, accuracy, unnecessary: s.unnecessary, decisions: s.decisions, complications: s.complications, linked: s.linked, spent: s.spent, reward: s.reward, net,
     xp: 40 + s.resolved * 20 - s.failed * 5, reputation, grade, significant,
   };
 }

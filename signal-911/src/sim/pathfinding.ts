@@ -82,3 +82,18 @@ export function findPath(
   nodes.reverse(); edges.reverse();
   return { nodes, edges, time: g[to] };
 }
+
+/** True when every junction can still be reached with the given roads closed. */
+export function isConnected(city: City, blocked: ReadonlySet<number>, extra?: number): boolean {
+  const seen = new Uint8Array(city.nodes.length);
+  const stack = [0];
+  seen[0] = 1;
+  let n = 1;
+  while (stack.length) {
+    for (const { to, edge } of city.adj[stack.pop()!]) {
+      if (seen[to] || blocked.has(edge.id) || edge.id === extra) continue;
+      seen[to] = 1; n++; stack.push(to);
+    }
+  }
+  return n === city.nodes.length;
+}

@@ -82,7 +82,7 @@ button.primary { background: var(--accent); color: #0b1218; border: 1px solid va
 button.primary:disabled { opacity: .45; cursor: not-allowed; }
 button.primary.big { width: 100%; height: 36px; margin-top: 12px; justify-content: center; font-size: 14px; }
 .call button.primary { width: 100%; margin-top: 4px; justify-content: center; }
-.panel button:not(.primary):not(.icon):not(.inc):not(.cand):not(.link):not(.seg button) { background: var(--elev); border: var(--border); border-radius: 3px; height: 26px; padding: 0 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+.panel button:not(.primary):not(.icon):not(.inc):not(.cand):not(.link):not(.opt):not(.choice):not(.danger):not(.seg button) { background: var(--elev); border: var(--border); border-radius: 3px; height: 26px; padding: 0 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
 button.link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; }
 
 button.inc { display: block; width: 100%; text-align: left; background: var(--elev); border: 1px solid transparent; border-left: 3px solid var(--accent); border-radius: 3px; padding: 6px 8px; margin-bottom: 5px; cursor: pointer; }
@@ -141,3 +141,10 @@ button.choice.again { border-color: #6b5a2c; } button.choice.done { color: var(-
 .locwarn { display: flex; align-items: center; gap: 6px; color: var(--urgent); background: #3a3220; padding: 6px 8px; border-radius: 3px; margin: 6px 0; }
 .transcriptbox { margin-top: 10px; } .transcriptbox summary { cursor: pointer; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; } .transcriptbox .line { margin: 4px 0; }
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--elev); border: 1px solid var(--accent); padding: 8px 14px; border-radius: 4px; z-index: 30; }
+
+/* ---- Stage 3: decisions ---- */
+.decision { background: #2a2618; border: 1px solid #6b5a2c; border-radius: 4px; padding: 8px; margin: 10px 0; }
+.dhead { display: flex; align-items: center; gap: 6px; color: var(--urgent); } .dhead .mono { margin-left: auto; }
+.decision p { margin: 6px 0; }
+button.opt { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 100%; text-align: left; background: var(--elev); border: 1px solid transparent; border-radius: 3px; padding: 6px 8px; margin-bottom: 4px; cursor: pointer; }
+button.opt:hover:not(:disabled) { border-color: var(--urgent); } button.opt.off { opacity: .5; cursor: not-allowed; }

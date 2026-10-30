@@ -50,7 +50,7 @@ function Calls() {
         <button key={i.id} className={`inc sev${shownSeverity(i)} ${selected === i.id ? 'sel' : ''}`} onClick={() => g.selectIncident(i.id)}>
           <div className="r1"><b>#{i.id} {i.title}</b><SevChip sev={shownSeverity(i)} /></div>
           <div className="r2 muted">{i.believedNode === null ? 'Location unknown' : i.address} · {fmt(w.time - i.callAt)}{i.session ? ' · on the line' : ''}</div>
-          <div className="r3"><StatusChip s={i.status} /></div>
+          <div className="r3"><StatusChip s={i.status} />{i.decision && <span className="chip warnchip">Decision</span>}{i.blockActive && <span className="chip warnchip">Road closed</span>}{i.linkedTo !== null && <span className="chip">Linked #{i.linkedTo}</span>}</div>
           {i.status !== 'RESOLVED' && i.status !== 'FAILED' && <Bar value={i.pressure / i.failAfter} kind="danger" title="Danger: unattended time until the incident fails" />}
         </button>
       ))}

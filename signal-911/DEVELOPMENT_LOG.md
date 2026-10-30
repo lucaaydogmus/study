@@ -26,3 +26,15 @@ Known/deferred: calls are a one-click stub (dialogue = Stage 2); sound not imple
 - **Tests**: 27 total. New: script data consistency for every perceived/truth pair, wrong-address flow end to end, confirm/correct, conflict & downgrade, disconnect trace, hang-up, "every call can always be completed" across 7 personalities × 5 twists, single active call.
 
 Known/deferred: only one call at a time (no hold); no on-scene decisions or road closures (Stage 3); caller answers are English-only strings in `dialogueData.ts`.
+
+## Stage 3 — Dynamic incidents and tactical decisions (done)
+- **On-scene decisions** (`sim/decisions.ts`, `decide()` in `sim/world.ts`): data-driven decision point per incident family, offered once when responders reach the real scene, with a per-variation chance (minor incidents resolve on their own). 2–3 family-specific options + *Escalate to supervisor* (limited to 2 per shift, $200) + *Continue*. Ignoring it for 40 s lapses into Continue, so there is no forced busywork.
+- Option effects are plain sim values: work-rate multiplier, change to scene **risk**, **cost**, `needs` (a capability already on scene) or `fetch` (sends the nearest free unit; the effect starts only once that unit arrives, and the unit is not counted as an unnecessary deployment). The UI states why an option is unavailable.
+- **Risk-driven complications**: each variation has a base risk; while responders are on scene a complication can occur (max 2), adding a requirement and raising severity. Decisions lower risk. Neglect escalation (time with needed capabilities missing) is unchanged. Rewards are reduced 15% per complication.
+- **Road closures**: serious collisions can close the adjoining road once reported (BLOCKING answer or on-scene assessment). A* routes around it and moving units are re-planned; closures never disconnect the city (checked); a traffic unit on scene, the diversion decision, or the incident ending reopens the road. Drawn on the map as a red dashed segment with ✕.
+- **Linked incidents**: a fire left unattended spreads into a linked fire next door; an industrial accident can ignite the neighbouring unit. Linked chips and links appear in the queue and incident panel.
+- **New variations**: *Difficult access* fire (Old Town only, needs two engines) and *Several unwell* medical call (two ambulances), with full dialogue scripts.
+- **UI**: decision card, scene-risk indicator and active-measure list, decision/road-closed/linked chips in the queue, "!" badge on map markers, summary rows (decisions, complications, linked incidents). Fixed a Stage 1 CSS rule that squashed multi-line buttons.
+- **Tests**: 36 total (new `decisions.test.ts`: offering/lapsing, fetch timing and the unnecessary-deployment exemption, unavailable options and supervisor limit, speed effect, risk/complication, road closure routing + connectivity + reopening, diversion decision, linked fire; full-shift bot now makes decisions and checks closure/connectivity invariants).
+
+Known/deferred: closure is activated when reported, not when the crash happens; decisions are single-step (one per incident); no OUT OF SERVICE or repositioning (Stage 4).

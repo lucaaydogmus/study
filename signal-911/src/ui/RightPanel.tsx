@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
-import { Send, X, Undo2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Send, X, Undo2, CheckCircle2, AlertTriangle, Flag } from 'lucide-react';
 import { useGame } from '../store/game';
 import { SEVERITY_LABEL } from '../sim/incidents';
+import { DECISIONS, type DecisionOption } from '../sim/decisions';
 import { CAP_LABEL, VEHICLES, type Unit } from '../sim/units';
-import { coverers, matchSlots, planRoute, shownCaps, shownSeverity, slotStates, trafficAt, type Incident, type World } from '../sim/world';
+import { coverers, currentRisk, decisionOptions, modActive, optionBlocked, matchSlots, planRoute, shownCaps, shownSeverity, slotStates, trafficAt, type Incident, type World } from '../sim/world';
 import { Bar, CapChip, NoteList, SevChip, StatusChip, money } from './common';
 import { SERVICE_COLOR } from './MapCanvas';
 import type { Difficulty } from '../sim/types';
@@ -109,6 +110,9 @@ function IncidentView({ w, inc }: { w: World; inc: Incident }) {
         ? <div className="locwarn"><AlertTriangle size={13} /> Location unknown. Ask the caller for the address.</div>
         : <div className="muted small">{inc.truthKnown ? `${inc.label} · ` : ''}{inc.address}, {district.name} · {inc.addrConfirmed ? 'address confirmed' : 'address unverified'} · traffic ×{trafficAt(w, district.id).toFixed(2)}</div>}
 
+      {inc.decision && !closed && <DecisionCard w={w} inc={inc} />}
+      {inc.linkedTo !== null && <div className="small">Linked to <button className="link" onClick={() => g.selectIncident(inc.linkedTo)}>#{inc.linkedTo}</button></div>}
+      {w.incidents.filter((i) => i.linkedTo === inc.id).map((i) => <div key={i.id} className="small">Spawned <button className="link" onClick={() => g.selectIncident(i.id)}>#{i.id} {i.title}</button></div>)}
       <h3>Requires {!inc.truthKnown && <span className="muted small">(as reported)</span>}</h3>
       <div className="wrapchips">{caps.map((c, i) => <CapChip key={i} cap={c} state={slots[i]} />)}</div>
       {!inc.truthKnown && !closed && <p className="muted small">Not yet verified on scene. More units may be needed than the caller described.</p>}
@@ -122,6 +126,7 @@ function IncidentView({ w, inc }: { w: World; inc: Incident }) {
           {inc.workProgress > 0 && <><h3>Scene progress</h3><Bar value={inc.workProgress} kind="good" /></>}
         </>
       )}
+      {inc.truthKnown && !closed && <SceneStatus w={w} inc={inc} />}
       {closed && <p className={inc.status === 'RESOLVED' ? 'goodc' : 'badc'}>{inc.status === 'RESOLVED' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />} {inc.outcome}</p>}
 
       <h3>Incident notes</h3>
@@ -245,6 +250,61 @@ function DistrictView({ w, id }: { w: World; id: string }) {
         <dt>Open incidents</dt><dd>{w.incidents.filter((i) => i.district === d.id && i.status !== 'RESOLVED' && i.status !== 'FAILED').length}</dd>
       </dl>
       <p className="muted small">Severity scale: {SEVERITY_LABEL.slice(1).join(' · ')}</p>
+    </>
+  );
+}
+
+/* ------------------------------------------------------- decisions */
+
+const effectChips = (o: DecisionOption) => {
+  const out: string[] = [];
+  if (o.speed && o.speed !== 1) out.push(o.speed > 1 ? `Work ${Math.round((o.speed - 1) * 100)}% faster` : `Work ${Math.round((1 - o.speed) * 100)}% slower`);
+  if (o.risk) out.push(o.risk < 0 ? `Risk ${Math.round(o.risk * 100)}%` : `Risk +${Math.round(o.risk * 100)}%`);
+  if (o.fetch) out.push(`Sends nearest ${o.fetch} unit`);
+  if (o.needs) out.push(`Needs ${o.needs} on scene`);
+  if (o.liftBlock) out.push('Reopens road');
+  if (o.cost) out.push(money(-o.cost));
+  return out;
+};
+
+function DecisionCard({ w, inc }: { w: World; inc: Incident }) {
+  const g = useGame.getState();
+  if (!inc.decision) return null;
+  const left = Math.max(0, inc.decision.expiresAt - w.time);
+  return (
+    <section className="decision">
+      <div className="dhead"><Flag size={14} /> <b>Decision needed</b><span className="mono muted">{Math.ceil(left)}s</span></div>
+      <Bar value={left / 40} kind="urgent" title="If you do nothing the response continues with current resources" />
+      <p>{DECISIONS[inc.templateId]?.prompt}</p>
+      {decisionOptions(inc).map((o) => {
+        const why = optionBlocked(w, inc, o);
+        return (
+          <button key={o.id} className={`opt ${why ? 'off' : ''}`} disabled={!!why} onClick={() => g.decide(o.id)}>
+            <b>{o.label}</b>
+            <span className="muted small">{o.detail}</span>
+            <span className="wrapchips">{effectChips(o).map((c) => <span key={c} className="chip">{c}</span>)}{why && <span className="chip warnchip">{why}</span>}</span>
+          </button>
+        );
+      })}
+    </section>
+  );
+}
+
+function SceneStatus({ w, inc }: { w: World; inc: Incident }) {
+  const risk = currentRisk(w, inc);
+  const level = risk >= 0.45 ? 'High' : risk >= 0.2 ? 'Moderate' : 'Low';
+  return (
+    <>
+      <h3>Scene risk</h3>
+      <div className="row"><span className={`chip ${level === 'High' ? 'sev3' : level === 'Moderate' ? 'sev2' : 'sev1'}`}>{level}</span>
+        <span className="muted small">{inc.complications ? `${inc.complications} complication(s) so far. ` : ''}Chance of a complication while responders work.</span></div>
+      {inc.mods.length > 0 && (
+        <ul className="notelist">{inc.mods.map((m) => (
+          <li key={m.id} className={`note ${modActive(w, inc, m) ? 'confirmed' : 'unconfirmed'}`}>
+            <span>{m.label} {modActive(w, inc, m) ? '· active' : '· waiting for unit to arrive'}</span>
+          </li>
+        ))}</ul>
+      )}
     </>
   );
 }

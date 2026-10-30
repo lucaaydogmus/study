@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { advance, initialClock, SPEEDS, type ClockState, type Speed } from '../sim/clock';
 import { loadSave, writeSave, type SaveData } from '../sim/save';
 import {
-  answerCall, buildSummary, createWorld, dispatch, recall, step, type Config, type Summary, type World,
+  answerCall, buildSummary, createWorld, decide, dispatch, recall, step, type Config, type Summary, type World,
 } from '../sim/world';
 import { ask, endCall } from '../sim/calls';
 import { configureAudio, sfx, unlockAudio } from '../audio';
@@ -39,6 +39,7 @@ interface GameState {
   nextShift(): void;
   answer(callId: number): void;
   askQuestion(key: string): void;
+  decide(optionId: string): void;
   hangUp(): void;
   selectIncident(id: number | null): void;
   selectUnit(id: string | null): void;
@@ -170,6 +171,13 @@ export const useGame = create<GameState>((set, get) => {
       const inc = st.world.incidents.find((i) => i.id === st.world.activeCall);
       if (st.phase !== 'shift' || st.clock.paused || !inc) return;
       if (ask(st.world, inc, key)) { sfx.select(); bump(); }
+    },
+    decide: (optionId) => {
+      const st = get();
+      if (st.phase !== 'shift' || st.sel.incidentId === null) return;
+      const r = decide(st.world, st.sel.incidentId, optionId);
+      if (r.ok) sfx.dispatch(); else { set({ toast: r.error ?? 'Not available.' }); setTimeout(() => set({ toast: null }), 2500); }
+      bump();
     },
     hangUp: () => {
       const st = get();

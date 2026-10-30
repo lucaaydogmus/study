@@ -2,7 +2,7 @@ import { createRng, type Rng } from './rng';
 import {
   PERSONALITIES, questionsFor, scriptFor, type Answer, type Personality, type Question, type Twist,
 } from './dialogueData';
-import { addNote, correctLocation, log, say, setBelieved, traceLocation, type Incident, type Spec, type World } from './world';
+import { activateBlock, addNote, correctLocation, log, say, setBelieved, traceLocation, type Incident, type Spec, type World } from './world';
 import type { Capability } from './types';
 
 export interface Asked { answered: boolean; confirmed: boolean; deflected: number }
@@ -167,6 +167,7 @@ function answer(w: World, inc: Incident, s: Session, key: string, rec: Asked) {
   }
   ans = scriptFor(sp.templateId, sp.variationId).answers[key] ?? { say: 'No, nothing like that.', note: '' };
   applyAnswer(w, inc, s, ans, kind, again);
+  if (key === 'BLOCKING') activateBlock(w, inc); // the closure is reported to dispatch
 }
 
 function applyAnswer(w: World, inc: Incident, s: Session, ans: Answer, kind: 'confirmed' | 'unconfirmed', again: boolean) {
