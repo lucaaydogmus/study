@@ -14,8 +14,9 @@ export const PROFILE_VERSION = 3;
 export interface Settings {
   master: number; effects: number; radio: number; music: number; ambience: number; muted: boolean;
   hideIntense: boolean; reduceMotion: boolean; highContrast: boolean; autoSave: boolean; showHints: boolean; defaultSpeed: number;
+  aiCallers: boolean; aiMaxLines: number; heartbeat: boolean;
 }
-export const DEFAULT_SETTINGS: Settings = { master: 0.8, effects: 0.8, radio: 0.7, music: 0.0, ambience: 0.5, muted: false, hideIntense: false, reduceMotion: false, highContrast: false, autoSave: true, showHints: true, defaultSpeed: 1 };
+export const DEFAULT_SETTINGS: Settings = { master: 0.8, effects: 0.8, radio: 0.7, music: 0.0, ambience: 0.5, muted: false, hideIntense: false, reduceMotion: false, highContrast: false, autoSave: true, showHints: true, defaultSpeed: 1, aiCallers: true, aiMaxLines: 150, heartbeat: true };
 
 export interface Lifetime {
   shifts: number; calls: number; answered: number; resolved: number; failed: number; casualties: number; livesHelped: number; falseAlarms: number;

@@ -20,6 +20,7 @@ export interface MapProps {
   onPickNode?: (node: number) => void; onContext?: (node: number, hit: { kind: string; id: string } | null) => void;
   heard?: HeardLocation[]; onPickHeard?: (h: HeardLocation) => void; focus?: { x: number; y: number; zoom?: number; key: number } | null;
   showIncidents?: boolean; reduceMotion?: boolean; lockedLabel?: boolean; minimap?: boolean; ambient?: boolean;
+  preview?: { unitId: string; path: number[] } | null;
 }
 
 // ── cached city layers ───────────────────────────────────────────────────────
@@ -352,6 +353,16 @@ export function MapView(props: MapProps) {
         const strong = (sel.kind === 'unit' && sel.id === u.id) || (sel.kind === 'incident' && u.assignedIncidentId === sel.id);
         if (['EN_ROUTE', 'TRANSPORTING'].includes(u.status) || strong) drawRoute(u, strong);
       }
+      if (pr.preview && pr.preview.path.length) {
+        const u = st.units[pr.preview.unitId];
+        if (u) {
+          ctx.beginPath(); const p0 = S(u.x, u.y); ctx.moveTo(p0.x, p0.y);
+          for (const nId of pr.preview.path) { const nn = city.nodes[nId]; const pp = S(nn.x, nn.y); ctx.lineTo(pp.x, pp.y); }
+          ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 8; ctx.lineJoin = 'round'; ctx.stroke();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.2; ctx.setLineDash([5, 5]); ctx.lineDashOffset = motion ? -(now / 40) % 10 : 0; ctx.stroke(); ctx.setLineDash([]);
+          ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p0.x, p0.y, 16, 0, 7); ctx.stroke();
+        }
+      }
       if (sel.kind === 'unit' && sel.id) { const u = st.units[sel.id]; if (u && u.destNode !== null && u.destNode >= 0) { const dn = city.nodes[u.destNode]; const p = S(dn.x, dn.y); ctx.strokeStyle = '#fff'; ctx.globalAlpha = 0.7; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; } }
 
       // heard locations
@@ -449,7 +460,7 @@ export function MapView(props: MapProps) {
         const hd = heading.current.get(u.id) ?? { x: u.x, y: u.y, h: -Math.PI / 2 };
         if (Math.hypot(u.x - hd.x, u.y - hd.y) > 0.6) { hd.h = Math.atan2(u.y - hd.y, u.x - hd.x); hd.x = u.x; hd.y = u.y; }
         heading.current.set(u.id, hd);
-        const responding = ['EN_ROUTE', 'TRANSPORTING', 'DISPATCHED'].includes(u.status) || (u.status === 'ON_SCENE' && !!u.assignedIncidentId);
+        const responding = (['EN_ROUTE', 'DISPATCHED'].includes(u.status) && u.code !== 2) || u.status === 'TRANSPORTING' || (u.status === 'ON_SCENE' && !!u.assignedIncidentId);
         const moving = u.speed > 0.1 && ['EN_ROUTE', 'TRANSPORTING', 'RETURNING'].includes(u.status);
         const v = VEH[u.service];
         ctx.globalAlpha = (u.status === 'OUT_OF_SERVICE' ? 0.4 : 1) * dimUnits;

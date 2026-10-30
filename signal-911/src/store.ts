@@ -9,6 +9,7 @@ import {
 import { CHAPTERS, SCENARIOS, TUTORIAL_CONFIG, baseConfig, ALL_DISTRICTS, dailyConfig } from './sim/scenarios';
 import { evaluateAchievements, ACHIEVEMENT_BY_ID } from './sim/achievements';
 import { rollExtras } from './sim/extras';
+import { AiManager, aiApi } from './ai/aiClient';
 import type { GameState, ShiftConfig } from './sim/types';
 
 export type Screen = 'menu' | 'briefing' | 'newCareer' | 'load' | 'modes' | 'hub' | 'game' | 'report' | 'settings' | 'freeplay' | 'scenarios' | 'campaign' | 'endless';
@@ -36,18 +37,31 @@ interface AppStore {
   startSession: (s: Session) => void; resumeShift: () => Promise<void>; abandon: () => void; finishShift: () => void;
   startCareerShift: () => void; startChapter: (id: string) => void; startScenario: (id: string) => void; startFree: (cfg: ShiftConfig, opts: Session['setupOpts']) => void;
   startTutorial: () => void; startEndless: (reset?: boolean) => void; setPauseMenu: (b: boolean) => void; startDaily: () => void;
-  newAchievements: string[]; checkLiveAchievements: () => void;
+  newAchievements: string[]; checkLiveAchievements: () => void; aiActive: boolean;
 }
 
 let toastId = 0;
 let unsub: (() => void) | null = null;
 let snapshotTimer: number | null = null;
+let aiMgr: AiManager | null = null;
+function stopAi() { aiMgr?.stop(); aiMgr = null; useApp.setState({ aiActive: false }); }
+function startAi(engine: GameEngine) {
+  stopAi();
+  const s = useApp.getState().settings;
+  if (!s.aiCallers) return;
+  void aiApi.status().then((st) => {
+    if (!st.configured || useApp.getState().engine !== engine) return;
+    aiMgr = new AiManager(engine, s.aiMaxLines, (msg) => useApp.getState().showToast(msg, 'warn'));
+    aiMgr.start();
+    useApp.setState({ aiActive: true });
+  }).catch(() => undefined);
+}
 
 export const useApp = create<AppStore>((set, get) => ({
   screen: 'menu', back: [], hubTab: 'overview', profile: null, slot: 'auto', settings: DEFAULT_SETTINGS, saveList: [], hasShiftSnapshot: false,
   brief: (s) => { set({ pending: s }); get().go('briefing'); },
   pending: null, setPending: (s) => set({ pending: s }), beginPending: () => { const s = get().pending; if (s) get().startSession(s); },
-  newAchievements: [],
+  newAchievements: [], aiActive: false,
   checkLiveAchievements: () => {
     const { profile, engine, session } = get();
     if (!profile || !engine || !session) return;
@@ -144,6 +158,7 @@ export const useApp = create<AppStore>((set, get) => ({
     else engine = GameEngine.fromConfig(config, temporarySetup({ ...s.setupOpts, rank: config.mode === 'tutorial' ? 1 : s.setupOpts?.rank ?? 7 }));
     engine.setSpeed(settings.defaultSpeed);
     unsub = engine.on((e: EngineEvent) => handleEngineEvent(e, engine));
+    startAi(engine);
     audio.startOffice();
     set({ engine, session: { ...s, config }, screen: 'game', result: null, endState: null, pauseMenu: false, rev: get().rev + 1, newAchievements: [] });
     if (snapshotTimer) clearInterval(snapshotTimer);
@@ -161,13 +176,14 @@ export const useApp = create<AppStore>((set, get) => ({
     engine.state.paused = true;
     unsub?.();
     unsub = engine.on((e) => handleEngineEvent(e, engine));
+    startAi(engine);
     audio.unlock(); audio.startOffice();
     const kind: SessionKind = snap.state.config.chapterId ? 'chapter' : 'career';
     set({ engine, session: { kind, config: snap.state.config, chapterId: snap.state.config.chapterId }, screen: 'game', pauseMenu: true, result: null, endState: null });
   },
 
   abandon: () => {
-    unsub?.(); unsub = null;
+    unsub?.(); unsub = null; stopAi();
     audio.stopAllRings(); audio.setCallAmbience(null);
     if (snapshotTimer) { clearInterval(snapshotTimer); snapshotTimer = null; }
     void saves.clearShift();
@@ -179,6 +195,7 @@ export const useApp = create<AppStore>((set, get) => ({
     if (!engine || !session) return;
     const st = engine.state;
     if (snapshotTimer) { clearInterval(snapshotTimer); snapshotTimer = null; }
+    stopAi();
     void saves.clearShift();
     audio.stopAllRings(); audio.setCallAmbience(null);
     let result: ShiftResult;

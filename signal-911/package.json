@@ -2,21 +2,25 @@
   "name": "signal-911",
   "version": "1.0.0",
   "private": true,
-  "description": "SIGNAL 911 — an original emergency dispatch simulator for the browser (fictional city of Ravenport)",
+  "description": "SIGNAL 911 \u2014 an original emergency dispatch simulator for the browser (fictional city of Ravenport)",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "start": "vite build && vite preview"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "zod": "^4.6.7",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
+    "@types/node": "^22.20.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",

@@ -8,23 +8,47 @@ escalates around you.
 > SIGNAL 911 is a work of fiction. Ravenport, its callers and every incident are invented. It is **not** connected
 > to any real emergency service. Never use it to report a real emergency.
 
-**No AI services, no microphone, no API key.** Callers are scripted, reactive characters driven by a deterministic
-dialogue engine (see *How callers work*). The game runs entirely in the browser and works offline.
+Callers are scripted, reactive characters by default — the game works offline with no key. Optionally, add an
+**Anthropic API key** and callers improvise their lines with Claude (see *AI callers*). There is no microphone.
 
 ## Run it
 
 ```bash
 cd signal-911
 npm install
-npm run dev        # http://localhost:5173
+npm run dev        # http://127.0.0.1:5173
 ```
+
+## AI callers (optional)
+
+1. Get an API key from the Anthropic Console.
+2. Start the game with `npm run dev`, open **Settings → AI callers**, paste the key and press **Save key**
+   (or copy `.env.example` to `.env.local` and fill in `ANTHROPIC_API_KEY`).
+3. Pick a model, set a daily spending cap, press **Test a caller line**, then start a shift.
+
+How it stays safe and cheap:
+
+- The key is stored in `.env.local` on your computer and used only by the small server built into `npm run dev` /
+  `npm start` (`server/ai.ts`). It is never sent to the browser, and the endpoints only answer requests from this computer.
+- Each caller line is one short request: a cached system prompt, a compact JSON description of the caller and the
+  situation, low reasoning effort, and a short structured JSON reply. One extra request now and then generates a
+  batch of persona profiles that add variety for free afterwards.
+- Hard limits: a daily dollar cap (default $1), a per-shift line cap, and a rate limit. Usage and estimated cost are
+  shown in Settings. When a limit is reached, the API fails, or the model declines, callers fall back to scripted
+  lines instantly — the game never waits on the network.
+- The default model is Claude Opus 5.5 (≈ $0.006 per line). Claude Haiku 5.5 is roughly 30× cheaper (≈ $0.0002 per
+  line, about a cent per shift); switch in Settings.
+- The engine stays in charge: it decides what each caller knows and which facts, locations and twists exist. Claude
+  only phrases the lines and judges how your words land (calmer or more upset). Hidden information is never sent.
+- Test the plumbing without a key or cost: `AI_MOCK=1 npm run dev`.
 
 Other commands:
 
 ```bash
 npm run build      # type-check + production build into dist/
 npm run preview    # serve the production build
-npm test           # 39 simulation/persistence/mechanics tests (vitest)
+npm test           # 48 simulation, mechanics, AI-pipeline and persistence tests (vitest)
+npm start          # production build served with the AI endpoints
 npx vite-node scripts/balance.ts   # headless balance harness (bot vs. idle dispatcher)
 ```
 
@@ -53,6 +77,19 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 | Right-click | With a unit selected: dispatch to incident or reposition | Wheel / drag | Zoom / pan |
 
 ## What is in the game
+
+### Realism update
+
+- **Phone instructions**: coach callers through CPR, the recovery position, pressure on a wound, keeping a casualty
+  still, evacuating, or locking themselves in. The right instruction slows the deterioration (CPR only while you
+  keep coaching); the wrong one makes it worse — ask the right questions first. A new cardiac-arrest call puts it to the test.
+- **Dispatch console**: an automatic response plan you can send in one click, multi-select, ETA bars, matching
+  capabilities highlighted, crew fatigue, route preview on the map when you hover a unit, and a warning when a unit
+  would leave a district without cover.
+- **Code 2 / Code 3**: lights and sirens are faster but units can crash en route (more likely in bad weather); Code 2 is
+  slower and safe.
+- **Vehicle breakdowns**, **background sounds** on every call ("[a smoke alarm shrieking]"), and a **stress meter**
+  with an optional heartbeat when the pressure builds.
 
 ### Remaster highlights
 

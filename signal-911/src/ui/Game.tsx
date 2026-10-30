@@ -10,6 +10,7 @@ import { Badge, Btn, Icon, Modal, Toast, fmtTime, weatherIcon } from './common';
 import { MapView, LAYERS, type LayerId } from './MapView';
 import { RightPanel, StatusBadge } from './RightPanel';
 import { Coach, coachHint } from './Coach';
+import type { Preview } from './DispatchConsole';
 import { PauseMenu } from './PauseMenu';
 import { SERVICE_META } from '../sim/fleet';
 import { computeScore } from '../sim/scoring';
@@ -39,6 +40,7 @@ export function GameScreen() {
   const [layerMenu, setLayerMenu] = useState(false);
   const [focus, setFocus] = useState<{ x: number; y: number; zoom?: number; key: number } | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [preview, setPreview] = useState<Preview>(null);
   const [collapsed, setCollapsed] = useState({ l: false, r: false, b: false });
   const st = engine.state;
   const focusKey = useRef(0);
@@ -46,7 +48,7 @@ export function GameScreen() {
 
   // ── simulation loop (decoupled from React rendering) ──
   useEffect(() => {
-    let raf = 0, last = performance.now(), lastBump = 0, wasCalls = '', lastAch = 0;
+    let raf = 0, last = performance.now(), lastBump = 0, wasCalls = '', lastAch = 0, lastBeat = 0;
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
       const dt = (now - last) / 1000; last = now;
@@ -54,6 +56,7 @@ export function GameScreen() {
       engine.update(dt);
       const ringing = Object.values(engine.state.calls).some((c) => c.state === 'ringing');
       audio.setRinging(ringing && engine.state.phase === 'running' && !engine.state.paused);
+      if (useApp.getState().settings.heartbeat && engine.state.phase === 'running' && !engine.state.paused) { const s = dispatcherStress(engine); if (s >= 62 && now - lastBeat > 60000 / (68 + s * 0.9)) { lastBeat = now; audio.heartbeat(); } }
       if (now - lastAch > 3000) { lastAch = now; useApp.getState().checkLiveAchievements(); }
       if (now - lastBump > 120) { lastBump = now; useApp.getState().bump(); const key = engine.state.activeCallId ?? ''; if (key !== wasCalls) { wasCalls = key; updateAmbience(engine); } }
     };
@@ -141,7 +144,7 @@ export function GameScreen() {
             onSelect={(k, id) => { engine.select(k, id); setCollapsed((c) => ({ ...c, r: false })); bump(); }}
             onPickNode={onPickNode} onContext={onContext} heard={heardForMap}
             onPickHeard={(h) => { const s = engine.state; if (s.selected.kind === 'incident' && s.selected.id) { engine.setIncidentLocation(s.selected.id, h.nodeId, 'candidate'); audio.dispatchConfirm(); bump(); } }}
-            focus={focus} reduceMotion={settings.reduceMotion} minimap />
+            focus={focus} reduceMotion={settings.reduceMotion} minimap preview={preview} />
           <div className="maptools">
             <div className="layerbtn">
               <Btn size="sm" icon="layers" onClick={() => setLayerMenu(!layerMenu)}>{LAYERS.find((l) => l.id === layer)!.label}</Btn>
@@ -158,7 +161,7 @@ export function GameScreen() {
         {!collapsed.r && <div className="vresizer" onPointerDown={startDrag('r')} role="separator" aria-orientation="vertical" aria-label="Resize detail panel" />}
         <aside className={`right ${collapsed.r ? 'collapsed' : ''}`}>
           <button className="collapse-btn" onClick={() => setCollapsed((c) => ({ ...c, r: !c.r }))} aria-label="Toggle detail panel"><Icon n={collapsed.r ? 'chevL' : 'chevR'} size={12} /></button>
-          {!collapsed.r && <RightPanel engine={engine} pickLocation={(id) => setTarget(id ? { kind: 'loc', id } : null)} pickingFor={target?.kind === 'loc' ? target.id : null} repositioning={target?.kind === 'repos' ? target.id : null} startReposition={(id) => setTarget(id ? { kind: 'repos', id } : null)} focus={doFocus} openCall={() => setTab('call')} setBottom={(t) => setTab(t as BottomTab)} />}
+          {!collapsed.r && <RightPanel engine={engine} setPreview={setPreview} pickLocation={(id) => setTarget(id ? { kind: 'loc', id } : null)} pickingFor={target?.kind === 'loc' ? target.id : null} repositioning={target?.kind === 'repos' ? target.id : null} startReposition={(id) => setTarget(id ? { kind: 'repos', id } : null)} focus={doFocus} openCall={() => setTab('call')} setBottom={(t) => setTab(t as BottomTab)} />}
         </aside>
       </div>
       {!collapsed.b && <div className="hresizer" onPointerDown={startDrag('b')} role="separator" aria-orientation="horizontal" aria-label="Resize bottom panel" />}
@@ -186,6 +189,7 @@ function TopBar({ engine, title, onMenu, onHelp }: { engine: GameEngine; title: 
       <div className="stat" title="Budget"><Icon n="coins" size={13} /> <span className="mono">{fmtMoneyShort(st.budget)}</span></div>
       <div className="stat" title="Reputation"><Icon n="star" size={13} /> <span className="mono">{Math.round(st.reputation)}</span></div>
       <div className="stat" title="Weather"><Icon n={weatherIcon(st.weather)} size={13} /> {WEATHER_LABEL[st.weather]}</div>
+      <StressMeter engine={engine} />
       <LiveRating engine={engine} />
       <div className="grow" />
       <div className="speed" role="group" aria-label="Time controls">
@@ -336,6 +340,30 @@ function GoalsCard({ engine }: { engine: GameEngine }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/** how stressful the dispatcher's situation is right now (0-100) */
+export function dispatcherStress(engine: GameEngine): number {
+  const st = engine.state;
+  const calls = Object.values(st.calls);
+  const ringing = calls.filter((c) => c.state === 'ringing').length, hold = calls.filter((c) => c.state === 'hold').length;
+  const open = Object.values(st.incidents).filter((i) => !i.hidden && !['RESOLVED', 'CLOSED'].includes(i.status));
+  const esc = open.filter((i) => i.status === 'ESCALATING' || i.stage > 0).length;
+  const crit = open.filter((i) => i.severity >= 4 && i.assignedUnits.length === 0).length;
+  const active = st.activeCallId ? st.calls[st.activeCallId] : null;
+  const callerPanic = active ? active.mood.panic / 100 : 0;
+  return Math.max(0, Math.min(100, st.dispatcherLoad * 35 + ringing * 12 + hold * 7 + esc * 12 + crit * 10 + callerPanic * 15));
+}
+function StressMeter({ engine }: { engine: GameEngine }) {
+  const s = dispatcherStress(engine);
+  const bpm = Math.round(68 + s * 0.9);
+  const tone = s >= 70 ? 'r' : s >= 45 ? 'a' : 'g';
+  return (
+    <div className={`stress ${tone}`} title={`Your stress: ${Math.round(s)}% — calls waiting, escalations and frightened callers push it up`}>
+      <span className="heart" style={{ animationDuration: `${60 / bpm}s` }}><Icon n="heart" size={13} /></span>
+      <b className="mono">{bpm}</b><span className="small">bpm</span>
     </div>
   );
 }

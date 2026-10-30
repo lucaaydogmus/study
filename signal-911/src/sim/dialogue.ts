@@ -11,9 +11,10 @@ import type { Call, CallerProfile, FactVal, HeardLocation, Incident, PendingLine
 export type Intent =
   | 'emergency' | 'address' | 'landmark' | 'district' | 'name' | 'callback' | 'injuries' | 'breathing' | 'conscious'
   | 'age' | 'people' | 'fire' | 'hazard' | 'weapon' | 'suspect' | 'vehicles' | 'trapped' | 'safe' | 'cause'
-  | 'calm' | 'promise' | 'stay' | 'move' | 'repeat' | 'thanks' | 'unknown';
+  | 'calm' | 'promise' | 'stay' | 'move' | 'repeat' | 'thanks' | 'unknown'
+  | 'inst_cpr' | 'inst_recovery' | 'inst_pressure' | 'inst_still' | 'inst_lock';
 
-export interface QuickQ { group: 'Opening' | 'Location' | 'Situation' | 'Guidance'; intent: Intent; label: string; text: string }
+export interface QuickQ { group: 'Opening' | 'Location' | 'Situation' | 'Guidance' | 'Instructions'; intent: Intent; label: string; text: string }
 export const QUICK_QUESTIONS: QuickQ[] = [
   { group: 'Opening', intent: 'emergency', label: 'Emergency?', text: '911, what is your emergency? Tell me what is happening, please.' },
   { group: 'Opening', intent: 'cause', label: 'What happened?', text: 'Can you tell me exactly what happened, please?' },
@@ -39,13 +40,24 @@ export const QUICK_QUESTIONS: QuickQ[] = [
   { group: 'Guidance', intent: 'move', label: 'Move to safety', text: 'If you can, move to a safe place away from the danger.' },
   { group: 'Guidance', intent: 'promise', label: 'Help is on the way', text: 'Help is on the way.' },
   { group: 'Guidance', intent: 'repeat', label: 'Say again?', text: 'Can you repeat that for me?' },
+  { group: 'Instructions', intent: 'inst_cpr', label: 'Start CPR', text: "Listen carefully. Kneel beside them, put your hands in the centre of the chest and push hard and fast — about twice a second. Don't stop." },
+  { group: 'Instructions', intent: 'inst_recovery', label: 'Recovery position', text: 'Gently roll them onto their side, tilt the head back a little, and keep checking they are breathing.' },
+  { group: 'Instructions', intent: 'inst_pressure', label: 'Pressure on wound', text: 'Take a clean cloth or towel and press firmly on the wound. Keep the pressure on — do not lift it to look.' },
+  { group: 'Instructions', intent: 'inst_still', label: "Don't move them", text: "Don't move them unless they're in danger. Keep them still and warm until help arrives." },
+  { group: 'Instructions', intent: 'move', label: 'Get out / evacuate', text: 'Get everyone out now. Close the doors behind you, stay low under the smoke, and do not use the lift.' },
+  { group: 'Instructions', intent: 'inst_lock', label: 'Lock & hide', text: 'Lock yourself in a room, stay quiet, and keep away from the door. Stay on the line with me.' },
 ];
 
 const RULES: Array<[RegExp, Intent]> = [
+  [/\bcpr\b|compression|push (hard|on (the|his|her|their) chest)|pump (the|his|her) chest|chest compress/, 'inst_cpr'],
+  [/recovery position|on (to )?(his|her|their) side|roll (him|her|them) (over|on)/, 'inst_recovery'],
+  [/pressure|press (firmly|hard|down)? ?on (the )?(wound|cut|bleed)|stop the bleed|towel on|cloth on/, 'inst_pressure'],
+  [/don'?t move (him|her|them)|keep (him|her|them) still|do not move (him|her|them)/, 'inst_still'],
+  [/lock (yourself|the door)|hide|lock (him|her) out|barricade/, 'inst_lock'],
   [/(help|units?|ambulance|police|officers?|fire (truck|engine|department)|crew|paramedics?).*(on (the|its|their) way|coming|dispatched|sending|en route)|(we('| a)re|i('| a)m|i'll be) sending|on the way|help is coming/, 'promise'],
   [/stay on the line|don'?t hang up|stay with me|stay (there|put|where you are|on the phone)/, 'stay'],
   [/get out|leave (the|your)|evacuat|move (away|to|out)|go outside|back away|stay away|safe place|(get|go|move) to (a )?safe/, 'move'],
-  [/calm|breathe|relax|take a (deep )?breath|i'?m here|it'?s (ok|okay|alright)|you'?re doing (great|well|good)|i understand|slow down/, 'calm'],
+  [/calm|breathe|relax|take a (deep )?breath|i'?m here|it'?s (ok|okay|alright)|you('?re| are) doing (really |so )?(great|well|good)|i understand|i hear you|listen to me|keep listening|slow down|you'?re not alone|we'?ve got this/, 'calm'],
   [/repeat|say that again|pardon|come again|didn'?t (catch|hear)/, 'repeat'],
   [/address|where (are|is|exactly)|what street|which street|street name|your location|where do you live/, 'address'],
   [/landmark|cross ?street|intersection|nearby|near (what|by|which)|what can you see|corner|close to|next to (what|which)|what'?s around/, 'landmark'],
@@ -77,7 +89,7 @@ export const POLITE = /please|thank|sir|ma'?am|appreciate|i understand|i'?m here
 export const RUDE = /shut up|stupid|idiot|hurry up|just answer|whatever|waste of|useless|moron|dumb|calm down!/i;
 
 // Which fact keys a topic can reveal
-const TOPIC_FACTS: Partial<Record<Intent, string[]>> = {
+export const TOPIC_FACTS: Partial<Record<Intent, string[]>> = {
   injuries: ['injured'], breathing: ['breathing'], conscious: ['conscious'], age: ['age'], people: ['people'], fire: ['fire', 'smoke'],
   hazard: ['hazard'], weapon: ['weapon'], suspect: ['suspect', 'suspect_desc'], vehicles: ['vehicles'], trapped: ['trapped'], safe: ['safe'], cause: ['cause'],
 };
@@ -253,7 +265,8 @@ function heardFrom(call: Call, nodeId: number, label: string, source: HeardLocat
 }
 
 export interface DialogueEnv { rng: Rng; city: City; inc: Incident; call: Call; tpl: Template; now: number }
-export interface Reply { lines: PendingLine[]; mood: { panic?: number; base?: number; cooperation?: number; frustration?: number; trust?: number }; promise?: boolean; safety?: boolean; refused?: boolean; misunderstood?: boolean; hangup?: boolean }
+export type AidKind = 'cpr' | 'recovery' | 'pressure' | 'still' | 'lock' | 'evacuate';
+export interface Reply { lines: PendingLine[]; mood: { panic?: number; base?: number; cooperation?: number; frustration?: number; trust?: number }; promise?: boolean; safety?: boolean; refused?: boolean; misunderstood?: boolean; hangup?: boolean; aid?: { kind: AidKind; fit: 'good' | 'bad' | 'neutral' } }
 
 export function openingLines(env: DialogueEnv): PendingLine[] {
   const { inc, call, tpl, rng } = env;
@@ -308,6 +321,16 @@ export function replyTo(env: DialogueEnv, intent: Intent, rawText: string): Repl
   if (intent === 'stay') {
     line(pickVariant(call, 'stay', ["Okay, I'm not going anywhere.", "I'll stay on the line. Please don't go.", 'Yes. Yes, I will.'], rng), {}, { neutral: true });
     mood.panic = -4; mood.cooperation = 5; mood.trust = 3; return r;
+  }
+  if (intent.startsWith('inst_') || (intent === 'move' && aidVerdict(tpl, inc, 'evacuate').fit !== 'neutral')) {
+    const kind = (intent === 'move' ? 'evacuate' : intent.slice(5)) as AidKind;
+    const v = aidVerdict(tpl, inc, kind);
+    r.aid = { kind, fit: v.fit };
+    if (kind === 'evacuate' || kind === 'lock') r.safety = v.fit === 'good';
+    line(v.text, v.fit === 'good' && kind === 'evacuate' ? { facts: { safe: true } } : {}, { neutral: true });
+    if (v.fit === 'good') { mood.panic = -6; mood.base = -5; mood.cooperation = 5; mood.trust = 4; }
+    else if (v.fit === 'bad') { mood.panic = 8; mood.trust = -6; mood.frustration = 4; }
+    return r;
   }
   if (intent === 'move') {
     r.safety = true;
@@ -579,4 +602,73 @@ export function spontaneous(env: DialogueEnv, kind: SpontKind, extra = ''): stri
     case 'hold': return flavor(pick(['Hello?? Are you still there?', "Please don't leave me on hold!", 'Hello? Hello?']), call, rng);
     case 'callback': return extra;
   }
+}
+
+// ── Pre-arrival instructions ─────────────────────────────────────────────────
+// Game simplification of widely published bystander guidance; not training material.
+const BLEEDING = new Set(['collision_injury', 'collision_trapped', 'collision_multi', 'workplace_injury', 'industrial_accident', 'building_collapse', 'boat_fire', 'robbery', 'domestic_disturbance', 'fireworks']);
+const KEEP_STILL = new Set(['fall_elderly', 'collision_injury', 'collision_trapped', 'collision_multi', 'sports_injury', 'workplace_injury', 'remote_medical', 'building_collapse']);
+const HIDE = new Set(['burglary_progress', 'domestic_disturbance', 'robbery', 'refuses_explain', 'strange_noise', 'fireworks', 'suspicious_activity']);
+const GET_OUT = new Set(['kitchen_fire', 'apartment_fire', 'gas_leak', 'carbon_monoxide', 'electrical_fire', 'smell_burning', 'warehouse_smoke', 'building_collapse', 'power_line_down']);
+
+export function aidVerdict(tpl: Template, inc: Incident, kind: AidKind): { fit: 'good' | 'bad' | 'neutral'; text: string } {
+  const t = inc.truth, v = inc.vars;
+  const say = (x: string) => fill(x, v);
+  const hasPatient = typeof t.injured === 'number' ? t.injured > 0 : t.conscious !== undefined;
+  const injured = typeof t.injured === 'number' && t.injured > 0;
+  const fireLike = GET_OUT.has(tpl.id) || tpl.category === 'fire' && tpl.id !== 'animal_rescue' && tpl.id !== 'elevator_rescue' && tpl.id !== 'flooded_basement';
+  switch (kind) {
+    case 'cpr':
+      if (t.breathing === false) return { fit: 'good', text: say("Okay — okay, I'm pushing. One, two, three, four... it's so hard. Please keep talking to me, don't go.") };
+      if (t.conscious === false || t.conscious === 'drifting') return { fit: 'bad', text: say("But {he}'s breathing! {He}'s making noises — are you sure I should push on {his} chest?") };
+      if (hasPatient && t.conscious !== undefined) return { fit: 'bad', text: say("CPR?! {He}'s awake, {he}'s talking to me! Why would I do that?") };
+      return { fit: 'neutral', text: "On who? Nobody here needs that." };
+    case 'recovery':
+      if (t.breathing === false) return { fit: 'bad', text: say("I've rolled {him} over but {he}'s not breathing! {He}'s not breathing at all!") };
+      if (t.conscious === false || t.conscious === 'drifting') return { fit: 'good', text: say("Okay, I've got {him} on {his} side. {He}'s breathing — kind of snoring.") };
+      return { fit: 'neutral', text: say("{He}'s awake though. Should I still?") };
+    case 'pressure':
+      if (injured && BLEEDING.has(tpl.id)) return { fit: 'good', text: say("I'm pressing a towel on it. There's so much blood... okay, okay, I think it's slowing down.") };
+      return { fit: 'neutral', text: "There isn't really any bleeding that I can see." };
+    case 'still':
+      if (KEEP_STILL.has(tpl.id) && injured) return { fit: 'good', text: say("Okay, I won't move {him}. I've put a coat over {him} to keep {him} warm.") };
+      if (fireLike) return { fit: 'bad', text: "Stay here?! It's filling up with smoke — we have to get out!" };
+      return { fit: 'neutral', text: "Okay... nobody's moving. Is that what you want?" };
+    case 'lock':
+      if (HIDE.has(tpl.id) && t.suspect !== false) return { fit: 'good', text: "Okay. I'm in the bathroom, the door's locked. I'm being really quiet." };
+      if (fireLike) return { fit: 'bad', text: `Lock myself in? There's ${typeof t.hazard === 'string' ? t.hazard : 'fire'} — shouldn't I get out instead?!` };
+      return { fit: 'neutral', text: "Lock myself in? Why — is there someone coming?" };
+    case 'evacuate':
+      if (fireLike) return { fit: 'good', text: "Okay, everyone out — I'm shutting the door behind us. We're outside now, we're on the pavement." };
+      if (tpl.category === 'medical' && hasPatient) return { fit: 'neutral', text: say("I'm not leaving {him} — we're safe here, I just need help to come.") };
+      return { fit: 'neutral', text: "Get out of where? We're not in any danger here." };
+  }
+}
+
+// ── Knowledge sheet for the AI dialogue layer ────────────────────────────────
+/** What this caller can truthfully say, topic by topic — only facts their character could know. */
+export function describeKnowledge(inc: Incident, tpl: Template, call: Call, city: City): { knows: Record<string, string>; doesNotKnow: string[]; location: string } {
+  const blind = new Set(tpl.blind ?? []);
+  const knows: Record<string, string> = {};
+  const doesNotKnow: string[] = [];
+  for (const [topic, keys] of Object.entries(TOPIC_FACTS)) {
+    if (!keys || topic === 'cause') continue;
+    const k = keys.filter((x) => x in inc.truth && !blind.has(x));
+    if (!k.length) { doesNotKnow.push(topic); continue; }
+    const opts = phrase(topic as Intent, inc.truth, inc.vars);
+    if (opts.length) knows[topic] = fill(opts[0], inc.vars) + (tpl.unsure?.some((u) => k.includes(u)) ? ' (not certain)' : '');
+  }
+  if ('cause' in inc.truth) knows.cause = fill(String(inc.truth.cause), inc.vars);
+  const n = city.nodes[inc.nodeId];
+  const p = call.locPlan;
+  const lm = p.landmark ? city.landmarks.find((l) => l.id === p.landmark) : null;
+  const w = city.nodes[p.wrong];
+  const location = {
+    exact: `You know the exact address: ${n.addrNumber} ${n.addrStreet}, near ${n.crossStreet}.`,
+    street: `You only know the street (${n.addrStreet}); you cannot see a house number. The cross street is ${n.crossStreet}.`,
+    landmark: lm ? `You don't know the street name, but you can see ${lm.name}.` : `You don't know the address.`,
+    wrong: `You believe the address is ${w.addrNumber} ${w.addrStreet}, but you are mistaken; a nearby sign actually reads ${n.addrStreet} and ${n.crossStreet}.`,
+    unknown: `You do not know where you are${lm ? `; if pressed you might notice ${lm.name}` : ''}.`,
+  }[call.profile.locationAccuracy];
+  return { knows, doesNotKnow, location };
 }

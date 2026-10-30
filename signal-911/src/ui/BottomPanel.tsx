@@ -48,7 +48,8 @@ function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngine; set
   const bump = useApp((s) => s.bump);
   const call = st.activeCallId ? st.calls[st.activeCallId] : null;
   const [text, setText] = useState('');
-  const [grp, setGrp] = useState<'Opening' | 'Location' | 'Situation' | 'Guidance'>('Opening');
+  const [grp, setGrp] = useState<'Opening' | 'Location' | 'Situation' | 'Guidance' | 'Instructions'>('Opening');
+  const aiActive = useApp((s) => s.aiActive);
   const scroll = useRef<HTMLDivElement>(null);
   const len = call?.transcript.length ?? 0;
   useEffect(() => { const el = scroll.current; if (el) el.scrollTop = el.scrollHeight; }, [len, call?.id, call?.typing]);
@@ -82,7 +83,7 @@ function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngine; set
     <div className="callgrid">
       <div className="callmain">
         <div className="callhead">
-          <div className="callid"><Icon n="phone" size={14} /> <b>{call.profile.name}</b> <span className="muted">· {call.callerId}</span> {call.isCallback && <Badge tone="amber">CALLBACK</Badge>}</div>
+          <div className="callid"><Icon n="phone" size={14} /> <b>{call.profile.name}</b> <span className="muted">· {call.callerId}</span> {call.isCallback && <Badge tone="amber">CALLBACK</Badge>}{aiActive && <span className="aibadge" title="This caller's lines are improvised by Claude">AI</span>}</div>
           <span className="mono">{fmtTime(elapsed)}</span>
           <Badge tone={stateTone}>{call.profile.emotionalState.toUpperCase()}</Badge>
           <div className="meters">
@@ -99,14 +100,14 @@ function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngine; set
           {call.typing && <div className="tline caller typing"><span className="tt mono">{gameClock(st)}</span><span className="tw">CALLER</span><span className="tx"><i className="dots"><b /><b /><b /></i></span></div>}
         </div>
         <div className="inputrow">
-          <input aria-label="Say to caller" placeholder="Type what you say… (e.g. “What is the address?”) — or use the quick questions →" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); e.stopPropagation(); }} />
+          <input aria-label="Say to caller" placeholder={aiActive ? 'Talk to the caller in your own words — they hear exactly what you type…' : 'Type what you say… (e.g. “What is the address?”) — or use the quick questions →'} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); e.stopPropagation(); }} />
           {detected && detected !== 'unknown' && <span className="detect small muted">{detected}</span>}
           <Btn kind="primary" icon="send" onClick={submit} disabled={!text.trim()}>Say</Btn>
         </div>
       </div>
       <div className="callside">
         <div className="qgroups" role="tablist">
-          {(['Opening', 'Location', 'Situation', 'Guidance'] as const).map((g) => <button key={g} role="tab" aria-selected={grp === g} className={grp === g ? 'on' : ''} onClick={() => setGrp(g)}>{g}</button>)}
+          {(['Opening', 'Location', 'Situation', 'Guidance', 'Instructions'] as const).map((g) => <button key={g} role="tab" aria-selected={grp === g} className={grp === g ? 'on' : ''} onClick={() => setGrp(g)}>{g}</button>)}
         </div>
         <div className="qchips">
           {QUICK_QUESTIONS.filter((q) => q.group === grp).map((q) => (

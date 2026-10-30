@@ -52,6 +52,18 @@ export const TEMPLATES: Template[] = [
     resolved: 'Child stabilised and transported — doctors say the quick response helped.', failed: 'The child did not receive care in time.',
   }),
   base({
+    id: 'cardiac_arrest', category: 'medical', label: 'Person collapsed', hint: 'medical_critical', cls: 'medical_critical', w: { residential: 1.3, suburb: 1.2, commercial: 1.1, dense: 1, historic: 1, campus: 0.8 },
+    intense: true, sev: [5, 5], patient: 'elder', transport: true, lethal: true,
+    truth: { injured: 1, conscious: false, breathing: false, safe: true, people: 1, cause: 'collapsed without warning and is not breathing normally' }, reported: ['conscious'],
+    requires: [R('als'), R('transport')], threat: [46, 0.85, 1.8], work: 45,
+    archetypes: [['panicked_parent', 5], ['witness', 3], ['worried_neighbor', 2], ['shopkeeper', 1]],
+    open: ["{Who} just collapsed! {He}'s on the floor and {he}'s not answering me!", "Please — someone's collapsed in front of me, {he} just dropped and {he} won't respond!", "Help me, {who} fell down and {his} lips are going grey — {he} won't wake up!"],
+    cause: ["{He} said {he} felt odd, sat down, and then just slumped over.", "No warning at all. {He} was talking and then {he} went down."],
+    say: { breathing: ["I— there's a sort of gasp every now and then, but... no, I don't think {he}'s breathing properly!", "No. No, {his} chest isn't moving. Oh god, {he}'s not breathing!"] },
+    scene: 'Patient in cardiac arrest. Taking over resuscitation.', ambience: 'indoor',
+    resolved: 'Pulse restored on scene — the patient reached hospital alive.', failed: 'The patient could not be resuscitated.',
+  }),
+  base({
     id: 'fall_elderly', category: 'medical', label: 'Elderly person fallen', hint: 'medical_general', cls: 'medical_general', w: { residential: 1.6, suburb: 1.3, historic: 1.2, dense: 0.6 },
     sev: [2, 3], patient: 'elder', selfOk: true, transport: true, lethal: false,
     truth: { injured: 1, conscious: true, breathing: true, safe: true, people: 1, cause: 'slipped and cannot get up; hip pain' }, reported: ['injured'],

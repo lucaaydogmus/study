@@ -97,6 +97,7 @@ class AudioManager {
     this.tone(1800, 0.05, { type: 'sine', gain: 0.05, bus: 'radio', at: 0.09 });
     this.noise(0.05, { gain: 0.05, bus: 'radio', bp: 2800, at: 0.14 });
   }
+  heartbeat() { this.tone(58, 0.16, { type: 'sine', gain: 0.22, bus: 'effects' }); this.tone(52, 0.2, { type: 'sine', gain: 0.18, bus: 'effects', at: 0.22 }); }
   endBlip() { this.noise(0.06, { gain: 0.08, bus: 'radio', bp: 2600 }); }
 
   startRing() {

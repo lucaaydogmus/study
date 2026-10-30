@@ -6,7 +6,8 @@ import { addressOf, fullAddress, getCity, type City } from './city';
 import { Rng } from './rng';
 import { ARCHETYPES, CLASSES, CLASS_BY_ID, FACT_LABELS, adaptReqForRank, CAP_LABEL } from './content/vocab';
 import { TEMPLATES, TEMPLATE_BY_ID, type Template } from './content/templates';
-import { aliLookup, classifyIntent, makeCallerProfile, makeLocPlan, makeVars, fill, openingLines, replyTo, spontaneous, verifyReply, QUICK_QUESTIONS, type DialogueEnv, type Intent } from './dialogue';
+import { backgroundClue } from './content/clues';
+import { aidVerdict, TOPIC_FACTS, aliLookup, classifyIntent, makeCallerProfile, makeLocPlan, makeVars, fill, openingLines, replyTo, spontaneous, verifyReply, QUICK_QUESTIONS, type DialogueEnv, type Intent } from './dialogue';
 import { EVENT_DEFS, WEATHER_SPEED, WEATHER_TRAFFIC, WEATHER_LABEL, nextWeather } from './events';
 import { numWord, UNIT_TYPE_BY_ID, makeUnit } from './fleet';
 import { edgeSpeed, findRoute, makeClosedMask, multiSourceTimes, routeTime, TIME_COMPRESS, type TrafficModel } from './routing';
@@ -18,6 +19,8 @@ import type {
 } from './types';
 
 export const DT = 0.5;
+/** topics a free-form AI answer may reveal, mapped to the fact keys the engine then records */
+export const REVEAL_KEYS = TOPIC_FACTS as Record<string, string[]>;
 export const STATE_VERSION = 1;
 /** global pacing knob: scales how quickly unattended incidents deteriorate */
 export const THREAT_SCALE = 0.55;
@@ -34,6 +37,7 @@ export interface ShiftSetup { rank: number; reputation: number; budget: number; 
 export type EngineEvent =
   | { type: 'ring'; callId: string } | { type: 'answer'; callId: string } | { type: 'hangup'; callId: string } | { type: 'caller_line'; callId: string }
   | { type: 'radio'; unitId?: string } | { type: 'dispatch'; unitId: string } | { type: 'arrive'; unitId: string } | { type: 'alert'; text: string }
+  | { type: 'ai_request'; callId: string; lineIds: number[]; intent: string; playerText: string }
   | { type: 'resolved'; incidentId: string } | { type: 'failed'; incidentId: string } | { type: 'notify'; level: string } | { type: 'ended' } | { type: 'status'; unitId: string };
 
 const emptyStats = (): ShiftStats => ({
@@ -42,6 +46,7 @@ const emptyStats = (): ShiftStats => ({
   coverageSamples: { police: [], fire: [], medical: [] }, districtCoverage: {}, serviceResponse: { police: [], fire: [], medical: [] },
   unitBusySeconds: 0, unitSeconds: 0, handedOver: 0, byCategory: {}, callbacks: 0, escalations: 0, promisesBroken: 0,
   merges: 0, wrongLinks: 0, pursuitsCaught: 0, verifiedOk: 0, cleanFalseAlarms: 0, bestStreak: 0, calmedCallers: 0, transfersOk: 0, mutualAid: 0, contractBonus: 0,
+  aidGood: 0, aidBad: 0, unitCrashes: 0, breakdowns: 0, aiLines: 0,
 });
 
 export function createShiftState(config: ShiftConfig, setup: ShiftSetup): GameState {
@@ -64,7 +69,7 @@ export function createShiftState(config: ShiftConfig, setup: ShiftSetup): GameSt
     stats: emptyStats(), upgrades: { ...setup.upgrades }, rank: setup.rank, reputation: setup.reputation, budget: setup.budget,
     nextSpawnAt: config.script ? Infinity : rng.range(5, 9), spawnedScripted: 0, scriptIndex: 0,
     selected: { kind: null, id: null }, flags: {}, dispatcherLoad: 0, assistantFreeAt: 0, lastCoverage: 0, uniqueNameCounter: 0, endingAt: null,
-    streak: 0, fx: [], fxCounter: 0, closedHospitals: [],
+    streak: 0, fx: [], fxCounter: 0, closedHospitals: [], lineCounter: 0,
   };
   // persistent consequences: stations that are damaged keep their units out of service
   for (const sid of Object.keys(setup.city.damagedStations)) {
@@ -167,7 +172,9 @@ export class GameEngine {
   constructor(state: GameState) {
     this.state = state;
     // tolerate snapshots from older versions
-    state.fx ??= []; state.streak ??= 0; state.fxCounter ??= 0; state.closedHospitals ??= [];
+    state.fx ??= []; state.streak ??= 0; state.fxCounter ??= 0; state.closedHospitals ??= []; state.lineCounter ??= 0;
+    // lines held for AI voicing cannot survive a reload: release their scripted text
+    for (const c of Object.values(state.calls)) for (const l of c.pending) if (l.hold) { l.hold = false; l.at = state.time + 0.5; }
     const base = emptyStats() as unknown as Record<string, unknown>;
     for (const k of Object.keys(base)) if ((state.stats as unknown as Record<string, unknown>)[k] === undefined) (state.stats as unknown as Record<string, unknown>)[k] = base[k];
     for (const inc of Object.values(state.incidents)) { inc.dupPlan ??= []; inc.duplicateOf ??= null; inc.pursuit ??= false; inc.mover ??= null; inc.mergedInto ??= null; }
@@ -285,6 +292,7 @@ export class GameEngine {
     this.updatePersonnel();
     this.updateWorkload();
     this.spawnDuplicates();
+    if (!st.config.script) this.breakdowns();
   }
 
   // ── Weather, events, traffic ──────────────────────────────────────────────
@@ -634,7 +642,7 @@ export class GameEngine {
       if (call.state === 'ended' || call.state === 'missed') continue;
       // deliver pending lines (only on active calls)
       if (call.state === 'active') {
-        while (call.pending.length && call.pending[0].at <= st.time) {
+        while (call.pending.length && !call.pending[0].hold && call.pending[0].at <= st.time) {
           const line = call.pending.shift()!;
           this.deliver(call, line);
           if (call.state !== 'active') break;
@@ -767,7 +775,10 @@ export class GameEngine {
         for (const p of call.pending) if (p.at < 0) p.at = st.time + 1.4;
       } else {
         const lines = openingLines(this.env(call));
+        const clue = backgroundClue(inc.templateId, st.weather, inc.truth);
+        if (clue) this.addTranscript(call, 'SYSTEM', clue);
         lines.forEach((l, i) => call.pending.push({ ...l, at: st.time + 1.2 + i * 1.5 }));
+        if (this.aiMode) this.holdForAi(call, call.pending.filter((l) => !l.hold && l.at > st.time), 'opening', '');
       }
     } else {
       this.addTranscript(call, 'SYSTEM', 'Call resumed');
@@ -808,15 +819,119 @@ export class GameEngine {
     if (r.mood.trust) m.trust = Math.max(0, Math.min(100, m.trust + r.mood.trust));
     if (r.promise) { call.promises.push('help'); call.promiseAt = st.time; }
     if (r.safety && ['fire', 'police', 'unusual'].includes(inc.category)) inc.safetyAdvised = true;
+    if (r.aid) this.applyAid(inc, call, r.aid);
+    if (inc.aid?.kind === 'cpr' && ['calm', 'stay', 'inst_cpr', 'promise'].includes(intent)) inc.aid.encouragedAt = st.time;
     // schedule reply lines with a natural pace
     const arch = ARCHETYPES[call.profile.archetype];
-    let at = Math.max(st.time, call.pending.length ? call.pending[call.pending.length - 1].at : st.time);
+    let at = Math.max(st.time, ...call.pending.filter((p) => !p.hold).map((p) => p.at));
+    const added: import('./types').PendingLine[] = [];
     for (const l of r.lines) {
       const len = l.text.length;
       const pace = (arch.slow ? 1.5 : 1) * (m.panic > 70 ? 0.7 : 1) * (call.profile.archetype === 'terse' ? 1.2 : 1);
       at += Math.min(4.5, (0.9 + len * 0.028) * pace);
-      call.pending.push({ ...l, at });
+      const line = { ...l, at };
+      call.pending.push(line);
+      added.push(line);
     }
+    if (this.aiMode && added.length && !r.hangup) this.holdForAi(call, added, intent, text);
+  }
+
+  // ── AI voicing hooks (the dialogue model rewrites lines; the engine stays authoritative) ──
+  get aiMode(): boolean { return !!this.state.flags.ai; }
+  private holdForAi(call: Call, lines: import('./types').PendingLine[], intent: string, playerText: string) {
+    const st = this.state;
+    const ids: number[] = [];
+    for (const l of lines) { l.id = ++st.lineCounter; l.hold = true; ids.push(l.id); }
+    this.emit({ type: 'ai_request', callId: call.id, lineIds: ids, intent, playerText });
+  }
+  /** apply an AI-written reply to held lines. Facts, locations and twists come only from the engine's own lines or validated reveal keys. */
+  voiceLines(callId: string, lineIds: number[], text: string, extra: { calm?: number; coop?: number; reveal?: string[] } = {}): boolean {
+    const st = this.state;
+    const call = st.calls[callId];
+    if (!call || call.state === 'ended' || call.state === 'missed') return false;
+    const held = call.pending.filter((l) => l.id !== undefined && lineIds.includes(l.id) && l.hold);
+    if (!held.length) return false;
+    const first = held[0];
+    for (const l of held.slice(1)) {
+      first.facts = { ...(first.facts ?? {}), ...(l.facts ?? {}) };
+      first.unsure = [...(first.unsure ?? []), ...(l.unsure ?? [])];
+      first.heard = [...(first.heard ?? []), ...(l.heard ?? [])];
+      first.twist = first.twist || l.twist; first.hangup = first.hangup || l.hangup;
+    }
+    call.pending = call.pending.filter((l) => !held.includes(l) || l === first);
+    const clean = text.replace(/\s+/g, ' ').trim().slice(0, 420);
+    if (clean) first.text = clean;
+    // validated reveals for free-form questions
+    const inc = st.incidents[call.incidentId];
+    for (const key of extra.reveal ?? []) {
+      if (key === 'address' || key === 'landmark') {
+        const r = replyTo(this.env(call), key as Intent, '');
+        for (const l of r.lines) { if (l.heard) first.heard = [...(first.heard ?? []), ...l.heard]; if (l.facts) first.facts = { ...(first.facts ?? {}), ...l.facts }; }
+        call.asked[key] = (call.asked[key] ?? 0) + 1;
+        continue;
+      }
+      const allowed = REVEAL_KEYS[key];
+      if (!allowed) continue;
+      const tpl = this.instanceTemplate(inc);
+      for (const fk of allowed) if (fk in inc.truth && !(tpl.blind ?? []).includes(fk)) first.facts = { ...(first.facts ?? {}), [fk]: inc.truth[fk] };
+      if (inc.twist && !inc.twistRevealed && inc.twist.topics.includes(key)) {
+        call.pending.push({ at: st.time + 2.5, text: fill(inc.twist.say[0], inc.vars), facts: inc.twist.facts, twist: true });
+      }
+    }
+    first.hold = false;
+    first.at = Math.max(st.time + 0.3, first.at - 1e9 > 0 ? st.time + 0.3 : st.time + 0.3);
+    const m = call.mood;
+    const calm = Math.max(-3, Math.min(3, extra.calm ?? 0)), coop = Math.max(-3, Math.min(3, extra.coop ?? 0));
+    m.panic = Math.max(0, Math.min(100, m.panic - calm * 4)); m.base = Math.max(0, Math.min(100, m.base - calm * 3));
+    m.cooperation = Math.max(0, Math.min(100, m.cooperation + coop * 4)); m.frustration = Math.max(0, Math.min(100, m.frustration - calm * 2));
+    st.stats.aiLines++;
+    return true;
+  }
+  /** give up on AI voicing: deliver the scripted lines */
+  releaseLines(callId: string, lineIds: number[]) {
+    const st = this.state;
+    const call = st.calls[callId];
+    if (!call) return;
+    let at = st.time + 0.3;
+    for (const l of call.pending) if (l.id !== undefined && lineIds.includes(l.id) && l.hold) { l.hold = false; l.at = at; at += 1.4; }
+  }
+  /** flavour-only persona details from the procedural persona generator */
+  applyPersona(callId: string, persona: NonNullable<CallerProfile['persona']> & { name?: string; age?: number }) {
+    const call = this.state.calls[callId];
+    if (!call || call.isCallback) return;
+    const p = call.profile;
+    if (persona.name && /^[A-Za-z][A-Za-z .'-]{1,40}$/.test(persona.name)) { p.name = persona.name; const inc = this.state.incidents[call.incidentId]; if (inc && inc.callerProfile.id === p.id) { inc.callerName = p.name; inc.callerProfile.name = p.name; } }
+    const clip = (x: unknown, n: number) => String(x ?? '').slice(0, n);
+    p.persona = { occupation: clip(persona.occupation, 60), quirk: clip(persona.quirk, 120), background: clip(persona.background, 200), catchphrase: clip(persona.catchphrase, 80), voice: clip(persona.voice, 120) };
+  }
+
+  // ── Pre-arrival instructions ──────────────────────────────────────────────
+  private applyAid(inc: Incident, call: Call, aid: { kind: string; fit: 'good' | 'bad' | 'neutral' }) {
+    const st = this.state;
+    if (aid.fit === 'neutral') return;
+    const prev = inc.aid;
+    inc.aid = { kind: aid.kind, fit: aid.fit, at: st.time, encouragedAt: st.time };
+    if (prev && prev.kind === aid.kind && prev.fit === aid.fit) return;
+    const label: Record<string, string> = { cpr: 'CPR in progress', recovery: 'Recovery position', pressure: 'Pressure on wound', still: 'Patient kept still', lock: 'Caller hiding', evacuate: 'Evacuated' };
+    if (aid.fit === 'good') { st.stats.aidGood++; this.addFact(inc, 'aid', label[aid.kind] ?? aid.kind, 'confirmed', 'caller'); this.fx('good', inc.reportedNode ?? inc.nodeId, label[aid.kind] ?? 'First aid'); }
+    else { st.stats.aidBad++; this.fx('bad', inc.reportedNode ?? inc.nodeId, 'Wrong instruction'); }
+    void call;
+  }
+  /** how instructions given over the phone change how fast the incident deteriorates */
+  aidFactor(inc: Incident): number {
+    const a = inc.aid;
+    if (!a) return 1;
+    if (a.fit === 'bad') return a.kind === 'cpr' ? 1.15 : 1.2;
+    const base: Record<string, number> = { cpr: 0.4, recovery: 0.7, pressure: 0.7, still: 0.85, lock: 0.75, evacuate: 0.85 };
+    let f = base[a.kind] ?? 1;
+    if (a.kind === 'cpr') {
+      // a caller doing CPR tires quickly without coaching
+      const call = this.callFor(inc);
+      const coached = call && call.state === 'active';
+      const since = this.state.time - a.encouragedAt;
+      f = Math.min(0.9, 0.4 + Math.max(0, since - (coached ? 60 : 20)) / (coached ? 400 : 160));
+    }
+    return f;
   }
 
   say(callId: string, text: string) { this.ask(callId, { text }); }
@@ -1060,7 +1175,7 @@ export class GameEngine {
     return { ok: true };
   }
 
-  dispatch(unitId: string, incId: string): { ok: boolean; reason?: string } {
+  dispatch(unitId: string, incId: string, opts: { code?: 2 | 3 } = {}): { ok: boolean; reason?: string } {
     const st = this.state;
     const u = st.units[unitId], inc = st.incidents[incId];
     if (!u || !inc) return { ok: false, reason: 'Unknown' };
@@ -1070,6 +1185,15 @@ export class GameEngine {
     if (u.assignedIncidentId && u.assignedIncidentId !== incId) this.detach(u, true);
     u.assignedIncidentId = incId;
     u.status = 'DISPATCHED';
+    u.code = opts.code ?? 3;
+    u.crashAt = null;
+    if (u.code === 3 && !u.temp) {
+      // running with lights and sirens is faster but not risk-free
+      const wx = { clear: 1, heat: 1, rain: 1.7, fog: 1.8, snow: 2.6, storm: 2.3 }[st.weather];
+      const crew = this.crewOf(u);
+      const fat = crew.length ? crew.reduce((s, p) => s + p.fatigue, 0) / crew.length : 0;
+      if (this.rng.chance(0.012 * wx * (1 + fat / 120))) u.crashAt = st.time + u.timer + this.rng.range(8, 40);
+    }
     u.timer = this.mobilizationTime(u);
     u.deployments++;
     u.note = undefined;
@@ -1143,7 +1267,7 @@ export class GameEngine {
     const startNode = u.route.length ? u.route[0] : u.prevNode;
     const startPos = u.route.length ? { x: this.city.nodes[startNode].x, y: this.city.nodes[startNode].y } : { x: u.x, y: u.y };
     void startPos;
-    const res = findRoute(this.city, startNode, destNode, this.tm(siren), this.unitSpeedFactor(u));
+    const res = findRoute(this.city, startNode, destNode, this.tm(siren && this.sirenFor(u) || u.status === 'DISPATCHED' && u.code !== 2), this.unitSpeedFactor(u));
     u.destNode = destNode;
     if (!res) { u.route = []; u.eta = null; return false; }
     u.route = u.route.length ? [startNode, ...res.path] : res.path;
@@ -1228,7 +1352,8 @@ export class GameEngine {
               if (u.route.length) this.advance(u, dt); else { u.speed = 0; u.note = 'Searching area'; }
               break;
             }
-            if (inc.reportedNode !== null && u.destNode !== inc.reportedNode) this.routeUnit(u, inc.reportedNode, true);
+            if (inc.reportedNode !== null && u.destNode !== inc.reportedNode) this.routeUnit(u, inc.reportedNode, this.sirenFor(u));
+            if (u.crashAt && st.time >= u.crashAt && u.route.length > 2) this.unitCrash(u, inc);
           }
           this.advance(u, dt);
           break;
@@ -1257,10 +1382,44 @@ export class GameEngine {
     }
   }
 
+  sirenFor(u: Unit): boolean { return u.status === 'TRANSPORTING' || ((u.status === 'EN_ROUTE' || u.status === 'DISPATCHED') && u.code !== 2); }
+
+  private unitCrash(u: Unit, inc: Incident) {
+    const st = this.state;
+    u.crashAt = null;
+    u.stoppedUntil = st.time + 35;
+    u.note = 'Minor collision en route';
+    st.stats.unitCrashes++;
+    st.stats.costs += 2000; st.budget -= 2000;
+    for (const p of this.crewOf(u)) p.morale = Math.max(10, p.morale - 8);
+    this.radio(u.spoken, `Dispatch, ${u.spoken}. We've been involved in a collision at an intersection. Crew okay, vehicle damaged — we're delayed.`, 'alert', u.id, inc.id);
+    this.notify(`${u.callsign} crashed en route (Code 3) — delayed ~35 s`, 'bad', inc.id);
+    this.fx('bad', u.prevNode, 'Unit collision');
+    this.emit({ type: 'alert', text: 'Unit collision' });
+  }
+
+  private breakdowns() {
+    const st = this.state;
+    const pool = Object.values(st.units).filter((u) => u.status === 'AVAILABLE' && !u.temp);
+    if (!pool.length || st.time < 60) return;
+    for (const u of pool) {
+      const crew = this.crewOf(u);
+      const rel = crew.length ? crew.reduce((s, p) => s + p.reliability, 0) / crew.length : 70;
+      if (this.rng.chance((1.6 - rel / 100) / (900 * Math.max(6, pool.length)))) {
+        u.status = 'OUT_OF_SERVICE'; u.note = 'Mechanical fault'; u.timer = 150 + this.rng.range(0, 90);
+        st.stats.breakdowns++;
+        this.radio(u.spoken, `Dispatch, ${u.spoken}. We have a mechanical fault — out of service until the mechanic clears us.`, 'unit', u.id);
+        this.notify(`${u.callsign} is out of service — mechanical fault`, 'warn');
+        return;
+      }
+    }
+  }
+
   private advance(u: Unit, dt: number) {
     const city = this.city;
     let remaining = dt;
-    const tm = this.tm(u.status !== 'RETURNING');
+    if (u.stoppedUntil && this.state.time < u.stoppedUntil) { u.speed = 0; return; }
+    const tm = this.tm(this.sirenFor(u));
     const vf = this.unitSpeedFactor(u);
     let guard = 0;
     while (remaining > 1e-6 && u.route.length && guard++ < 20) {
@@ -1387,7 +1546,7 @@ export class GameEngine {
       const eff = usedUnits.length ? usedUnits.reduce((s, u) => s + this.unitEffectiveness(u), 0) / usedUnits.length : 1;
       const f = cov.f;
       // threat grows without adequate response, subsides with it
-      inc.threat += inc.growth * (1 - f) * dt - inc.clear * eff * f * f * 0.35 * dt;
+      inc.threat += inc.growth * this.aidFactor(inc) * (1 - f) * dt - inc.clear * eff * f * f * 0.35 * dt;
       inc.threat = Math.max(0, inc.threat);
       if (f > 0 && here.length) inc.workProgress += dt * eff * f * f;
       if (inc.status === 'ESCALATING' && st.time - (inc.escalatedAt ?? 0) > 10) inc.status = here.length ? 'ON_SCENE' : inc.assignedUnits.length ? 'UNITS_EN_ROUTE' : 'AWAITING_DISPATCH';
@@ -1825,6 +1984,76 @@ export class GameEngine {
     }
     this.radio(u.spoken, msg, 'unit', u.id, inc?.id);
     return msg;
+  }
+
+  // ── Dispatch planning helpers (UI) ────────────────────────────────────────
+  private impactCache = new Map<string, { t: number; v: { service: Service; before: number; after: number; exposed: string | null } }>();
+  /** how much of the active city loses its sub-100 s cover for this service if the unit leaves */
+  coverageImpact(unitId: string): { service: Service; before: number; after: number; exposed: string | null } | null {
+    const st = this.state;
+    const u = st.units[unitId];
+    if (!u || !['AVAILABLE', 'RETURNING'].includes(u.status)) return null;
+    const key = `${unitId}:${Math.floor(st.time / 3)}`;
+    const c = this.impactCache.get(unitId);
+    if (c && Math.floor(c.t / 3) === Math.floor(st.time / 3)) return c.v;
+    void key;
+    const thr = 100;
+    const nodes = st.config.districts.flatMap((d) => this.city.nodesInDistrict[d]);
+    const before = this.coverageTimes(u.service);
+    const sources: Array<{ node: number; offset: number }> = [];
+    for (const o of Object.values(st.units)) {
+      if (o.id === u.id || o.service !== u.service || o.temp) continue;
+      if (o.status === 'AVAILABLE') sources.push({ node: o.prevNode, offset: this.mobilizationTime(o) });
+      else if (o.status === 'RETURNING' && o.destNode !== null && !o.assignedIncidentId) sources.push({ node: o.destNode, offset: this.mobilizationTime(o) + Math.max(0, o.eta ?? 0) });
+    }
+    const after = sources.length ? multiSourceTimes(this.city, sources, this.tm(true), 1) : new Float32Array(this.city.nodes.length).fill(Infinity);
+    const frac = (t: Float32Array) => nodes.filter((n) => t[n] <= thr).length / Math.max(1, nodes.length);
+    let exposed: string | null = null, worst = 0;
+    for (const d of st.config.districts) {
+      const ids = this.city.nodesInDistrict[d];
+      const drop = (ids.filter((n) => before[n] <= thr).length - ids.filter((n) => after[n] <= thr).length) / ids.length;
+      if (drop > worst) { worst = drop; exposed = drop > 0.35 ? this.city.districtById[d].name : null; }
+    }
+    const v = { service: u.service, before: frac(before), after: frac(after), exposed };
+    this.impactCache.set(unitId, { t: st.time, v });
+    return v;
+  }
+  private previewCache = new Map<string, { t: number; path: number[] }>();
+  previewRoute(unitId: string, nodeId: number): number[] {
+    const u = this.state.units[unitId];
+    if (!u) return [];
+    const key = `${unitId}:${nodeId}`;
+    const c = this.previewCache.get(key);
+    if (c && this.state.time - c.t < 3) return c.path;
+    const start = u.route.length && ['EN_ROUTE', 'RETURNING', 'DISPATCHED'].includes(u.status) ? u.route[0] : u.prevNode;
+    const r = findRoute(this.city, start, nodeId, this.tm(true), this.unitSpeedFactor(u));
+    const path = r ? [start, ...r.path] : [];
+    this.previewCache.set(key, { t: this.state.time, path });
+    return path;
+  }
+  /** nearest free units that together cover the suggested response */
+  buildPlan(incId: string, reqs: Req[]): { units: Array<{ unit: Unit; covers: Capability[]; eta: number }>; uncovered: Capability[] } {
+    const st = this.state;
+    const inc = st.incidents[incId];
+    const out: Array<{ unit: Unit; covers: Capability[]; eta: number }> = [];
+    const uncovered: Capability[] = [];
+    if (!inc || inc.reportedNode === null) return { units: out, uncovered };
+    const assigned = inc.assignedUnits.map((id) => st.units[id]).filter(Boolean);
+    const chosen = new Set<string>();
+    for (const r of reqs) {
+      let have = assigned.filter((u) => u.capabilities.includes(r.cap)).length + out.filter((x) => x.unit.capabilities.includes(r.cap)).length;
+      for (const x of out) if (x.unit.capabilities.includes(r.cap) && !x.covers.includes(r.cap)) x.covers.push(r.cap);
+      while (have < r.n) {
+        const cands = Object.values(st.units).filter((u) => !chosen.has(u.id) && !inc.assignedUnits.includes(u.id) && u.capabilities.includes(r.cap) && (u.status === 'AVAILABLE' || (u.status === 'RETURNING' && !u.assignedIncidentId)) && checkCrew(st, u))
+          .map((u) => ({ u, eta: this.estimate(u.id, inc.reportedNode!)?.eta ?? Infinity }))
+          .sort((a, b) => a.eta - b.eta || a.u.capabilities.length - b.u.capabilities.length);
+        if (!cands.length || !isFinite(cands[0].eta)) { uncovered.push(r.cap); break; }
+        chosen.add(cands[0].u.id);
+        out.push({ unit: cands[0].u, covers: [r.cap], eta: cands[0].eta });
+        have++;
+      }
+    }
+    return { units: out, uncovered };
   }
 
   // ── Coverage ──────────────────────────────────────────────────────────────

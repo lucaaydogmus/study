@@ -67,6 +67,7 @@ export interface Unit {
   lastRadio: number;
   deployments: number;
   note?: string; temp?: boolean;
+  code?: 2 | 3; crashAt?: number | null; stoppedUntil?: number;
 }
 
 export interface Station {
@@ -83,6 +84,7 @@ export interface CallerProfile {
   locationAccuracy: 'exact' | 'street' | 'landmark' | 'wrong' | 'unknown';
   callerIdType: 'mobile' | 'landline' | 'voip' | 'payphone';
   ambience: string; phone: string;
+  persona?: { occupation: string; quirk: string; background: string; catchphrase: string; voice: string };
 }
 
 export interface TranscriptLine { t: number; clock: string; who: 'CALLER' | 'DISPATCHER' | 'SYSTEM'; text: string }
@@ -96,6 +98,8 @@ export interface Mood { panic: number; base: number; cooperation: number; frustr
 
 export interface PendingLine {
   at: number; text: string; facts?: Record<string, FactVal>; unsure?: string[]; heard?: Omit<HeardLocation, 'id' | 'at'>[];
+  /** AI voicing: line ids are held until the dialogue model rewrites them (or a timeout releases the scripted text) */
+  id?: number; hold?: boolean;
   twist?: boolean; hangup?: boolean;
 }
 
@@ -148,6 +152,7 @@ export interface Incident {
   firstDispatchAt: number | null; timelineBlock: boolean; callerProfile: CallerProfile;
   vars: Record<string, string>; blockedEdge: number | null; sceneSeen: boolean; twist: import('./content/templates').Twist | null; sceneAt: number | null; escalatedAt: number | null; mutualAid: number;
   duplicateOf: string | null; dupPlan: number[]; pursuit: boolean; mover: Mover | null; mergedInto: string | null;
+  aid?: { kind: string; fit: 'good' | 'bad' | 'neutral'; at: number; encouragedAt: number } | null;
 }
 
 // ── City events / weather / config ──────────────────────────────────────────
@@ -202,6 +207,7 @@ export interface ShiftStats {
   serviceResponse: Record<Service, number[]>; unitBusySeconds: number; unitSeconds: number; handedOver: number;
   byCategory: Record<string, { n: number; ok: number }>; callbacks: number; escalations: number; promisesBroken: number;
   merges: number; wrongLinks: number; pursuitsCaught: number; verifiedOk: number; cleanFalseAlarms: number; bestStreak: number; calmedCallers: number; transfersOk: number; mutualAid: number; contractBonus: number;
+  aidGood: number; aidBad: number; unitCrashes: number; breakdowns: number; aiLines: number;
 }
 
 export interface GameState {
@@ -219,7 +225,7 @@ export interface GameState {
   flags: Record<string, boolean>; dispatcherLoad: number;
   assistantFreeAt: number; lastCoverage: number; uniqueNameCounter: number; endingAt: number | null;
   scoreBreakdown?: ShiftScore;
-  streak: number; fx: Fx[]; fxCounter: number; closedHospitals: number[];
+  streak: number; fx: Fx[]; fxCounter: number; closedHospitals: number[]; lineCounter: number;
 }
 
 export interface ShiftScore {

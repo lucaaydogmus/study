@@ -8,8 +8,9 @@ import { audio } from '../audio/audioManager';
 import { Badge, Bar, Btn, Icon, Section, fmtEta, fmtTime, SERVICE_ICON } from './common';
 import { useApp } from '../store';
 import { averageOf } from '../sim/scoring';
+import { DispatchConsole, type Preview } from './DispatchConsole';
 
-export interface PanelCtx { engine: GameEngine; pickLocation: (incId: string | null) => void; pickingFor: string | null; repositioning: string | null; startReposition: (unitId: string | null) => void; focus: (x: number, y: number, zoom?: number) => void; openCall: () => void; setBottom: (t: string) => void }
+export interface PanelCtx { setPreview: (p: Preview) => void; engine: GameEngine; pickLocation: (incId: string | null) => void; pickingFor: string | null; repositioning: string | null; startReposition: (unitId: string | null) => void; focus: (x: number, y: number, zoom?: number) => void; openCall: () => void; setBottom: (t: string) => void }
 
 const STATUS_TONE: Record<string, 'neutral' | 'red' | 'amber' | 'green' | 'blue'> = {
   AVAILABLE: 'green', DISPATCHED: 'blue', EN_ROUTE: 'blue', ON_SCENE: 'amber', BUSY: 'neutral', TRANSPORTING: 'blue', RETURNING: 'neutral', OUT_OF_SERVICE: 'red',
@@ -156,11 +157,10 @@ function UnitPanel({ engine, unit, startReposition, repositioning, focus, setBot
   );
 }
 
-function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall }: PanelCtx & { inc: Incident }) {
+function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall, setPreview }: PanelCtx & { inc: Incident }) {
   const st = engine.state, city = engine.city;
   const bump = useApp((s) => s.bump);
   const [q, setQ] = useState('');
-  const [svc, setSvc] = useState<Service | 'all'>('all');
   const call = Object.values(st.calls).filter((c) => c.incidentId === inc.id).sort((a, b) => b.ringStart - a.ringStart)[0];
   const liveCall = call && (call.state === 'active') ? call : null;
   const heard = useMemo(() => (call ? call.heard : []), [call, st.time > 0 ? call?.heard.length : 0]);
@@ -174,17 +174,8 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall 
   const cov = matchCoverage(rec, assigned);
   const coveredCaps = new Set<Capability>();
   for (const r of rec) { const have = assigned.filter((u) => u.capabilities.includes(r.cap)).length; if (have >= r.n) coveredCaps.add(r.cap); }
-  const candidates = useMemo(() => {
-    if (inc.reportedNode === null || done) return [];
-    return Object.values(st.units).filter((u) => u.status !== 'OUT_OF_SERVICE' && !(u.assignedIncidentId === inc.id && u.status !== 'RETURNING') && (svc === 'all' || u.service === svc))
-      .map((u) => ({ u, est: engine.estimate(u.id, inc.reportedNode!) }))
-      .sort((a, b) => (a.est?.eta ?? 9999) - (b.est?.eta ?? 9999));
-  }, [inc.reportedNode, done, svc, Math.floor(st.time / 2), assigned.length]);
   const missing = inc.sceneSeen ? matchCoverage(inc.requires, assigned.concat(here)).missing : [];
-  const recommendedSvcs = new Set<Service>();
-  for (const r of rec) { const def = Object.values(UNIT_TYPE_BY_ID).find((d) => d.caps.includes(r.cap)); if (def) recommendedSvcs.add(def.service); }
   const dupCands = done ? [] : engine.duplicateCandidates(inc.id);
-  const dispatch = (u: Unit) => { const r = engine.dispatch(u.id, inc.id); if (!r.ok) useApp.getState().showToast(r.reason ?? 'Cannot dispatch', 'warn'); else bump(); };
 
   return (
     <div className="panel-scroll">
@@ -263,25 +254,7 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall 
         {cls === 'no_response' && !done && <Btn size="sm" kind="success" icon="check" onClick={() => { engine.dismissIncident(inc.id); bump(); }}>Close — no emergency</Btn>}
       </Section>
 
-      {!done && (
-        <Section title="Dispatch" id="dispatch" right={<div className="seg">{(['all', 'police', 'fire', 'medical'] as const).map((s) => <button key={s} className={svc === s ? 'on' : ''} onClick={() => setSvc(s)} aria-pressed={svc === s}>{s === 'all' ? 'ALL' : SERVICE_META[s].short}</button>)}</div>}>
-          {inc.reportedNode === null && <p className="muted small">Set the incident location to see available units.</p>}
-          {candidates.map(({ u, est }) => {
-            const can = engine.canDispatch(u, inc);
-            const recommended = rec.some((r) => u.capabilities.includes(r.cap)) && recommendedSvcs.has(u.service);
-            return (
-              <div className={`cu ${can.ok ? '' : 'off'}`} key={u.id}>
-                <div className="cu-top"><span className="mono b">{u.callsign}</span>{recommended && <span className="rec" title="Matches the suggested response">★</span>}<span className="muted small">{u.typeLabel}</span><div className="grow" /><StatusBadge s={u.status} /></div>
-                <div className="cu-mid small">
-                  <span>{est ? `${est.dist.toFixed(1)} km` : '—'}</span><span className="mono b">ETA {est ? fmtEta(est.eta) : '—'}</span><span>Crew {engine.crewOf(u).length}</span><span className="muted">{u.equipment}</span>
-                </div>
-                {u.assignedIncidentId && u.assignedIncidentId !== inc.id && st.incidents[u.assignedIncidentId] && <div className="small warn">Currently assigned: {st.incidents[u.assignedIncidentId].label}</div>}
-                <Btn size="sm" kind={recommended ? 'primary' : 'default'} disabled={!can.ok} title={can.reason} onClick={() => dispatch(u)}>{can.ok ? (u.assignedIncidentId && u.assignedIncidentId !== inc.id ? 'REDIRECT' : 'DISPATCH') : (can.reason ?? 'Unavailable')}</Btn>
-              </div>
-            );
-          })}
-        </Section>
-      )}
+      {!done && !inc.truth.outside && <DispatchConsole engine={engine} inc={inc} rec={rec} setPreview={setPreview} />}
 
       <Section title={`Assigned units (${assigned.length})`} id="assigned" right={inc.outcome ? <Badge tone={inc.outcome === 'success' || inc.outcome === 'false_alarm' ? 'green' : 'red'}>{inc.outcome.replace('_', ' ').toUpperCase()}</Badge> : null}>
         {!assigned.length && <p className="muted small">No units assigned.</p>}

@@ -20,11 +20,12 @@ const P: Record<string, string> = {
   coins: 'M12 4c4.4 0 8 1.1 8 2.5S16.4 9 12 9 4 7.9 4 6.5 7.6 4 12 4zM4 6.5v5C4 12.9 7.6 14 12 14s8-1.1 8-2.5v-5M4 11.5v5C4 17.9 7.6 19 12 19s8-1.1 8-2.5v-5',
   rain: 'M7 16a5 5 0 110-10 6 6 0 0111 2 4 4 0 010 8zM8 19l-1 2M12 19l-1 2M16 19l-1 2', sun: 'M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2',
   cloud: 'M7 18a5 5 0 110-10 6 6 0 0111 2 4 4 0 010 8z', snow: 'M12 3v18M4 7.5l16 9M20 7.5l-16 9', fog: 'M4 8h16M3 12h18M5 16h14', bolt: 'M13 2L5 14h6l-1 8 8-12h-6z', moon: 'M20 14A8 8 0 019.5 3.5 8 8 0 1020 14z',
+  heart: 'M12 21s-7.5-4.6-9.6-9.3C.9 7.9 3.4 4 7 4c2 0 3.5 1.1 5 3 1.5-1.9 3-3 5-3 3.6 0 6.1 3.9 4.6 7.7C19.5 16.4 12 21 12 21z',
   help: 'M12 4a8 8 0 100 16 8 8 0 000-16zM9.5 9.5a2.5 2.5 0 115 .2c0 1.8-2.5 2-2.5 4M12 17v.5', save: 'M5 3h12l4 4v14H5zM8 3v6h8V3M8 21v-7h8v7', trash: 'M5 7h14M9 7V4h6v3M7 7l1 14h8l1-14', plus: 'M12 5v14M5 12h14', car: 'M4 14l2-6h12l2 6v4h-3v-2H7v2H4zM7 14h.01M17 14h.01', hosp: 'M5 4h14v16H5zM12 8v8M8 12h8',
   trophy: 'M7 4h10v5a5 5 0 01-10 0zM7 6H4v2a3 3 0 003 3M17 6h3v2a3 3 0 01-3 3M12 14v4M8 20h8', book: 'M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM8 3v16', info: 'M12 4a8 8 0 100 16 8 8 0 000-16zM12 11v5M12 8v.5',
 };
 export function Icon({ n, size = 16, stroke = true, className }: { n: keyof typeof P | string; size?: number; stroke?: boolean; className?: string }) {
-  const filled = ['pause', 'play', 'ff', 'fff', 'cross', 'flame', 'shield', 'phone', 'gear', 'star', 'bolt'].includes(n);
+  const filled = ['pause', 'play', 'ff', 'fff', 'cross', 'flame', 'shield', 'phone', 'gear', 'star', 'bolt', 'heart'].includes(n);
   return (
     <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill={filled && stroke ? 'currentColor' : 'none'} stroke={filled ? 'none' : 'currentColor'} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d={P[n] ?? P.info} />
