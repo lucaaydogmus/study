@@ -26,6 +26,7 @@ describe('pre-arrival instructions', () => {
   });
   it('the wrong instruction is noticed and makes things worse', () => {
     const { e, call, inc } = answered('fall_elderly', 'worried_neighbor');
+    if (inc.thirdParty) inc.thirdParty.near = true; // a neighbour who is already inside with the patient
     e.ask(call.id, { intent: 'inst_cpr' });
     run(e, 6);
     expect(inc.aid?.fit).toBe('bad');
