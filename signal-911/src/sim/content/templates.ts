@@ -33,6 +33,7 @@ export interface Template {
   /** seconds until something unstoppable happens (an aircraft landing); responders must be in place first */ deadline?: number;
   pursuitSpeed?: number; /** extra callers that will ring about the same event */ dupes?: number;
   /** a major incident: rare in random rotation and never two at once */ major?: boolean;
+  /** news ticker line when a major incident breaks */ headline?: string;
   /** lines for deadline incidents: countdown ({t}), radio/notify outcome and the caller's reaction */
   deadlineSay?: { count: string; moment: string; good: string; bad: string; callerGood: string; callerBad: string };
   /** chance that the real situation differs; build() mutates a fresh copy */
@@ -623,10 +624,134 @@ export const TEMPLATES: Template[] = [
     build: (rnd, t) => rnd() < 0.25 ? { ...t, truth: { ...t.truth, false_alarm: false, weapon: 'handgun', suspect: true, injured: 1, suspect_desc: 'two men running toward the river' }, requires: [R('patrol', 2), R('als'), R('transport')], twist: { ...t.twist!, say: ["Someone's screaming — there's a man on the ground by the bins. He's bleeding. Those weren't fireworks."], facts: { injured: 1, weapon: true }, requires: null, hint: 'crime_progress', label: 'Shooting', severity: 4, scene: 'Gunshot victim on scene, suspects fled. Securing.' }, threat: [28, 0.42, 1.4], lethal: true, transport: true, intense: true } : t,
   }),
 
+  // ───────────────────────── PUBLIC ORDER & SPECIAL THREATS ─────────────────────────
+  base({
+    id: 'protest_march', category: 'police', label: 'Protest blocking roads', hint: 'disturbance', cls: 'disturbance', w: { commercial: 0.35, historic: 0.3, campus: 0.4, highrise: 0.3 },
+    sev: [3, 3], minRank: 2, closesRoad: true, dupes: 1,
+    truth: { people: 2500, crowd: true, weapon: false, injured: 0, suspect: true, safe: true, suspect_desc: 'a few masked men at the front of the march, pushing at the line', cause: 'a protest march has left its agreed route and stopped traffic at the junction' }, reported: ['crowd', 'people'], unsure: ['weapon'],
+    requires: [R('crowd'), R('patrol', 2)],
+    escalate: [
+      { reqs: [R('public_order'), R('patrol', 2), R('bls')], text: 'Scuffles between marchers and counter-protesters', say: ["There's another group across the road shouting back — bottles are flying, someone's on the ground!"], sev: 1 },
+      { reqs: [R('public_order'), R('fire_suppression'), R('transport')], text: 'Bins on fire — the march is turning into a riot', say: ["They've set the bins on fire and they're smashing the bank windows!"], sev: 1, spawn: 'looting' },
+    ],
+    threat: [16, 0.3, 1.1], work: 95,
+    archetypes: [['shopkeeper', 3], ['angry_motorist', 3], ['witness', 3], ['professional', 2]],
+    open: ["There's a massive march coming down the high street — thousands of them, they've blocked the whole junction and I'm stuck in the middle of it!", "I run the café on the corner. A protest has stopped right outside and there's a group across the road winding them up. It's getting tense.", "Hi, I'm on the bus — we can't move, there's a protest sitting in the road and people are getting angry."],
+    cause: ["It was supposed to go to the park, but they turned off and sat down in the road.", "It's mostly peaceful, but there's a group at the front with their faces covered pushing people about."],
+    say: { people: ["Thousands. It goes back as far as I can see.", "A couple of thousand at least — banners, drums, the lot."], weapon: ["I haven't seen weapons. A few of them have sticks for the flags.", "No, nothing like that — just a lot of shouting."] },
+    scene: 'Large march stationary at the junction. Liaising with organisers, establishing a line.', ambience: 'crowd',
+    resolved: 'Officers negotiated a new route and the march moved on peacefully.', failed: 'The march descended into violence.',
+  }),
+  base({
+    id: 'riot', category: 'police', label: 'Riot', hint: 'crime_progress', cls: 'crime_progress', w: { commercial: 0.5, dense: 0.6, historic: 0.4 },
+    intense: true, major: true, headline: 'Violence erupts — riot police deployed', sev: [5, 5], minRank: 3, closesRoad: true, dupes: 3, transport: true,
+    truth: { people: 600, crowd: true, weapon: 'bricks, bottles and fireworks', injured: 3, suspect: true, suspect_desc: 'masked groups throwing bricks and bottles, some carrying iron bars', fire: true, safe: false, cause: 'a crowd is fighting police lines, smashing shopfronts and setting cars alight' }, reported: ['crowd', 'fire'], unsure: ['injured', 'weapon'],
+    requires: [R('public_order'), R('crowd'), R('patrol', 3), R('fire_suppression'), R('bls'), R('transport')],
+    escalate: [
+      { reqs: [R('fire_suppression', 2), R('patrol', 2)], text: 'Cars and shops set alight along the street', say: ["They've set a car on fire — now the shop next to it's going up!"], sev: 0, spawn: 'looting' },
+      { reqs: [R('als'), R('transport', 2), R('public_order')], text: 'Officers and rioters injured in running battles', say: ["There's people down — one of them isn't moving! The police are getting hit with bricks!"], sev: 0, casualties: 1 },
+    ],
+    threat: [34, 0.55, 1.15], work: 150,
+    archetypes: [['shopkeeper', 4], ['witness', 4], ['terse', 2]],
+    open: ["It's a riot out here — hundreds of them, they're smashing everything and throwing stuff at the police!", "(glass breaking) They're trying to get into my shop! There's fires in the street, please send everyone!", "I'm locked in my flat above the shops — there's a mob outside, they've torched a car, the smoke's coming in."],
+    cause: ["It was a protest earlier, then it just flipped. Someone threw a bottle and it all went off.", "Masked lads came round the corner and started on the shop windows. Now everyone's at it."],
+    say: { injured: ["There's a man lying in the road with blood on his head, and a police officer limping.", "Loads of people hurt — I can see at least three on the ground."], weapon: ["Bricks, bottles, fireworks — one of them has a metal bar.", "They're throwing everything. Someone set off fireworks at the police."] },
+    scene: 'Large-scale disorder. Line established, fire crews need protection to work.', ambience: 'crowd',
+    resolved: 'Public order units cleared the streets and fire crews put out every blaze.', failed: 'The city burned through the night.',
+  }),
+  base({
+    id: 'looting', category: 'police', label: 'Looting in progress', hint: 'crime_progress', cls: 'crime_progress', w: { commercial: 0.16, dense: 0.1 },
+    intense: true, sev: [3, 4], minRank: 2,
+    truth: { people: 20, crowd: true, suspect: true, weapon: false, injured: 0, safe: false, suspect_desc: 'a group in hoods carrying TVs and boxes out of the electronics store', cause: 'people have smashed their way into a shop and are emptying it' }, reported: ['suspect'], unsure: ['people', 'weapon'],
+    requires: [R('patrol', 2)],
+    escalate: [
+      { reqs: [R('patrol', 2), R('crowd')], text: 'More people joining in', say: ["There's more of them now — cars are pulling up to load stuff!"], sev: 1 },
+      { reqs: [R('fire_suppression')], text: 'The shop has been set alight', say: ["Someone's thrown something in — there's flames inside!"], sev: 0 },
+    ],
+    threat: [22, 0.38, 1.2], work: 55,
+    archetypes: [['shopkeeper', 5], ['witness', 4], ['worried_neighbor', 2]],
+    open: ["They've smashed the front of the electronics shop and they're just carrying everything out!", "(whispering) I'm hiding in the back office. They're in the shop, loads of them, taking everything."],
+    cause: ["One of them put a bin through the window, then they all ran in.", "It started after the power went — they just went for it."],
+    scene: 'Looters scattering as we arrive. Securing the premises.', ambience: 'crowd',
+    resolved: 'Officers secured the shop and arrested several looters.', failed: 'The shop was stripped and burned.',
+  }),
+  base({
+    id: 'assault_mob', category: 'police', label: 'Man beaten by a group', hint: 'crime_progress', cls: 'crime_progress', w: { dense: 0.14, commercial: 0.12, campus: 0.1 },
+    intense: true, sev: [4, 4], minRank: 1, transport: true, lethal: true,
+    truth: { people: 6, injured: 1, conscious: false, breathing: true, suspect: true, weapon: false, safe: true, suspect_desc: 'five or six young men, one in a red jacket, running toward the station', cause: 'a group attacked a man and kicked him while he was on the ground' }, reported: ['injured', 'suspect'], unsure: ['conscious', 'weapon'],
+    requires: [R('patrol', 2), R('bls'), R('transport')],
+    escalate: [{ reqs: [R('als'), R('transport')], text: 'The victim has stopped responding', say: ["He's not moving anymore — he's making a horrible snoring noise!"], sev: 1 }],
+    threat: [30, 0.45, 1.3], work: 40,
+    archetypes: [['witness', 6], ['shopkeeper', 2]],
+    open: ["A gang just jumped a man outside the kebab shop — they kicked him in the head and ran off!", "There's a man lying in the road — a group of them just beat him up, he's not getting up!"],
+    cause: ["They were shouting at him, then they all piled in.", "I think it was over nothing. They just went for him."],
+    scene: 'Male with head injuries. Suspects gone toward the station.', ambience: 'traffic',
+    resolved: 'The victim was rushed to hospital and the attackers were picked up nearby.', failed: 'The victim died of his injuries.',
+  }),
+  base({
+    id: 'suspicious_package', category: 'unusual', label: 'Suspicious package', hint: 'crime_report', cls: 'crime_report', w: { commercial: 0.5, dense: 0.4, airport: 1, highrise: 0.5, campus: 0.3 },
+    sev: [3, 3], minRank: 2, nodeHint: 'transit',
+    truth: { hazard: 'an unattended rucksack', people: 40, suspect: false, weapon: false, injured: 0, safe: true, cause: 'a bag has been left by the bus shelter for over an hour' }, reported: ['hazard'], unsure: ['suspect'],
+    requires: [R('patrol', 2)],
+    threat: [14, 0.22, 1.2], work: 50,
+    archetypes: [['professional', 4], ['shopkeeper', 3], ['witness', 3], ['calm_serious', 2]],
+    open: ["There's a rucksack that's been sitting by the bus shelter for over an hour. Nobody's come back for it and it's making me nervous.", "Station security here — we've got an unattended holdall on the concourse. No owner on CCTV yet."],
+    cause: ["I've watched it since my shift started. Someone just put it down and walked off.", "CCTV shows a man leaving it and walking out quickly. Hood up."],
+    say: { suspect: ["I didn't see who left it.", "There was a man in a grey hoodie, but I only saw his back."] },
+    scene: 'Unattended bag. Cordon set, checking it out.', ambience: 'crowd',
+    resolved: 'The bag was cleared — someone had forgotten their gym kit.', failed: 'The package was not dealt with in time.',
+    build: (rnd, t) => rnd() < 0.4 ? { ...t, lethal: true, intense: true,
+      twist: { topics: ['hazard', 'cause', 'suspect'], say: ["Wait — the zip's open a bit. There are wires. Red and black wires. And I can hear beeping.", "Security's just had a closer look. There's a phone taped to something inside, with wires. We're pulling everyone back."], facts: { hazard: 'a rucksack with wires and a phone taped inside' }, requires: [R('patrol', 3), R('eod'), R('fire_suppression'), R('bls')], label: 'Suspected explosive device', hint: 'hazmat', severity: 5, threat: 30, scene: 'Wires visible inside the bag. 100-metre cordon. We need bomb techs — EOD.' },
+      resolved: 'Bomb technicians made the device safe with a controlled disruption. Nobody was hurt.', failed: 'The device went off.' } : t,
+  }),
+  base({
+    id: 'hazmat_spill', category: 'fire', label: 'Chemical spill', hint: 'hazmat', cls: 'hazmat', w: { industrial: 0.9, harbor: 0.8, airport: 0.3 },
+    sev: [4, 4], minRank: 3, closesRoad: true, transport: true,
+    truth: { hazard: 'drums of something leaking green liquid and a sharp chemical smell', people: 8, injured: 2, conscious: true, breathing: true, safe: false, vehicles: 1, cause: 'a forklift has punctured drums of industrial solvent in a loading bay' }, reported: ['hazard'], unsure: ['injured', 'people'],
+    requires: [R('hazmat'), R('fire_suppression'), R('patrol'), R('bls'), R('transport')],
+    escalate: [{ reqs: [R('als'), R('transport', 2)], text: 'More workers overcome by fumes', say: ["Two more of the lads have gone dizzy, one's being sick — the smell is everywhere!"], sev: 1, casualties: 0 }],
+    threat: [26, 0.42, 1.2], work: 110,
+    archetypes: [['professional', 5], ['witness', 3], ['angry_motorist', 1]],
+    open: ["We've had a spill in the loading bay — drums of solvent, it's all over the floor and two of my lads are coughing and dizzy.", "There's a lorry leaking something on the road by the depot. It stinks — my eyes are burning just driving past."],
+    cause: ["The forklift went straight through two drums. It's spreading toward the drain.", "The back of the tanker's dripping. There's a hazard sign on it — orange, with numbers."],
+    say: { hazard: ["Orange sign, numbers on it — 1-2-6-3, I think. It's a strong chemical smell.", "Green, oily. It's running toward the drain."] },
+    scene: 'Chemical release confirmed. Hot zone set up, decontamination needed.', ambience: 'wind',
+    resolved: 'Hazmat crews contained the spill and decontaminated the workers.', failed: 'The chemical reached the drains and people were hurt.',
+  }),
+  base({
+    id: 'vehicle_ramming', category: 'police', label: 'Vehicle driven into crowd', hint: 'crime_progress', cls: 'crime_progress', w: { commercial: 0.6, dense: 0.6, historic: 0.5 },
+    intense: true, major: true, headline: 'Vehicle ploughs into pedestrians', sev: [5, 5], minRank: 4, transport: true, lethal: true, dupes: 3, closesRoad: true,
+    truth: { people: 80, injured: 9, suspect: true, weapon: 'knife', vehicles: 1, suspect_desc: 'a man in a dark coat who got out of a white van with a knife', safe: false, conscious: true, cause: 'a van mounted the pavement and drove through the crowd' }, reported: ['injured', 'vehicles'], unsure: ['weapon', 'suspect'],
+    requires: [R('patrol', 3), R('tactical'), R('als', 2), R('transport', 3), R('med_supervisor'), R('fire_suppression')],
+    escalate: [
+      { reqs: [R('als', 2), R('transport', 2)], text: 'More casualties found along the pavement', sev: 0, casualties: 1 },
+      { reqs: [R('patrol', 2)], text: 'The driver is attacking people on foot', say: ["He's got out — he's got a knife, he's going for people!"], sev: 0, casualties: 1 },
+    ],
+    threat: [44, 0.7, 1.35], work: 120,
+    archetypes: [['witness', 6], ['shopkeeper', 2], ['panicked_parent', 2]],
+    open: ["A van just drove into everyone on the pavement — there's people everywhere, oh my god, there's people under it!", "He did it on purpose! A white van went straight through the market crowd! So many people are hurt!"],
+    cause: ["It sped up — it didn't brake at all. It just went through them.", "He swerved onto the pavement and kept going till he hit the bollards."],
+    say: { injured: ["Loads. Ten maybe. Some aren't moving.", "I can see at least eight people on the ground."] },
+    scene: 'Mass-casualty scene. Driver detained. Triage under way.', ambience: 'crowd',
+    resolved: 'Every casualty was triaged and the attacker was arrested at the scene.', failed: 'The attack claimed many lives.',
+  }),
+  base({
+    id: 'runner_collapse', category: 'medical', label: 'Runner collapsed', hint: 'medical_critical', cls: 'medical_critical', w: {},
+    intense: true, sev: [4, 5], patient: 'adult', transport: true, lethal: true,
+    truth: { injured: 1, conscious: false, breathing: false, safe: true, people: 30, cause: 'a runner suddenly collapsed mid-stride and is not breathing' }, reported: ['conscious'], unsure: ['breathing'],
+    requires: [R('als'), R('transport')], threat: [40, 0.55, 1.6], work: 34,
+    archetypes: [['witness', 5], ['professional', 3]],
+    open: ["A runner just collapsed right in front of me — {he}'s not moving, there's a crowd around {him}!", "Marshal at mile point eighteen — we've got a runner down, unresponsive."],
+    cause: ["{He} just dropped. Mid-stride. Didn't trip or anything.", "{He} was going fine and then {his} legs went and {he} hit the road."],
+    say: { breathing: ["I— I don't think so. {His} lips are going blue.", "It's weird gasping — like a snore, every few seconds."] },
+    scene: 'Runner in cardiac arrest on the course. CPR in progress.', ambience: 'crowd',
+    resolved: 'The runner was shocked back and is awake in hospital.', failed: 'The runner did not survive.',
+  }),
+
   // ───────────────────────── MAJOR & SPECIAL INCIDENTS ─────────────────────────
   base({
     id: 'bank_robbery', category: 'police', label: 'Bank robbery in progress', hint: 'crime_progress', cls: 'crime_progress', w: { highrise: 1.6, commercial: 1.2, dense: 0.8 },
-    intense: true, major: true, sev: [5, 5], minRank: 2, nodeHint: 'bank', dupes: 2,
+    intense: true, headline: 'Armed gang storms a Ravenport bank', major: true, sev: [5, 5], minRank: 2, nodeHint: 'bank', dupes: 2,
     truth: { suspect: true, weapon: 'rifle', suspect_desc: 'three masked men in dark overalls, one with a rifle', people: 14, injured: 0, safe: false, vehicles: 1, cause: 'armed men have taken over the bank and are emptying the vault' }, reported: ['weapon', 'suspect'], unsure: ['people'],
     requires: [R('patrol', 3), R('tactical')],
     escalate: [{ reqs: [R('patrol', 2)], text: 'Robbers fled the bank in a getaway van', say: ["They're running out the back — they're getting into a grey van!"], sev: 0, spawn: 'getaway' }],
@@ -648,7 +773,7 @@ export const TEMPLATES: Template[] = [
   }),
   base({
     id: 'active_shooter', category: 'police', label: 'Active shooter', hint: 'crime_progress', cls: 'crime_progress', w: { commercial: 1.2, campus: 1.6, dense: 0.8, highrise: 0.6 },
-    intense: true, major: true, sev: [5, 5], minRank: 3, nodeHint: 'mall', dupes: 3, transport: true, lethal: true,
+    intense: true, headline: 'Shots fired — reports of an active shooter', major: true, sev: [5, 5], minRank: 3, nodeHint: 'mall', dupes: 3, transport: true, lethal: true,
     truth: { suspect: true, weapon: 'handgun', suspect_desc: 'a man in a black jacket, last seen heading toward the food court', people: 60, injured: 4, safe: false, cause: 'a man has opened fire inside the building' }, reported: ['weapon'], unsure: ['injured', 'people'],
     requires: [R('patrol', 3), R('tactical'), R('als', 2), R('transport', 2), R('med_supervisor')],
     escalate: [
@@ -700,10 +825,10 @@ export const TEMPLATES: Template[] = [
   }),
   base({
     id: 'bomb_threat', category: 'unusual', label: 'Bomb threat', hint: 'crime_report', cls: 'crime_progress', w: { airport: 2.4, commercial: 1, dense: 1, campus: 0.8 },
-    major: true, sev: [4, 4], minRank: 2, nodeHint: 'transit',
+    headline: 'Bomb threat forces mass evacuation', major: true, sev: [4, 4], minRank: 2, nodeHint: 'transit',
     truth: { suspect: false, weapon: false, people: 400, injured: 0, safe: false, hazard: 'a phoned-in bomb threat', cause: 'an anonymous caller said a bomb will go off in thirty minutes' }, reported: ['hazard'],
     requires: [R('patrol', 2), R('command')],
-    twist: { topics: ['hazard', 'suspect', 'cause', 'people'], say: ["Security just told me — there's an unattended suitcase by platform three. Nobody's claimed it."], facts: { hazard: 'an unattended suitcase near platform three' }, requires: [R('patrol', 3), R('tactical'), R('fire_suppression'), R('bls')], hint: 'hazmat', severity: 5, scene: 'Unattended bag confirmed. Cordon set, bomb technicians assessing.' },
+    twist: { topics: ['hazard', 'suspect', 'cause', 'people'], say: ["Security just told me — there's an unattended suitcase by platform three. Nobody's claimed it."], facts: { hazard: 'an unattended suitcase near platform three' }, requires: [R('patrol', 3), R('eod'), R('fire_suppression'), R('bls')], hint: 'hazmat', severity: 5, scene: 'Unattended bag confirmed. Cordon set — we need EOD out here to deal with it.' },
     threat: [20, 0.3, 1.2], work: 80,
     archetypes: [['professional', 7], ['calm_serious', 2]],
     open: ["This is the duty manager at Grand Central — we've just had a phone call saying there's a bomb in the station.", "Airport operations here. A caller just told our desk there's a device in Terminal B. We're not sure it's real."],
@@ -713,7 +838,7 @@ export const TEMPLATES: Template[] = [
   }),
   base({
     id: 'aircraft_emergency', category: 'fire', label: 'Aircraft emergency landing', hint: 'fire_other', cls: 'fire_other', w: { airport: 3 },
-    major: true, sev: [5, 5], minRank: 1, nodeHint: 'runway', deadline: 200, transport: true, lethal: true,
+    headline: 'Airliner declares an emergency over Ravenport', major: true, sev: [5, 5], minRank: 1, nodeHint: 'runway', deadline: 200, transport: true, lethal: true,
     deadlineSay: {
       count: 'Tower update: Flight 2271 is about {t} out. Are your trucks on the runway?', moment: 'touchdown',
       good: 'Aircraft is down and stopped — foam going onto the engine now. Passengers are evacuating.', bad: 'the aircraft touched down before crews were in position',
@@ -753,7 +878,7 @@ export const TEMPLATES: Template[] = [
   }),
   base({
     id: 'tanker_fire', category: 'fire', label: 'Tanker fire on expressway', hint: 'hazmat', cls: 'hazmat', w: { industrial: 1.4, suburb: 0.8, airport: 1.2, commercial: 0.6 },
-    major: true, sev: [5, 5], minRank: 3, nodeHint: 'highway', closesRoad: true, dupes: 2,
+    headline: 'Tanker overturns and ignites on the expressway', major: true, sev: [5, 5], minRank: 3, nodeHint: 'highway', closesRoad: true, dupes: 2,
     truth: { fire: true, smoke: true, vehicles: 2, people: 2, injured: 1, trapped: 0, safe: false, hazard: 'burning fuel spreading across the road', cause: 'a fuel tanker jack-knifed and caught fire' }, reported: ['fire', 'vehicles'],
     requires: [R('fire_suppression', 3), R('patrol', 2), R('bls'), R('transport')],
     escalate: [{ reqs: [R('fire_suppression', 4), R('command')], text: 'Tanker ruptured — fireball and spreading fuel', sev: 0, casualties: 1 }],
@@ -766,7 +891,7 @@ export const TEMPLATES: Template[] = [
   }),
   base({
     id: 'train_derailment', category: 'fire', label: 'Train derailment', hint: 'rescue', cls: 'rescue', w: { rail: 3, industrial: 0.6 },
-    intense: true, major: true, sev: [5, 5], minRank: 4, nodeHint: 'rail', transport: true, lethal: true, dupes: 2,
+    intense: true, headline: 'Freight train derails — crews race to the scene', major: true, sev: [5, 5], minRank: 4, nodeHint: 'rail', transport: true, lethal: true, dupes: 2,
     truth: { people: 80, injured: 12, trapped: 4, conscious: true, safe: false, fire: false, smoke: true, hazard: 'carriages on their side, sparking cables', cause: 'a commuter train left the tracks at the rail yard' }, reported: ['trapped', 'injured'], unsure: ['injured', 'trapped'],
     requires: [R('heavy_rescue'), R('rescue'), R('fire_suppression', 2), R('als', 2), R('transport', 3), R('patrol', 2), R('med_supervisor')],
     escalate: [{ reqs: [R('transport', 4), R('bls', 2)], text: 'Second carriage found with casualties', sev: 0, casualties: 1 }],
@@ -779,7 +904,7 @@ export const TEMPLATES: Template[] = [
   }),
   base({
     id: 'house_explosion', category: 'fire', label: 'House explosion', hint: 'fire_structure', cls: 'fire_structure', w: { residential: 1.4, suburb: 1.2, historic: 1 },
-    intense: true, major: true, sev: [5, 5], minRank: 3, transport: true, lethal: true, dupes: 2,
+    intense: true, headline: 'Explosion rocks a residential street', major: true, sev: [5, 5], minRank: 3, transport: true, lethal: true, dupes: 2,
     truth: { fire: true, smoke: true, people: 3, injured: 2, trapped: 1, safe: false, hazard: 'gas still burning', cause: 'a gas explosion has destroyed part of a house' }, reported: ['fire', 'injured'], unsure: ['trapped'],
     requires: [R('fire_suppression', 2), R('rescue'), R('als'), R('transport'), R('patrol')],
     escalate: [{ reqs: [R('fire_suppression', 3), R('heavy_rescue')], text: 'Neighbouring house now on fire', sev: 0 }],
@@ -792,7 +917,7 @@ export const TEMPLATES: Template[] = [
   }),
   base({
     id: 'crowd_crush', category: 'medical', label: 'Crowd crush', hint: 'medical_critical', cls: 'medical_critical', w: { campus: 1.2, dense: 1, historic: 1, commercial: 0.8 },
-    intense: true, major: true, sev: [5, 5], minRank: 3, nodeHint: 'stadium', transport: true, lethal: true, dupes: 2,
+    intense: true, headline: 'Crush injuries reported at packed venue', major: true, sev: [5, 5], minRank: 3, nodeHint: 'stadium', transport: true, lethal: true, dupes: 2,
     truth: { people: 300, injured: 9, conscious: false, breathing: true, safe: false, cause: 'the crowd surged at an exit and people went down' }, reported: ['injured'], unsure: ['injured'],
     requires: [R('als', 2), R('bls', 2), R('transport', 3), R('patrol', 2), R('med_supervisor')],
     escalate: [{ reqs: [R('transport', 4), R('crowd')], text: 'Second surge at the south gate', sev: 0, casualties: 1 }],
@@ -818,7 +943,7 @@ export const TEMPLATES: Template[] = [
   }),
   base({
     id: 'kidnapping', category: 'police', label: 'Child abduction', hint: 'crime_progress', cls: 'crime_progress', w: { residential: 1.2, suburb: 1.2, commercial: 0.8 },
-    intense: true, major: true, sev: [5, 5], minRank: 2, pursuit: true, pursuitSpeed: 5.6, lethal: true,
+    intense: true, headline: 'Child snatched — city-wide search under way', major: true, sev: [5, 5], minRank: 2, pursuit: true, pursuitSpeed: 5.6, lethal: true,
     truth: { vehicles: 1, suspect: true, weapon: false, child: true, suspect_desc: 'a man in a blue cap driving a dark green estate car', people: 2, injured: 0, safe: false, cause: 'a man grabbed a child from the playground and drove off' }, reported: ['suspect'],
     requires: [R('patrol', 3)], escalate: [{ reqs: [R('patrol', 4)], text: 'Abductor heading for the expressway', sev: 0 }],
     threat: [24, 0.5, 1.0], work: 14,
@@ -853,7 +978,7 @@ export const TEMPLATES: Template[] = [
   }),
   base({
     id: 'hostage_barricade', category: 'police', label: 'Barricaded gunman', hint: 'crime_progress', cls: 'crime_progress', w: { residential: 1.2, suburb: 1, dense: 0.8 },
-    intense: true, major: true, sev: [5, 5], minRank: 4,
+    intense: true, headline: 'Armed siege: gunman holding family hostage', major: true, sev: [5, 5], minRank: 4,
     truth: { suspect: true, weapon: 'shotgun', suspect_desc: 'the husband, armed with a shotgun', people: 3, injured: 0, safe: false, cause: 'a man is holding his family at gunpoint inside the house' }, reported: ['weapon'], unsure: ['people'],
     requires: [R('patrol', 3), R('tactical'), R('police_supervisor'), R('bls')],
     escalate: [{ reqs: [R('als'), R('transport')], text: 'Shot fired inside the house', sev: 0, casualties: 1 }],

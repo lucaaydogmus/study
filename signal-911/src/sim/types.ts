@@ -9,7 +9,8 @@ export type Category = 'medical' | 'fire' | 'police' | 'unusual';
 export type Capability =
   | 'patrol' | 'traffic' | 'crowd' | 'tactical' | 'police_supervisor' | 'prisoner_transport'
   | 'fire_suppression' | 'aerial' | 'rescue' | 'heavy_rescue' | 'water_rescue' | 'command'
-  | 'bls' | 'als' | 'transport' | 'critical_transport' | 'med_supervisor' | 'air_support';
+  | 'bls' | 'als' | 'transport' | 'critical_transport' | 'med_supervisor' | 'air_support'
+  | 'public_order' | 'eod' | 'hazmat' | 'first_aid' | 'negotiator';
 
 export interface Req { cap: Capability; n: number }
 
@@ -78,6 +79,8 @@ export interface Unit {
   searchSector?: number | null;
   /** police on scene: when dispatch owes them a status check, when they last had one, and (hidden) when things go wrong */
   checkDue?: number | null; lastCheck?: number; trouble?: number | null;
+  /** garage fit chosen in shift prep: chassis, equipment kits and livery */
+  fit?: UnitFit;
 }
 
 export interface Station {
@@ -154,6 +157,7 @@ export interface Call {
   /** what can be heard behind the caller (derived from where they really are), and when the dispatcher last listened */
   env?: string[]; listenedAt?: number; heardSounds?: string[];
 }
+export interface UnitFit { chassis: string; kits: string[]; livery: string; eff?: number; grip?: number; nickname?: string }
 /** a job the dispatcher gave the caller: it keeps them busy (and calmer) and helps the crews */
 export interface CallTask { id: string; label: string; status: 'doing' | 'done'; at: number; doneAt: number }
 /** a caller asks the dispatcher what to do; the answer (or silence) has consequences */
@@ -254,8 +258,17 @@ export interface Incident {
   search?: SearchGrid | null;
   /** public emergency alert issued for the incident's district */
   alert?: { kind: AlertKind; at: number; right: boolean; needed: boolean } | null;
+  /** federal tactical team / National Guard bomb techs requested for this incident (unit ids) */
+  specialists?: Partial<Record<SpecialistKind, { at: number; unitId: string; asked?: number }>>;
+  /** crews on scene asked for a specialist (game time) */
+  specialistAsked?: Partial<Record<SpecialistKind, number>>;
+  /** a major incident's breaking-news moment (game time) */
+  breakAt?: number;
+  /** riot / protest: how hot the crowd is (0 calm … 100 violent) */
+  crowdHeat?: number;
 }
 export type AgencyKind = 'tow' | 'power' | 'gas' | 'animal';
+export type SpecialistKind = 'federal' | 'eod';
 export type AlertKind = 'evacuate' | 'shelter';
 export interface SearchSector { id: string; x: number; y: number; node: number; p: number; searched: number; cleared?: boolean }
 export interface SearchGrid {
@@ -287,7 +300,7 @@ export interface OfficerRequest {
 }
 
 // ── City events / weather / config ──────────────────────────────────────────
-export type CityEventType = 'storm' | 'blackout' | 'flood' | 'festival' | 'rush_hour' | 'industrial_fire' | 'winter_storm' | 'heat_wave';
+export type CityEventType = 'storm' | 'blackout' | 'flood' | 'festival' | 'rush_hour' | 'industrial_fire' | 'winter_storm' | 'heat_wave' | 'protest' | 'riot' | 'marathon' | 'transit_strike';
 export interface CityEvent {
   id: string; type: CityEventType; name: string; start: number; end: number; districts: string[];
   trafficMult: number; incidentMult: number; categoryBias: Partial<Record<Category, number>>;
@@ -322,6 +335,10 @@ export interface ShiftConfig {
   forced?: Array<{ at: number; template: string; district?: string; archetype?: string; story?: string; first?: boolean }>;
   /** a live storyline (major incident chain) rolled for this shift */
   storyline?: { id: string; title: string; headline: string; at: number };
+  /** intelligence picture shown at the briefing: hints at how wild the shift may get, without spoiling it */
+  threatLevel?: 'low' | 'guarded' | 'elevated' | 'severe';
+  /** random major incidents and city events may be rolled for this shift */
+  surprises?: boolean;
 }
 
 export interface TimelineEntry {
@@ -346,6 +363,7 @@ export interface ShiftStats {
   heliRelays: number; heliSightings: number; checksOk: number; checksBad: number; checksMissed: number; guidanceDeaths: number; guidanceSaves: number; harmfulAdvice: number;
   boloHits?: number; stingerHits?: number; breaksGiven?: number;
   callerAnswers?: number; cprPaced?: number; handoffs?: number; calmActions?: number; calmGood?: number; tasksDone?: number; callerBreakdowns?: number; redirectsOk?: number; redirectsBad?: number; listens?: number; unitQueries?: number; unitQueriesOk?: number; unitQueriesMissed?: number; maydays?: number; maydaySaved?: number; refusals?: number;
+  specialistCalls?: number; specialistWasted?: number; majorsHandled?: number;
   agencyCalls?: number; agencyLate?: number; statusChecks?: number; statusSaves?: number; statusMissed?: number; alertsRight?: number; alertsWrong?: number; searchFinds?: number;
 }
 

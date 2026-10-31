@@ -2,6 +2,8 @@
 import type { CityEventType, Difficulty, Objective, Service, ShiftConfig, WeatherType } from './types';
 import { Rng, hashString } from './rng';
 import { CONTRACTS, MODIFIERS } from './extras';
+import { TEMPLATES } from './content/templates';
+import { DISTRICT_TAGS } from './city';
 
 export const ALL_DISTRICTS = ['westres', 'university', 'northsub', 'airport', 'oldtown', 'downtown', 'financial', 'eastwood', 'southside', 'riverside', 'industrial', 'harbor'];
 
@@ -124,6 +126,56 @@ export function rollStoryline(cfg: ShiftConfig, rank: number, seed: number, chan
   return { ...cfg, forced, storyline: { id: story.id, title: story.title, headline: story.headline, at } };
 }
 
+/** big events can happen on any ordinary shift: a major incident out of nowhere, a protest, a storm, a riot */
+export const SURPRISE_EVENTS: Array<{ type: CityEventType; minRank: number; w: number; needs?: string[] }> = [
+  { type: 'rush_hour', minRank: 1, w: 2.4 }, { type: 'storm', minRank: 1, w: 1.8 }, { type: 'heat_wave', minRank: 1, w: 1.3 }, { type: 'festival', minRank: 1, w: 1.2, needs: ['downtown', 'oldtown'] },
+  { type: 'protest', minRank: 2, w: 2.2, needs: ['downtown', 'financial', 'oldtown', 'university'] }, { type: 'transit_strike', minRank: 2, w: 1.3 }, { type: 'marathon', minRank: 2, w: 1.1, needs: ['riverside', 'downtown', 'oldtown', 'westres'] },
+  { type: 'blackout', minRank: 2, w: 1.1 }, { type: 'winter_storm', minRank: 2, w: 0.9 }, { type: 'flood', minRank: 3, w: 0.9, needs: ['riverside', 'southside', 'harbor'] },
+  { type: 'riot', minRank: 3, w: 0.8, needs: ['downtown', 'financial', 'oldtown', 'university'] }, { type: 'industrial_fire', minRank: 4, w: 0.7, needs: ['industrial'] },
+];
+export function rollSurprises(cfg: ShiftConfig, rank: number, seed: number): ShiftConfig {
+  if (cfg.surprises === false || cfg.mode === 'tutorial' || cfg.mode === 'scenario' || cfg.script || cfg.durationSec < 6 * 60) return cfg;
+  const rng = new Rng(seed ^ 0x2545f491);
+  const out: ShiftConfig = { ...cfg, forced: [...(cfg.forced ?? [])], events: [...cfg.events] };
+  const boost = cfg.difficulty === 'hard' ? 0.08 : cfg.difficulty === 'expert' ? 0.14 : cfg.difficulty === 'casual' ? -0.1 : 0;
+  const r = Math.max(1, rank);
+  // 1. a major incident out of the blue
+  let major = false;
+  const pMajor = Math.max(0.15, Math.min(0.7, 0.3 + r * 0.05 + boost)) * (cfg.storyline ? 0.5 : 1);
+  if (rng.chance(pMajor)) {
+    const opts: Array<{ t: string; d: string; w: number }> = [];
+    for (const t of TEMPLATES) {
+      if (!t.major || t.spawnOnly || t.minRank > r) continue;
+      for (const d of cfg.districts) { let w = t.w[d] ?? 0; for (const tag of DISTRICT_TAGS[d] ?? []) w += t.w[tag] ?? 0; if (w > 0) opts.push({ t: t.id, d, w }); }
+    }
+    const pick = rng.weighted(opts, (o) => o.w);
+    if (pick) {
+      const near = (at: number) => out.forced!.some((f) => Math.abs(f.at - at) < 150);
+      let at = Math.round(cfg.durationSec * rng.range(0.25, 0.8));
+      for (let k = 0; k < 4 && near(at); k++) at = Math.round(cfg.durationSec * rng.range(0.25, 0.8));
+      if (!near(at) && at < cfg.durationSec - 90) { out.forced!.push({ at, template: pick.t, district: pick.d }); major = true; }
+    }
+  }
+  // 2. a citywide event, if the shift does not already have one
+  if (!out.events.length && rng.chance(Math.min(0.55, 0.26 + r * 0.03 + boost * 0.5))) {
+    const pool = SURPRISE_EVENTS.filter((e) => e.minRank <= r && (!e.needs || e.needs.some((d) => cfg.districts.includes(d))));
+    const ev = rng.weighted(pool, (e) => e.w);
+    if (ev) {
+      const at = Math.round(cfg.durationSec * rng.range(0.12, 0.42));
+      const duration = Math.max(150, Math.round(Math.min(cfg.durationSec - at - 40, cfg.durationSec * rng.range(0.35, 0.6))));
+      out.events.push({ type: ev.type, at, duration });
+      // a protest that boils over
+      if (ev.type === 'protest' && r >= 3 && rng.chance(0.35) && at + duration * 0.6 < cfg.durationSec - 120) out.events.push({ type: 'riot', at: Math.round(at + duration * 0.6), duration: Math.round(Math.min(cfg.durationSec - at - duration * 0.6 - 40, 300)) });
+    }
+  }
+  out.forced!.sort((a, b) => a.at - b.at);
+  if (!out.forced!.length) delete out.forced;
+  // 3. the intelligence picture at the briefing (deliberately vague)
+  const score = (major ? 2 : 0) + (cfg.storyline ? 2 : 0) + (out.events.length ? 1 : 0) + rng.int(0, 1);
+  out.threatLevel = score >= 4 ? 'severe' : score >= 3 ? 'elevated' : score >= 1 ? 'guarded' : 'low';
+  return out;
+}
+
 export const TUTORIAL_CONFIG = (): ShiftConfig => baseConfig({
   mode: 'tutorial', title: 'Tutorial — Your First Shift', briefing: 'Learn the dispatcher’s loop: answer, gather, locate, dispatch, monitor.',
   durationSec: 10 * 60, difficulty: 'casual', incidentRate: 0, districts: ['downtown', 'oldtown', 'westres', 'riverside'], weather: 'clear', startHour: 10,
@@ -142,7 +194,7 @@ export function dailyConfig(key = todayKey()): { config: ShiftConfig; units: num
   const seed = hashString(`signal911-daily-${key}`);
   const rng = new Rng(seed);
   const weather = rng.pick<WeatherType>(['clear', 'clear', 'rain', 'fog', 'storm', 'snow', 'heat']);
-  const eventPool: CityEventType[] = ['storm', 'blackout', 'festival', 'rush_hour', 'flood', 'heat_wave', 'winter_storm', 'industrial_fire'];
+  const eventPool: CityEventType[] = ['storm', 'blackout', 'festival', 'rush_hour', 'flood', 'heat_wave', 'winter_storm', 'industrial_fire', 'protest', 'marathon', 'transit_strike'];
   const ev = rng.pick(eventPool);
   const difficulty = rng.pick<Difficulty>(['standard', 'standard', 'hard']);
   const modifier = rng.pick(MODIFIERS.filter((m) => m.id !== 'quiet')).id;

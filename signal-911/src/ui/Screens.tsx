@@ -279,9 +279,10 @@ export function FreePlayScreen() {
   const [hour, setHour] = useState(12);
   const [districts, setDistricts] = useState<string[]>(ALL_DISTRICTS);
   const [events, setEvents] = useState<CityEventType[]>([]);
+  const [surprises, setSurprises] = useState(true);
   const city = getCity();
   const toggle = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
-  const evs: Array<[CityEventType, string]> = [['storm', 'Thunderstorm'], ['blackout', 'Blackout'], ['flood', 'Flooding'], ['festival', 'Festival'], ['rush_hour', 'Rush hour'], ['industrial_fire', 'Industrial fire'], ['winter_storm', 'Winter storm'], ['heat_wave', 'Heat wave']];
+  const evs: Array<[CityEventType, string]> = [['storm', 'Thunderstorm'], ['blackout', 'Blackout'], ['flood', 'Flooding'], ['festival', 'Festival'], ['rush_hour', 'Rush hour'], ['industrial_fire', 'Industrial fire'], ['winter_storm', 'Winter storm'], ['heat_wave', 'Heat wave'], ['protest', 'Mass protest'], ['riot', 'Civil unrest'], ['marathon', 'City marathon'], ['transit_strike', 'Transit strike']];
   return (
     <div className="screen">
       <header className="screen-head"><Btn kind="ghost" icon="chevL" onClick={() => go('modes')}>Back</Btn><h1>Free play</h1></header>
@@ -302,11 +303,13 @@ export function FreePlayScreen() {
             <div className="field"><label>Weather</label><div className="seg wrap">{(Object.keys(WEATHER_LABEL) as WeatherType[]).map((w) => <button key={w} className={weather === w ? 'on' : ''} onClick={() => setWeather(w)}><Icon n={weatherIcon(w)} size={12} /> {WEATHER_LABEL[w]}</button>)}</div></div>
             <label className="slider"><span>Start time</span><input type="range" min={0} max={23} value={hour} onChange={(e) => setHour(+e.target.value)} /><span className="mono">{String(hour).padStart(2, '0')}:00</span></label>
             <div className="field"><label>Citywide events</label><div className="seg wrap">{evs.map(([t, l]) => <button key={t} className={events.includes(t) ? 'on' : ''} onClick={() => setEvents(toggle(events, t))}>{l}</button>)}</div></div>
+            <div className="field"><label>Surprises</label><div className="seg"><button className={surprises ? 'on' : ''} onClick={() => setSurprises(true)}>On — anything can happen</button><button className={!surprises ? 'on' : ''} onClick={() => setSurprises(false)}>Off — only what I picked</button></div>
+              <div className="small muted">Random major incidents (shootings, bomb threats, sieges, riots…) and surprise city events.</div></div>
             <div className="field"><label>Districts in play ({districts.length})</label>
               <div className="seg wrap">{city.districts.map((d) => <button key={d.id} className={districts.includes(d.id) ? 'on' : ''} onClick={() => setDistricts(districts.length > 1 || !districts.includes(d.id) ? toggle(districts, d.id) : districts)}>{d.name}</button>)}</div></div>
           </div>
         </div>
-        <div className="row end"><Btn kind="primary" size="lg" icon="play" onClick={() => startFree(baseConfig({ mode: 'free', title: 'Free play', briefing: 'A shift built to your settings.', difficulty: diff, durationSec: mins * 60, incidentRate: rate, unusualBias: unusual, weather, startHour: hour, districts, startBudget: budget, events: events.map((t, i) => ({ type: t, at: 60 + i * 80, duration: Math.max(180, mins * 60 - 120 - i * 80) })), objectives: [] }), { units, budget, rank: 7 })}>Continue to briefing</Btn></div>
+        <div className="row end"><Btn kind="primary" size="lg" icon="play" onClick={() => startFree(baseConfig({ mode: 'free', title: 'Free play', briefing: 'A shift built to your settings.', difficulty: diff, durationSec: mins * 60, incidentRate: rate, unusualBias: unusual, weather, startHour: hour, districts, startBudget: budget, events: events.map((t, i) => ({ type: t, at: 60 + i * 80, duration: Math.max(180, mins * 60 - 120 - i * 80) })), objectives: [], surprises }), { units, budget, rank: 7 })}>Continue to briefing</Btn></div>
       </div>
     </div>
   );

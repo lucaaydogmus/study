@@ -32,6 +32,7 @@ export const CAP_LABEL: Record<Capability, string> = {
   patrol: 'Patrol', traffic: 'Traffic', crowd: 'Crowd control', tactical: 'Tactical', police_supervisor: 'Supervisor', prisoner_transport: 'Prisoner transport',
   fire_suppression: 'Fire suppression', aerial: 'Aerial', rescue: 'Rescue', heavy_rescue: 'Heavy rescue', water_rescue: 'Water rescue', command: 'Command',
   bls: 'Basic life support', als: 'Advanced life support', transport: 'Patient transport', critical_transport: 'Critical transport', med_supervisor: 'Medical supervisor', air_support: 'Air support',
+  public_order: 'Public order', eod: 'Bomb disposal', hazmat: 'Hazardous materials', first_aid: 'First aid (AED)', negotiator: 'Crisis negotiator',
 };
 
 /** Capabilities a fleet can plausibly contain at a given rank; used to adapt escalations so a shift never demands the impossible. */
@@ -45,9 +46,11 @@ export function adaptReqForRank(r: Req, rank: number): Req {
     case 'tactical': return rank >= 5 ? r : m('patrol', r.n + 1);
     case 'police_supervisor': return rank >= 3 ? r : m('patrol');
     case 'critical_transport': return rank >= 5 ? r : m('als');
+    case 'crowd': return rank >= 2 ? r : m('patrol', r.n + 1);
+    case 'public_order': return rank >= 3 ? r : rank >= 2 ? m('crowd') : m('patrol', r.n + 2);
+    case 'hazmat': return rank >= 4 ? r : m('fire_suppression', r.n + 1);
     case 'med_supervisor': return rank >= 4 ? r : m('als');
     case 'traffic': return rank >= 2 ? r : m('patrol');
-    case 'crowd': return rank >= 2 ? r : m('patrol', r.n + 1);
     case 'prisoner_transport': return m('patrol');
     default: return r;
   }

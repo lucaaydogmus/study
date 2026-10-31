@@ -15,6 +15,9 @@ import { useApp, type HubTab } from '../store';
 import { Badge, Bar, Btn, Grade, Icon, SERVICE_ICON, Tabs, Toast, fmtEta, fmtMoney, weatherIcon } from './common';
 import { LAYERS, MapView, type LayerId } from './MapView';
 import { AchievementsPage, ExtrasList } from './Extras';
+import { Garage } from './Garage';
+import { EVENT_DEFS } from '../sim/events';
+import { isAir } from '../sim/fleet';
 
 const TABS: Array<{ id: HubTab; label: string; icon: string }> = [
   { id: 'overview', label: 'City overview', icon: 'map' }, { id: 'prep', label: 'Shift preparation', icon: 'clock' }, { id: 'fleet', label: 'Fleet & stations', icon: 'car' },
@@ -143,7 +146,29 @@ function Prep({ p }: { p: Profile }) {
   const city = getCity();
   const st = engine.state;
   const [layer, setLayer] = useState<LayerId>('coverage');
+  const [pane, setPane] = useState<'map' | 'garage'>('map');
   const bump = useApp((s) => s.bump);
+  const fitted = p.units.filter((u) => u.fit && (u.fit.kits.length || u.fit.livery !== 'classic' || (u.fit.chassis && !['sedan', 'pumper', 'van'].includes(u.fit.chassis)))).length;
+  /** pre-position the fleet before the shift */
+  const deploy = (how: 'stations' | 'spread') => mutate((pp) => {
+    for (const svc of ['police', 'fire', 'medical'] as Service[]) {
+      const us = pp.units.filter((u) => u.service === svc && !isAir(u));
+      us.forEach((u, i) => {
+        let node: number;
+        if (how === 'stations') node = pp.stations.find((x) => x.id === u.stationId)?.nodeId ?? u.postNode;
+        else {
+          const d = city.districtById[cfg.districts[(i * 5 + (svc === 'fire' ? 1 : svc === 'medical' ? 3 : 0)) % cfg.districts.length]];
+          const ns = city.nodesInDistrict[d.id].filter((n) => city.adj[n].some((e) => city.edges[e].cls !== 'highway'));
+          node = ns.reduce((b, n) => (Math.hypot(city.nodes[n].x - d.center.x, city.nodes[n].y - d.center.y) < Math.hypot(city.nodes[b].x - d.center.x, city.nodes[b].y - d.center.y) ? n : b), ns[0]);
+        }
+        u.postNode = node; u.prevNode = node; u.x = city.nodes[node].x; u.y = city.nodes[node].y;
+      });
+    }
+  });
+  const known = cfg.events.filter((e) => ['protest', 'marathon', 'festival', 'transit_strike', 'rush_hour', 'storm', 'winter_storm', 'heat_wave', 'flood'].includes(e.type));
+  const at = (sec: number) => { const h = (cfg.startHour + sec / 3600) % 24; return `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`; };
+  const threat = cfg.threatLevel ?? 'low';
+  const THREAT = { low: ['LOW', 'green', 'Quiet on the intelligence side. No credible threats on the board.'], guarded: ['GUARDED', 'blue', 'Routine chatter. Nothing specific — stay sharp.'], elevated: ['ELEVATED', 'amber', 'Analysts report elevated risk today. Something may be planned — keep specialists in mind.'], severe: ['SEVERE', 'red', 'Multiple credible threats. Expect at least one major incident this shift.'] } as const;
   const cov = (s: Service) => { const t = engine.coverageTimes(s); const ids = cfg.districts.flatMap((d) => city.nodesInDistrict[d]); return ids.filter((n) => t[n] <= 100).length / ids.length; };
   const under = Object.values(st.units).filter((u) => u.status === 'OUT_OF_SERVICE');
   const next = CHAPTERS.find((c) => !p.campaign.completed.includes(c.id));
@@ -154,10 +179,19 @@ function Prep({ p }: { p: Profile }) {
   };
   return (
     <div className="hub-split">
-      <div className="hub-map">
-        <MapView engine={engine} layer={layer} mode="select" selected={st.selected} onSelect={(k, id) => { engine.select(k, id); bump(); }} onContext={onContext} showIncidents={false} />
-        <div className="maptools"><div className="seg wrap">{(['coverage', 'police', 'fire', 'medical', 'traffic', 'weather', 'normal'] as LayerId[]).map((l) => <button key={l} className={layer === l ? 'on' : ''} onClick={() => setLayer(l)}>{LAYERS.find((x) => x.id === l)!.label}</button>)}</div></div>
-        <div className="maphint">Reposition: select a unit, then right-click the map.</div>
+      <div className={`hub-map prep-left ${pane}`}>
+        <div className="prep-tabs">
+          <button className={pane === 'map' ? 'on' : ''} onClick={() => setPane('map')}><Icon n="map" size={13} /> Deployment</button>
+          <button className={pane === 'garage' ? 'on' : ''} onClick={() => setPane('garage')}><Icon n="wrench" size={13} /> Garage{fitted ? <span className="pill">{fitted}</span> : null}</button>
+        </div>
+        {pane === 'map' ? (
+          <>
+            <MapView engine={engine} layer={layer} mode="select" selected={st.selected} onSelect={(k, id) => { engine.select(k, id); bump(); }} onContext={onContext} showIncidents={false} />
+            <div className="maptools"><div className="seg wrap">{(['coverage', 'police', 'fire', 'medical', 'traffic', 'weather', 'normal'] as LayerId[]).map((l) => <button key={l} className={layer === l ? 'on' : ''} onClick={() => setLayer(l)}>{LAYERS.find((x) => x.id === l)!.label}</button>)}</div>
+              <div className="seg"><button onClick={() => deploy('stations')} title="Every vehicle starts at its station">All at stations</button><button onClick={() => deploy('spread')} title="Spread vehicles across your districts for faster first response">Spread out</button></div></div>
+            <div className="maphint">Reposition: select a unit, then right-click the map.</div>
+          </>
+        ) : <div className="prep-garage"><Garage p={p} /></div>}
       </div>
       <div className="hub-side">
         <div className="card brief">
@@ -172,6 +206,11 @@ function Prep({ p }: { p: Profile }) {
           <div className="field"><label>Shift length</label>
             <div className="seg">{[10, 15, 20, 30].map((m) => <button key={m} className={p.flags.duration === m * 60 ? 'on' : ''} onClick={() => mutate((pp) => { pp.flags.duration = m * 60; })}>{m} min</button>)}</div></div>
           <ExtrasList config={cfg} />
+          <div className={`intel ${THREAT[threat][1]}`}>
+            <div className="intel-head"><Icon n="shield" size={12} /> THREAT LEVEL <b>{THREAT[threat][0]}</b></div>
+            <div className="small">{THREAT[threat][2]}</div>
+            {known.map((e, i) => <div className="small intel-ev" key={i}><Icon n="clock" size={11} /> {['storm', 'winter_storm', 'heat_wave', 'flood'].includes(e.type) ? 'Forecast' : 'Scheduled'}: <b>{EVENT_DEFS[e.type].name}</b> from about {at(e.at)}</div>)}
+          </div>
           <h4>Readiness check</h4>
           {(['police', 'fire', 'medical'] as Service[]).map((s) => <div className="kv" key={s}><span style={{ color: SERVICE_META[s].color }}><Icon n={SERVICE_ICON[s]} size={12} /> {SERVICE_META[s].label}: {Object.values(st.units).filter((u) => u.service === s && u.status !== 'OUT_OF_SERVICE').length} units</span><Bar value={cov(s) * 100} tone={cov(s) > 0.6 ? 'green' : cov(s) > 0.35 ? 'amber' : 'red'} /><span className="mono small">{Math.round(cov(s) * 100)}%</span></div>)}
           {under.length > 0 && <div className="note-line warn"><Icon n="alert" size={12} /> {under.length} unit(s) out of service: {under.map((u) => `${u.callsign} (${u.note ?? 'unavailable'})`).join(', ')}</div>}
@@ -288,7 +327,7 @@ function Shop({ p }: { p: Profile }) {
   const mutate = useApp((s) => s.mutateProfile);
   const [svc, setSvc] = useState<Service>('police');
   const [target, setTarget] = useState<Record<string, string>>({});
-  const items = UNIT_TYPES.filter((u) => u.service === svc);
+  const items = UNIT_TYPES.filter((u) => u.service === svc && u.minRank < 99);
   const stations = p.stations.filter((s) => s.service === svc);
   return (
     <div className="page">

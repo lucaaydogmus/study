@@ -43,6 +43,7 @@ function play(rank: number, seed: number) {
     for (const inc of Object.values(st.incidents)) {
       if (['RESOLVED', 'CLOSED'].includes(inc.status) || inc.hidden) continue;
       if (inc.agency && inc.agency.askedAt !== null && inc.agency.calledAt === null && st.time - inc.agency.askedAt > 8) e.callAgency(inc.id);
+      for (const k of Object.keys(inc.specialistAsked ?? {}) as Array<'federal' | 'eod'>) if (!inc.specialists?.[k]) e.requestSpecialist(inc.id, k);
       if (inc.search && !inc.search.found && Math.floor(st.time) % 6 === 0) {
         const open = inc.search.sectors.map((x, i) => ({ x, i })).filter((o) => o.x.searched < 1 && !inc.assignedUnits.some((id) => st.units[id]?.searchSector === o.i)).sort((a, b) => b.x.p - a.x.p);
         if (open.length) e.assignSearch(inc.id, open[0].i);
@@ -58,6 +59,8 @@ function play(rank: number, seed: number) {
     for (const r of st.requests ?? []) if (r.status === 'open' && st.time >= r.at + 8) { e.runRequest(r.id); e.answerRequest(r.id, e.rng.chance(0.85) ? r.truth : 'clear', r.db.findIndex((h) => h.match)); }
     e.step(DT);
   }
+  const majors = Object.values(st.incidents).filter((i) => TEMPLATE_BY_ID[i.templateId]?.major).map((i) => i.templateId);
+  if (process.env.VERBOSE) console.log(`  seed ${seed}: threat ${st.config.threatLevel} events [${st.config.events.map((x) => x.type).join(',')}] majors [${majors.join(',')}] spec ${st.stats.specialistCalls ?? 0} score ${st.scoreBreakdown!.total}`);
   return { score: st.scoreBreakdown!.total, cas: st.stats.casualties, money: computeResult(st).money, calls: st.stats.callsReceived };
 }
 for (const rank of [1, 3, 5]) {

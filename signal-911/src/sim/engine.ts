@@ -10,6 +10,7 @@ import { backgroundClue } from './content/clues';
 import { aidVerdict, lifeThreatOf, FIRE_LIKE, TOPIC_FACTS, aliLookup, classifyIntent, makeCallerProfile, makeLocPlan, makeVars, fill, openingLines, replyTo, spontaneous, verifyReply, QUICK_QUESTIONS, type DialogueEnv, type Intent } from './dialogue';
 import { EVENT_DEFS, WEATHER_SPEED, WEATHER_TRAFFIC, WEATHER_LABEL, nextWeather } from './events';
 import { numWord, UNIT_TYPE_BY_ID, makeUnit, isAir, AIR_SPEED } from './fleet';
+import { applyFit, KIT_BY_ID } from './garage';
 import { makeRequest, requestText, replyText, returnText, searchRecords, CHECK_LABEL, DANGEROUS, type RecordQuery } from './records';
 import { speak } from './voices';
 import { edgeSpeed, findRoute, makeClosedMask, multiSourceTimes, routeTime, TIME_COMPRESS, type TrafficModel } from './routing';
@@ -18,7 +19,7 @@ import { modProduct, MODIFIER_BY_ID } from './extras';
 import type {
   Call, CallerProfile, CityEvent, CityState, Capability, Fact, FactVal, GameState, HeardLocation, Incident, IncidentStatus, Outcome, Personnel, Req,
   Service, ShiftConfig, ShiftStats, Station, Unit, UpgradeLevels, TimelineEntry, OfficerRequest, CheckResult, Decision, Dept, HospitalState,
-  AgencyKind, AlertKind, SearchGrid,
+  AgencyKind, AlertKind, SearchGrid, SpecialistKind,
 } from './types';
 
 export const DT = 0.5;
@@ -39,10 +40,33 @@ export const AGENCY_FOR: Record<string, AgencyKind> = {
   collision_minor: 'tow', collision_injury: 'tow', collision_trapped: 'tow', collision_multi: 'tow', vehicle_fire: 'tow', tanker_fire: 'tow',
   power_line_down: 'power', gas_leak: 'gas', house_explosion: 'gas', escaped_animal: 'animal', animal_burglar: 'animal',
 };
+/** outside specialists for the very worst days: a federal tactical team and National Guard bomb technicians */
+export const SPECIALIST: Record<SpecialistKind, { name: string; short: string; unitType: string; cost: number; mobilise: [number, number]; spoken: string; ask: string[]; arrive: string }> = {
+  federal: { name: 'Federal Tactical Team', short: 'FED', unitType: 'federal_tactical', cost: 12000, mobilise: [70, 110], spoken: 'Federal Team',
+    ask: ['This is beyond what we have here — recommend you request the federal tactical team.', 'Dispatch, we are outgunned. Get the feds rolling — tactical and a negotiator.'],
+    arrive: 'Federal tactical team on scene — we have command of the inner cordon.' },
+  eod: { name: 'National Guard EOD', short: 'EOD', unitType: 'guard_eod', cost: 7500, mobilise: [55, 95], spoken: 'Guard EOD',
+    ask: ['We need bomb technicians here — get EOD rolling, nobody goes near this thing until they arrive.', 'Dispatch, we have a possible device. Request EOD — National Guard if the bomb squad is not available.'],
+    arrive: 'Guard EOD on scene. Robot is going down to the device now.' },
+};
+/** which incidents can use which specialist */
+export const SPECIALIST_FOR: Record<string, SpecialistKind> = {
+  active_shooter: 'federal', hostage_barricade: 'federal', kidnapping: 'federal', bank_robbery: 'federal', vehicle_ramming: 'federal', riot: 'federal',
+  bomb_threat: 'eod', suspicious_package: 'eod',
+};
+/** unit types that are much better than generalists at certain jobs */
+const SPECIALIST_FIT: Array<{ types: string[]; tpl: Set<string>; m: number }> = [
+  { types: ['public_order'], tpl: new Set(['riot', 'protest_march', 'looting', 'public_disturbance', 'assault_mob', 'unruly_passenger']), m: 1.45 },
+  { types: ['hazmat'], tpl: new Set(['hazmat_spill', 'gas_leak', 'tanker_fire', 'train_derailment', 'industrial_accident', 'carbon_monoxide', 'warehouse_smoke']), m: 1.45 },
+  { types: ['bomb_squad', 'guard_eod'], tpl: new Set(['bomb_threat', 'suspicious_package']), m: 1.35 },
+  { types: ['foot', 'bicycle'], tpl: new Set(['public_disturbance', 'protest_march', 'shoplifting', 'public_intoxication', 'lost_child', 'suspicious_activity', 'assault_mob']), m: 1.25 },
+  { types: ['paramedic_engine'], tpl: new Set(['collision_trapped', 'collision_multi', 'house_explosion', 'apartment_fire']), m: 1.15 },
+];
 /** which public alert actually protects people for each kind of incident */
 export const ALERT_RIGHT: Record<string, AlertKind> = {
   gas_leak: 'evacuate', house_explosion: 'evacuate', tanker_fire: 'evacuate', train_derailment: 'evacuate', brush_fire: 'evacuate', building_collapse: 'evacuate', bomb_threat: 'evacuate', apartment_fire: 'evacuate',
   warehouse_smoke: 'shelter', industrial_accident: 'shelter', active_shooter: 'shelter', hostage_barricade: 'shelter', crowd_crush: 'shelter',
+  suspicious_package: 'evacuate', hazmat_spill: 'shelter', riot: 'shelter', vehicle_ramming: 'shelter',
 };
 /** hard and expert shifts switch off the dispatch assists: response plans, suggested replies, auto-classification, quick location picks */
 export const assistsOn = (st: GameState): boolean => !['hard', 'expert'].includes(st.config.difficulty);
@@ -113,7 +137,7 @@ const emptyStats = (): ShiftStats => ({
 export function createShiftState(config: ShiftConfig, setup: ShiftSetup): GameState {
   const city = getCity();
   const units: Record<string, Unit> = {};
-  for (const u of setup.units) units[u.id] = JSON.parse(JSON.stringify(u));
+  for (const u of setup.units) units[u.id] = applyFit(JSON.parse(JSON.stringify(u)));
   const stations: Record<string, Station> = {};
   for (const s of setup.stations) stations[s.id] = { ...s };
   const personnel: Record<string, Personnel> = {};
@@ -358,6 +382,7 @@ export class GameEngine {
     const st = this.state;
     this.processScript();
     this.processForced();
+    this.majorNews();
     this.updateEvents();
     this.updateWeather();
     if (st.time - this.lastTrafficUpdate >= 4) this.updateTraffic();
@@ -446,13 +471,15 @@ export class GameEngine {
       case 'flood': return pick(['riverside', 'southside', 'harbor', 'industrial']);
       case 'industrial_fire': return pick(['industrial', 'harbor']);
       case 'blackout': return all.slice(0, Math.max(3, Math.ceil(all.length * 0.6)));
+      case 'protest': case 'riot': { const d = pick(['downtown', 'financial', 'oldtown', 'university']); return d.length ? d : all.slice(0, 2); }
+      case 'marathon': { const d = pick(['riverside', 'downtown', 'oldtown', 'westres', 'university']); return d.length ? d : all.slice(0, 3); }
       default: return all;
     }
   }
   private applyEventStart(ev: CityEvent) {
     const st = this.state;
     const closable = this.city.edges.filter((e) => e.cls !== 'highway' && ev.districts.includes(this.city.nodes[e.a].district) && e.cls !== 'bridge');
-    const nClose = ev.type === 'storm' ? 3 : ev.type === 'winter_storm' ? 3 : ev.type === 'flood' ? 4 : 0;
+    const nClose = ev.type === 'storm' ? 3 : ev.type === 'winter_storm' ? 3 : ev.type === 'flood' ? 4 : ev.type === 'marathon' ? 6 : ev.type === 'protest' ? 3 : ev.type === 'riot' ? 4 : 0;
     for (let i = 0; i < nClose && closable.length; i++) { const e = this.rng.pick(closable); if (!ev.closedEdges.includes(e.id)) { ev.closedEdges.push(e.id); st.closedEdges.push(e.id); } }
     if (ev.type === 'flood') {
       const bridges = this.city.edges.filter((e) => e.cls === 'bridge' && this.city.nodes[e.a].i !== 20);
@@ -460,6 +487,11 @@ export class GameEngine {
     }
     if (ev.closedEdges.length) { this.closedMask = makeClosedMask(this.city, st.closedEdges); this.notify(`${ev.closedEdges.length} road(s) closed — routes will adapt`, 'warn'); this.rerouteAll(true); }
     if (ev.type === 'industrial_fire' && st.config.districts.includes('industrial')) this.spawnIncident('warehouse_smoke', 'industrial', { severity: 4, forceEvent: ev.id });
+    const home = ev.districts.filter((d) => st.config.districts.includes(d));
+    if (ev.type === 'protest' && home.length) this.spawnIncident('protest_march', this.rng.pick(home), { forceEvent: ev.id });
+    if (ev.type === 'riot' && home.length) { const inc = this.spawnIncident('riot', this.rng.pick(home), { forceEvent: ev.id }); inc.breakAt = st.time + 3; }
+    if (ev.type === 'riot' || ev.type === 'protest') this.radio('DISPATCH', ev.type === 'riot' ? 'All units, all units: serious disorder in progress. Public order units to staging; fire crews do not enter without a police escort.' : 'All units, be advised: large protest march on the move. Expect road closures and diversions.', 'alert');
+    if (ev.type === 'marathon') this.radio('DISPATCH', 'All units, marathon course is closed to traffic. Medical teams are staged along the route — use the diversions.', 'alert');
   }
   private removeEventClosures(ev: CityEvent) {
     const st = this.state;
@@ -490,7 +522,7 @@ export class GameEngine {
         const here = ev.districts.includes(d.id);
         v *= 1 + (ev.trafficMult - 1) * (here ? 1 : 0.5);
         if (ev.type === 'blackout' && here) v += 0.25;
-        if (ev.type === 'festival' && here) v += 0.2;
+        if ((ev.type === 'festival' || ev.type === 'protest' || ev.type === 'riot' || ev.type === 'marathon') && here) v += 0.2;
       }
       // open incidents add congestion at their district
       const blockers = Object.values(st.incidents).filter((i) => i.district === d.id && i.blockedEdge !== null && i.status !== 'RESOLVED' && i.status !== 'CLOSED').length;
@@ -512,9 +544,12 @@ export class GameEngine {
     const crew = this.crewOf(u);
     const drive = crew.length ? crew.reduce((s, p) => s + p.driving, 0) / crew.length : 50;
     const fat = crew.length ? crew.reduce((s, p) => s + p.fatigue, 0) / crew.length : 0;
-    return u.speedModifier * Math.max(0.86, Math.min(1.14, drive / 68)) * (1 - Math.max(0, fat - 60) / 400);
+    const w = WEATHER_SPEED[this.state.weather];
+    const grip = u.fit?.grip ? (w + (1 - w) * u.fit.grip) / w : 1;
+    return u.speedModifier * grip * Math.max(0.86, Math.min(1.14, drive / 68)) * (1 - Math.max(0, fat - 60) / 400);
   }
   unitEffectiveness(u: Unit): number {
+    if (u.type === 'federal_tactical' || u.type === 'guard_eod') return 1.7;
     const crew = this.crewOf(u);
     if (!crew.length) return 0.4;
     const avg = (f: (p: Personnel) => number) => crew.reduce((s, p) => s + f(p), 0) / crew.length;
@@ -525,7 +560,14 @@ export class GameEngine {
     const up = this.state.upgrades;
     const equip = 1 + 0.12 * (u.service === 'medical' ? up.medkit ?? 0 : u.service === 'fire' ? up.firegear ?? 0 : up.policegear ?? 0);
     const seatFactor = Math.sqrt(Math.min(1, crew.length / u.crewSeats));
-    return Math.max(0.35, Math.min(2.2, eff * fatigue * morale * equip * seatFactor * modProduct(this.state.config, 'eff')));
+    return Math.max(0.35, Math.min(2.2, eff * fatigue * morale * equip * seatFactor * (u.fit?.eff ?? 1) * modProduct(this.state.config, 'eff')));
+  }
+  /** the right tool for the job: specialist vehicles and fitted kit work some scenes faster */
+  sceneFit(inc: Incident, u: Unit): number {
+    let m = 1;
+    for (const f of SPECIALIST_FIT) if (f.types.includes(u.type) && f.tpl.has(inc.templateId)) m *= f.m;
+    for (const k of u.fit?.kits ?? []) { const kit = KIT_BY_ID[k]; if (kit?.scenes?.includes(inc.templateId) || (kit?.categories?.includes(inc.category))) m *= kit.sceneMult ?? 1; }
+    return m;
   }
   private updatePersonnel() {
     const st = this.state;
@@ -573,7 +615,18 @@ export class GameEngine {
       const d = s.district && st.config.districts.includes(s.district) ? s.district : this.rng.pick(st.config.districts);
       const inc = this.spawnIncident(s.template, d, { archetype: s.archetype });
       if (s.story) inc.storyline = s.story;
-      if (s.story && s.first && st.config.storyline) this.breaking(st.config.storyline.headline, inc);
+      if (s.story && s.first && st.config.storyline) { this.breaking(st.config.storyline.headline, inc); inc.breakAt = undefined; }
+    }
+  }
+  /** a major incident hits the news a little after the first call */
+  private majorNews() {
+    const st = this.state;
+    for (const inc of Object.values(st.incidents)) {
+      if (inc.breakAt === undefined || st.time < inc.breakAt) continue;
+      inc.breakAt = undefined;
+      if (['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
+      const h = TEMPLATE_BY_ID[inc.templateId]?.headline;
+      if (h) this.breaking(`${h} in ${this.city.districtById[inc.district]?.name ?? 'the city'}`, inc);
     }
   }
 
@@ -734,6 +787,7 @@ export class GameEngine {
       if (eid !== undefined && !st.closedEdges.includes(eid) && rng.chance(0.5)) { inc.blockedEdge = eid; }
     }
     st.incidents[id] = inc;
+    if (tpl.major && !src && !opts.tutorial && tpl.headline) inc.breakAt = st.time + 30;
     if (opts.connectedTo) { inc.relatedIds.push(opts.connectedTo.id); opts.connectedTo.relatedIds.push(id); }
     if (!callId) {
       // reported over the radio, not by phone: location and basic facts are already known
@@ -971,6 +1025,7 @@ export class GameEngine {
     if (tw.requires && tw.requires.length && inc.status === 'STABILIZING') inc.status = 'ON_SCENE';
     this.log('info', `Revealed: ${inc.label}`, { incidentId: inc.id });
     if (source === 'caller') this.notify(`New information — ${inc.label}`, 'warn', inc.id);
+    if (source === 'caller' && inc.sceneSeen) { const here = this.onScene(inc)[0]; if (here) this.askSpecialist(inc, here); }
   }
 
   answerCall(callId: string): boolean {
@@ -1214,7 +1269,7 @@ export class GameEngine {
     if (!threat) { if (inc.lifeThreat && inc.careAt == null) inc.lifeThreat = null; return; }
     if (inc.lifeThreat !== threat) { inc.lifeThreat = threat; inc.survival ??= 100; }
     if (inc.careAt != null) return;
-    const care = here.some((u) => threat === 'arrest' ? u.capabilities.includes('als') || u.capabilities.includes('bls') : u.capabilities.some((c) => c === 'als' || c === 'bls'));
+    const care = here.some((u) => u.capabilities.some((c) => c === 'als' || c === 'bls' || c === 'first_aid'));
     if (care) {
       inc.careAt = st.time;
       const u = here.find((x) => x.capabilities.includes('als') || x.capabilities.includes('bls'));
@@ -1604,7 +1659,7 @@ export class GameEngine {
     return Math.max(2.5, 10 - 2.5 * lvl - (rel - 70) / 20);
   }
   /** police cars cruising their beat (available, but out on the road) */
-  onPatrol(u: Unit): boolean { return u.status === 'AVAILABLE' && u.patrol !== false && u.service === 'police' && !isAir(u) && !u.temp && ['patrol', 'motorcycle', 'traffic'].includes(u.type); }
+  onPatrol(u: Unit): boolean { return u.status === 'AVAILABLE' && u.patrol !== false && u.service === 'police' && !isAir(u) && !u.temp && ['patrol', 'motorcycle', 'traffic', 'foot', 'bicycle'].includes(u.type); }
 
   /** pick the next stretch of the beat: a few blocks away, around the unit's post */
   private patrolStep(u: Unit) {
@@ -1741,7 +1796,8 @@ export class GameEngine {
     const startNode = u.route.length ? u.route[0] : u.prevNode;
     const startPos = u.route.length ? { x: this.city.nodes[startNode].x, y: this.city.nodes[startNode].y } : { x: u.x, y: u.y };
     void startPos;
-    const res = findRoute(this.city, startNode, destNode, this.tm(siren && this.sirenFor(u) || u.status === 'DISPATCHED' && u.code !== 2), this.unitSpeedFactor(u));
+    const filters = ['bicycle', 'foot', 'motorcycle'].includes(u.type);
+    const res = findRoute(this.city, startNode, destNode, this.tm(filters || (siren && this.sirenFor(u)) || (u.status === 'DISPATCHED' && u.code !== 2)), this.unitSpeedFactor(u));
     u.destNode = destNode;
     if (!res) { u.route = []; u.eta = null; return false; }
     u.route = u.route.length ? [startNode, ...res.path] : res.path;
@@ -2005,6 +2061,7 @@ export class GameEngine {
         return;
       }
       u.note = undefined;
+      if (u.stationId === 'outside') this.specialistArrived(inc, u);
       // fire and EMS walking into an unsecured scene with an armed suspect can be attacked
       if (u.service !== 'police' && this.sceneUnsafe(inc) && !this.policeOnScene(inc) && this.rng.chance(inc.truth.weapon && inc.truth.weapon !== 'none' ? 0.2 : 0.07)) {
         this.radio(u.spoken, `Dispatch, ${u.spoken}! We're being threatened on scene — crew pulling back! We need PD here now!`, 'alert', u.id, inc.id);
@@ -2099,7 +2156,7 @@ export class GameEngine {
       if (inc.search && !inc.search.found) { this.updateSearch(inc, here, dt); continue; }
       const cov = matchCoverage(inc.requires, here);
       const usedUnits = here.filter((u) => cov.used.has(u.id));
-      const eff = usedUnits.length ? usedUnits.reduce((s, u) => s + this.unitEffectiveness(u), 0) / usedUnits.length : 1;
+      const eff = usedUnits.length ? usedUnits.reduce((s, u) => s + this.unitEffectiveness(u) * this.sceneFit(inc, u), 0) / usedUnits.length : 1;
       const f = cov.f;
       // threat grows without adequate response, subsides with it
       inc.threat += inc.growth * this.aidFactor(inc) * (1 - f) * dt - inc.clear * eff * f * f * 0.35 * dt;
@@ -2157,6 +2214,7 @@ export class GameEngine {
     const cov = matchCoverage(inc.requires, this.onScene(inc).concat(inc.assignedUnits.map((id) => st.units[id]).filter((x) => x && x.status !== 'ON_SCENE')));
     if (cov.missing.length) this.radio(u.spoken, `Dispatch, requesting ${reqText(cov.missing)} at this location.`, 'unit', u.id, inc.id);
     this.requestAgency(inc, u);
+    this.askSpecialist(inc, u);
     for (const [k, v] of Object.entries(inc.truth)) if (['fire', 'smoke', 'injured', 'trapped', 'vehicles', 'hazard', 'people'].includes(k) && inc.facts.every((x) => x.key !== k)) this.addFact(inc, k, v, 'confirmed', 'scene');
     // upgrade confidence of existing
     for (const x of inc.facts) if (x.confidence === 'unconfirmed' && inc.truth[x.key] === x.value) x.confidence = 'confirmed';
@@ -3590,6 +3648,70 @@ export class GameEngine {
     }
   }
 
+  // ── Specialists: federal tactical team and National Guard EOD ─────────────
+  specialistFor(inc: Incident): SpecialistKind | null {
+    if (SPECIALIST_FOR[inc.templateId]) return SPECIALIST_FOR[inc.templateId];
+    if (inc.requires.some((r) => r.cap === 'eod')) return 'eod';
+    return null;
+  }
+  /** crews on scene tell dispatch what they are up against */
+  private askSpecialist(inc: Incident, u: Unit) {
+    const st = this.state;
+    const kind = this.specialistFor(inc);
+    if (!kind || inc.specialists?.[kind] || inc.specialistAsked?.[kind] !== undefined || u.service !== 'police' && kind === 'federal') return;
+    const needEod = kind === 'eod' && inc.requires.some((r) => r.cap === 'eod') && !this.onScene(inc).some((x) => x.capabilities.includes('eod'));
+    const needFed = kind === 'federal' && inc.severity >= 5 && !this.onScene(inc).some((x) => x.type === 'federal_tactical');
+    if (!needEod && !needFed) return;
+    (inc.specialistAsked ??= {})[kind] = st.time;
+    this.radio(u.spoken, `Dispatch, ${u.spoken}. ${this.rng.pick(SPECIALIST[kind].ask)}`, 'alert', u.id, inc.id);
+    this.notify(`${u.callsign}: ${kind === 'eod' ? 'bomb technicians needed' : 'recommends the federal tactical team'} — request from the incident card`, 'warn', inc.id);
+  }
+  /** call in the federal team or National Guard bomb technicians; they mobilise, then drive in from the city limits */
+  requestSpecialist(incId: string, kind: SpecialistKind): { ok: boolean; reason?: string; eta?: number } {
+    const st = this.state;
+    const inc = st.incidents[incId];
+    if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) return { ok: false, reason: 'Incident closed' };
+    if (inc.reportedNode === null) return { ok: false, reason: 'Set the incident location first' };
+    if (inc.specialists?.[kind]) return { ok: false, reason: `${SPECIALIST[kind].name} already requested` };
+    if (this.specialistFor(inc) !== kind) return { ok: false, reason: kind === 'eod' ? 'No suspected device here' : 'Federal teams only respond to the most serious armed threats' };
+    const sp = SPECIALIST[kind];
+    const def = UNIT_TYPE_BY_ID[sp.unitType];
+    const n = this.city.nodes[inc.reportedNode];
+    const edgeNodes = this.city.nodes.filter((x) => (x.i === 0 || x.i === 40 || x.j === 0) && this.city.adj[x.id].length);
+    let best = edgeNodes[0], bd = Infinity;
+    for (const e of edgeNodes) { const d = Math.hypot(e.x - n.x, e.y - n.y); if (d < bd) { bd = d; best = e; } }
+    const station: Station = { id: 'outside', name: sp.name, service: def.service, nodeId: best.id, district: best.district, capacity: 99, disabledShifts: 0 };
+    const k = (st.stats.specialistCalls ?? 0) + 1;
+    const idn = 9500 + Object.keys(st.units).length + st.uniqueNameCounter++;
+    const u = makeUnit(def, station, Object.values(st.units), idn);
+    u.id = `sp${idn}`; u.callsign = `${sp.short}-${k}`; u.spoken = `${sp.spoken} ${numWord(k)}`;
+    u.temp = true; u.minCrew = 0; u.stationId = 'outside'; u.speedModifier = def.speed; u.postNode = best.id;
+    const night = st.timeOfDay % 24 >= 21 || st.timeOfDay % 24 < 5;
+    u.timer = Math.round(this.rng.range(sp.mobilise[0], sp.mobilise[1]) * (night ? 1.2 : 1));
+    st.units[u.id] = u;
+    (inc.specialists ??= {})[kind] = { at: st.time, unitId: u.id, asked: inc.specialistAsked?.[kind] };
+    st.budget -= sp.cost; st.stats.costs += sp.cost;
+    st.stats.specialistCalls = k;
+    this.dispatch(u.id, inc.id, { code: 3 });
+    const eta = u.timer + (u.eta ?? 0);
+    this.radio('DISPATCH', `${sp.name}, Ravenport dispatch. Requesting immediate response to ${addressOf(this.city, inc.reportedNode)} — ${inc.label.toLowerCase()}.`, 'dispatch', u.id, inc.id);
+    this.radio(sp.name, kind === 'eod' ? `Ravenport, Guard EOD copies. Team is loading the robot now — wheels rolling in about ${Math.max(1, Math.round(u.timer / 60))} minute${Math.round(u.timer / 60) > 1 ? 's' : ''}.` : `Ravenport, federal team copies. We are mobilising — expect us in about ${Math.max(1, Math.round(eta / 60))} minutes. Hold the perimeter, do not engage unless you have to.`, 'unit', u.id, inc.id);
+    this.radio('DISPATCH', `Units at INC-${String(inc.num).padStart(4, '0')}, ${sp.name.toLowerCase()} has been requested. Hold the cordon.`, 'dispatch', undefined, inc.id);
+    this.notify(`${sp.name} requested (−$${sp.cost.toLocaleString()})`, 'info', inc.id);
+    this.log('dispatch', `${sp.name} requested for ${inc.label}`, { incidentId: inc.id, good: true });
+    this.emit({ type: 'alert', text: 'Specialist requested' });
+    return { ok: true, eta };
+  }
+  /** a specialist team reached the scene */
+  private specialistArrived(inc: Incident, u: Unit) {
+    const kind = (Object.keys(inc.specialists ?? {}) as SpecialistKind[]).find((k) => inc.specialists?.[k]?.unitId === u.id);
+    if (!kind) return;
+    this.radio(u.spoken, `Dispatch, ${u.spoken}. ${SPECIALIST[kind].arrive}`, 'unit', u.id, inc.id);
+    this.fx('info', inc.reportedNode ?? inc.nodeId, `${SPECIALIST[kind].short} on scene`);
+    if (kind === 'eod') { inc.threat = Math.max(0, inc.threat - 25); }
+    else { inc.threat = Math.max(0, inc.threat - 20); inc.growth *= 0.6; }
+  }
+
   // ── Officer status checks ─────────────────────────────────────────────────
   private startStatusTimer(u: Unit, inc: Incident) {
     const st = this.state;
@@ -3993,6 +4115,8 @@ export class GameEngine {
     else if (id === 'active_shooter') d = { kind: 'shooter', prompt: `${u.spoken}: shots still being fired inside. Go in with what we have, or wait for tactical?`, options: [opt('enter', 'Go in now', 'Stops the killing sooner — officers at risk'), opt('wait', 'Wait for tactical', 'Safer for officers — more victims meanwhile')], defaultId: 'wait' };
     else if (['cardiac_arrest', 'drowning_pool', 'collapse_child', 'gunshot_victim', 'airport_medical', 'collision_trapped'].includes(id)) d = { kind: 'medical', prompt: `${u.spoken}: patient is critical. Treat on scene, or load and go?`, options: [opt('stay', 'Treat on scene', 'Right for a cardiac arrest — resuscitate where they are'), opt('go', 'Load and go', 'Right for bleeding trauma — surgery is the fix')], defaultId: 'stay' };
     else if (['fall_elderly', 'sudden_illness', 'allergic_reaction', 'sports_injury', 'heat_exhaustion', 'workplace_injury', 'collision_injury', 'breathing_trouble'].includes(id) && inc.truth.conscious !== false && inc.needsTransport && u.capabilities.includes('transport') && this.rng.chance(0.18)) d = { kind: 'refusal', prompt: `${u.spoken}: patient is refusing to come with us — says they feel fine. How do you want to play it?`, options: [opt('persuade', 'Keep talking them round', 'Slower, but they get the care they need'), opt('sign', 'Let them sign a refusal', 'Frees the crew now — risky if they are worse than they think'), opt('police', 'Send an officer to help', 'Ties up a patrol car, usually works')], defaultId: 'persuade' };
+    else if (id === 'riot' || (id === 'protest_march' && this.rng.chance(0.7))) d = { kind: 'riot', prompt: id === 'riot' ? `${u.spoken}: the line is taking bricks. Hold, push them back, or pull out and regroup?` : `${u.spoken}: the march has stopped and a hard core at the front want a fight. Talk to the organisers, or clear the road?`, options: id === 'riot' ? [opt('hold', 'Hold the line', 'Contain it until enough units are here'), opt('push', 'Push forward', 'Takes the street back fast — injuries likely, worse without public order units'), opt('withdraw', 'Pull back', 'Nobody gets hurt now — the crowd runs riot meanwhile')] : [opt('talk', 'Talk to the organisers', 'Slower, keeps it peaceful'), opt('clear', 'Clear the road', 'Fast — risks turning a march into a riot')], defaultId: id === 'riot' ? 'hold' : 'talk' };
+    else if (id === 'suspicious_package' && inc.twistRevealed) d = { kind: 'package', prompt: `${u.spoken}: possible device confirmed. Wait for EOD, or let an officer take a closer look?`, options: [opt('wait', 'Hold the cordon for EOD', 'Safe — the street stays shut until bomb techs arrive'), opt('look', 'Officer takes a look', 'Quicker answer — someone could be killed if it is real')], defaultId: 'wait' };
     else if (id === 'bomb_threat') d = { kind: 'bomb', prompt: `${u.spoken}: station is still full of people. Evacuate first, or search with people inside?`, options: [opt('evacuate', 'Evacuate first', 'Slow and disruptive, but safe'), opt('search', 'Search now', 'Fast — dangerous if the threat is real')], defaultId: 'evacuate' };
     if (!d) return;
     if (!st.decisions) st.decisions = [];
@@ -4031,10 +4155,33 @@ export class GameEngine {
           else out = 'Defensive operation: slower, but nobody was at risk.';
         }
         break;
-      case 'barricade':
-        if (optionId === 'negotiate') { inc.work *= 1.3; out = this.rng.chance(0.88) ? 'Negotiators are talking — this will take time, but it is calm.' : 'Talks broke down; the subject is getting agitated.'; if (out.startsWith('Talks')) inc.threat += 20; }
+      case 'barricade': {
+        const negotiator = this.onScene(inc).some((x) => x.capabilities.includes('negotiator'));
+        if (optionId === 'negotiate') { inc.work *= negotiator ? 1.05 : 1.3; out = this.rng.chance(negotiator ? 0.97 : 0.88) ? (negotiator ? 'The federal negotiator has him talking — he is asking about his kids.' : 'Negotiators are talking — this will take time, but it is calm.') : 'Talks broke down; the subject is getting agitated.'; if (out.startsWith('Talks')) inc.threat += 20; }
         else { inc.workProgress += inc.work * 0.7; if (this.rng.chance(tactical ? 0.12 : 0.4)) { inc.casualties += 1; st.stats.casualties += 1; this.consequence(inc, `The breach went wrong${tactical ? '' : ' without the tactical team'} — someone was shot`); out = 'The breach went wrong — someone was shot.'; } else out = 'Entry team breached and took the subject down.'; }
         break;
+      }
+      case 'riot': {
+        const pou = this.onScene(inc).filter((x) => x.capabilities.includes('public_order') || x.capabilities.includes('crowd')).length;
+        const ll = this.onScene(inc).some((x) => x.fit?.kits.includes('less_lethal'));
+        if (optionId === 'hold') { inc.work *= 1.1; inc.threat = Math.max(0, inc.threat - 6); out = pou ? 'The line is holding. Waiting for more units before moving.' : 'Patrol officers are holding — barely. They need public order units.'; }
+        else if (optionId === 'push') {
+          inc.workProgress += inc.work * 0.35; inc.threat = Math.max(0, inc.threat - 20);
+          if (this.rng.chance(pou ? (ll ? 0.08 : 0.18) : 0.45)) { inc.casualties += 1; st.stats.casualties += 1; this.consequence(inc, `The push turned violent${pou ? '' : ' without public order units'} — someone was badly hurt`); out = 'The push turned violent — someone was badly hurt.'; }
+          else out = 'The line pushed forward and took the street back.';
+        } else if (optionId === 'withdraw') { inc.threat = Math.min(99, inc.threat + 25); inc.work *= 1.25; this.consequence(inc, 'Officers pulled back and the crowd ran riot'); out = 'Officers pulled back — the crowd is smashing up the street.'; }
+        else if (optionId === 'talk') { inc.work *= 1.15; inc.growth *= 0.6; out = this.rng.chance(0.85) ? 'The organisers agreed a new route — the march is moving again.' : 'Talks stalled; the hard core are pushing at the line.'; if (out.startsWith('Talks')) inc.threat += 15; }
+        else { inc.workProgress += inc.work * 0.4; if (this.rng.chance(pou ? 0.2 : 0.4)) { inc.threat = Math.min(99, inc.threat + 30); this.consequence(inc, 'Clearing the road by force inflamed the march'); out = 'Clearing the road by force has inflamed the crowd.'; } else out = 'The road was cleared without serious trouble.'; }
+        break;
+      }
+      case 'package': {
+        const eod = this.onScene(inc).some((x) => x.capabilities.includes('eod'));
+        if (optionId === 'wait') { inc.work *= eod ? 1 : 1.15; out = eod ? 'Bomb techs are on it — robot going down now.' : 'Cordon held. Waiting for EOD — request them if you have not.'; }
+        else if (eod) { inc.workProgress += inc.work * 0.2; out = 'The EOD tech suited up and had a look — controlled disruption next.'; }
+        else if (this.rng.chance(0.3)) { inc.casualties += 1; st.stats.casualties += 1; if (u) hurtCrew('The device went off as an officer approached'); else this.consequence(inc, 'The device went off as an officer approached'); out ||= 'The device went off as an officer approached.'; }
+        else { inc.workProgress += inc.work * 0.15; out = 'The officer backed away safely — it is definitely a device.'; }
+        break;
+      }
       case 'shooter':
         if (optionId === 'enter') { inc.threat = Math.max(0, inc.threat - 35); inc.workProgress += inc.work * 0.25; if (!tactical && this.rng.chance(0.25)) hurtCrew('An officer was shot going in without the tactical team'); else out = 'Officers went in and engaged the shooter.'; }
         else if (!tactical) { inc.threat = Math.min(99, inc.threat + 15); if (this.rng.chance(0.5)) { inc.casualties += 1; st.stats.casualties += 1; this.consequence(inc, 'Officers waited outside for tactical — another victim was hit'); out = 'While officers waited, another victim was hit.'; } else out = 'Officers are holding the perimeter until tactical arrives.'; }
@@ -4066,7 +4213,7 @@ export class GameEngine {
         break;
       case 'bomb':
         if (optionId === 'evacuate') { inc.work *= 1.25; out = 'Station evacuated — search under way with nobody inside.'; }
-        else { inc.workProgress += inc.work * 0.4; if (inc.twist && this.rng.chance(0.35)) { inc.casualties += 2; st.stats.casualties += 2; this.consequence(inc, 'The device went off during a search with people still inside'); out = 'The device went off with people still inside.'; } else out = 'Quick search completed.'; }
+        else { inc.workProgress += inc.work * 0.4; if (inc.twist && this.rng.chance(this.onScene(inc).some((x) => x.capabilities.includes('eod')) ? 0.08 : 0.35)) { inc.casualties += 2; st.stats.casualties += 2; this.consequence(inc, 'The device went off during a search with people still inside'); out = 'The device went off with people still inside.'; } else out = 'Quick search completed.'; }
         break;
     }
     d.outcome = out;
@@ -4649,7 +4796,7 @@ export class GameEngine {
     const inc = st.incidents[incId];
     if (!inc || inc.reportedNode === null) return { ok: false, reason: 'Set the incident location first' };
     if (inc.mutualAid >= 2) return { ok: false, reason: 'Mutual aid limit reached for this incident' };
-    const defs = Object.values(UNIT_TYPE_BY_ID).filter((d) => d.caps.includes(cap)).sort((a, b) => a.cost - b.cost);
+    const defs = Object.values(UNIT_TYPE_BY_ID).filter((d) => d.caps.includes(cap) && d.minRank < 99).sort((a, b) => a.cost - b.cost);
     const def = defs[0];
     if (!def) return { ok: false, reason: 'No such resource' };
     const cost = 4000;

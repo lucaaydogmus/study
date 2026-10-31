@@ -16,6 +16,10 @@ export const UNIT_TYPES: UnitTypeDef[] = [
   { type: 'van', service: 'police', label: 'Police Van', short: 'VAN', spoken: 'Van', caps: ['patrol', 'crowd', 'prisoner_transport'], cost: 54000, crew: 3, minCrew: 2, speed: 0.92, equipment: 'Crowd control gear', minRank: 2, blurb: 'Crowd management and transport.' },
   { type: 'police_supervisor', service: 'police', label: 'Supervisor Unit', short: 'SUPV', spoken: 'Supervisor', caps: ['patrol', 'police_supervisor'], cost: 62000, crew: 1, minCrew: 1, speed: 1.05, equipment: 'Command radio', minRank: 3, blurb: 'Takes command of complex scenes.' },
   { type: 'helicopter', service: 'police', label: 'Police Helicopter', short: 'AIR', spoken: 'Air', caps: ['air_support'], cost: 420000, crew: 2, minCrew: 2, speed: 1, equipment: 'FLIR camera, searchlight', minRank: 3, blurb: 'Eyes in the sky: tracks fleeing vehicles and searches from above. Limited fuel; grounded in storms.' },
+  { type: 'foot', service: 'police', label: 'Foot Patrol', short: 'FOOT', spoken: 'Foot', caps: ['patrol'], cost: 12000, crew: 2, minCrew: 1, speed: 0.42, equipment: 'Radio, body armour', minRank: 1, blurb: 'Cheap officers walking a beat. Brilliant in dense streets and crowds — slow anywhere else.' },
+  { type: 'bicycle', service: 'police', label: 'Bike Unit', short: 'BIKE', spoken: 'Bike', caps: ['patrol'], cost: 16000, crew: 1, minCrew: 1, speed: 0.74, equipment: 'Lightweight kit', minRank: 1, blurb: 'Filters through gridlock and crowds where cars are stuck.' },
+  { type: 'public_order', service: 'police', label: 'Public Order Unit', short: 'POU', spoken: 'Public Order', caps: ['patrol', 'crowd', 'public_order'], cost: 88000, crew: 6, minCrew: 4, speed: 0.86, equipment: 'Shields, helmets, batons', minRank: 3, blurb: 'A van of officers in riot gear for protests, disorder and riots.' },
+  { type: 'bomb_squad', service: 'police', label: 'Bomb Squad', short: 'EOD', spoken: 'Bomb Squad', caps: ['eod'], cost: 160000, crew: 3, minCrew: 2, speed: 0.9, equipment: 'Robot, bomb suit, X-ray', minRank: 5, blurb: 'Renders suspicious packages and devices safe.' },
   { type: 'tactical', service: 'police', label: 'Specialist Response', short: 'SRT', spoken: 'Tactical', caps: ['patrol', 'tactical'], cost: 145000, crew: 4, minCrew: 3, speed: 0.95, equipment: 'Tactical equipment', minRank: 5, blurb: 'Armed or high-risk incidents.' },
   // Fire
   { type: 'engine', service: 'fire', label: 'Fire Engine', short: 'ENGINE', spoken: 'Engine', caps: ['fire_suppression'], cost: 98000, crew: 4, minCrew: 3, speed: 0.88, equipment: 'Pump, 500 gal tank', minRank: 1, blurb: 'Fire suppression workhorse.' },
@@ -23,6 +27,9 @@ export const UNIT_TYPES: UnitTypeDef[] = [
   { type: 'ladder', service: 'fire', label: 'Ladder Truck', short: 'LADDER', spoken: 'Ladder', caps: ['fire_suppression', 'aerial', 'rescue'], cost: 165000, crew: 5, minCrew: 3, speed: 0.8, equipment: '100ft aerial', minRank: 3, blurb: 'High-rise and roof operations.' },
   { type: 'command', service: 'fire', label: 'Command Vehicle', short: 'COMMAND', spoken: 'Command', caps: ['command'], cost: 90000, crew: 2, minCrew: 1, speed: 1.05, equipment: 'Mobile command post', minRank: 4, blurb: 'Coordinates multi-unit operations.' },
   { type: 'water_rescue', service: 'fire', label: 'Water Rescue Unit', short: 'WATER', spoken: 'Water Rescue', caps: ['water_rescue', 'rescue'], cost: 112000, crew: 3, minCrew: 2, speed: 0.95, equipment: 'Boat, dive kit', minRank: 3, blurb: 'River and harbor rescues.' },
+  { type: 'fd_ambulance', service: 'fire', label: 'Fire Rescue Ambulance', short: 'RA', spoken: 'Rescue Ambulance', caps: ['bls', 'transport'], cost: 60000, crew: 2, minCrew: 2, speed: 1, equipment: 'BLS, fire-based EMS', minRank: 2, blurb: 'Fire-department EMS: an ambulance that lives at the fire station.' },
+  { type: 'paramedic_engine', service: 'fire', label: 'Paramedic Engine', short: 'PE', spoken: 'Paramedic Engine', caps: ['fire_suppression', 'als', 'bls'], cost: 128000, crew: 4, minCrew: 3, speed: 0.88, equipment: 'Pump plus ALS kit', minRank: 3, blurb: 'An engine with a paramedic on board — first on scene to fires and cardiac arrests.' },
+  { type: 'hazmat', service: 'fire', label: 'Hazmat Unit', short: 'HAZMAT', spoken: 'Hazmat', caps: ['hazmat', 'rescue'], cost: 140000, crew: 4, minCrew: 3, speed: 0.85, equipment: 'Gas suits, detectors, decon', minRank: 4, blurb: 'Chemical spills, gas leaks and contaminated scenes.' },
   { type: 'heavy_rescue', service: 'fire', label: 'Heavy Rescue', short: 'HEAVY', spoken: 'Heavy Rescue', caps: ['rescue', 'heavy_rescue'], cost: 215000, crew: 5, minCrew: 4, speed: 0.78, equipment: 'Collapse & shoring gear', minRank: 5, blurb: 'Structural collapse and heavy extrication.' },
   // Medical
   { type: 'ambulance', service: 'medical', label: 'Basic Ambulance', short: 'MEDIC', spoken: 'Medic', caps: ['bls', 'transport'], cost: 56000, crew: 2, minCrew: 2, speed: 1, equipment: 'Standard BLS', minRank: 1, blurb: 'Basic life support and transport.' },
@@ -31,6 +38,12 @@ export const UNIT_TYPES: UnitTypeDef[] = [
   { type: 'med_supervisor', service: 'medical', label: 'Medical Supervisor', short: 'MSUP', spoken: 'Medical Supervisor', caps: ['als', 'bls', 'med_supervisor'], cost: 72000, crew: 1, minCrew: 1, speed: 1.1, equipment: 'Triage & command kit', minRank: 4, blurb: 'Mass-casualty triage lead.' },
   { type: 'critical_transport', service: 'medical', label: 'Specialist Transport', short: 'CCT', spoken: 'Critical Care', caps: ['als', 'bls', 'transport', 'critical_transport'], cost: 152000, crew: 3, minCrew: 2, speed: 0.98, equipment: 'Critical care suite', minRank: 5, blurb: 'Critical patients and long hauls.' },
 ];
+/** brought in from outside for the worst days — never bought, only requested */
+export const OUTSIDE_TYPES: UnitTypeDef[] = [
+  { type: 'federal_tactical', service: 'police', label: 'Federal Tactical Team', short: 'FED', spoken: 'Federal', caps: ['patrol', 'tactical', 'negotiator'], cost: 0, crew: 8, minCrew: 0, speed: 1.02, equipment: 'Federal hostage-rescue team', minRank: 99, blurb: 'Federal agents for mass shootings, hostage sieges and kidnappings.' },
+  { type: 'guard_eod', service: 'police', label: 'National Guard EOD', short: 'GUARD', spoken: 'Guard EOD', caps: ['eod'], cost: 0, crew: 4, minCrew: 0, speed: 0.92, equipment: 'Army bomb-disposal team', minRank: 99, blurb: 'Military explosive ordnance disposal for real devices.' },
+];
+UNIT_TYPES.push(...OUTSIDE_TYPES);
 export const UNIT_TYPE_BY_ID: Record<string, UnitTypeDef> = Object.fromEntries(UNIT_TYPES.map((u) => [u.type, u]));
 
 export const SERVICE_META: Record<Service, { label: string; short: string; color: string; glyph: string }> = {

@@ -2,7 +2,7 @@
 // hospitals and empty streets, plus the drop handler for drag-to-dispatch.
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { addressOf } from '../sim/city';
-import { AGENCY, assistsOn, recommendFor, type GameEngine } from '../sim/engine';
+import { AGENCY, SPECIALIST, assistsOn, recommendFor, type GameEngine } from '../sim/engine';
 import { SERVICE_META, isAir } from '../sim/fleet';
 import type { Incident, Service, Unit } from '../sim/types';
 import { audio } from '../audio/audioManager';
@@ -150,6 +150,7 @@ export function MapMenu({ engine, menu, onClose, focus, startReposition, openTab
         {assigned.length > 0 && <Item icon="radio" onClick={run(() => feedback(engine.briefUnits(inc.id), 'Crews briefed'))}>Brief responding crews</Item>}
         {!inc.truth.outside && <Item icon="map" onClick={run(() => openCctv(engine, inc.id))}>Check nearest CCTV</Item>}
         {(() => { const k = engine.agencyFor(inc); const a = inc.agency; if (!k || !live(inc) || a?.calledAt != null) return null; return <Item icon="phone" tone={a?.askedAt != null ? 'primary' : undefined} sub={`$${AGENCY[k].cost}`} onClick={run(() => feedback(engine.callAgency(inc.id), `${AGENCY[k].name} called`))}>Call {AGENCY[k].name.toLowerCase()}{a?.askedAt != null ? ' — crew is waiting' : ''}</Item>; })()}
+        {(() => { const k = engine.specialistFor(inc); if (!k || !live(inc) || inc.specialists?.[k] || inc.reportedNode === null) return null; return <Item icon={k === 'eod' ? 'alert' : 'shield'} tone={inc.specialistAsked?.[k] !== undefined ? 'danger' : undefined} sub={`$${(SPECIALIST[k].cost / 1000).toFixed(1).replace('.0', '')}k`} onClick={run(() => feedback(engine.requestSpecialist(inc.id, k), `${SPECIALIST[k].name} requested`))}>Request {SPECIALIST[k].name}</Item>; })()}
         {engine.alertInfo(inc.id).ok && (sub === 'alert' ? (
           <>
             <Item icon="alert" tone="danger" onClick={run(() => feedback(engine.issueAlert(inc.id, 'evacuate'), 'Evacuation order sent'))}>Order evacuation of the district</Item>

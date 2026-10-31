@@ -737,8 +737,8 @@ export function MapView(props: MapProps) {
           drawHeli(ctx, st, u, p, hd.h, vs, now, motion, night, S);
         } else {
           // a proper model of the vehicle, its light bar flashing when it runs hot
-          const ph = responding ? (motion ? 1 + (Math.floor(now / 140) % 2) : 1) : 0;
-          const spr = vehicleSprite(u.type, u.service, ph);
+          const ph = responding && u.type !== 'foot' ? (motion ? 1 + (Math.floor(now / 140) % 2) : 1) : 0;
+          const spr = vehicleSprite(u.type, u.service, ph, u.fit?.livery, u.fit?.chassis);
           const k = vs * 0.5, L = spr.len * k, Wd = spr.wid * k;
           ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(hd.h);
           if (night > 0.3 && moving) {
@@ -916,7 +916,7 @@ export function MapView(props: MapProps) {
           for (const u of Object.values(st.units)) {
             const air = isAir(u);
             const loud = air ? ['EN_ROUTE', 'ON_SCENE', 'RETURNING'].includes(u.status) : ((u.status === 'EN_ROUTE' || u.status === 'DISPATCHED') && u.code !== 2) || u.status === 'TRANSPORTING';
-            if (!loud) continue;
+            if (!loud || u.type === 'foot' || u.type === 'bicycle') continue;
             const d = Math.hypot(u.x - c.x, u.y - c.y) / R;
             if (d > 1.6) continue;
             const near = d <= 1 ? 0.5 + 0.5 * Math.pow(1 - d, 1.2) : 0.5 * (1.6 - d) / 0.6;

@@ -1,8 +1,8 @@
 // Top-down vehicle models, drawn once per type and light phase into offscreen sprites.
 // Sprites face +x (east); the map rotates them to the vehicle's heading.
 
-type Kind = 'car' | 'suv' | 'bike' | 'van' | 'engine' | 'ladder' | 'rescue' | 'boat' | 'ambulance';
-interface Model { kind: Kind; len: number; wid: number; body: string; roof: string; accent: string; bar: [string, string]; livery?: 'police' | 'traffic' | 'supervisor' | 'fire' | 'medic' | 'tactical' }
+type Kind = 'car' | 'suv' | 'bike' | 'van' | 'engine' | 'ladder' | 'rescue' | 'boat' | 'ambulance' | 'foot' | 'bicycle';
+interface Model { kind: Kind; len: number; wid: number; body: string; roof: string; accent: string; bar: [string, string]; livery?: 'police' | 'traffic' | 'supervisor' | 'fire' | 'medic' | 'tactical' | 'eod'; tag?: string }
 
 /** body length and width are in sprite units (a patrol car is 30 × 14) */
 const MODELS: Record<string, Model> = {
@@ -11,6 +11,15 @@ const MODELS: Record<string, Model> = {
   police_supervisor: { kind: 'suv', len: 32, wid: 15, body: '#16233a', roof: '#16233a', accent: '#f1f4f8', bar: ['#ff2e3b', '#2f7bff'], livery: 'supervisor' },
   motorcycle: { kind: 'bike', len: 20, wid: 7, body: '#f1f4f8', roof: '#16233a', accent: '#1e5fd6', bar: ['#ff2e3b', '#2f7bff'], livery: 'police' },
   van: { kind: 'van', len: 34, wid: 15, body: '#f1f4f8', roof: '#e6eaef', accent: '#1e5fd6', bar: ['#ff2e3b', '#2f7bff'], livery: 'police' },
+  foot: { kind: 'foot', len: 9, wid: 10, body: '#16233a', roof: '#0d1420', accent: '#d8ff3a', bar: ['#ff2e3b', '#2f7bff'], livery: 'police' },
+  bicycle: { kind: 'bicycle', len: 18, wid: 6, body: '#16233a', roof: '#f1f4f8', accent: '#d8ff3a', bar: ['#ff2e3b', '#2f7bff'], livery: 'police' },
+  public_order: { kind: 'van', len: 37, wid: 16, body: '#1b2433', roof: '#273246', accent: '#ffd23a', bar: ['#ff2e3b', '#2f7bff'], livery: 'police', tag: 'PUBLIC ORDER' },
+  bomb_squad: { kind: 'van', len: 38, wid: 16, body: '#2b3340', roof: '#353f4e', accent: '#ffd23a', bar: ['#ff2e3b', '#2f7bff'], livery: 'eod', tag: 'BOMB SQUAD' },
+  federal_tactical: { kind: 'suv', len: 33, wid: 15, body: '#0f1115', roof: '#0f1115', accent: '#3a414b', bar: ['#ff2e3b', '#2f7bff'], livery: 'supervisor' },
+  guard_eod: { kind: 'van', len: 40, wid: 17, body: '#4b5a3a', roof: '#56664a', accent: '#2f3a24', bar: ['#ffb020', '#ffb020'], livery: 'eod', tag: 'EOD' },
+  fd_ambulance: { kind: 'ambulance', len: 36, wid: 15, body: '#f5f6f2', roof: '#f5f6f2', accent: '#c3242b', bar: ['#ff2e3b', '#ffffff'], livery: 'medic' },
+  paramedic_engine: { kind: 'engine', len: 42, wid: 16, body: '#c3242b', roof: '#e8eaec', accent: '#7ee2ad', bar: ['#ff2e3b', '#ffffff'], livery: 'fire' },
+  hazmat: { kind: 'rescue', len: 42, wid: 17, body: '#c3242b', roof: '#e8eaec', accent: '#ffd23a', bar: ['#ff2e3b', '#ffffff'], livery: 'fire', tag: 'HAZMAT' },
   tactical: { kind: 'van', len: 36, wid: 16, body: '#20262e', roof: '#2b323b', accent: '#525c68', bar: ['#ff2e3b', '#2f7bff'], livery: 'tactical' },
   engine: { kind: 'engine', len: 42, wid: 16, body: '#c3242b', roof: '#e8eaec', accent: '#f4f4f4', bar: ['#ff2e3b', '#ffffff'], livery: 'fire' },
   ladder: { kind: 'ladder', len: 52, wid: 16, body: '#c3242b', roof: '#e8eaec', accent: '#f4f4f4', bar: ['#ff2e3b', '#ffffff'], livery: 'fire' },
@@ -25,6 +34,12 @@ const MODELS: Record<string, Model> = {
   med_supervisor: { kind: 'suv', len: 31, wid: 14, body: '#f5f6f2', roof: '#f5f6f2', accent: '#e8c21b', bar: ['#ff2e3b', '#2f7bff'], livery: 'medic' },
 };
 const FALLBACK: Record<string, string> = { police: 'patrol', fire: 'engine', medical: 'ambulance' };
+/** paint schemes chosen in the garage: they recolour the body and accents */
+export const LIVERIES: Record<string, Array<{ id: string; label: string; body?: string; roof?: string; accent?: string }>> = {
+  police: [{ id: 'classic', label: 'Classic black & white' }, { id: 'modern', label: 'Modern battenburg', body: '#f1f4f8', roof: '#f1f4f8', accent: '#1e5fd6' }, { id: 'slicktop', label: 'Slicktop (unmarked)', body: '#2a2f36', roof: '#2a2f36', accent: '#2a2f36' }, { id: 'hivis', label: 'High-vis', body: '#f1f4f8', roof: '#d8ff3a', accent: '#d8ff3a' }],
+  fire: [{ id: 'classic', label: 'Fire-engine red' }, { id: 'redwhite', label: 'Red & white', roof: '#ffffff', accent: '#ffffff' }, { id: 'lime', label: 'Safety lime', body: '#c6d93a', roof: '#f4f4f4', accent: '#c3242b' }, { id: 'black', label: 'Midnight', body: '#1f2328', roof: '#c3242b', accent: '#c3242b' }],
+  medical: [{ id: 'classic', label: 'White & yellow' }, { id: 'red', label: 'White & red', accent: '#c3242b' }, { id: 'green', label: 'White & green', accent: '#2f9e4f' }, { id: 'yellow', label: 'All yellow', body: '#f2d33a', roof: '#f2d33a', accent: '#1e5fd6' }],
+};
 export function modelFor(type: string, service: string): Model { return MODELS[type] ?? MODELS[FALLBACK[service] ?? 'patrol']; }
 
 const SCALE = 5;
@@ -65,6 +80,26 @@ function glass(c: CanvasRenderingContext2D, pts: number[][]) {
 function drawModel(c: CanvasRenderingContext2D, m: Model, phase: number) {
   const L = m.len, W = m.wid, hl = L / 2, hw = W / 2;
   switch (m.kind) {
+    case 'foot': {
+      // two officers walking a beat side by side
+      for (const oy of [-2.4, 2.4]) {
+        c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(-0.6, oy + 0.6, 2.4, 2.1, 0, 0, 7); c.fill();
+        c.fillStyle = m.body; c.beginPath(); c.ellipse(-0.4, oy, 2.1, 2.6, 0, 0, 7); c.fill();
+        c.fillStyle = m.accent; c.fillRect(-1.6, oy - 2.5, 1.2, 5);
+        c.fillStyle = '#d9b38c'; c.beginPath(); c.arc(0.6, oy, 1.25, 0, 7); c.fill();
+        c.fillStyle = m.roof; c.beginPath(); c.arc(0.4, oy, 1.3, Math.PI * 0.6, Math.PI * 1.4); c.fill();
+      }
+      return;
+    }
+    case 'bicycle': {
+      c.strokeStyle = '#0d0f12'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(-hl, 0); c.lineTo(-hl + 4.5, 0); c.moveTo(hl - 4.5, 0); c.lineTo(hl, 0); c.stroke();
+      c.strokeStyle = '#8a929c'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(-hl + 3, 0); c.lineTo(hl - 3, 0); c.moveTo(hl - 3.5, -2.4); c.lineTo(hl - 3.5, 2.4); c.stroke();
+      c.fillStyle = m.accent; c.beginPath(); c.ellipse(-1, 0, 3.2, 2.6, 0, 0, 7); c.fill();
+      c.fillStyle = m.roof; c.beginPath(); c.arc(1.2, 0, 1.6, 0, 7); c.fill(); c.strokeStyle = '#1b2632'; c.lineWidth = 0.4; c.stroke();
+      c.fillStyle = phase === 1 ? m.bar[0] : '#5a2228'; c.fillRect(-hl + 1, -0.6, 1, 1.2);
+      c.fillStyle = phase === 2 ? m.bar[1] : '#22305a'; c.fillRect(hl - 1.6, -0.6, 1, 1.2);
+      return;
+    }
     case 'bike': {
       c.fillStyle = '#0d0f12'; c.fillRect(-hl, -0.9, 4, 1.8); c.fillRect(hl - 4, -0.9, 4, 1.8);
       c.fillStyle = m.body; rr(c, -hl + 3, -2.2, L - 6, 4.4, 1.8); c.fill();
@@ -105,6 +140,8 @@ function drawModel(c: CanvasRenderingContext2D, m: Model, phase: number) {
       glass(c, [[L * 0.2, -hw + 1.4], [L * 0.33, -hw + 2.2], [L * 0.33, hw - 2.2], [L * 0.2, hw - 1.4]]);
       c.fillStyle = m.roof; rr(c, -hl + 1.5, -hw + 1.2, L * 0.68, W - 2.4, 1.2); c.fill();
       if (m.livery === 'police') { for (let i = 0; i < 10; i++) { c.fillStyle = i % 2 ? '#1e5fd6' : '#ffd23a'; c.fillRect(-hl + 2 + i * 3, -hw, 3, 1.3); c.fillRect(-hl + 2 + i * 3, hw - 1.3, 3, 1.3); } }
+      if (m.livery === 'eod') { for (let i = 0; i < 12; i++) { c.fillStyle = i % 2 ? m.accent : '#1c1f24'; c.fillRect(-hl + 2 + i * 2.6, -hw, 2.6, 1.3); c.fillRect(-hl + 2 + i * 2.6, hw - 1.3, 2.6, 1.3); } }
+      if (m.tag) { c.fillStyle = 'rgba(255,255,255,0.85)'; c.font = 'bold 2.6px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(m.tag, -L * 0.12, 0); }
       if (m.livery === 'tactical') { c.fillStyle = '#3a434e'; rr(c, -L * 0.25, -W * 0.22, L * 0.25, W * 0.44, 1); c.fill(); c.fillStyle = '#d8dde3'; c.font = 'bold 3px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('SWAT', -L * 0.06, 0); }
       c.fillStyle = '#fff6d8'; c.fillRect(hl - 1.2, -hw + 1, 1.2, 2.4); c.fillRect(hl - 1.2, hw - 3.4, 1.2, 2.4);
       lightBar(c, L * 0.08, L * 0.09, W, m, phase);
@@ -155,6 +192,7 @@ function drawModel(c: CanvasRenderingContext2D, m: Model, phase: number) {
         c.fillStyle = '#c9ced4'; c.fillRect(-L * 0.12, -hw + 2.2, L * 0.22, W - 4.4);
         c.strokeStyle = 'rgba(0,0,0,0.3)'; c.lineWidth = 0.3; c.strokeRect(-L * 0.12, -hw + 2.2, L * 0.22, W - 4.4);
         if (m.kind === 'rescue') { c.fillStyle = m.accent; c.fillRect(-hl + 2, -0.5, L - cab - 4, 1); }
+        if (m.tag) { c.fillStyle = m.accent; c.save(); c.translate(-L * 0.28, 0); c.rotate(Math.PI / 4); c.fillRect(-2.2, -2.2, 4.4, 4.4); c.restore(); }
       }
       lightBar(c, hl - cab + 0.5, 2.4, W, m, phase);
       [[-hl + 1, -hw + 1], [-hl + 1, hw - 1]].forEach(([x, y], i) => { c.fillStyle = phase && (phase === 1) === (i === 0) ? m.bar[0] : '#6a2525'; c.beginPath(); c.arc(x, y, 1, 0, 7); c.fill(); });
@@ -166,9 +204,19 @@ function drawModel(c: CanvasRenderingContext2D, m: Model, phase: number) {
 }
 
 /** a cached sprite for a unit type in a light phase (0 off, 1 / 2 alternating) */
-export function vehicleSprite(type: string, service: string, phase: number): { img: HTMLCanvasElement; len: number; wid: number } {
-  const m = modelFor(type, service);
-  const key = `${type}|${service}|${phase}`;
+/** garage chassis reshape the base vehicle: bigger trucks, smaller rapid-response cars */
+const CHASSIS_SHAPE: Record<string, Partial<Model>> = {
+  interceptor: { len: 31, wid: 14 }, suv: { kind: 'suv', len: 32, wid: 15 }, armoured: { kind: 'van', len: 35, wid: 16, body: '#262d38', roof: '#323b48' },
+  rapid: { len: 35, wid: 15 }, heavy: { len: 46, wid: 17 },
+  rapid_med: { kind: 'suv', len: 31, wid: 14 }, box: { len: 40, wid: 16 }, offroad: { kind: 'suv', len: 34, wid: 15 },
+};
+export function vehicleSprite(type: string, service: string, phase: number, livery?: string, chassis?: string): { img: HTMLCanvasElement; len: number; wid: number } {
+  const shape = chassis ? CHASSIS_SHAPE[chassis] : undefined;
+  const base0 = modelFor(type, service);
+  const base = shape ? { ...base0, ...shape } : base0;
+  const lv = livery && livery !== 'classic' ? LIVERIES[service]?.find((x) => x.id === livery) : undefined;
+  const m: Model = lv ? { ...base, body: lv.body ?? base.body, roof: lv.roof ?? base.roof, accent: lv.accent ?? base.accent } : base;
+  const key = `${type}|${service}|${phase}|${lv?.id ?? ''}|${shape ? chassis : ''}`;
   let img = cache.get(key);
   if (!img) {
     img = document.createElement('canvas');

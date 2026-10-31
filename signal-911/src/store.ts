@@ -6,7 +6,7 @@ import { GameEngine, type EngineEvent } from './sim/engine';
 import {
   applyShift, careerConfig, computeResult, newProfile, setupFromProfile, temporarySetup, DEFAULT_SETTINGS, type Profile, type Settings, type ShiftResult,
 } from './sim/profile';
-import { CHAPTERS, SCENARIOS, TUTORIAL_CONFIG, baseConfig, ALL_DISTRICTS, dailyConfig, rollStoryline } from './sim/scenarios';
+import { CHAPTERS, SCENARIOS, TUTORIAL_CONFIG, baseConfig, ALL_DISTRICTS, dailyConfig, rollStoryline, rollSurprises } from './sim/scenarios';
 import { evaluateAchievements, ACHIEVEMENT_BY_ID } from './sim/achievements';
 import { rollExtras } from './sim/extras';
 import { AiManager, aiApi } from './ai/aiClient';
@@ -258,7 +258,7 @@ export const useApp = create<AppStore>((set, get) => ({
     const cfg = baseConfig({ ...sc.config, mode: 'scenario', scenarioId: id, title: sc.title, briefing: sc.description, difficulty: sc.difficulty, durationSec: sc.minutes * 60 });
     get().brief({ kind: 'scenario', config: cfg, scenarioId: id, setupOpts: { reduced: sc.reducedFleet, rank: 7, fleet: sc.fleet } });
   },
-  startFree: (cfg, opts) => get().brief({ kind: 'free', config: rollStoryline(cfg, opts?.rank ?? 7, cfg.seed, 0.75), setupOpts: opts }),
+  startFree: (cfg, opts) => get().brief({ kind: 'free', config: rollSurprises(rollStoryline(cfg, opts?.rank ?? 7, cfg.seed, cfg.surprises === false ? 0 : 0.75), opts?.rank ?? 7, cfg.seed), setupOpts: opts }),
   startDaily: () => { const d = dailyConfig(); get().brief({ kind: 'daily', config: d.config, setupOpts: { units: d.units, rank: 7 } }); },
   startTutorial: () => get().brief({ kind: 'tutorial', config: TUTORIAL_CONFIG(), setupOpts: { units: 8, rank: 1 } }),
   startEndless: (reset) => {
@@ -268,7 +268,7 @@ export const useApp = create<AppStore>((set, get) => ({
     const wave = p.endless.current.wave;
     const diff = wave < 2 ? 'standard' : wave < 5 ? 'hard' : 'expert';
     const cfg0 = baseConfig({ mode: 'endless', title: `Endless — Shift ${wave + 1}`, briefing: `Survive. Each shift is busier than the last. Score so far: ${p.endless.current.score}.`, difficulty: diff, durationSec: 8 * 60, incidentRate: 1 + wave * 0.12, endlessWave: wave, weather: (['clear', 'rain', 'fog', 'storm', 'heat', 'snow'] as const)[wave % 6], startHour: (6 + wave * 4) % 24, seed: 9000 + wave * 131 + (Date.now() % 997), events: wave >= 2 ? [{ type: wave % 2 ? 'storm' : 'rush_hour', at: 80, duration: 300 }] : [] });
-    const cfg = rollStoryline(cfg0, 7, cfg0.seed, wave >= 1 ? 0.8 : 0.5);
+    const cfg = rollSurprises(rollStoryline(cfg0, 7, cfg0.seed, wave >= 1 ? 0.8 : 0.5), 4 + Math.min(3, wave), cfg0.seed);
     const ex = rollExtras(cfg.seed, 5); cfg.modifiers = wave >= 1 ? ex.modifiers : []; cfg.contracts = ex.contracts;
     set({ endlessOver: false });
     get().brief({ kind: 'endless', config: cfg, setupOpts: { units: Math.min(18, 12 + Math.floor(wave / 2)), rank: 7 } });

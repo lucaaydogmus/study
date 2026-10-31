@@ -2,7 +2,7 @@
 // the breaking-news banner and the news ticker.
 import { useEffect, useRef, useState } from 'react';
 import { addressOf, getCity } from '../sim/city';
-import { AGENCY, gameClock, type GameEngine } from '../sim/engine';
+import { AGENCY, SPECIALIST, gameClock, type GameEngine } from '../sim/engine';
 import { isAir } from '../sim/fleet';
 import type { Call, Incident, Unit } from '../sim/types';
 import { audio } from '../audio/audioManager';
@@ -275,8 +275,22 @@ export function FieldOps({ engine, inc }: { engine: GameEngine; inc: Incident })
   const al = engine.alertInfo(inc.id);
   const district = al.district ? engine.city.districtById[al.district]?.name : inc.reportedNode !== null ? engine.city.districtById[engine.city.nodes[inc.reportedNode].district]?.name : '';
   const asked = a?.askedAt != null && a.calledAt == null;
+  const spec = engine.specialistFor(inc);
+  const sp = spec ? inc.specialists?.[spec] : undefined;
+  const spUnit = sp ? st.units[sp.unitId] : undefined;
+  const spAsked = spec ? inc.specialistAsked?.[spec] : undefined;
   return (
     <>
+      {spec && inc.reportedNode !== null && (
+        <div className={`agency specialist ${spec} ${spAsked !== undefined && !sp ? 'ask' : ''} ${spUnit?.status === 'ON_SCENE' ? 'here' : ''}`}>
+          <Icon n={spec === 'eod' ? 'alert' : 'shield'} size={13} />
+          <div className="grow">
+            <b>{SPECIALIST[spec].name}</b>
+            <div className="small muted">{spUnit?.status === 'ON_SCENE' ? 'On scene' : sp ? (spUnit?.status === 'DISPATCHED' ? `Mobilising · ${fmtTime(spUnit.timer)}` : `Inbound · ${fmtEta(spUnit?.eta ?? 0)}`) : spAsked !== undefined ? `Crew requested ${fmtTime(st.time - spAsked)} ago` : spec === 'eod' ? 'Bomb technicians with a robot — the only safe way to deal with a device' : 'Elite tactical team and a crisis negotiator — slow to mobilise, decisive on arrival'}</div>
+          </div>
+          {!sp && <Btn size="sm" kind={spAsked !== undefined ? 'primary' : 'default'} onClick={() => { toast(engine.requestSpecialist(inc.id, spec), `${SPECIALIST[spec].name} requested`); bump(); }}>Request · ${SPECIALIST[spec].cost.toLocaleString()}</Btn>}
+        </div>
+      )}
       {kind && inc.reportedNode !== null && (
         <div className={`agency ${asked ? 'ask' : ''} ${a?.here ? 'here' : ''}`}>
           <Icon n="phone" size={13} />

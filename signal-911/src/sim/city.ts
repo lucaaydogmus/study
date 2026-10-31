@@ -30,6 +30,8 @@ const DISTRICT_DEFS: DDef[] = [
   { id: 'industrial', name: 'Industrial Zone', tags: ['industrial'], ci: 2, cj: 2, rank: 3, traffic: 0.55, w: [0.8, 1.6, 0.8, 0.8], blurb: 'Steelworks, warehouses and chemical depots.' },
   { id: 'harbor', name: 'Harbor District', tags: ['harbor', 'industrial'], ci: 3, cj: 2, rank: 5, traffic: 0.5, w: [1, 1.2, 1, 1.2], blurb: 'Piers, containers and water rescues.' },
 ];
+/** district tags without building the city (for shift planning) */
+export const DISTRICT_TAGS: Record<string, string[]> = Object.fromEntries(DISTRICT_DEFS.map((d) => [d.id, d.tags]));
 
 export interface City {
   nodes: RoadNode[]; edges: RoadEdge[]; adj: number[][]; districts: District[];

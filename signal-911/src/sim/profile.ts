@@ -4,10 +4,11 @@ import { evaluateObjectives, computeScore, averageOf } from './scoring';
 import { Rng } from './rng';
 import { buildStartingFleet, UNIT_TYPE_BY_ID, UPGRADE_BY_ID, hireCost, makePersonnel, makeStation, makeUnit, BUILD_STATION_COST, primarySkill, personnelSalary } from './fleet';
 import { rankDef, rankForXp, RANKS } from './progression';
-import { ALL_DISTRICTS, CHAPTERS, baseConfig, rollStoryline } from './scenarios';
+import { ALL_DISTRICTS, CHAPTERS, baseConfig, rollStoryline, rollSurprises } from './scenarios';
 import { CONTRACT_BY_ID, contractProgress, modProduct, rollExtras } from './extras';
 import type { CityState, GameState, Personnel, Service, ShiftConfig, ShiftScore, Station, Unit, UpgradeLevels } from './types';
 import type { ShiftSetup } from './engine';
+import { TEMPLATE_BY_ID } from './content/templates';
 
 export const PROFILE_VERSION = 4;
 
@@ -115,12 +116,14 @@ export function careerConfig(p: Profile, over: Partial<ShiftConfig> = {}): Shift
   const rankRate = 0.8 + rank * 0.07;
   const seed = (p.counters.seed + p.counters.shift * 7919) % 2 ** 31;
   const extras = rollExtras(seed, rank);
-  return rollStoryline(baseConfig({
+  const cfg = rollStoryline(baseConfig({
     mode: 'career', title: `Shift ${p.counters.shift}`, briefing: `${rankDef(rank).title} — routine shift`, difficulty: p.flags.difficulty, durationSec: p.flags.duration,
     districts: unlockedDistricts(rank), incidentRate: rankRate, startHour: [8, 12, 16, 20, 2][p.counters.shift % 5], weather: (['clear', 'clear', 'rain', 'clear', 'fog', 'heat', 'clear'] as const)[p.counters.shift % 7],
     seed, modifiers: extras.modifiers, contracts: extras.contracts,
     ...over,
   }), rank, seed);
+  // chapters are handcrafted; ordinary shifts can go sideways at any moment
+  return over.chapterId ? cfg : rollSurprises(cfg, rank, seed);
 }
 
 export interface ShiftResult {
@@ -151,18 +154,23 @@ export function computeResult(st: GameState): ShiftResult {
   const contractMoney = contracts.filter((x) => x.p.done).reduce((a, x) => a + x.def.reward, 0);
   const contractXp = contracts.filter((x) => x.p.done).reduce((a, x) => a + x.def.xp, 0);
   s.contractBonus = contracts.filter((x) => x.p.done).length;
-  const money = contract + bonus + contractMoney - salaries - maintenance - dispatchCosts - penalties;
+  // the city pays a hazard grant for every major incident brought to a good end (duplicate reports excluded)
+  const majorsOk = Object.values(st.incidents).filter((i) => !i.duplicateOf && TEMPLATE_BY_ID[i.templateId]?.major && i.outcome === 'success').length;
+  s.majorsHandled = majorsOk;
+  const majorGrant = Math.round(majorsOk * 9000 * mult);
+  const money = contract + bonus + contractMoney + majorGrant - salaries - maintenance - dispatchCosts - penalties;
   const objDone = st.config.objectives.filter((o) => o.done).length;
   const objBonus = st.config.objectives.filter((o) => o.done && !o.optional).length * 40 + st.config.objectives.filter((o) => o.done && o.optional).length * 25;
   const xpBreakdown: Array<[string, number]> = [
     ['Performance score', Math.round(score.total * 2.1)], ['Incidents resolved', s.resolved * 12], ['Objectives', objBonus],
     ['Grade bonus', { S: 120, A: 70, B: 35, C: 10, D: 0, F: 0 }[score.grade]], ['Contracts', contractXp], ['Best streak', Math.min(60, s.bestStreak * 6)],
+    ...(majorsOk ? [['Major incidents handled', majorsOk * 60] as [string, number]] : []),
   ];
   const xp = Math.max(10, Math.round(xpBreakdown.reduce((a, [, v]) => a + v, 0) * (0.8 + mult * 0.2)));
   const repDelta = Math.round(((score.total - 62) / 9 - s.casualties * 1.2) * modProduct(cfg, 'rep') * 10) / 10;
   return {
     score, xp, xpBreakdown, money,
-    moneyBreakdown: [['City contract', contract], ['Incident bonuses', bonus], ...contracts.filter((x) => x.p.done).map((x) => [`Contract — ${x.p.text}`, x.def.reward] as [string, number]), ['Salaries', -salaries], ['Vehicle maintenance', -maintenance], ['Dispatch operating costs', -dispatchCosts], ['Casualty settlements', -penalties]],
+    moneyBreakdown: [['City contract', contract], ['Incident bonuses', bonus], ...contracts.filter((x) => x.p.done).map((x) => [`Contract — ${x.p.text}`, x.def.reward] as [string, number]), ...(majorGrant ? [['Major incident hazard grant', majorGrant] as [string, number]] : []), ['Salaries', -salaries], ['Vehicle maintenance', -maintenance], ['Dispatch operating costs', -dispatchCosts], ['Casualty settlements', -penalties]],
     repDelta, unlocked: [], log: [], newRank: rankForXp(0), objectivesMet: objDone,
   };
 }
