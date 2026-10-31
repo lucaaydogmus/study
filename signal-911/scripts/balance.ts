@@ -52,6 +52,8 @@ function play(rank: number, diff: 'casual' | 'standard' | 'hard' | 'expert', see
       }
     }
     if (competent) for (const u of e.overdueChecks()) if (st.time - u.checkDue! > 6) e.statusCheck(u.id);
+    // callers asking what to do get a sensible answer most of the time
+    if (competent) for (const c of Object.values(st.calls)) if (c.question && c.state === 'active' && st.time - c.question.at > 4) e.answerCaller(c.id, c.question.options[e.rng.chance(0.85) ? 0 : 1].id);
     // officers' records requests: run and answer (a competent dispatcher gets most of them right)
     if (competent) for (const r of st.requests) if (r.status === 'open' && st.time >= r.at + 8) { e.runRequest(r.id); e.answerRequest(r.id, e.rng.chance(0.85) ? r.truth : 'clear'); }
     e.step(DT);

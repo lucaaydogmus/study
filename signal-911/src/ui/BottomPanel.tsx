@@ -9,6 +9,7 @@ import { Badge, Bar, Btn, Icon, fmtEta, fmtTime, SERVICE_ICON } from './common';
 import { StatusBadge } from './RightPanel';
 import { DeadlineBanner, LifeMeter } from './Ops';
 import { TraceStatus } from './Field';
+import { CallerAvatar, CallerLine, CallerQuestionPrompt, CprCoach, SuggestedReplies, suggestFor } from './CallExtras';
 
 export type BottomTab = 'call' | 'radio' | 'units' | 'hospitals' | 'log' | 'transcripts';
 
@@ -55,7 +56,7 @@ function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngine; set
   const aiActive = useApp((s) => s.aiActive);
   const scroll = useRef<HTMLDivElement>(null);
   const len = call?.transcript.length ?? 0;
-  useEffect(() => { const el = scroll.current; if (el) el.scrollTop = el.scrollHeight; }, [len, call?.id, call?.typing]);
+  useEffect(() => { const el = scroll.current; if (el) el.scrollTop = el.scrollHeight; }, [len, call?.id, call?.typing, call?.question?.at]);
   const onHold = Object.values(st.calls).filter((c) => c.state === 'hold');
   const ringing = Object.values(st.calls).filter((c) => c.state === 'ringing');
 
@@ -82,11 +83,15 @@ function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngine; set
   const stateTone = mood.panic > 72 ? 'red' : mood.frustration > 55 ? 'amber' : mood.panic > 45 ? 'amber' : 'green';
   const elapsed = st.time - (call.answeredAt ?? st.time);
   const transferLabel = inc.truth.outside ? 'Transfer to county' : 'Transfer';
+  const lastLine = call.transcript[call.transcript.length - 1];
+  const speaking = call.typing || (lastLine?.who === 'CALLER' && st.time - lastLine.t < 1.5);
+  const sugg = suggestFor(engine, call, inc);
+  const cpr = inc.aid?.kind === 'cpr' && inc.aid.fit === 'good' && inc.careAt == null && inc.lifeThreat === 'arrest';
   return (
     <div className="callgrid">
       <div className="callmain">
         <div className="callhead">
-          <div className="callid"><Icon n="phone" size={14} /> <b>{call.profile.name}</b> <span className="muted">· {call.callerId}</span> {call.isCallback && <Badge tone="amber">CALLBACK</Badge>}{aiActive && <span className="aibadge" title="This caller's lines are improvised by Claude">AI</span>}</div>
+          <div className="callid"><CallerAvatar call={call} speaking={speaking} /> <b>{call.profile.name}</b> <span className="muted">· {call.callerId}</span> {call.isCallback && <Badge tone="amber">CALLBACK</Badge>}{aiActive && <span className="aibadge" title="This caller's lines are improvised by Claude">AI</span>}</div>
           <span className="mono">{fmtTime(elapsed)}</span>
           <Badge tone={stateTone}>{call.profile.emotionalState.toUpperCase()}</Badge>
           <div className="meters">
@@ -97,16 +102,19 @@ function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngine; set
         <LifeMeter inc={inc} compact />
         <TraceStatus call={call} />
         {inc.deadlineAt != null && inc.deadlineMet == null && <DeadlineBanner engine={engine} inc={inc} />}
+        {cpr && <CprCoach engine={engine} call={call} inc={inc} />}
         <div className="transcript" ref={scroll} aria-live="polite" aria-label="Call transcript">
           {call.transcript.map((l, i) => (
             <div key={i} className={`tline ${l.who.toLowerCase()}`}>
-              <span className="tt mono">{l.clock}</span><span className="tw">{l.who}</span><span className="tx">{l.who === 'SYSTEM' ? l.text : `“${l.text}”`}</span>
+              <span className="tt mono">{l.clock}</span><span className="tw">{l.who}</span><span className="tx">{l.who === 'SYSTEM' ? l.text : l.who === 'CALLER' ? <CallerLine engine={engine} call={call} inc={inc} line={l} fresh={i === call.transcript.length - 1 && st.time - l.t < 2} /> : `“${l.text}”`}</span>
             </div>
           ))}
+          <CallerQuestionPrompt engine={engine} call={call} />
           {call.typing && <div className="tline caller typing"><span className="tt mono">{gameClock(st)}</span><span className="tw">CALLER</span><span className="tx"><i className="dots"><b /><b /><b /></i></span></div>}
         </div>
+        <SuggestedReplies items={sugg} onPick={(q) => send(q.intent, q.text)} />
         <div className="inputrow">
-          <input aria-label="Say to caller" placeholder={aiActive ? 'Talk to the caller in your own words — they hear exactly what you type…' : 'Type what you say… (e.g. “What is the address?”) — or use the quick questions →'} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); e.stopPropagation(); }} />
+          <input aria-label="Say to caller" placeholder={aiActive ? 'Talk to the caller in your own words — they hear exactly what you type…' : 'Type what you say… (e.g. “What is the address?”) — or use the quick questions →'} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); else if (e.key === 'Tab' && !text.trim() && sugg[0]) { e.preventDefault(); send(sugg[0].intent, sugg[0].text); } e.stopPropagation(); }} />
           {detected && detected !== 'unknown' && <span className="detect small muted">{detected}</span>}
           <Btn kind="primary" icon="send" onClick={submit} disabled={!text.trim()}>Say</Btn>
         </div>

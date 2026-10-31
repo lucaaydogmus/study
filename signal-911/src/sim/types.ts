@@ -118,7 +118,7 @@ export interface PendingLine {
   at: number; text: string; facts?: Record<string, FactVal>; unsure?: string[]; heard?: Omit<HeardLocation, 'id' | 'at'>[];
   /** AI voicing: line ids are held until the dialogue model rewrites them (or a timeout releases the scripted text) */
   id?: number; hold?: boolean; ai?: boolean; system?: boolean;
-  twist?: boolean; hangup?: boolean;
+  twist?: boolean; hangup?: boolean; endReason?: string;
 }
 
 export interface Call {
@@ -142,7 +142,15 @@ export interface Call {
   /** silent caller: the dispatcher set up "tap twice for yes" */
   tapProtocol?: boolean;
   outbound?: boolean;
+  /** the caller asked the dispatcher something and is waiting on an answer */
+  question?: CallerQuestion | null; questionsAsked?: string[]; lastQuestionAt?: number;
+  /** "any second now" was promised: if help is not there by then, trust takes a hit */
+  overpromiseAt?: number | null;
+  /** pursuit witness told to keep following (or to stop) */
+  following?: boolean; stopFollowing?: boolean;
 }
+/** a caller asks the dispatcher what to do; the answer (or silence) has consequences */
+export interface CallerQuestion { kind: string; text: string; at: number; expiresAt: number; lineIdx: number; options: Array<{ id: string; label: string; say: string; reply: string; effect: string }>; timeout: { effect: string; line: string } }
 export type Dept = 'trauma' | 'cardiac' | 'stroke' | 'pediatric' | 'burns';
 export interface HospitalState {
   node: number; name: string; has: Dept[]; down: Partial<Record<Dept, number>>; er: number; erCap: number; nextEvent: number; lastDecay: number;
@@ -207,7 +215,7 @@ export interface Incident {
   firstDispatchAt: number | null; timelineBlock: boolean; callerProfile: CallerProfile;
   vars: Record<string, string>; blockedEdge: number | null; sceneSeen: boolean; twist: import('./content/templates').Twist | null; sceneAt: number | null; escalatedAt: number | null; mutualAid: number;
   duplicateOf: string | null; dupPlan: number[]; pursuit: boolean; mover: Mover | null; mergedInto: string | null;
-  aid?: { kind: string; fit: 'good' | 'bad' | 'neutral'; at: number; encouragedAt: number } | null;
+  aid?: { kind: string; fit: 'good' | 'bad' | 'neutral'; at: number; encouragedAt: number; pacedAt?: number; paceStartedAt?: number; lastPaceLine?: number } | null;
   /** something unstoppable happens at this time (an aircraft touches down); responders must be staged first */
   deadlineAt?: number | null; deadlineMet?: boolean | null;
   /** incident this one broke out of (getaway van from a bank robbery, a victim fleeing a shooting) */
@@ -322,6 +330,7 @@ export interface ShiftStats {
   aidGood: number; aidBad: number; unitCrashes: number; breakdowns: number; aiLines: number;
   heliRelays: number; heliSightings: number; checksOk: number; checksBad: number; checksMissed: number; guidanceDeaths: number; guidanceSaves: number; harmfulAdvice: number;
   boloHits?: number; stingerHits?: number; breaksGiven?: number;
+  callerAnswers?: number; cprPaced?: number; handoffs?: number;
   agencyCalls?: number; agencyLate?: number; statusChecks?: number; statusSaves?: number; statusMissed?: number; alertsRight?: number; alertsWrong?: number; searchFinds?: number;
 }
 

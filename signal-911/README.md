@@ -81,8 +81,25 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 | Right-click | Quick-order menu for incidents, units, stations, hospitals and streets | Drag a unit | Drop it on an incident to dispatch, or on a street to move it |
 | Drag a station | Sends its next free unit to the incident you drop it on | Drag a pin | Move an incident, or drop it on another to link duplicates |
 | `S` | Status check on the most overdue officer | Shift + drag | Box-select several units, then right-click an incident to send them all |
+| `Tab` (in the call box) | Say the top suggested reply | `C` | Count compressions with a caller doing CPR |
 
 ## What is in the game
+
+### Remaster 7: calls that talk back
+
+- **Callers ask you things**: "Should I go back in for the dog?", "Can I give him water?", "I can hear them
+  downstairs — should I go and look?", "How long until they get here?", "They're here — can I hang up?" The question
+  appears in the chat with answer buttons and a countdown. Good answers keep people safe and calm. Harmful ones have
+  the same consequences as typed advice, and promising "any second now" when help is minutes away comes back to bite
+  you. Stay silent and the caller decides for themselves, sometimes badly.
+- **Speech that plays out**: caller lines appear word by word, with a speaking indicator and an avatar whose ring
+  shows how they are coping.
+- **Clickable details**: addresses and landmarks the caller mentions are links that set the incident location. Danger
+  words (weapons, bleeding, not breathing, fire, trapped) and numbers (people, cars, ages) are highlighted.
+- **Suggested replies**: up to four chips under the chat suggest what to ask or say next, based on what the caller just
+  said and what you still don't know. `Tab` in the empty message box says the top one.
+- **CPR count-along**: when a caller is doing CPR, count the compressions with them. Tap the beat (`C`) at 100–120 a
+  minute and the patient holds on noticeably longer; the caller tells you when you're too slow or too fast.
 
 ### Remaster 6: searches, outside agencies, officer safety and public alerts
 

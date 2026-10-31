@@ -59,6 +59,8 @@ function play(id: string, seed: number, smart: boolean) {
       }
     }
     if (smart) for (const u of e.overdueChecks()) if (st.time - u.checkDue! > 6) e.statusCheck(u.id);
+    // callers asking what to do get a sensible answer most of the time
+    if (smart) for (const c of Object.values(st.calls)) if (c.question && c.state === 'active' && st.time - c.question.at > 4) e.answerCaller(c.id, c.question.options[e.rng.chance(0.85) ? 0 : 1].id);
     if (smart) for (const r of st.requests) if (r.status === 'open' && st.time - r.at > 6 && st.time >= r.at) { e.runRequest(r.id); e.answerRequest(r.id, r.truth, r.db.findIndex((h) => h.match)); }
     e.step(DT);
   }

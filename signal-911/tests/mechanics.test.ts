@@ -94,9 +94,12 @@ describe('shift modifiers, contracts and streaks', () => {
     const e = makeEngine({ contracts: [{ id: 'fire', target: 1 }], script: [{ at: 1, template: 'kitchen_fire', district: 'downtown', accuracy: 'exact' }] });
     run(e, 3);
     const inc = Object.values(e.state.incidents)[0];
-    e.answerCall(Object.values(e.state.calls)[0].id);
+    const call = Object.values(e.state.calls)[0];
+    e.answerCall(call.id);
     e.setIncidentLocation(inc.id, inc.nodeId, 'candidate');
     for (const u of Object.values(e.state.units).filter((x) => x.service === 'fire').slice(0, 2)) e.dispatch(u.id, inc.id);
+    // location and dispatch done: hang up rather than leave the caller unanswered
+    e.endCall(call.id);
     run(e, 600, () => inc.status === 'RESOLVED');
     expect(inc.outcome).toBe('success');
     expect(e.state.streak).toBe(1);

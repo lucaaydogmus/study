@@ -809,7 +809,9 @@ export class GameEngine {
           if (call.state !== 'active') break;
         }
         call.typing = call.state === 'active' && call.pending.length > 0;
+        if (call.state === 'active' && inc) this.callerQuestions(call, inc);
       }
+      if (call.question && st.time >= call.question.expiresAt && (call.state === 'active' || call.state === 'hold')) this.questionTimeout(call);
       if ((call.state as string) === 'ended') continue;
       // emotional model: panic eases toward its baseline
       const m = call.mood;
@@ -890,7 +892,7 @@ export class GameEngine {
     if (line.facts) for (const [k, v] of Object.entries(line.facts)) this.addFact(inc, k, v, line.unsure?.includes(k) ? 'unconfirmed' : 'confirmed', 'caller');
     if (line.heard) for (const h of line.heard) this.addHeard(call, h);
     if (line.twist) this.revealTwist(inc, 'caller');
-    if (line.hangup) this.endCall(call.id, 'caller_hung_up');
+    if (line.hangup) this.endCall(call.id, line.endReason ?? 'caller_hung_up');
     this.refreshIncidentStatus(inc);
   }
 
@@ -1136,6 +1138,12 @@ export class GameEngine {
         this.consequence(inc, 'The caller was sent back into the fire and was overcome by smoke');
         call.pending.push({ at: st.time + 6, text: '(the line fills with coughing, then goes quiet)', hangup: true });
         break;
+      case 'gasback':
+        hurt(1);
+        inc.threat = Math.min(99, inc.threat + 20);
+        this.consequence(inc, 'The caller was sent back into a building full of gas and collapsed');
+        call.pending.push({ at: st.time + 6, text: '(a thud, then nothing but a hiss on the line)', hangup: true });
+        break;
       case 'confront':
         hurt(1);
         inc.threat = Math.min(99, inc.threat + 18);
@@ -1143,7 +1151,7 @@ export class GameEngine {
         call.pending.push({ at: st.time + 5, text: '(the call disconnects)', hangup: true });
         break;
     }
-    if (['goback', 'confront'].includes(kind)) { inc.casualties += 0; this.notify(`Your instruction put the caller in danger — ${inc.label}`, 'bad', inc.id); }
+    if (['goback', 'gasback', 'confront'].includes(kind)) { inc.casualties += 0; this.notify(`Your instruction put the caller in danger — ${inc.label}`, 'bad', inc.id); }
   }
 
   /** survival clock for patients with a life threat: falls until professional care arrives, faster without good instructions */
@@ -1169,6 +1177,8 @@ export class GameEngine {
         const coached = !!call && call.state === 'active';
         const since = st.time - a.encouragedAt;
         rate = 0.1 + Math.min(0.42, Math.max(0, since - (coached ? 60 : 20)) / (coached ? 500 : 200));
+        // counting the rhythm with the caller keeps compressions at the right rate
+        if (coached && a.pacedAt !== undefined && st.time - a.pacedAt < 6) rate *= 0.6;
       } else rate = a && a.fit === 'bad' ? 0.72 : 0.62;
     } else if (threat === 'airway') rate = a?.kind === 'recovery' && a.fit === 'good' ? 0.03 : a?.fit === 'bad' ? 0.3 : 0.16;
     else rate = a?.kind === 'pressure' && a.fit === 'good' ? 0.06 : a?.fit === 'bad' ? 0.42 : 0.3;
@@ -1250,7 +1260,7 @@ export class GameEngine {
     const inc = st.incidents[call.incidentId];
     call.state = 'ended'; call.endedAt = st.time; call.endReason = reason; call.pending = []; call.typing = false;
     if (st.activeCallId === callId) st.activeCallId = null;
-    this.addTranscript(call, 'SYSTEM', reason === 'caller_hung_up' ? 'Caller disconnected' : reason === 'transferred' ? 'Call transferred' : 'Call ended by dispatcher');
+    this.addTranscript(call, 'SYSTEM', reason === 'caller_hung_up' ? 'Caller disconnected' : reason === 'transferred' ? 'Call transferred' : reason === 'handover' ? 'Caller went to meet the crew — call closed' : 'Call ended by dispatcher');
     this.log('call', `Call ended (${reason === 'dispatcher' ? 'dispatcher' : reason.replace('_', ' ')}) — ${inc.label}`, { incidentId: inc.id });
     this.emit({ type: 'hangup', callId });
     if (inc.truth.outside && reason !== 'transferred') { this.resolveOutside(inc, false); return; }
@@ -2499,7 +2509,7 @@ export class GameEngine {
     });
     // tracking: a caller still following, or crews with eyes on it, keep the location live
     const call = this.callFor(inc);
-    const following = !!call && call.state === 'active' && st.time - (call.answeredAt ?? st.time) < 160;
+    const following = !!call && call.state === 'active' && !call.stopFollowing && st.time - (call.answeredAt ?? st.time) < (call.following ? 260 : 160);
     // the live position only reaches ground units through the caller or a crew with eyes on (air positions are relayed by dispatch)
     m.tracked = following || contacts.length > 0 || assigned.some((u) => Math.hypot(u.x - m.x, u.y - m.y) < 120 && !evading);
     if (inc.reportedNode !== null) {
@@ -2734,6 +2744,202 @@ export class GameEngine {
       d.outcome = `${u.callsign} stays available — the crew is not happy (morale down).`;
     }
     return { ok: true, outcome: d.outcome };
+  }
+
+  // ── Callers ask the dispatcher things ─────────────────────────────────────
+  /** the closest responding unit's ETA to this incident */
+  private soonestEta(inc: Incident): number {
+    let best = Infinity;
+    for (const id of inc.assignedUnits) { const u = this.state.units[id]; if (u && ['DISPATCHED', 'EN_ROUTE'].includes(u.status)) best = Math.min(best, u.eta ?? this.estimate(u.id, inc.reportedNode ?? inc.nodeId)?.eta ?? Infinity); }
+    return best;
+  }
+  /** caller-question randomness, derived from the call and the clock so it never shifts the simulation's own random stream */
+  private qrand(call: Call, salt: number): number {
+    let h = 2166136261 ^ salt;
+    for (let i = 0; i < call.id.length; i++) h = Math.imul(h ^ call.id.charCodeAt(i), 16777619);
+    h = Math.imul(h ^ Math.floor(this.state.time * 2), 16777619); h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15;
+    return (h >>> 0) / 4294967296;
+  }
+  private qpick<T>(call: Call, arr: T[]): T { return arr[Math.floor(this.qrand(call, arr.length * 31 + 5) * arr.length)]; }
+  private callerQuestions(call: Call, inc: Incident) {
+    const st = this.state;
+    if (call.question) return;
+    // a promise of "any second now" that did not come true
+    if (call.overpromiseAt != null && st.time >= call.overpromiseAt) {
+      call.overpromiseAt = null;
+      if (!this.onScene(inc).length && !call.pending.length) {
+        call.mood.trust = Math.max(0, call.mood.trust - 20); call.mood.frustration = Math.min(100, call.mood.frustration + 15);
+        call.pending.push({ at: st.time + 0.5, text: this.qpick(call, ["You said any second! Where are they?!", "It's been ages — you told me they were nearly here!", "Why did you say they were close? Nobody's here!"]) });
+        return;
+      }
+    }
+    if (call.pending.length || call.profile.archetype === 'silent' || (call.profile.language && call.interpreter !== 'on') || inc.truth.outside) return;
+    const since = st.time - (call.answeredAt ?? st.time);
+    const asked = (call.questionsAsked ??= []);
+    if (since < 10 || asked.length >= 3 || st.time - (call.lastQuestionAt ?? -99) < 20 || st.time - call.lastSpontaneous < 3) return;
+    if (this.qrand(call, 1) >= 0.12) return;
+    const t = inc.truth, tid = inc.templateId, m = call.mood;
+    const has = (k: string) => !asked.includes(k);
+    const conscious = t.conscious !== false;
+    const name = this.qpick(call, ['him', 'her']);
+    const q = (kind: string, text: string, options: Array<[string, string, string, string, string]>, timeout: { effect: string; line: string }) => {
+      asked.push(kind);
+      call.lastQuestionAt = st.time;
+      this.deliver(call, { at: st.time, text });
+      call.question = { kind, text, at: st.time, expiresAt: st.time + 22, lineIdx: call.transcript.length - 1, options: options.map(([id, label, say, reply, effect]) => ({ id, label, say, reply, effect })), timeout };
+    };
+    // ordered by urgency: the first one that fits is asked
+    if (has('goback') && ['kitchen_fire', 'apartment_fire', 'electrical_fire'].includes(tid) && inc.firstArrivalAt === null) {
+      const who = this.qpick(call, ['my dog', 'the cat', 'my neighbour from upstairs']);
+      return q('goback', `${who[0].toUpperCase()}${who.slice(1)} — I think ${who.startsWith('my n') ? 'she' : "he"}'s still in there! Should I go back in and get ${who.startsWith('my n') ? 'her' : 'him'}?`, [
+        ['stay', 'No — stay outside', "No. Do not go back inside. Stay out, and tell the firefighters exactly where to look when they arrive.", "Okay... okay. I'll wait right here by the door.", 'aid:evacuate'],
+        ['go', 'Go in quickly', "If you're quick, go in and get them — stay low.", "Okay — I'm going in!", 'harm:goback'],
+      ], m.panic > 60 && this.qrand(call, 7) < 0.5 ? { effect: 'harm:goback', line: "I can't just stand here — I'm going in!" } : { effect: 'calm', line: "...I'll wait. Please hurry." });
+    }
+    if (has('gasback') && ['gas_leak', 'carbon_monoxide'].includes(tid) && inc.firstArrivalAt === null) {
+      return q('gasback', this.qpick(call, ['Should I run back in and turn the cooker off? And open the windows?', "I left the door open — should I go back in and switch everything off at the wall?"]), [
+        ['out', 'No — stay out, no switches', "No. Stay outside, don't touch any switches or anything electrical, and keep everyone away from the building.", "Right. Staying out. I'll keep people back.", 'aid:evacuate'],
+        ['in', 'Yes, turn it off', 'Yes — quickly turn it off and open the windows, then come straight out.', "Okay, I'm going in to turn it off...", 'harm:gasback'],
+      ], m.panic > 60 && this.qrand(call, 7) < 0.5 ? { effect: 'harm:gasback', line: "I'm just going to switch it off, it'll take a second—" } : { effect: 'calm', line: "I'll stay out here." });
+    }
+    if (has('confront') && ['burglary_progress', 'suspicious_activity', 'trespassing', 'domestic_disturbance', 'strange_noise', 'animal_burglar'].includes(tid) && inc.firstArrivalAt === null) {
+      return q('confront', this.qpick(call, ["I can hear them moving about downstairs — should I go and see who it is?", "He's still out there by the back door. Should I go out and tell him to clear off?", 'Should I grab something and go and check?']), [
+        ['hide', 'No — lock yourself in', "No. Lock yourself in a room, stay quiet, keep away from the door and stay on the line with me.", "Okay. I'm in the bedroom. I've locked it.", 'aid:lock'],
+        ['look', 'Have a careful look', 'Go and have a careful look, but keep your distance.', "Okay... I'm going down.", 'harm:confront'],
+      ], m.frustration > 45 && this.qrand(call, 7) < 0.5 ? { effect: 'harm:confront', line: "That's it, I'm not hiding in my own house — I'm going down there." } : { effect: 'calm', line: "I'm staying in the bedroom. Please hurry." });
+    }
+    if (has('confront') && ['shoplifting', 'robbery', 'carjacking'].includes(tid) && inc.firstArrivalAt === null) {
+      return q('confront', tid === 'shoplifting' ? "He's walking out with it — should I try and stop him?" : "He's leaving — should I go after him?", [
+        ['let', "No — don't try to stop him", "Don't try to stop him. Watch which way he goes and describe him to me.", "Okay. He's going left, towards the bus stop.", 'calm'],
+        ['stop', 'Try to stop him', 'If you can do it safely, try to stop him at the door.', 'Right — hey! HEY, YOU!', 'harm:confront'],
+      ], { effect: 'calm', line: 'He just walked out. I let him go.' });
+    }
+    if (has('water') && ['fall_elderly', 'sudden_illness', 'allergic_reaction', 'workplace_injury', 'sports_injury', 'collision_injury', 'gunshot_victim', 'breathing_trouble'].includes(tid) && inc.careAt == null) {
+      return q('water', conscious ? `${name === 'him' ? "He's" : "She's"} asking for a drink — can I give ${name} some water?` : `Should I splash some water on ${name}, or try to get ${name} to drink something?`, [
+        ['no', 'No food or drink', `No — nothing to eat or drink until the paramedics have seen ${name}. You can wet ${name === 'him' ? 'his' : 'her'} lips if they're dry.`, 'Okay, no water. I told them.', 'calm'],
+        ['yes', 'Small sips', 'Yes, just small sips.', 'Okay, here, just a little...', 'harm:water'],
+      ], m.panic > 60 && this.qrand(call, 7) < 0.5 ? { effect: 'harm:water', line: `I gave ${name} a little water, ${name === 'him' ? 'he' : 'she'} was begging for it...` } : { effect: 'calm', line: "I'll wait for them." });
+    }
+    if (has('lift') && ['fall_elderly', 'collision_injury', 'collision_trapped', 'workplace_injury', 'sports_injury', 'industrial_accident'].includes(tid) && inc.careAt == null) {
+      return q('lift', tid.startsWith('collision') ? `Should we pull ${name} out of the car? People are saying we should get ${name} out.` : `${name === 'him' ? "He's" : "She's"} on the cold floor — should I help ${name} up into a chair?`, [
+        ['still', "Don't move them", `Don't move ${name} unless there's fire or immediate danger. Keep ${name} still and warm until the crew gets there.`, `Okay, we're leaving ${name} where ${name === 'him' ? 'he' : 'she'} is. I've put my coat over ${name}.`, 'aid:still'],
+        ['lift', 'Help them up', `Yes, carefully help ${name} up.`, 'Okay, one, two, three—', 'harm:lift'],
+      ], m.panic > 62 && this.qrand(call, 7) < 0.5 ? { effect: 'harm:lift', line: `We got ${name} up — ${name === 'him' ? "he's" : "she's"} screaming about ${name === 'him' ? 'his' : 'her'} back now...` } : { effect: 'calm', line: `I'll leave ${name} be.` });
+    }
+    if (has('follow') && inc.pursuit && inc.mover && st.time >= inc.mover.startAt) {
+      return q('follow', "He's getting away — should I keep following him?!", [
+        ['stop', 'No — pull over', "No. Pull over somewhere safe and tell me which way he was heading.", "Okay, I've stopped. He went towards the river.", 'nofollow'],
+        ['follow', 'Follow at a distance', 'Stay well back, obey the road, and keep telling me where he goes.', "Okay, I'm behind him. I'll keep talking.", 'follow'],
+      ], { effect: m.frustration > 40 ? 'follow' : 'nofollow', line: m.frustration > 40 ? "I'm going after him." : "I've lost him, I've pulled over." });
+    }
+    const eta = this.soonestEta(inc);
+    if (has('eta') && inc.assignedUnits.length && !this.onScene(inc).length && isFinite(eta) && since > 18) {
+      const mins = eta >= 90 ? `about ${Math.round(eta / 60)} minutes` : eta >= 45 ? 'about a minute' : 'under a minute';
+      return q('eta', this.qpick(call, ['How long until they get here?!', 'Are they close? Please tell me they\'re close.', 'How much longer? I can\'t do this on my own!']), [
+        ['honest', `Tell them: ${mins}`, `They're ${mins} away, coming with lights and sirens. I'm staying with you until they're there.`, 'Okay. Okay, I can hold on that long.', 'eta_honest'],
+        ['soon', 'Say: any second now', 'Any second now — they\'re nearly there.', 'Oh thank God.', 'eta_soon'],
+      ], { effect: 'frustrate', line: 'Hello?! Are you even listening to me?' });
+    }
+    if (has('hangup') && !inc.pursuit && inc.firstArrivalAt !== null && this.onScene(inc).length && (inc.lifeThreat == null || inc.careAt != null) && since > 15) {
+      return q('hangup', this.qpick(call, ["They're here! The crew just pulled up — can I hang up now?", "I can see them! Is it okay if I hang up and go to them?"]), [
+        ['go', 'Yes — go to them', "Yes, go and meet them. You did really well — thank you.", 'Thank you... thank you so much.', 'handover'],
+        ['wait', 'Stay on a moment', 'Stay on the line with me a moment longer, please.', "Okay, I'm still here.", 'stay'],
+      ], { effect: 'hangup', line: "Okay — I'm going to them. Bye!" });
+    }
+    if (has('reassure') && call.profile.archetype === 'child_caller' && since > 12) {
+      return q('reassure', this.qpick(call, ['Is... is my mummy going to be okay?', 'Am I going to be in trouble?', 'Will you stay with me?']), [
+        ['kind', 'You are doing so well', "You're being so brave, and you're doing everything right. The helpers are coming, and I'm staying right here with you.", 'Okay... I\'m being brave.', 'calmbig'],
+        ['firm', 'Keep answering me', 'I need you to keep answering my questions, okay?', '...okay.', 'firm'],
+      ], { effect: 'panic', line: 'Hello...? Are you still there?' });
+    }
+    if (has('donthang') && m.panic > 75 && since > 14) {
+      return q('donthang', this.qpick(call, ["Please don't hang up on me... please, I'm so scared.", "Don't leave me, okay? Please stay on the phone."]), [
+        ['stay', "I'm not going anywhere", "I'm right here. I'm not going anywhere until help is with you. Breathe with me.", 'Okay... okay. I\'m breathing.', 'calmbig'],
+        ['firm', 'Be firm: answer my questions', 'I need you to focus and answer my questions quickly.', 'I — okay. Okay.', 'firm'],
+      ], { effect: 'panic', line: 'Hello?! Hello, are you there?!' });
+    }
+  }
+  /** the dispatcher answers the caller's question */
+  answerCaller(callId: string, optId: string): { ok: boolean; reason?: string } {
+    const st = this.state;
+    const call = st.calls[callId];
+    const q = call?.question;
+    if (!call || !q || call.state !== 'active') return { ok: false, reason: 'Nothing to answer' };
+    const opt = q.options.find((o) => o.id === optId);
+    if (!opt) return { ok: false, reason: 'Unknown answer' };
+    call.question = null;
+    st.stats.callerAnswers = (st.stats.callerAnswers ?? 0) + 1;
+    this.addTranscript(call, 'DISPATCHER', opt.say);
+    const inc = st.incidents[call.incidentId];
+    call.pending.push({ at: st.time + 1.1 + opt.reply.length * 0.02, text: opt.reply });
+    this.questionEffect(call, inc, opt.effect);
+    return { ok: true };
+  }
+  private questionTimeout(call: Call) {
+    const st = this.state, q = call.question!;
+    call.question = null;
+    const inc = st.incidents[call.incidentId];
+    if (call.state === 'active') this.deliver(call, { at: st.time, text: q.timeout.line });
+    if (call.state === 'active' || q.timeout.effect.startsWith('harm')) this.questionEffect(call, inc, q.timeout.effect);
+  }
+  private questionEffect(call: Call, inc: Incident, effect: string) {
+    const st = this.state, m = call.mood;
+    const [kind, arg] = effect.split(':');
+    const clamp = (v: number) => Math.max(0, Math.min(100, v));
+    switch (kind) {
+      case 'calm': m.panic = clamp(m.panic - 8); m.base = clamp(m.base - 5); m.trust = clamp(m.trust + 6); break;
+      case 'calmbig': m.panic = clamp(m.panic - 18); m.base = clamp(m.base - 10); m.trust = clamp(m.trust + 12); m.cooperation = clamp(m.cooperation + 6); break;
+      case 'firm': m.panic = clamp(m.panic + 4); m.cooperation = clamp(m.cooperation + 8); m.trust = clamp(m.trust - 4); break;
+      case 'panic': m.panic = clamp(m.panic + 10); m.trust = clamp(m.trust - 6); break;
+      case 'frustrate': m.frustration = clamp(m.frustration + 12); m.trust = clamp(m.trust - 8); break;
+      case 'stay': m.trust = clamp(m.trust + 4); break;
+      case 'aid':
+        this.applyAid(inc, call, { kind: arg, fit: 'good' });
+        if (arg === 'evacuate' || arg === 'lock') inc.safetyAdvised = true;
+        m.panic = clamp(m.panic - 6); m.trust = clamp(m.trust + 6);
+        break;
+      case 'harm': this.applyAid(inc, call, { kind: arg, fit: 'bad' }); break;
+      case 'eta_honest': m.trust = clamp(m.trust + 8); m.panic = clamp(m.panic - 5); break;
+      case 'eta_soon': {
+        m.trust = clamp(m.trust + 4); m.panic = clamp(m.panic - 7);
+        if (this.soonestEta(inc) > 50) call.overpromiseAt = st.time + 40;
+        break;
+      }
+      case 'handover':
+        st.stats.handoffs = (st.stats.handoffs ?? 0) + 1;
+        call.pending.push({ at: st.time + 3.2, text: 'Caller went to meet the crew', system: true, hangup: true, endReason: 'handover' });
+        break;
+      case 'hangup': call.pending.push({ at: st.time + 1.2, text: '(the caller hangs up)', system: true, hangup: true }); break;
+      case 'nofollow': call.stopFollowing = true; call.following = false; m.panic = clamp(m.panic - 6); break;
+      case 'follow':
+        call.following = true;
+        if (this.qrand(call, 11) < 0.18) {
+          call.pending.push({ at: st.time + 22, text: "(tyres screech) — oh God, oh God, I've hit something—", hangup: true });
+          this.consequence(inc, 'A witness kept following the suspect on the dispatcher\'s say-so and crashed');
+          st.reputation = Math.max(0, st.reputation - 1);
+        }
+        break;
+    }
+  }
+  /** the dispatcher counts compressions out loud with the caller: on-tempo counting keeps CPR effective */
+  cprPace(callId: string, bpm: number): { ok: boolean; reason?: string; tempo?: 'good' | 'slow' | 'fast' } {
+    const st = this.state;
+    const call = st.calls[callId];
+    const inc = call ? st.incidents[call.incidentId] : undefined;
+    const a = inc?.aid;
+    if (!call || !inc || call.state !== 'active' || !a || a.kind !== 'cpr' || a.fit !== 'good' || inc.careAt != null) return { ok: false, reason: 'Nobody is doing CPR on this call' };
+    const tempo = bpm < 95 ? 'slow' : bpm > 125 ? 'fast' : 'good';
+    if (a.paceStartedAt === undefined || st.time - (a.pacedAt ?? -99) > 15) {
+      a.paceStartedAt = st.time;
+      this.addTranscript(call, 'DISPATCHER', 'Push hard and fast in the middle of the chest — count with me: one, two, three, four...');
+    }
+    if (tempo === 'good') { a.pacedAt = st.time; a.encouragedAt = st.time; st.stats.cprPaced = (st.stats.cprPaced ?? 0) + 1; }
+    if (st.time - (a.lastPaceLine ?? -99) > 9 && !call.pending.length) {
+      a.lastPaceLine = st.time;
+      const n = this.qpick(call, ['twenty-eight, twenty-nine, thirty', 'fourteen, fifteen, sixteen', 'seven, eight, nine, ten']);
+      call.pending.push({ at: st.time + 0.6, text: tempo === 'good' ? this.qpick(call, [`...${n}... I'm still pushing!`, `${n[0].toUpperCase()}${n.slice(1)}... okay, I've got the rhythm.`, "I'm keeping up — don't stop counting!"]) : tempo === 'slow' ? this.qpick(call, ['Like this? Is this fast enough?', "I'm getting so tired..."]) : this.qpick(call, ["That's too fast, I can't keep up!", 'Slow down, I\'m losing count!']) });
+    }
+    return { ok: true, tempo };
   }
 
   // ── Outside agencies ──────────────────────────────────────────────────────
