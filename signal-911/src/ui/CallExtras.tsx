@@ -44,7 +44,7 @@ function spansFor(text: string, needles: ReturnType<typeof locationNeedles>): Sp
 }
 
 /** a caller line: plays out like speech when it is new, then shows clickable places and highlighted danger words */
-export function CallerLine({ engine, call, inc, line, fresh }: { engine: GameEngine; call: Call; inc: Incident; line: TranscriptLine; fresh: boolean }) {
+export function CallerLine({ engine, call, inc, line, fresh, plain }: { engine: GameEngine; call: Call; inc: Incident; line: TranscriptLine; fresh: boolean; plain?: boolean }) {
   const reduce = useApp((s) => s.settings.reduceMotion);
   const [shown, setShown] = useState(fresh && !reduce ? 0 : line.text.length);
   useEffect(() => {
@@ -59,7 +59,8 @@ export function CallerLine({ engine, call, inc, line, fresh }: { engine: GameEng
     return () => cancelAnimationFrame(raf);
   }, [line.text, shown >= line.text.length]);
   const bump = useApp((s) => s.bump);
-  if (shown < line.text.length) return <>“{line.text.slice(0, shown)}<i className="caret" />”</>;
+  if (shown < line.text.length) return <>{line.text.slice(0, shown)}<i className="caret" /></>;
+  if (plain) return <>{line.text}</>;
   const spans = spansFor(line.text, locationNeedles(engine, call));
   const parts: ReactNode[] = [];
   let at = 0;
@@ -78,7 +79,7 @@ export function CallerLine({ engine, call, inc, line, fresh }: { engine: GameEng
     at = sp.end;
   });
   if (at < line.text.length) parts.push(line.text.slice(at));
-  return <>“{parts}”</>;
+  return <>{parts}</>;
 }
 
 // ── questions the caller asks the dispatcher ────────────────────────────────

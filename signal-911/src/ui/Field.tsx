@@ -98,9 +98,30 @@ export function DecisionCards({ engine }: { engine: GameEngine }) {
   const now = st.time;
   const live = (st.decisions ?? []).filter((d) => !d.chosen);
   const recent = (st.decisions ?? []).filter((d) => d.chosen && d.outcome && now - (d.expiresAt - 25) < 40 && now - d.at < 45).slice(-2);
-  if (!live.length && !recent.length) return null;
+  const queries = (st.unitQueries ?? []).filter((q) => q.status === 'open' || q.status === 'standby');
+  if (!live.length && !recent.length && !queries.length) return null;
   return (
     <div className="decisions">
+      {queries.map((q) => {
+        const u = st.units[q.unitId], inc = st.incidents[q.incId];
+        const o = engine.queryOptions(q.id);
+        const left = Math.max(0, q.expiresAt - now);
+        const ans = (mode: 'relay' | 'deny' | 'standby') => { const r = engine.answerUnitQuery(q.id, mode); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); else audio.radioBlip(); bump(); };
+        return (
+          <div key={q.id} className={`decision query ${q.status}`} role="alertdialog" aria-label="Crew asking for information">
+            <div className="dc-head"><Icon n="radio" size={13} /> <b>{u?.callsign ?? 'Unit'}</b><span className="muted small">· {inc?.label} · en route</span><span className="grow" /><span className="mono small">{Math.ceil(left)}s</span></div>
+            <div className="dc-bar"><i style={{ width: `${(left / (q.status === 'standby' ? 40 : 30)) * 100}%` }} /></div>
+            <div className="dc-q">“Dispatch — {q.text}”</div>
+            <div className="dc-opts">
+              {o.known ? <button className="dc-opt" onClick={() => ans('relay')}><b>Relay: {o.known.label} — {o.known.value}</b><span>What the caller told you</span></button>
+                : <button className="dc-opt" disabled><b>You don't know yet</b><span>Ask the caller, then relay it here</span></button>}
+              {o.canDeny && <button className="dc-opt" onClick={() => ans('deny')}><b>{q.key === 'weapon' ? 'No weapons reported' : q.key === 'trapped' ? 'Nobody inside that we know of' : 'No hazards reported'}</b><span>Only if you're sure — wrong is dangerous</span></button>}
+              {q.status === 'open' && <button className="dc-opt" onClick={() => ans('standby')}><b>Stand by — I'll find out</b><span>Buys time to ask the caller</span></button>}
+            </div>
+            {inc && <button className="linkish small" onClick={() => { engine.select('incident', inc.id); bump(); }}>Open incident</button>}
+          </div>
+        );
+      })}
       {live.map((d) => {
         const u = st.units[d.unitId], inc = st.incidents[d.incId];
         const left = Math.max(0, d.expiresAt - now);

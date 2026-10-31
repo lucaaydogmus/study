@@ -284,13 +284,25 @@ function handleEngineEvent(e: EngineEvent, engine: GameEngine) {
     case 'radio': audio.radioBlip(); break;
     case 'dispatch': audio.dispatchConfirm(); break;
     case 'arrive': audio.notify(); break;
-    case 'alert': audio.alert(); break;
+    case 'alert': if (e.text === 'MAYDAY') audio.mayday(); else if (e.text === 'BOLO' || e.text === 'BOLO hit — pursuit') audio.attention(); else if (e.text === 'breaking') audio.stinger(); else audio.alert(); break;
+    case 'caller_line': {
+      const call = engine.state.calls[e.callId];
+      const line = call?.transcript[call.transcript.length - 1];
+      if (call && line?.who === 'CALLER' && engine.state.activeCallId === call.id && !/^\(/.test(line.text)) audio.voice(line.text, callerPitch(call), call.mood.panic > 65);
+      break;
+    }
     case 'resolved': audio.good(); break;
     case 'failed': audio.alert(); break;
     case 'notify': break;
     case 'ended': st.finishShift(); break;
     default: break;
   }
+}
+/** a voice pitch for the caller: children high, older callers a little lower, men lower than women */
+export function callerPitch(call: import('./sim/types').Call): number {
+  if (call.profile.archetype === 'child_caller') return 300;
+  let h = 0; for (const ch of call.profile.name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return (h % 2 ? 128 : 205) * (call.profile.age > 65 ? 0.92 : 1) * (0.94 + (h % 7) / 50);
 }
 export function updateAmbience(engine: GameEngine) {
   const id = engine.state.activeCallId;

@@ -168,7 +168,7 @@ function Prep({ p }: { p: Profile }) {
           <div className="kv"><span>Call volume</span><b>{cfg.incidentRate < 1 ? 'Light' : cfg.incidentRate < 1.2 ? 'Moderate' : 'Heavy'}</b></div>
           <div className="field"><label>Difficulty</label>
             <div className="seg">{(Object.keys(DIFFICULTY) as Difficulty[]).map((d) => <button key={d} className={p.flags.difficulty === d ? 'on' : ''} onClick={() => mutate((pp) => { pp.flags.difficulty = d; })}>{DIFFICULTY[d].label}</button>)}</div>
-            <small className="muted">{{ casual: 'Calmer callers, fewer calls, slower escalation.', standard: 'The intended experience.', hard: 'More calls, less cooperative callers, faster escalation.', expert: 'Short fuses, wrong addresses and relentless volume.' }[p.flags.difficulty]}</small></div>
+            <small className="muted">{{ casual: 'Calmer callers, fewer calls, slower escalation.', standard: 'The intended experience.', hard: 'More calls, less cooperative callers, faster escalation — and no assists: no response plans, auto-classification, suggested replies or one-click locations.', expert: 'Short fuses, wrong addresses, relentless volume — and no assists at all.' }[p.flags.difficulty]}</small></div>
           <div className="field"><label>Shift length</label>
             <div className="seg">{[10, 15, 20, 30].map((m) => <button key={m} className={p.flags.duration === m * 60 ? 'on' : ''} onClick={() => mutate((pp) => { pp.flags.duration = m * 60; })}>{m} min</button>)}</div></div>
           <ExtrasList config={cfg} />

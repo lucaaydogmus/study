@@ -2,7 +2,7 @@
 // hospitals and empty streets, plus the drop handler for drag-to-dispatch.
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { addressOf } from '../sim/city';
-import { AGENCY, recommendFor, type GameEngine } from '../sim/engine';
+import { AGENCY, assistsOn, recommendFor, type GameEngine } from '../sim/engine';
 import { SERVICE_META, isAir } from '../sim/fleet';
 import type { Incident, Service, Unit } from '../sim/types';
 import { audio } from '../audio/audioManager';
@@ -139,8 +139,8 @@ export function MapMenu({ engine, menu, onClose, focus, startReposition, openTab
     );
     body = (
       <>
-        {plan.units.length > 0 && <Item icon="send" tone="primary" sub={`${plan.units.length} · C${code}`} onClick={run(() => { let ok = 0; for (const x of plan.units) if (engine.dispatch(x.unit.id, inc.id, { code }).ok) ok++; feedback(ok > 0, `Response plan dispatched · ${ok} unit${ok > 1 ? 's' : ''}`); })}>Dispatch response plan</Item>}
-        {near.map(({ s, n: x }) => (
+        {assistsOn(st) && plan.units.length > 0 && <Item icon="send" tone="primary" sub={`${plan.units.length} · C${code}`} onClick={run(() => { let ok = 0; for (const x of plan.units) if (engine.dispatch(x.unit.id, inc.id, { code }).ok) ok++; feedback(ok > 0, `Response plan dispatched · ${ok} unit${ok > 1 ? 's' : ''}`); })}>Dispatch response plan</Item>}
+        {assistsOn(st) && near.map(({ s, n: x }) => (
           <Item key={s} icon={SERVICE_ICON[s]} color={SERVICE_META[s].color} disabled={!x} sub={x ? fmtEta(x.eta) : 'none free'} onClick={run(() => { if (x) feedback(engine.dispatch(x.unit.id, inc.id, { code }), `${x.unit.callsign} → ${inc.label}`); })}>
             {x ? <>Send <b>{x.unit.callsign}</b></> : <>Nearest {SERVICE_META[s].short.toLowerCase()}</>}
           </Item>

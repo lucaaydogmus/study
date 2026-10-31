@@ -1,5 +1,6 @@
 // Headless balance harness: plays shifts with a scripted "competent dispatcher" and a "do nothing" baseline.
 // Run with: npx vite-node scripts/balance.ts
+import { TEMPLATE_BY_ID } from '../src/sim/content/templates';
 import { GameEngine, DT, recommendFor } from '../src/sim/engine';
 import { careerConfig, newProfile, setupFromProfile } from '../src/sim/profile';
 import { rankForXp } from '../src/sim/progression';
@@ -52,6 +53,10 @@ function play(rank: number, diff: 'casual' | 'standard' | 'hard' | 'expert', see
       }
     }
     if (competent) for (const u of e.overdueChecks()) if (st.time - u.checkDue! > 6) e.statusCheck(u.id);
+    // non-emergency callers get sent to the non-emergency line once it is clear what they want
+    if (competent) for (const c of Object.values(st.calls)) if (c.state === 'active' && st.time - (c.answeredAt ?? st.time) > 8 && TEMPLATE_BY_ID[st.incidents[c.incidentId].templateId]?.nonEmergency) e.redirectCall(c.id);
+    // crews asking for information get the caller's answer when there is one
+    if (competent) for (const q of st.unitQueries ?? []) if (q.status === 'open' && st.time - q.at > 5) e.answerUnitQuery(q.id, e.queryOptions(q.id).known ? 'relay' : 'standby');
     // callers asking what to do get a sensible answer most of the time
     if (competent) for (const c of Object.values(st.calls)) if (c.question && c.state === 'active' && st.time - c.question.at > 4) e.answerCaller(c.id, c.question.options[e.rng.chance(0.85) ? 0 : 1].id);
     // officers' records requests: run and answer (a competent dispatcher gets most of them right)

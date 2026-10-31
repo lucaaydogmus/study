@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { addressOf, fullAddress, searchAddresses } from '../sim/city';
 import { CAP_LABEL, CLASSES, CLASS_BY_ID } from '../sim/content/vocab';
-import { matchCoverage, recommendFor, reqText, suggestClass, gameClock, type GameEngine } from '../sim/engine';
+import { assistsOn, matchCoverage, recommendFor, reqText, suggestClass, gameClock, type GameEngine } from '../sim/engine';
 import { SERVICE_META, UNIT_TYPE_BY_ID } from '../sim/fleet';
 import type { Capability, Incident, Service, Unit } from '../sim/types';
 import { audio } from '../audio/audioManager';
@@ -170,7 +170,9 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
   const liveCall = call && (call.state === 'active') ? call : null;
   const heard = useMemo(() => (call ? call.heard : []), [call, st.time > 0 ? call?.heard.length : 0]);
   const results = q.length >= 2 ? searchAddresses(city, q, 6) : [];
-  const rec = recommendFor(inc, st.rank);
+  const assists = assistsOn(st);
+  // hard mode: no response is suggested until the dispatcher classifies the call themselves
+  const rec = assists || inc.classification ? recommendFor(inc, st.rank) : [];
   const suggested = suggestClass(inc);
   const cls = inc.classification ?? suggested;
   const done = ['RESOLVED', 'CLOSED'].includes(inc.status);
@@ -188,6 +190,17 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
         <div className="kv"><span>Priority</span><span className="pips" aria-label={`Priority ${inc.severity} of 5`}>{[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= inc.severity ? 'on' : ''} />)}<b className="mono">P{6 - inc.severity}</b></span></div>
         <div className="kv"><span>Reported</span><b className="mono">{fmtTime(st.time - inc.createdAt)} ago</b></div>
         {inc.stage > 0 && <div className="kv"><span>Escalation</span><Badge tone="red">STAGE {inc.stage}</Badge></div>}
+        {!done && !inc.pursuit && (() => {
+          const f = engine.escalationForecast(inc.id);
+          if (!f.next) return null;
+          return (
+            <div className={`escal ${f.rising ? (f.eta !== null && f.eta < 40 ? 'hot' : 'rising') : 'held'}`}>
+              <div className="escal-top"><Icon n="alert" size={12} /> <b>{f.rising ? 'Getting worse' : 'Holding'}</b><span className="grow" /><span className="mono small">{f.rising && f.eta !== null ? `next stage ~${f.eta >= 60 ? `${Math.floor(f.eta / 60)}m ${String(Math.round(f.eta % 60)).padStart(2, '0')}s` : `${Math.round(f.eta)}s`}` : 'contained for now'}</span></div>
+              <div className="escal-bar"><i style={{ width: `${Math.min(100, inc.threat)}%` }} /></div>
+              <div className="small">{f.rising ? 'If nothing changes: ' : 'Stops it getting to: '}<b>{f.next}</b></div>
+            </div>
+          );
+        })()}
         {inc.relatedIds.length > 0 && <div className="kv"><span>Related</span><b>{inc.relatedIds.map((r) => st.incidents[r] && `INC-${String(st.incidents[r].num).padStart(4, '0')}`).join(', ')}</b></div>}
         {call && <div className="kv"><span>Caller</span><span><b>{call.profile.name}</b> · {call.callerId}</span></div>}
         <div className="btnrow">
@@ -237,7 +250,7 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
               {heard.map((h) => (
                 <div key={h.id} className={`cand ${h.reliability}`}>
                   <div className="grow"><div className="clabel">{h.label}</div><div className="small muted">{h.source === 'ali' ? 'Automatic lookup' : h.source === 'cross' ? 'Cross street' : h.source === 'landmark' ? 'Landmark' : h.source === 'district' ? 'Area only' : 'Stated address'} · {h.reliability === 'sure' ? 'caller sure' : h.reliability === 'unsure' ? 'caller unsure' : 'contradicted'}</div></div>
-                  <Btn size="sm" onClick={() => { engine.setIncidentLocation(inc.id, h.nodeId, 'candidate'); bump(); }}>Use</Btn>
+                  {assists && <Btn size="sm" onClick={() => { engine.setIncidentLocation(inc.id, h.nodeId, 'candidate'); bump(); }}>Use</Btn>}
                   {liveCall && <Btn size="sm" kind="ghost" onClick={() => { engine.verifyLocation(liveCall.id, h.nodeId); bump(); }} title="Read this back to the caller">Verify</Btn>}
                 </div>
               ))}
@@ -255,9 +268,10 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
 
       <Section title="Classification" id="cls" right={<Badge tone={inc.classification ? 'blue' : 'neutral'}>{inc.classification ? 'SET' : 'AUTO'}</Badge>}>
         <select aria-label="Classification" value={inc.classification ?? ''} onChange={(e) => { engine.setClassification(inc.id, e.target.value || null); bump(); }}>
-          <option value="">Auto: {CLASS_BY_ID[suggested]?.label ?? 'Unclassified'}</option>
+          <option value="">{assists ? `Auto: ${CLASS_BY_ID[suggested]?.label ?? 'Unclassified'}` : 'Not classified — choose one'}</option>
           {CLASSES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
         </select>
+        {!assists && !inc.classification && <div className="note-line"><Icon n="info" size={12} /> Hard mode: no automatic classification or response plan. Classify the call, then pick the units yourself.</div>}
         <div className="sub">SUGGESTED RESPONSE <span className="muted">(from what you know)</span></div>
         <div className="chips">
           {rec.length ? rec.map((r) => (<Badge key={r.cap} tone={coveredCaps.has(r.cap) ? 'green' : 'amber'}>{coveredCaps.has(r.cap) ? '✓ ' : ''}{r.n > 1 ? `${r.n}× ` : ''}{CAP_LABEL[r.cap]}</Badge>)) : <span className="muted small">No response suggested.</span>}
@@ -271,7 +285,7 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
         {cls === 'no_response' && !done && <Btn size="sm" kind="success" icon="check" onClick={() => { engine.dismissIncident(inc.id); bump(); }}>Close — no emergency</Btn>}
       </Section>
 
-      {!done && !inc.truth.outside && <DispatchConsole engine={engine} inc={inc} rec={rec} setPreview={setPreview} />}
+      {!done && !inc.truth.outside && <DispatchConsole engine={engine} inc={inc} rec={rec} setPreview={setPreview} assists={assists} />}
 
       <Section title={`Assigned units (${assigned.length})`} id="assigned" right={inc.outcome ? <Badge tone={inc.outcome === 'success' || inc.outcome === 'false_alarm' ? 'green' : 'red'}>{inc.outcome.replace('_', ' ').toUpperCase()}</Badge> : null}>
         {!assigned.length && <p className="muted small">No units assigned.</p>}

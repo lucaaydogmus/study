@@ -14,7 +14,7 @@ function fatigueOf(engine: GameEngine, u: Unit) {
   return c.length ? c.reduce((s, p) => s + p.fatigue, 0) / c.length : 0;
 }
 
-export function DispatchConsole({ engine, inc, rec, setPreview }: { engine: GameEngine; inc: Incident; rec: Req[]; setPreview: (p: Preview) => void }) {
+export function DispatchConsole({ engine, inc, rec, setPreview, assists = true }: { engine: GameEngine; inc: Incident; rec: Req[]; setPreview: (p: Preview) => void; assists?: boolean }) {
   const st = engine.state;
   const bump = useApp((s) => s.bump);
   const [svc, setSvc] = useState<Service | 'all'>('all');
@@ -47,8 +47,8 @@ export function DispatchConsole({ engine, inc, rec, setPreview }: { engine: Game
         <button className={code === 3 ? 'on red' : ''} onClick={() => setCode(3)} title="Lights and sirens: fastest, small risk of a crash en route (higher in bad weather)">CODE 3</button>
         <button className={code === 2 ? 'on' : ''} onClick={() => setCode(2)} title="No lights or sirens: slower, but no crash risk">CODE 2</button>
       </div>}>
-      {/* Response plan */}
-      <div className="plan">
+      {/* Response plan (switched off on hard) */}
+      {assists && <div className="plan">
         <div className="plan-head"><Icon n="layers" size={13} /> <b>Response plan</b><span className="grow" /><span className="small muted">{code === 3 ? 'lights & sirens' : 'routine driving'}</span></div>
         {plan.units.length === 0 && plan.uncovered.length === 0 && <div className="small muted">Suggested response already covered{inc.assignedUnits.length ? ' by assigned units' : ''}.</div>}
         {plan.units.map(({ unit: u, covers, eta }) => (
@@ -61,7 +61,7 @@ export function DispatchConsole({ engine, inc, rec, setPreview }: { engine: Game
           <div className="plan-row miss" key={c}><Icon n="alert" size={12} /> No free unit for <b>{CAP_LABEL[c]}</b><span className="grow" /><Btn size="sm" onClick={() => { const r = engine.requestMutualAid(inc.id, c); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }}>Mutual aid −$4k</Btn></div>
         ))}
         {plan.units.length > 0 && <Btn kind="primary" icon="send" className="full" onClick={() => send(plan.units.map((x) => x.unit.id))}>Dispatch plan · {plan.units.length} unit{plan.units.length > 1 ? 's' : ''} · Code {code}</Btn>}
-      </div>
+      </div>}
 
       <div className="dc-filters">
         <div className="seg">{(['all', 'police', 'fire', 'medical'] as const).map((s) => <button key={s} className={svc === s ? 'on' : ''} onClick={() => setSvc(s)} aria-pressed={svc === s}>{s === 'all' ? 'ALL' : SERVICE_META[s].short}</button>)}</div>

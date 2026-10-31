@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { audio } from '../audio/audioManager';
 import { addressOf } from '../sim/city';
-import { gameClock, recommendFor, type GameEngine } from '../sim/engine';
+import { assistsOn, gameClock, recommendFor, type GameEngine } from '../sim/engine';
 import { WEATHER_LABEL } from '../sim/events';
 import { fmtMoneyShort } from './util';
 import { updateAmbience, useApp } from '../store';
@@ -19,6 +19,7 @@ import { GRADE_COLOR } from './common';
 import { RecordsDock, RecordsTerminal, threatKnown } from './Ops';
 import { BoloDock, CctvViewer, DecisionCards, MultiBar, NewsTicker, StatusDock, useCctvSink } from './Field';
 import { MapMenu, handleDrop, type MenuState } from './MapMenu';
+import { Cinematics } from './Cinematic';
 
 const CAT_ICON: Record<string, string> = { medical: 'cross', fire: 'flame', police: 'shield', unusual: 'help' };
 
@@ -72,7 +73,8 @@ export function GameScreen() {
     raf = requestAnimationFrame(loop);
     const onVis = () => { if (document.hidden && settings.autoSave) { engine.state.paused = true; bump(); } };
     document.addEventListener('visibilitychange', onVis);
-    return () => { cancelAnimationFrame(raf); document.removeEventListener('visibilitychange', onVis); audio.setRinging(false); };
+    audio.startOfficeLife();
+    return () => { cancelAnimationFrame(raf); document.removeEventListener('visibilitychange', onVis); audio.setRinging(false); audio.stopOfficeLife(); };
   }, [engine]);
 
   // answering a call brings the console forward
@@ -105,7 +107,7 @@ export function GameScreen() {
         const id = s.selected.kind === 'incident' ? s.selected.id : s.activeCallId ? s.calls[s.activeCallId]?.incidentId : null;
         if (id) { const r = eng.broadcastBolo(id); if (r.ok) { audio.dispatchConfirm(); useApp.getState().showToast('BOLO broadcast to all units', 'info'); } else { audio.error(); useApp.getState().showToast(r.reason ?? '', 'warn'); } bump(); }
       }
-      else if (e.key === 'Enter' && el?.tagName !== 'BUTTON') {
+      else if (e.key === 'Enter' && el?.tagName !== 'BUTTON' && assistsOn(s)) {
         const inc = s.selected.kind === 'incident' && s.selected.id ? s.incidents[s.selected.id] : null;
         if (inc && inc.reportedNode !== null && !['RESOLVED', 'CLOSED'].includes(inc.status)) {
           const plan = eng.buildPlan(inc.id, recommendFor(inc, s.rank));
@@ -129,7 +131,7 @@ export function GameScreen() {
     const inc = st.incidents[st.selected.id];
     if (!inc || inc.reportedNode !== null && !target) return undefined;
     const call = Object.values(st.calls).filter((c) => c.incidentId === inc.id).sort((a, b) => b.ringStart - a.ringStart)[0];
-    return call && (call.state === 'active' || call.state === 'hold') ? call.heard : undefined;
+    return call && (call.state === 'active' || call.state === 'hold') && assistsOn(st) ? call.heard : undefined;
   })();
 
   const onPickNode = (node: number) => {
@@ -196,6 +198,7 @@ export function GameScreen() {
           <MultiBar engine={engine} ids={multi} onClear={() => setMulti([])} />
           <BoloDock engine={engine} />
           <DecisionCards engine={engine} />
+          <Cinematics engine={engine} />
           <NewsTicker engine={engine} />
           {menu && <MapMenu engine={engine} menu={menu} onClose={closeMenu} focus={doFocus} startReposition={(id) => setTarget({ kind: 'repos', id })} openTab={(t) => { setTab(t as BottomTab); setCollapsed((c) => ({ ...c, b: false })); }} />}
           {cctv && <CctvViewer engine={engine} view={cctv} onClose={() => setCctv(null)} />}

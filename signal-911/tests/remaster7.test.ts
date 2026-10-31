@@ -55,7 +55,7 @@ describe('remaster 7: interactive calls', () => {
   it('"any second now" backfires when help is minutes away', () => {
     const e = makeEngine(quiet);
     const { inc, call } = start(e, 'fall_elderly');
-    call.questionsAsked = ['water', 'lift'];
+    call.questionsAsked = ['water', 'lift', 'snore', 'vomit', 'seizure', 'waking', 'bleed'];
     // the furthest ambulance, so help is genuinely a while away
     const amb = Object.values(e.state.units).filter((u) => u.capabilities.includes('transport') && !isAir(u)).sort((a, b) => (e.estimate(b.id, inc.nodeId)?.eta ?? 0) - (e.estimate(a.id, inc.nodeId)?.eta ?? 0))[0];
     e.dispatch(amb.id, inc.id);

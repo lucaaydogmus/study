@@ -143,12 +143,19 @@ export interface Call {
   tapProtocol?: boolean;
   outbound?: boolean;
   /** the caller asked the dispatcher something and is waiting on an answer */
-  question?: CallerQuestion | null; questionsAsked?: string[]; lastQuestionAt?: number;
+  question?: CallerQuestion | null; questionsAsked?: string[]; questionCount?: number; lastQuestionAt?: number;
   /** "any second now" was promised: if help is not there by then, trust takes a hit */
   overpromiseAt?: number | null;
   /** pursuit witness told to keep following (or to stop) */
   following?: boolean; stopFollowing?: boolean;
+  /** composure work while help is on the way */
+  lastDispatcherAt?: number; calmUsed?: Record<string, number[]>; lastCalm?: { at: number; kind: string; eff: number; d: number } | null;
+  tasks?: CallTask[]; panicSince?: number | null; brokeDown?: boolean; lastWaitLine?: number;
+  /** what can be heard behind the caller (derived from where they really are), and when the dispatcher last listened */
+  env?: string[]; listenedAt?: number; heardSounds?: string[];
 }
+/** a job the dispatcher gave the caller: it keeps them busy (and calmer) and helps the crews */
+export interface CallTask { id: string; label: string; status: 'doing' | 'done'; at: number; doneAt: number }
 /** a caller asks the dispatcher what to do; the answer (or silence) has consequences */
 export interface CallerQuestion { kind: string; text: string; at: number; expiresAt: number; lineIdx: number; options: Array<{ id: string; label: string; say: string; reply: string; effect: string }>; timeout: { effect: string; line: string } }
 export type Dept = 'trauma' | 'cardiac' | 'stroke' | 'pediatric' | 'burns';
@@ -169,6 +176,8 @@ export interface Bolo {
   atLarge: boolean; vehicle: boolean;
   status: 'active' | 'found' | 'expired'; foundBy?: string;
 }
+/** a crew on the way asks dispatch for something they need to know */
+export interface UnitQuery { id: string; unitId: string; incId: string; key: string; text: string; at: number; expiresAt: number; status: 'open' | 'standby' | 'answered' | 'expired'; said?: string; correct?: boolean }
 /** a spike strip run out ahead of a fleeing vehicle */
 export interface Stinger { id: string; unitId: string; incId: string; node: number; laidAt: number | null; expiresAt: number; result?: 'hit' | 'missed' | 'cancelled' }
 export interface CallTrace {
@@ -233,6 +242,12 @@ export interface Incident {
   accessNeeded?: { at: number; relayed: boolean } | null; accessDelayUntil?: number;
   /** how well the receiving hospital matched the patient */
   hospitalOutcome?: 'ideal' | 'ok' | 'unsuitable'; hospitalAsked?: boolean;
+  /** scene prep by the caller: someone waving the crew in or a light on, pets shut away, a path cleared */
+  guided?: boolean; petsSecured?: boolean; prep?: string[];
+  /** a firefighter MAYDAY came in after the PAR check was overdue */
+  maydayLate?: boolean; pressCalled?: boolean;
+  /** crews were told about a weapon (or wrongly told there was none) */
+  weaponRelayed?: boolean; weaponMissed?: boolean; queries?: number;
   /** an outside agency the crews need before the scene can clear (tow truck, power or gas company, animal control) */
   agency?: { kind: AgencyKind; askedAt: number | null; calledAt: number | null; arriveAt: number | null; here: boolean; nagged: number; late?: boolean } | null;
   /** missing-person search: sectors around the last-seen point */
@@ -330,7 +345,7 @@ export interface ShiftStats {
   aidGood: number; aidBad: number; unitCrashes: number; breakdowns: number; aiLines: number;
   heliRelays: number; heliSightings: number; checksOk: number; checksBad: number; checksMissed: number; guidanceDeaths: number; guidanceSaves: number; harmfulAdvice: number;
   boloHits?: number; stingerHits?: number; breaksGiven?: number;
-  callerAnswers?: number; cprPaced?: number; handoffs?: number;
+  callerAnswers?: number; cprPaced?: number; handoffs?: number; calmActions?: number; calmGood?: number; tasksDone?: number; callerBreakdowns?: number; redirectsOk?: number; redirectsBad?: number; listens?: number; unitQueries?: number; unitQueriesOk?: number; unitQueriesMissed?: number; maydays?: number; maydaySaved?: number; refusals?: number;
   agencyCalls?: number; agencyLate?: number; statusChecks?: number; statusSaves?: number; statusMissed?: number; alertsRight?: number; alertsWrong?: number; searchFinds?: number;
 }
 
@@ -358,7 +373,10 @@ export interface GameState {
   decisions?: Decision[];
   bolos?: Bolo[]; stingers?: Stinger[]; nextBreakAt?: number;
   /** worried residents ringing in after a public alert */
-  alertCalls?: Array<{ at: number; district: string }>;
+  alertCalls?: Array<{ at: number; district: string; template?: string }>;
+  /** patients who refused care and may collapse later */
+  relapses?: Array<{ at: number; incId: string }>;
+  unitQueries?: UnitQuery[];
   /** headlines for the news ticker */
   news?: Array<{ t: number; text: string; tone: 'good' | 'bad' | 'info' }>;
   /** hospital departments, beds and diversions, keyed by hospital node */

@@ -82,8 +82,61 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 | Drag a station | Sends its next free unit to the incident you drop it on | Drag a pin | Move an incident, or drop it on another to link duplicates |
 | `S` | Status check on the most overdue officer | Shift + drag | Box-select several units, then right-click an incident to send them all |
 | `Tab` (in the call box) | Say the top suggested reply | `C` | Count compressions with a caller doing CPR |
+| Listen (call controls) | Listen to the background for where the caller is | Calm / Jobs tabs | Keep the caller together and give them something useful to do |
 
 ## What is in the game
+
+### Remaster 8: keep them together, use your crews, hear the city
+
+**The call**
+- **A new call screen**: chat bubbles, the caller's avatar and a live **composure** meter showing how well they are
+  holding together. It drains while they wait in silence ("silent 27s — they're waiting on you"), and a caller left at
+  breaking point falls apart and may hang up.
+- **Calming techniques** that depend on who is on the line: *reassure* (frightened callers), *be firm & simple*
+  (cuts through panic, but angers angry callers and scares children), *acknowledge* (defuses anger), *ground them*
+  (steadies the shaken, and their description of the surroundings can give away where they are), *give an update*
+  (exactly who is coming and how long). Saying the same thing again wears thin.
+- **Breathe with me**: a guided breathing exercise. Hold the button while the circle grows and release while it shrinks.
+- **Give them a job**: turn the outside light on, unlock the door, send someone to wave the crew in, shut the dog
+  away, gather medications, keep the patient warm, count breaths, count heads, move everyone back, describe the
+  suspect, lock yourself in. Jobs calm the caller and really help: crews find the place, get in, treat faster, and you
+  get the description for a BOLO. Some jobs are dangerous in the wrong call; never send a caller to open the door to an
+  intruder.
+- **Developments while help is on the way**, each needing your answer: blood soaking through the dressing, snoring
+  breathing, vomiting, a seizure, a patient trying to get up, smoke under the door, a neighbour with a garden hose,
+  someone trying the door handle, fuel leaking under a crashed car.
+- **Callers don't know you dispatched**: they only learn help is coming when you tell them.
+- **Listen**: listen hard to the background. Level-crossing bells, gulls and ship horns, jets, school bells, church
+  bells, crowds, machinery and dogs are all worked out from where the caller really is, and they are played through
+  the phone line. Faint background sounds come through on their own during every call too.
+- **Non-emergency calls and reporters**: noise complaints, lost pets, power cuts and reporters fishing for details.
+  Send them to the non-emergency line or press office; send a real emergency there and they call back worse.
+
+**Your crews**
+- **Crews ask you for information on the way in**: "Any weapons?", "Anyone still inside?", "How old is the patient?",
+  "Any hazards?". Relay what the caller told you, say *stand by* and find out, or tell them there is nothing. Right
+  answers make them faster and safer; a wrong "no weapons" puts officers at risk.
+- **Firefighter PAR checks and MAYDAYs**: crews inside burning buildings owe you accountability checks. A timely check
+  catches a missing firefighter early; a lapsed one can end in a MAYDAY, where you send a rapid intervention team, pull
+  everyone out, or wait.
+- **Patients who refuse care**: persuade them, let them sign, or send an officer. Signed refusals sometimes collapse
+  later.
+- **A loose dog at the door** holds crews up unless the caller shut it away.
+
+**Look, sound and feel**
+- **Vehicle models**: every unit type has its own top-down model (patrol cars, traffic cars, vans, SWAT, motorcycles,
+  engines, ladders with their aerial, rescue trucks, ambulances with star of life and beacons, supervisors), with
+  flashing light bars that glow brighter at night and headlights after dark.
+- **A new city look**: asphalt streets with pavements, double yellow centre lines, lane markings and zebra crossings,
+  shading where buildings meet the ground, drifting cloud shadows, and a proper dome on City Hall.
+- **Cinematic beats**: letterboxed title cards for major incidents, MAYDAYs and pursuits, a live picture-in-picture
+  camera on the scene, and the screen jolts when a fire escalates.
+- **A living soundscape**: callers "speak" in their own voice pitch, the dispatch room never goes quiet (keyboards,
+  colleagues on other calls, distant phones), and there are all-units attention tones, a MAYDAY alarm and a
+  major-incident stinger.
+- **Escalation forecast** on every incident: whether it is getting worse, when the next stage hits, and what happens.
+- **Hard and expert mode** switch the assists off: no response plans, auto-classification, suggested replies, clickable
+  addresses or one-click locations. You classify, pick units and type addresses yourself.
 
 ### Remaster 7: calls that talk back
 

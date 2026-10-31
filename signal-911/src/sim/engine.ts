@@ -44,6 +44,38 @@ export const ALERT_RIGHT: Record<string, AlertKind> = {
   gas_leak: 'evacuate', house_explosion: 'evacuate', tanker_fire: 'evacuate', train_derailment: 'evacuate', brush_fire: 'evacuate', building_collapse: 'evacuate', bomb_threat: 'evacuate', apartment_fire: 'evacuate',
   warehouse_smoke: 'shelter', industrial_accident: 'shelter', active_shooter: 'shelter', hostage_barricade: 'shelter', crowd_crush: 'shelter',
 };
+/** hard and expert shifts switch off the dispatch assists: response plans, suggested replies, auto-classification, quick location picks */
+export const assistsOn = (st: GameState): boolean => !['hard', 'expert'].includes(st.config.difficulty);
+/** what each background sound tells a dispatcher who is listening for it */
+export const SOUND_CLUES: Record<string, string> = {
+  train: 'a level-crossing bell and a train rumbling past', highway: 'the roar of fast traffic — a motorway close by', water: 'water lapping and gulls crying',
+  harbor: "a ship's horn, gulls and clanking containers", jets: 'jet engines screaming overhead, very low', school: 'a school bell and children shouting',
+  bells: 'church bells ringing out', crowd: 'a big crowd cheering and chanting', industrial: 'heavy machinery and reversing beepers',
+  birds: 'wind in the trees and birdsong', traffic: 'busy traffic, horns and a bus pulling away', suburb: 'a dog barking and a lawnmower somewhere',
+  hospital: 'an ambulance siren winding down nearby', rain: 'rain hammering down', alarm: 'a fire alarm ringing',
+};
+export type CalmKind = 'reassure' | 'firm' | 'acknowledge' | 'ground' | 'update' | 'breathe';
+/** how well each calming technique lands, by the caller's state (negative = it backfires) */
+const CALM_FIT: Record<string, Record<CalmKind, number>> = {
+  panicked: { firm: 1, breathe: 1, update: 0.6, reassure: 0.5, acknowledge: 0.4, ground: 0.3 },
+  angry: { acknowledge: 1, update: 0.9, reassure: 0.25, ground: 0.2, breathe: -0.4, firm: -0.7 },
+  frightened: { reassure: 1, ground: 0.9, breathe: 0.8, update: 0.8, acknowledge: 0.6, firm: 0.4 },
+  shaken: { ground: 0.85, update: 0.85, reassure: 0.7, acknowledge: 0.5, breathe: 0.5, firm: 0.2 },
+  calm: { update: 0.4, reassure: 0.2, acknowledge: 0.2, ground: 0.1, breathe: 0, firm: -0.2 },
+};
+/** and by who they are */
+const CALM_ARCH: Record<string, Partial<Record<CalmKind, number>>> = {
+  child_caller: { firm: -0.6, reassure: 0.3, ground: 0.2, breathe: 0.2 },
+  confused_elderly: { firm: 0.25, ground: -0.25, update: 0.2 },
+  drunk_caller: { firm: 0.25, ground: -0.2 },
+  professional: { update: 0.3, reassure: -0.25 }, calm_serious: { update: 0.3, reassure: -0.2 },
+  angry_motorist: { acknowledge: 0.2, firm: -0.2 },
+  panicked_parent: { firm: 0.15, update: 0.15 },
+};
+/** callers hiding from someone: opening doors or going outside is dangerous */
+/** working structure fires where crews go inside: PAR checks and MAYDAYs */
+const STRUCTURE_FIRES = new Set(['apartment_fire', 'kitchen_fire', 'warehouse_smoke', 'electrical_fire', 'house_explosion', 'building_collapse', 'industrial_accident']);
+const HIDING = new Set(['burglary_progress', 'domestic_disturbance', 'active_shooter', 'hostage_barricade', 'bank_robbery', 'robbery', 'suspicious_activity', 'strange_noise', 'kidnapping']);
 export const SEARCH_TEMPLATES = new Set(['missing_person', 'lost_hiker', 'lost_child']);
 /** seconds one crew needs to sweep a search sector */
 const SECTOR_WORK = 26;
@@ -64,7 +96,7 @@ export interface ShiftSetup { rank: number; reputation: number; budget: number; 
 
 export type EngineEvent =
   | { type: 'ring'; callId: string } | { type: 'answer'; callId: string } | { type: 'hangup'; callId: string } | { type: 'caller_line'; callId: string }
-  | { type: 'radio'; unitId?: string } | { type: 'dispatch'; unitId: string } | { type: 'arrive'; unitId: string } | { type: 'alert'; text: string }
+  | { type: 'radio'; unitId?: string } | { type: 'dispatch'; unitId: string } | { type: 'arrive'; unitId: string } | { type: 'alert'; text: string; incId?: string; cine?: 'major' | 'mayday' | 'chase' | 'escalate' }
   | { type: 'ai_request'; callId: string; lineIds: number[]; intent: string; playerText: string }
   | { type: 'resolved'; incidentId: string } | { type: 'failed'; incidentId: string } | { type: 'notify'; level: string } | { type: 'ended' } | { type: 'status'; unitId: string };
 
@@ -346,6 +378,8 @@ export class GameEngine {
     this.updateAgencies();
     this.updateStatusChecks();
     this.updateAlertCalls();
+    this.updateRelapses();
+    this.unitQueriesTick();
     if (!st.config.script) this.breakdowns();
   }
 
@@ -549,7 +583,9 @@ export class GameEngine {
     this.headline(`BREAKING: ${headline}`, 'bad');
     this.notify(`BREAKING — ${headline}`, 'bad', inc?.id);
     this.radio('DISPATCH', `All units, major incident developing: ${headline.toLowerCase()}. Stand by for assignments.`, 'alert', undefined, inc?.id);
-    this.emit({ type: 'alert', text: 'breaking' });
+    // the newsroom starts ringing 911 for details
+    if (inc && !inc.pressCalled && !st.config.script) { inc.pressCalled = true; (st.alertCalls ??= []).push({ at: st.time + 25 + this.rng.range(0, 30), district: inc.district, template: 'press_call' }); }
+    this.emit({ type: 'alert', text: 'breaking', incId: inc?.id, cine: 'major' });
     void st;
   }
   /** add a line to the news ticker */
@@ -825,6 +861,7 @@ export class GameEngine {
       m.frustration = Math.max(0, m.frustration - 0.04 * dt);
       m.cooperation = Math.max(0, Math.min(100, m.cooperation + (call.profile.cooperationLevel - m.cooperation) * 0.004 * dt));
       call.profile.emotionalState = m.panic > 72 ? 'Panicked' : m.frustration > 58 ? 'Angry' : m.panic > 48 ? 'Frightened' : m.cooperation < 30 ? 'Uncooperative' : m.panic < 15 ? 'Calm' : 'Shaken';
+      if (call.state === 'active' && inc) this.composureTick(call, inc, dt);
       if (call.state === 'hold' && call.holdSince !== null && st.time - call.holdSince > 20 && st.time - call.lastSpontaneous > 20) {
         call.lastSpontaneous = st.time;
         this.addTranscript(call, 'CALLER', '(still on hold) ' + spontaneous(this.env(call), 'hold'));
@@ -877,6 +914,7 @@ export class GameEngine {
 
   private addTranscript(call: Call, who: 'CALLER' | 'DISPATCHER' | 'SYSTEM', text: string) {
     call.transcript.push({ t: this.state.time, clock: gameClock(this.state), who, text });
+    if (who === 'DISPATCHER') call.lastDispatcherAt = this.state.time;
   }
 
   private deliver(call: Call, line: import('./types').PendingLine) {
@@ -1138,6 +1176,20 @@ export class GameEngine {
         this.consequence(inc, 'The caller was sent back into the fire and was overcome by smoke');
         call.pending.push({ at: st.time + 6, text: '(the line fills with coughing, then goes quiet)', hangup: true });
         break;
+      case 'peek':
+        if (inc.survival !== undefined) inc.survival = Math.max(0, inc.survival - 12);
+        inc.threat = Math.min(99, inc.threat + 10);
+        this.consequence(inc, 'The caller lifted the dressing to look and the bleeding started again');
+        break;
+      case 'smokerun':
+        hurt(1); inc.threat = Math.min(99, inc.threat + 15);
+        this.consequence(inc, 'The caller opened a door into the smoke and was overcome');
+        call.pending.push({ at: st.time + 5, text: '(coughing, a door slams, then the line goes quiet)', hangup: true });
+        break;
+      case 'push':
+        hurt(1); inc.threat = Math.min(99, inc.threat + 12);
+        this.consequence(inc, 'Bystanders tried to push a leaking car and someone was hurt');
+        break;
       case 'gasback':
         hurt(1);
         inc.threat = Math.min(99, inc.threat + 20);
@@ -1151,7 +1203,7 @@ export class GameEngine {
         call.pending.push({ at: st.time + 5, text: '(the call disconnects)', hangup: true });
         break;
     }
-    if (['goback', 'gasback', 'confront'].includes(kind)) { inc.casualties += 0; this.notify(`Your instruction put the caller in danger — ${inc.label}`, 'bad', inc.id); }
+    if (['goback', 'gasback', 'confront', 'smokerun'].includes(kind)) { inc.casualties += 0; this.notify(`Your instruction put the caller in danger — ${inc.label}`, 'bad', inc.id); }
   }
 
   /** survival clock for patients with a life threat: falls until professional care arrives, faster without good instructions */
@@ -1260,7 +1312,7 @@ export class GameEngine {
     const inc = st.incidents[call.incidentId];
     call.state = 'ended'; call.endedAt = st.time; call.endReason = reason; call.pending = []; call.typing = false;
     if (st.activeCallId === callId) st.activeCallId = null;
-    this.addTranscript(call, 'SYSTEM', reason === 'caller_hung_up' ? 'Caller disconnected' : reason === 'transferred' ? 'Call transferred' : reason === 'handover' ? 'Caller went to meet the crew — call closed' : 'Call ended by dispatcher');
+    this.addTranscript(call, 'SYSTEM', reason === 'caller_hung_up' ? 'Caller disconnected' : reason === 'transferred' ? 'Call transferred' : reason === 'handover' ? 'Caller went to meet the crew — call closed' : reason === 'redirected' ? 'Caller transferred to the non-emergency line' : 'Call ended by dispatcher');
     this.log('call', `Call ended (${reason === 'dispatcher' ? 'dispatcher' : reason.replace('_', ' ')}) — ${inc.label}`, { incidentId: inc.id });
     this.emit({ type: 'hangup', callId });
     if (inc.truth.outside && reason !== 'transferred') { this.resolveOutside(inc, false); return; }
@@ -1630,9 +1682,7 @@ export class GameEngine {
     this.log('dispatch', `${u.callsign} dispatched → ${inc.label} (${addressOf(this.city, inc.reportedNode!)})`, { incidentId: inc.id, unitId: u.id });
     this.routeUnit(u, inc.reportedNode!, true);
     this.emit({ type: 'dispatch', unitId: u.id });
-    // caller reaction
-    const call = this.callFor(inc);
-    if (call && call.state === 'active' && !call.pending.length && this.rng.chance(0.65)) call.pending.push({ at: st.time + 2.2, text: spontaneous(this.env(call), 'dispatched') });
+    // the caller cannot see the dispatch screen: they only know help is coming once the dispatcher tells them
     return { ok: true };
   }
 
@@ -1750,7 +1800,7 @@ export class GameEngine {
     const S = inc.search;
     if (S && !S.found) return Math.hypot(u.x - S.cx, u.y - S.cy) < (S.r / 0.55) * 1.6 + 30;
     const n = this.city.nodes[inc.nodeId];
-    return Math.hypot(u.x - n.x, u.y - n.y) < 90;
+    return Math.hypot(u.x - n.x, u.y - n.y) < (inc.guided ? 200 : 90);
   }
 
   private updateUnits(dt: number) {
@@ -1966,6 +2016,12 @@ export class GameEngine {
         this.fx('bad', inc.nodeId, 'Crew attacked');
         return;
       }
+      const homeTags = this.city.districtById[inc.district]?.tags ?? [];
+      if (!inc.petsSecured && !inc.accessDelayUntil && ['medical', 'police'].includes(inc.category) && !inc.onView && homeTags.some((t) => ['residential', 'suburb'].includes(t)) && ((inc.num * 2654435761) >>> 0) % 100 < 16) {
+        inc.accessDelayUntil = st.time + 12;
+        this.radio(u.spoken, `Dispatch, ${u.spoken}. There's a big dog going crazy at the door — can the caller put it away?`, 'unit', u.id, inc.id);
+        this.consequence(inc, 'Crews were held at the door by a loose dog');
+      }
       if (inc.accessNeeded && !inc.accessNeeded.relayed && !inc.accessDelayUntil) {
         inc.accessDelayUntil = st.time + 25;
         this.radio(u.spoken, `Dispatch, ${u.spoken}. On scene — we can't get in, it's locked and nobody gave us a way in. Working on it.`, 'unit', u.id, inc.id);
@@ -2127,7 +2183,7 @@ export class GameEngine {
     this.fx('bad', inc.reportedNode ?? inc.nodeId, 'Escalating!');
     this.log('escalation', `${inc.label} escalated: ${esc.text}`, { incidentId: inc.id, good: false });
     this.notify(`ESCALATION — ${inc.label}: ${esc.text}`, 'bad', inc.id);
-    this.emit({ type: 'alert', text: esc.text });
+    this.emit({ type: 'alert', text: esc.text, incId: inc.id, cine: 'escalate' });
     const here = this.onScene(inc);
     if (here.length) { inc.knownReqs = inc.requires.map((r) => ({ ...r })); this.radio(here[0].spoken, `Dispatch, ${esc.text.toLowerCase()}. Requesting ${reqText(matchCoverage(inc.requires, here).missing)}.`, 'alert', here[0].id, inc.id); }
     const call = this.callFor(inc);
@@ -2580,6 +2636,7 @@ export class GameEngine {
     const ack = Object.values(st.units).find((u) => this.onPatrol(u));
     if (ack) this.radio(ack.spoken, this.rng.pick(['Copy the BOLO.', `${ack.spoken} copies, we'll keep an eye out.`, 'Copy, watching for them.']), 'chatter', ack.id);
     this.log('dispatch', `BOLO issued for INC-${num}`, { incidentId: inc.id });
+    this.emit({ type: 'alert', text: 'BOLO' });
     return { ok: true };
   }
   private updateBolos() {
@@ -2617,7 +2674,7 @@ export class GameEngine {
         child.reportedNode = u.prevNode;
         this.dispatch(u.id, child.id, { code: 3, self: true });
         this.notify(`BOLO hit — ${u.callsign} is chasing the suspect from INC-${num}`, 'good', child.id);
-        this.emit({ type: 'alert', text: 'BOLO hit — pursuit' });
+        this.emit({ type: 'alert', text: 'BOLO hit — pursuit', incId: child.id, cine: 'chase' });
       } else {
         this.radio(u.spoken, `Dispatch, ${u.spoken}. Out with a subject matching the BOLO for INC-${num} at ${where}. Running them now.`, 'unit', u.id, b.incId);
         u.status = 'BUSY'; u.timer = 60; u.route = []; u.speed = 0; u.note = 'BOLO stop';
@@ -2776,7 +2833,8 @@ export class GameEngine {
     if (call.pending.length || call.profile.archetype === 'silent' || (call.profile.language && call.interpreter !== 'on') || inc.truth.outside) return;
     const since = st.time - (call.answeredAt ?? st.time);
     const asked = (call.questionsAsked ??= []);
-    if (since < 10 || asked.length >= 3 || st.time - (call.lastQuestionAt ?? -99) < 20 || st.time - call.lastSpontaneous < 3) return;
+    const waiting = inc.reportedNode !== null && inc.assignedUnits.length > 0 && !this.onScene(inc).length;
+    if (since < 10 || (call.questionCount ?? 0) >= 6 || st.time - (call.lastQuestionAt ?? -99) < (waiting ? 15 : 20) || st.time - call.lastSpontaneous < 3) return;
     if (this.qrand(call, 1) >= 0.12) return;
     const t = inc.truth, tid = inc.templateId, m = call.mood;
     const has = (k: string) => !asked.includes(k);
@@ -2784,9 +2842,11 @@ export class GameEngine {
     const name = this.qpick(call, ['him', 'her']);
     const q = (kind: string, text: string, options: Array<[string, string, string, string, string]>, timeout: { effect: string; line: string }) => {
       asked.push(kind);
+      call.questionCount = (call.questionCount ?? 0) + 1;
       call.lastQuestionAt = st.time;
+      const f = (x: string) => fill(x, inc.vars);
       this.deliver(call, { at: st.time, text });
-      call.question = { kind, text, at: st.time, expiresAt: st.time + 22, lineIdx: call.transcript.length - 1, options: options.map(([id, label, say, reply, effect]) => ({ id, label, say, reply, effect })), timeout };
+      call.question = { kind, text: f(text), at: st.time, expiresAt: st.time + 22, lineIdx: call.transcript.length - 1, options: options.map(([id, label, say, reply, effect]) => ({ id, label: f(label), say: f(say), reply: f(reply), effect })), timeout: { effect: timeout.effect, line: f(timeout.line) } };
     };
     // ordered by urgency: the first one that fits is asked
     if (has('goback') && ['kitchen_fire', 'apartment_fire', 'electrical_fire'].includes(tid) && inc.firstArrivalAt === null) {
@@ -2831,6 +2891,65 @@ export class GameEngine {
         ['stop', 'No — pull over', "No. Pull over somewhere safe and tell me which way he was heading.", "Okay, I've stopped. He went towards the river.", 'nofollow'],
         ['follow', 'Follow at a distance', 'Stay well back, obey the road, and keep telling me where he goes.', "Okay, I'm behind him. I'll keep talking.", 'follow'],
       ], { effect: m.frustration > 40 ? 'follow' : 'nofollow', line: m.frustration > 40 ? "I'm going after him." : "I've lost him, I've pulled over." });
+    }
+    // things that change while help is on the way
+    const BLEEDERS = ['gunshot_victim', 'collision_injury', 'workplace_injury', 'industrial_accident', 'domestic_disturbance', 'robbery', 'fireworks'];
+    const UNCONSCIOUS = ['collapse_child', 'sudden_illness', 'public_intoxication', 'drowning_pool', 'breathing_trouble', 'fall_elderly'];
+    if (waiting && inc.careAt == null) {
+      if (has('bleed') && BLEEDERS.includes(tid) && Number(t.injured ?? 0) > 0) {
+        return q('bleed', 'The blood is soaking right through the towel! What do I do?!', [
+          ['press', 'Another towel, press harder', 'Put another towel straight on top — don\'t lift the first one — and press down hard with both hands.', "Okay — another one on top, I'm pressing hard.", 'aid:pressure'],
+          ['peek', 'Lift it and look', 'Lift the towel and have a look at the wound.', "Okay, I'm lifting it— oh God, it's pouring out—", 'harm:peek'],
+        ], { effect: 'panic', line: "It's still coming through! Hello?!" });
+      }
+      if (has('snore') && UNCONSCIOUS.includes(tid) && t.breathing !== false) {
+        return q('snore', `${'{He}'} is making this awful snoring, gurgling noise!`, [
+          ['side', 'Roll them onto their side', 'Roll {him} onto {his} side, tilt the head back a little and let anything in the mouth drain out.', "Okay, on {his} side... the noise is better, {he}'s breathing easier.", 'aid:recovery'],
+          ['water', 'Give some water to clear it', 'Try giving {him} a little water to clear the throat.', "I'm trying to get {him} to drink—", 'harm:water'],
+        ], { effect: 'panic', line: "It's getting worse! What do I do?!" });
+      }
+      if (has('vomit') && ['sudden_illness', 'public_intoxication', 'allergic_reaction', 'collapse_child', 'carbon_monoxide'].includes(tid)) {
+        return q('vomit', "{He}'s being sick! {He}'s being sick everywhere!", [
+          ['side', 'Turn them on their side', 'Turn {him} onto {his} side straight away so {he} doesn\'t choke, and clear {his} mouth.', "Okay — on {his} side. {He}'s coughing but {he}'s breathing.", 'aid:recovery'],
+          ['sit', 'Sit them up', 'Sit {him} up so {he} can be sick more easily.', "I'm getting {him} up—", 'harm:lift'],
+        ], { effect: 'panic', line: "{He}'s choking on it! Please!" });
+      }
+      if (has('seizure') && ['sudden_illness', 'collapse_child', 'breathing_trouble'].includes(tid)) {
+        return q('seizure', "{He}'s shaking — all over — it won't stop! Is {he} having a fit?!", [
+          ['space', "Clear space, don't hold them", "Move anything hard away, put something soft under the head, don't hold {him} down and don't put anything in {his} mouth. Tell me when it stops.", "Okay, I've moved the chairs... it's slowing down... it's stopped.", 'aid:still'],
+          ['hold', 'Hold them still', 'Hold {him} down so {he} doesn\'t hurt {him}self, and put something between {his} teeth.', "I'm holding {him}— {he} bit my hand—", 'harm:lift'],
+        ], { effect: 'panic', line: "It's still going! Hello?!" });
+      }
+      if (has('waking') && ['fall_elderly', 'collision_injury', 'sports_injury', 'workplace_injury'].includes(tid) && t.conscious !== false) {
+        return q('waking', "{He}'s trying to get up — {he} says {he}'s fine and wants to walk!", [
+          ['still', 'Keep them lying still', "Tell {him} to stay lying still until the crew have checked {him}. Keep talking to {him}.", "I told {him}. {He}'s lying back down, {he}'s grumbling but {he}'s staying put.", 'aid:still'],
+          ['walk', 'Let them get up slowly', 'If {he} feels okay, let {him} get up slowly.', 'Okay, easy now— oh, {he}\'s gone dizzy—', 'harm:lift'],
+        ], { effect: 'calm', line: "{He}'s sitting up now. I couldn't stop {him}." });
+      }
+      if (has('smoke') && ['apartment_fire', 'building_collapse', 'electrical_fire', 'warehouse_smoke'].includes(tid) && t.safe === false) {
+        return q('smoke', "Smoke's coming in under the door! It's getting hard to breathe!", [
+          ['seal', 'Seal the door, go to the window', 'Keep the door shut. Push towels or clothes along the gap, get low, go to the window and wave something so the crews see you.', "Okay, towels on the door... I'm at the window. I'm waving a sheet.", 'aid:still'],
+          ['run', 'Open the door and run for it', 'Open the door and run for the stairs as fast as you can.', "Okay, I'm opening the door—", 'harm:smokerun'],
+        ], { effect: 'panic', line: "I can't see! It's everywhere!" });
+      }
+      if (has('hose') && ['kitchen_fire', 'apartment_fire', 'vehicle_fire', 'electrical_fire'].includes(tid) && t.safe !== false) {
+        return q('hose', 'One of the neighbours wants to go in with a garden hose. Should he?', [
+          ['back', 'Everyone stay back', "No. Nobody goes near it. Get everyone back across the road and wait for the fire crews.", "I've told him. He's put the hose down, we're all back.", 'aid:evacuate'],
+          ['try', 'Let him try', "If he's careful, a hose might help.", "He's going in with it...", 'harm:goback'],
+        ], { effect: 'calm', line: "He's gone round the side with the hose. I couldn't stop him." });
+      }
+      if (has('handle') && ['burglary_progress', 'domestic_disturbance', 'strange_noise', 'suspicious_activity'].includes(tid)) {
+        return q('handle', "(whispering) He's trying the door handle... he's right outside the door...", [
+          ['silent', 'Stay silent — tap if you must', "Don't answer him. Stay silent and stay low. If you can't talk, tap the phone once for yes.", '(a single soft tap)', 'aid:lock'],
+          ['shout', 'Shout that police are coming', 'Shout that the police are on their way.', "THE POLICE ARE COMING! ...he's stopped...", 'shout'],
+        ], { effect: 'panic', line: '(heavy, frightened breathing)' });
+      }
+      if (has('fuel') && ['collision_injury', 'collision_multi', 'collision_trapped', 'vehicle_fire'].includes(tid)) {
+        return q('fuel', "There's petrol leaking under the car — I can smell it!", [
+          ['back', 'Everyone back, no flames', 'Get everyone well back from the car, nobody smokes, no lighters, and switch the engine off if you can do it safely.', "Everyone's back. Engine's off.", 'aid:evacuate'],
+          ['push', 'Push the car off the road', 'Get a few people to push the car off the road.', 'Right, everyone push—', 'harm:push'],
+        ], { effect: 'calm', line: "People are just standing around it." });
+      }
     }
     const eta = this.soonestEta(inc);
     if (has('eta') && inc.assignedUnits.length && !this.onScene(inc).length && isFinite(eta) && since > 18) {
@@ -2910,6 +3029,10 @@ export class GameEngine {
         call.pending.push({ at: st.time + 3.2, text: 'Caller went to meet the crew', system: true, hangup: true, endReason: 'handover' });
         break;
       case 'hangup': call.pending.push({ at: st.time + 1.2, text: '(the caller hangs up)', system: true, hangup: true }); break;
+      case 'shout':
+        if (this.qrand(call, 13) < 0.5) { inc.threat = Math.max(0, inc.threat - 12); call.pending.push({ at: st.time + 4, text: "(whispering) I think he's run off. I heard the back gate." }); }
+        else { inc.threat = Math.min(99, inc.threat + 18); m.panic = clamp(m.panic + 12); this.consequence(inc, 'Shouting at the intruder told him exactly where the caller was hiding'); call.pending.push({ at: st.time + 4, text: "(banging) He's hitting the door! He knows I'm in here!" }); }
+        break;
       case 'nofollow': call.stopFollowing = true; call.following = false; m.panic = clamp(m.panic - 6); break;
       case 'follow':
         call.following = true;
@@ -2940,6 +3063,472 @@ export class GameEngine {
       call.pending.push({ at: st.time + 0.6, text: tempo === 'good' ? this.qpick(call, [`...${n}... I'm still pushing!`, `${n[0].toUpperCase()}${n.slice(1)}... okay, I've got the rhythm.`, "I'm keeping up — don't stop counting!"]) : tempo === 'slow' ? this.qpick(call, ['Like this? Is this fast enough?', "I'm getting so tired..."]) : this.qpick(call, ["That's too fast, I can't keep up!", 'Slow down, I\'m losing count!']) });
     }
     return { ok: true, tempo };
+  }
+
+  // ── Caller composure: keep them together while help is on the way ─────────
+  /** the caller's emotional state, as the console reads it */
+  callerState(call: Call): 'panicked' | 'angry' | 'frightened' | 'shaken' | 'calm' {
+    const m = call.mood;
+    return m.panic > 72 ? 'panicked' : m.frustration > 58 ? 'angry' : m.panic > 48 ? 'frightened' : m.panic < 15 ? 'calm' : 'shaken';
+  }
+  private composureTick(call: Call, inc: Incident, dt: number) {
+    const st = this.state, m = call.mood;
+    for (const t of call.tasks ?? []) if (t.status === 'doing' && st.time >= t.doneAt) this.finishTask(call, inc, t);
+    if (call.state !== 'active' || inc.truth.outside || ['silent', 'prankster'].includes(call.profile.archetype) || (call.profile.language && call.interpreter !== 'on')) return;
+    const waiting = inc.reportedNode !== null && inc.assignedUnits.length > 0 && !this.onScene(inc).length;
+    const silence = st.time - (call.lastDispatcherAt ?? call.answeredAt ?? st.time);
+    const busy = (call.tasks ?? []).some((t) => t.status === 'doing');
+    // left in silence while they wait, fear builds
+    if (waiting && silence > 14 && !busy) m.base = Math.min(100, m.base + 0.45 * dt * (['calm_serious', 'professional'].includes(call.profile.archetype) ? 0.4 : 1));
+    if (waiting && silence > 16 && !busy && !call.pending.length && !call.question && st.time - call.lastSpontaneous > 13 && st.time - (call.lastWaitLine ?? -99) > 18) {
+      call.lastWaitLine = st.time;
+      call.pending.push({ at: st.time + 0.4, text: fill(this.waitLine(call, inc), inc.vars) });
+    }
+    if (m.panic >= 96) { call.panicSince ??= st.time; if (st.time - call.panicSince > 12 && !call.brokeDown) this.breakdown(call, inc); } else call.panicSince = null;
+  }
+  private waitLine(call: Call, inc: Incident): string {
+    const hiding = HIDING.has(inc.templateId);
+    const pool = inc.category === 'medical' || inc.lifeThreat ? ["{He}'s still breathing, but it's so shallow...", '{His} lips look a bit blue. Is that bad?', "I keep talking to {him} but {he}'s not really answering me.", "Please — how long now? I don't know how long {he} can—", "I'm holding {his} hand. {He}'s so cold."]
+      : inc.category === 'fire' ? ["The smoke's getting thicker. I can barely see the door now.", 'I can hear windows cracking!', "Everyone's just standing in the street watching it burn.", "Where are the fire engines? It's spreading!"]
+      : hiding ? ['(whispering) I can still hear him moving around...', "(whispering) He's gone quiet. I don't know where he is.", "(whispering) I'm so scared. Are they nearly here?", '(whispering) Something just smashed downstairs.']
+      : ['Hello? Are you still there?', 'It feels like forever. Are they actually coming?', "I don't know what to do with myself while I wait.", 'Is someone coming? Nobody is here yet.'];
+    return this.qpick(call, pool);
+  }
+  private breakdown(call: Call, inc: Incident) {
+    const st = this.state, m = call.mood;
+    call.brokeDown = true;
+    st.stats.callerBreakdowns = (st.stats.callerBreakdowns ?? 0) + 1;
+    m.cooperation = Math.max(0, m.cooperation - 30); m.base = 80;
+    this.consequence(inc, 'The caller fell apart on the line while waiting for help');
+    if (inc.reportedNode !== null && this.qrand(call, 17) < 0.5) call.pending.push({ at: st.time + 0.5, text: "(screaming) I can't — I can't do this — (the line goes dead)", hangup: true });
+    else call.pending.push({ at: st.time + 0.5, text: "(sobbing uncontrollably — you can't get a clear word out of them)" });
+    this.notify(`${call.profile.name.split(' ')[0]} has broken down on the line — nobody was keeping them together`, 'bad', inc.id);
+  }
+  /** a calming technique; how well it lands depends on the caller's state and personality, and repeating it wears thin */
+  calmCaller(callId: string, kind: CalmKind, score = 1): { ok: boolean; reason?: string; eff?: number; d?: number } {
+    const st = this.state;
+    const call = st.calls[callId];
+    if (!call || call.state !== 'active') return { ok: false, reason: 'No active call' };
+    if (call.profile.archetype === 'silent') return { ok: false, reason: 'The caller cannot speak — use yes/no taps' };
+    if (call.profile.language && call.interpreter !== 'on') return { ok: false, reason: "They don't understand you yet — get an interpreter" };
+    const inc = st.incidents[call.incidentId];
+    const used = (call.calmUsed ??= {});
+    const times = (used[kind] ?? []).filter((t) => st.time - t < 45);
+    if (times.length && st.time - times[times.length - 1] < 5) return { ok: false, reason: 'Give them a moment to respond' };
+    const mood = this.callerState(call);
+    let eff = (CALM_FIT[mood][kind] ?? 0) + (CALM_ARCH[call.profile.archetype]?.[kind] ?? 0);
+    if (kind === 'breathe') eff *= 0.3 + 0.9 * Math.max(0, Math.min(1, score));
+    const u = inc.assignedUnits.map((id) => st.units[id]).filter((x): x is Unit => !!x && ['DISPATCHED', 'EN_ROUTE'].includes(x.status)).sort((a, b) => (a.eta ?? 1e9) - (b.eta ?? 1e9))[0];
+    if (kind === 'update' && !u) eff = Math.min(eff, this.onScene(inc).length ? 0.4 : -0.3);
+    eff *= Math.pow(0.55, times.length);
+    if (times.length >= 2) eff -= 0.35;
+    used[kind] = [...times, st.time];
+    const m = call.mood, clamp = (v: number) => Math.max(0, Math.min(100, v));
+    const before = m.panic;
+    if (eff > 0) {
+      m.panic = clamp(m.panic - 20 * eff); m.base = clamp(m.base - 12 * eff); m.trust = clamp(m.trust + 7 * eff); m.cooperation = clamp(m.cooperation + 4 * eff);
+      if (kind === 'acknowledge' || kind === 'update') m.frustration = clamp(m.frustration - 20 * eff);
+    } else { m.panic = clamp(m.panic + 2 - 10 * eff); m.frustration = clamp(m.frustration + 3 - 14 * eff); m.trust = clamp(m.trust - 6); }
+    const first = call.profile.name.split(' ')[0];
+    const mins = u ? ((u.eta ?? 60) >= 90 ? `about ${Math.round((u.eta ?? 60) / 60)} minutes` : (u.eta ?? 60) >= 45 ? 'about a minute' : 'under a minute') : '';
+    const stn = u ? st.stations[u.stationId]?.name : '';
+    const say: Record<CalmKind, string[]> = {
+      reassure: [`${first}, you're doing really well. Help is on the way and I'm staying right here with you.`, "You're doing everything right. I'm not going anywhere.", "You did the hardest part by calling. We're getting help to you."],
+      firm: [`${first}. ${first}, listen to me. Listen to my voice. One slow breath with me.`, 'I need you to stop and listen to me. One breath. Good. Now stay with me.', `Listen to me, ${first}. You can do this. Slow down and stay with me.`],
+      acknowledge: ["I hear you. I know this feels like it's taking forever — I'd be frustrated too. They are coming.", "You're right to be upset. I'm doing everything I can from here.", "I understand. This is awful, and you're handling it."],
+      ground: ['Tell me five things you can see around you right now.', 'What can you see from where you are? Describe it to me.', "Put your feet flat on the floor. Now tell me what's in front of you."],
+      update: [u ? `The ${u.typeLabel.toLowerCase()} is ${mins} away — ${u.callsign} is coming from ${stn}. You'll hear the sirens soon.` : this.onScene(inc).length ? 'The crew are with you now — do what they tell you.' : "I'm getting a unit assigned to you right now."],
+      breathe: ['Breathe with me. In... two... three... four. And out... two... three... four.'],
+    };
+    this.addTranscript(call, 'DISPATCHER', fill(this.qpick(call, say[kind]), inc.vars));
+    const tier = eff >= 0.55 ? 'good' : eff > 0.12 ? 'ok' : 'bad';
+    const replies: Record<string, Record<CalmKind, string[]>> = {
+      good: {
+        reassure: ["Okay... okay. Thank you. Please don't go anywhere.", "I'm trying. Okay. I'm here."], firm: ['...okay. Okay. I\'m listening.', "I'm breathing. I'm listening to you."],
+        acknowledge: ['...yeah. Okay. Sorry for shouting.', 'Thank you. Just — please make them hurry.'], ground: [], update: [`${mins ? mins[0].toUpperCase() + mins.slice(1) : 'Okay'}. Okay. I can hold on.`, "Okay. I'll listen for the sirens."],
+        breathe: ['(slow breathing) ...okay. That helped.', 'In... and out. Okay. I feel a bit better.'],
+      },
+      ok: { reassure: ['Okay.', "I'll try."], firm: ['...alright.', 'Okay, okay.'], acknowledge: ['Fine.', 'Okay.'], ground: [], update: ['Okay.', 'That long?'], breathe: ["I'm trying...", '(shaky breathing)'] },
+      bad: {
+        reassure: ['Stop saying that! You keep saying that!', "That doesn't help me!"], firm: ["Don't tell me to calm down!", "Don't talk to me like that!"],
+        acknowledge: ["I don't need you to understand, I need help!"], ground: ["Why are you asking me that?! {He}'s dying!", "That's a stupid question!"],
+        update: ['That is too long!', 'You said that before!'], breathe: ["I can't breathe, I can't do this—", 'Stop it! Just send someone!'],
+      },
+    };
+    let reply = this.qpick(call, replies[tier][kind].length ? replies[tier][kind] : ['Okay.']);
+    if (kind === 'ground' && tier !== 'bad') {
+      // describing the surroundings sometimes gives away where they are
+      if (inc.reportedNode === null && call.profile.locationAccuracy !== 'unknown' && this.qrand(call, 23) < 0.6) {
+        const r = replyTo(this.env(call), 'landmark', '');
+        const l = r.lines.find((x) => x.heard?.length);
+        if (l) { call.pending.push({ ...l, at: st.time + 1.4, text: `Um... ${l.text}` }); call.asked.landmark = (call.asked.landmark ?? 0) + 1; reply = ''; }
+      }
+      if (reply) reply = this.qpick(call, inc.category === 'fire' ? ['The street lamp. A red car. People in dressing gowns. Smoke. My shoes. ...Okay. Okay.', 'Our front gate, the bins, the neighbour\'s van... okay, I\'m a bit calmer.'] : ['The clock, the sofa, {his} glasses on the floor, the window, the rug... okay. Okay.', 'Um — a lamp, a picture of us, the TV, my phone, my hands. ...Okay, I\'m here.']);
+    }
+    if (reply) call.pending.push({ at: st.time + 1.2 + reply.length * 0.015, text: fill(reply, inc.vars) });
+    call.lastCalm = { at: st.time, kind, eff, d: Math.round(before - m.panic) };
+    call.panicSince = null;
+    st.stats.calmActions = (st.stats.calmActions ?? 0) + 1;
+    if (tier === 'good') st.stats.calmGood = (st.stats.calmGood ?? 0) + 1;
+    return { ok: true, eff, d: Math.round(before - m.panic) };
+  }
+
+  /** jobs the dispatcher can give this caller while help is on the way */
+  callTasks(callId: string): Array<{ id: string; label: string; say: string; dur: number; status?: 'doing' | 'done' }> {
+    const st = this.state;
+    const call = st.calls[callId];
+    if (!call) return [];
+    const inc = st.incidents[call.incidentId];
+    if (!inc || inc.truth.outside || call.profile.archetype === 'silent') return [];
+    const t = inc.truth, tid = inc.templateId, cat = inc.category;
+    const self = inc.vars.self === '1';
+    const hiding = HIDING.has(tid);
+    const out: Array<{ id: string; label: string; say: string; dur: number }> = [];
+    const add = (id: string, label: string, say: string, dur: number) => out.push({ id, label, say, dur });
+    const injured = Number(t.injured ?? 0) > 0 || cat === 'medical';
+    if (hiding) {
+      add('lockin', 'Lock yourself in a room', 'Get into a room with a lock, lock it, turn your phone to silent and keep low and quiet.', 4);
+      if (t.suspect === true) add('describe', 'Describe what you can see', 'Only if you are safe: tell me exactly what you can see — who, what they are wearing, which way they go.', 8);
+      add('unlock', 'Unlock the front door for the crew', 'When you can, unlock the front door so the officers can get in.', 7);
+      add('wave', 'Go out and wave the crew in', 'Go outside and wave the officers in when you see them.', 6);
+    } else if (cat === 'fire' || ['gas_leak', 'carbon_monoxide', 'power_line_down', 'tanker_fire'].includes(tid)) {
+      add('distance', 'Move everyone well back', 'Get everyone across the street, well back from the building, and keep them there.', 6);
+      add('headcount', 'Count everyone — anyone missing?', 'Count everyone who came out. Is anybody missing? Think about every flat.', 8);
+      add('wave', 'Wave the fire engines in', 'Send someone to the end of the street to wave the fire engines in.', 6);
+    } else if (tid.startsWith('collision')) {
+      add('hazards', 'Hazards on, everyone behind the barrier', 'Put your hazard lights on and get everyone off the road, behind the barrier.', 5);
+      if (injured) add('blanket', 'Keep the injured warm', "Put a coat or a blanket over anyone who's hurt and keep them still.", 5);
+      add('wave', 'Wave the crews in', 'Have someone safe stand back from the road and wave the crews in.', 6);
+    } else {
+      if (injured && !self) {
+        add('blanket', 'Keep them warm', 'Put a blanket or a coat over {him} and keep {him} warm.', 5);
+        if (inc.lifeThreat !== 'arrest') add('breaths', 'Count their breaths for me', "Watch {his} chest and count {his} breaths for thirty seconds. Tell me what you get.", 10);
+        add('meds', 'Gather their medications', "Find any medication {he} takes and put it in a bag for the crew — and any hospital letters.", 10);
+        add('clear', 'Clear a path to them', 'Move any furniture so the crew can get a stretcher right to {him}.', 8);
+      }
+      add('unlock', 'Unlock the front door', 'Unlock the front door and leave it on the latch for the crew.', 7);
+      add('light', 'Turn the outside light on', 'Turn on the outside light so the crew can find the house.', 5);
+      add('pets', 'Shut any pets away', 'If you have any pets, shut them in another room so they don\'t get in the way.', 6);
+    }
+    return out.slice(0, 8).map((x) => ({ ...x, label: fill(x.label, inc.vars), say: fill(x.say, inc.vars), status: call.tasks?.find((k) => k.id === x.id)?.status }));
+  }
+  assignTask(callId: string, taskId: string): { ok: boolean; reason?: string } {
+    const st = this.state;
+    const call = st.calls[callId];
+    if (!call || call.state !== 'active') return { ok: false, reason: 'No active call' };
+    const task = this.callTasks(callId).find((x) => x.id === taskId);
+    if (!task) return { ok: false, reason: 'That job does not fit this call' };
+    if (task.status) return { ok: false, reason: task.status === 'done' ? 'Already done' : 'They are doing that now' };
+    if ((call.tasks ?? []).some((x) => x.status === 'doing')) return { ok: false, reason: "They're still busy with the last job" };
+    if (call.profile.language && call.interpreter !== 'on') return { ok: false, reason: "They don't understand you yet — get an interpreter" };
+    const inc = st.incidents[call.incidentId];
+    this.addTranscript(call, 'DISPATCHER', task.say);
+    const slow = ARCHETYPES[call.profile.archetype]?.slow ? 1.4 : 1;
+    (call.tasks ??= []).push({ id: task.id, label: task.label, status: 'doing', at: st.time, doneAt: st.time + task.dur * slow });
+    const m = call.mood;
+    m.panic = Math.max(0, m.panic - 6); m.base = Math.max(0, m.base - 4);
+    call.pending.push({ at: st.time + 1.1, text: this.qpick(call, ["Okay. Okay, I'm doing it now.", "Right — I'll do that now. Don't hang up.", 'Okay, give me a second.', 'On it.']) });
+    void inc;
+    return { ok: true };
+  }
+  private finishTask(call: Call, inc: Incident, task: import('./types').CallTask) {
+    const st = this.state, t = inc.truth, m = call.mood;
+    task.status = 'done';
+    st.stats.tasksDone = (st.stats.tasksDone ?? 0) + 1;
+    (inc.prep ??= []).push(task.id);
+    m.panic = Math.max(0, m.panic - 5);
+    const hiding = HIDING.has(inc.templateId);
+    const say = (text: string) => { if (call.state === 'active') call.pending.push({ at: st.time + 0.3, text: fill(text, inc.vars) }); };
+    switch (task.id) {
+      case 'light': inc.guided = true; say("The outside light's on. You can't miss it now."); break;
+      case 'wave':
+        if (hiding) { say("I'm outside — oh God, he's here, he's coming over—"); this.applyAid(inc, call, { kind: 'confront', fit: 'bad' }); break; }
+        inc.guided = true; say(this.qpick(call, ["My son's at the end of the drive waving his arms.", "There's a man from next door out on the corner, waving.", "I've sent someone out to the road to wave them in."]));
+        break;
+      case 'unlock':
+        if (hiding) { say("I've unlocked it — wait, the door's moving— he's coming in—"); this.applyAid(inc, call, { kind: 'confront', fit: 'bad' }); break; }
+        inc.accessNeeded = inc.accessNeeded ? { ...inc.accessNeeded, relayed: true } : null;
+        say("Front door's unlocked. I've left it open a crack.");
+        break;
+      case 'pets': inc.petsSecured = true; say("I've shut the dog in the bedroom."); break;
+      case 'meds': inc.work *= 0.85; say(this.qpick(call, ["I've got all {his} tablets in a bag — there's a lot of them.", "Got them. Blood pressure pills and an inhaler, and {his} hospital letters."])); break;
+      case 'blanket': if (inc.survival !== undefined) inc.survival = Math.min(100, inc.survival + 4); m.panic = Math.max(0, m.panic - 4); say("I've put my coat over {him}. {He}'s shivering but {he}'s warmer."); break;
+      case 'clear': inc.work *= 0.9; say("I've pushed the table and chairs out of the way. There's a clear path now."); break;
+      case 'breaths': {
+        this.addFact(inc, 'breathing', t.breathing ?? true, 'confirmed', 'caller');
+        if (t.conscious !== undefined) this.addFact(inc, 'conscious', t.conscious, 'confirmed', 'caller');
+        say(t.breathing === false ? "I can't see {his} chest moving at all! I don't think {he}'s breathing!" : this.qpick(call, ['About seven in thirty seconds... is that slow?', 'Twelve, maybe? Fast and a bit shallow.']));
+        break;
+      }
+      case 'headcount': {
+        for (const k of ['people', 'trapped']) if (k in t) this.addFact(inc, k, t[k], 'confirmed', 'caller');
+        if (Number(t.trapped ?? 0) > 0) { inc.knownReqs = inc.requires.map((r) => ({ ...r })); say("Oh God — the lady from the top floor isn't here! She's still inside!"); }
+        else say("Everyone's out. I counted twice — everybody's here.");
+        break;
+      }
+      case 'distance': this.applyAid(inc, call, { kind: 'evacuate', fit: 'good' }); inc.safetyAdvised = true; say("We're all across the road now, well back."); break;
+      case 'describe': {
+        if (t.suspect === true && t.suspect_desc) { this.addFact(inc, 'suspect_desc', t.suspect_desc, 'confirmed', 'caller'); if ('weapon' in t) this.addFact(inc, 'weapon', t.weapon, 'unconfirmed', 'caller'); say(`(whispering) It's ${t.suspect_desc}.${t.weapon && t.weapon !== 'none' ? ' I think he has something in his hand.' : ''}`); }
+        else say("(whispering) I can't see anyone now.");
+        break;
+      }
+      case 'lockin': this.applyAid(inc, call, { kind: 'lock', fit: 'good' }); inc.safetyAdvised = true; say("(whispering) I'm in the bathroom. It's locked."); break;
+      case 'hazards': inc.threat = Math.max(0, inc.threat - 10); inc.safetyAdvised = true; say("Hazards are on, we're all behind the barrier."); break;
+    }
+  }
+
+  // ── Firefighter MAYDAY ────────────────────────────────────────────────────
+  private mayday(u: Unit, inc: Incident, late: boolean) {
+    const st = this.state;
+    st.stats.maydays = (st.stats.maydays ?? 0) + 1;
+    inc.maydayLate = late;
+    this.radio(u.spoken, `MAYDAY, MAYDAY, MAYDAY! ${u.spoken} — firefighter down, second floor, low on air!`, 'alert', u.id, inc.id);
+    this.notify(`MAYDAY — firefighter down at ${inc.label}${late ? ' (the PAR check was overdue)' : ''}`, 'bad', inc.id);
+    this.fx('bad', inc.reportedNode ?? inc.nodeId, 'MAYDAY');
+    (st.decisions ??= []).push({
+      id: `d${st.decisions.length + 1}-m${Math.floor(st.time)}`, incId: inc.id, unitId: u.id, at: st.time, expiresAt: st.time + 18, kind: 'mayday',
+      prompt: `${u.spoken}: MAYDAY — a firefighter is down inside. What do you want?`,
+      options: [{ id: 'rit', label: 'Send a rapid intervention team', hint: 'The nearest free engine goes in after them' }, { id: 'evac', label: 'Everyone out — go defensive', hint: 'Crews drag their colleague out and stop fighting from inside' }, { id: 'wait', label: 'Stand by for an update', hint: 'Leave it to the crew already inside' }],
+      defaultId: 'wait',
+    });
+    this.emit({ type: 'alert', text: 'MAYDAY', incId: inc.id, cine: 'mayday' });
+  }
+  private decideMayday(d: Decision, optionId: string, auto: boolean): { ok: boolean; outcome?: string } {
+    const st = this.state;
+    const inc = st.incidents[d.incId], u = st.units[d.unitId];
+    if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) { d.outcome = 'The incident was already over.'; return { ok: true, outcome: d.outcome }; }
+    if (u) this.radio(auto ? u.spoken : 'DISPATCH', auto ? 'No word from dispatch — we\'re working the MAYDAY ourselves.' : `${u.spoken}, ${d.options.find((o) => o.id === optionId)?.label.toLowerCase()}.`, auto ? 'unit' : 'dispatch', u.id, inc.id);
+    let p = 0.4;
+    if (optionId === 'rit') {
+      const rit = Object.values(st.units).filter((x) => x.service === 'fire' && !isAir(x) && ['AVAILABLE', 'RETURNING'].includes(x.status) && !x.assignedIncidentId && this.canDispatch(x, inc).ok)
+        .map((x) => ({ x, eta: this.estimate(x.id, inc.reportedNode ?? inc.nodeId)?.eta ?? Infinity })).sort((a, b) => a.eta - b.eta)[0];
+      if (rit && isFinite(rit.eta)) { this.dispatch(rit.x.id, inc.id, { code: 3 }); p = rit.eta < 60 ? 0.9 : rit.eta < 120 ? 0.72 : 0.5; }
+      else p = 0.35;
+    } else if (optionId === 'evac') { p = 0.75; inc.work *= 1.25; inc.threat = Math.min(99, inc.threat + 10); }
+    if (inc.maydayLate) p -= 0.2;
+    if (this.rng.chance(Math.max(0.05, p))) {
+      st.stats.maydaySaved = (st.stats.maydaySaved ?? 0) + 1;
+      d.outcome = optionId === 'rit' ? 'The rescue team pulled the firefighter out — conscious and breathing.' : 'The crew dragged their colleague out. Shaken, but alive.';
+      if (u) this.radio(u.spoken, 'Dispatch, firefighter is out and breathing. Cancel the MAYDAY.', 'unit', u.id, inc.id);
+      this.fx('good', inc.reportedNode ?? inc.nodeId, 'Firefighter out');
+    } else {
+      d.outcome = 'A firefighter was badly hurt before anyone could reach them.';
+      this.consequence(inc, `A firefighter was badly hurt in a MAYDAY${inc.maydayLate ? ' after the PAR check was overdue' : ''}`);
+      st.reputation = Math.max(0, st.reputation - 2);
+      if (u) { this.detach(u, true); u.status = 'OUT_OF_SERVICE'; u.note = 'Firefighter injured'; u.timer = 300; u.route = []; for (const p2 of this.crewOf(u)) p2.morale = Math.max(10, p2.morale - 20); }
+      this.headline(`Firefighter seriously injured battling ${inc.label.toLowerCase()}`, 'bad');
+    }
+    return { ok: true, outcome: d.outcome };
+  }
+
+  // ── Patients who refused care ─────────────────────────────────────────────
+  private updateRelapses() {
+    const st = this.state;
+    if (!st.relapses?.length) return;
+    const due = st.relapses.filter((r) => st.time >= r.at);
+    if (!due.length) return;
+    st.relapses = st.relapses.filter((r) => st.time < r.at);
+    for (const r of due) {
+      const prev = st.incidents[r.incId];
+      if (!prev) continue;
+      const again = this.spawnIncident('sudden_illness', prev.district, { nodeId: prev.nodeId, accuracy: 'exact', severity: Math.min(5, prev.severity + 1) });
+      again.label = 'Collapsed after refusing care';
+      this.consequence(prev, 'The patient who signed a refusal collapsed later and needed a second response');
+      this.notify('A patient who refused transport earlier has collapsed — new call incoming', 'bad', again.id);
+    }
+  }
+
+  // ── Non-emergency calls ───────────────────────────────────────────────────
+  /** send a caller to the non-emergency line (or the press office): right for non-emergencies, very wrong for a real one */
+  redirectCall(callId: string): { ok: boolean; reason?: string; good?: boolean } {
+    const st = this.state;
+    const call = st.calls[callId];
+    if (!call || call.state !== 'active') return { ok: false, reason: 'No active call' };
+    const inc = st.incidents[call.incidentId];
+    const tpl = TEMPLATE_BY_ID[inc.templateId];
+    const hiddenTwist = !!inc.twist && !inc.twistRevealed;
+    const nonEm = !!tpl.nonEmergency || (inc.requires.length === 0 && inc.truth.false_alarm === true && !hiddenTwist);
+    this.addTranscript(call, 'DISPATCHER', inc.templateId === 'press_call' ? "I can't give out any details on this line. Please contact the city press office — they'll be issuing a statement." : "This line is for emergencies — I'm putting you through to the non-emergency line, they'll help you with this.");
+    if (nonEm) {
+      st.stats.redirectsOk = (st.stats.redirectsOk ?? 0) + 1;
+      const b = 80; st.stats.bonus += b; st.budget += b;
+      inc.dismissed = true;
+      this.endCall(callId, 'redirected');
+      this.closeIncident(inc, 'false_alarm', true);
+      this.fx('good', inc.reportedNode ?? inc.nodeId, 'Line freed');
+      return { ok: true, good: true };
+    }
+    st.stats.redirectsBad = (st.stats.redirectsBad ?? 0) + 1;
+    st.reputation = Math.max(0, st.reputation - 2);
+    this.consequence(inc, 'A real emergency was sent to the non-emergency line');
+    this.endCall(callId, 'redirected');
+    this.loseIncident(inc, 'Redirected to the non-emergency line');
+    this.notify(`That was a real emergency — ${inc.label}. They will call back, and it will be worse.`, 'bad', inc.id);
+    return { ok: true, good: false };
+  }
+
+  // ── Listening to the line ─────────────────────────────────────────────────
+  /** sounds that carry from where the caller really is (worked out once per call) */
+  soundscape(callId: string): string[] {
+    const st = this.state, city = this.city;
+    const call = st.calls[callId];
+    if (!call) return [];
+    if (call.env) return call.env;
+    const inc = st.incidents[call.incidentId];
+    const n = city.nodes[inc.nodeId];
+    const near = (kinds: string[], r: number) => city.landmarks.some((l) => kinds.includes(l.kind) && Math.hypot(city.nodes[l.nodeId].x - n.x, city.nodes[l.nodeId].y - n.y) < r);
+    const tags = city.districtById[n.district]?.tags ?? [];
+    const out: string[] = [];
+    if (n.j >= 19 && n.j <= 22) out.push('train');
+    if (tags.includes('harbor')) out.push('harbor');
+    else if (Math.min(...city.riverline.map((p) => Math.hypot(p.x - n.x, p.y - n.y))) < 70) out.push('water');
+    if (tags.includes('airport') || near(['airport', 'terminal'], 260)) out.push('jets');
+    if (near(['cathedral', 'clocktower'], 150)) out.push('bells');
+    if (near(['campus', 'school', 'library'], 130)) out.push('school');
+    if (near(['stadium', 'plaza', 'market'], 130)) out.push('crowd');
+    if (near(['hospital'], 120)) out.push('hospital');
+    if (city.adj[n.id].some((e) => city.edges[e].cls === 'highway')) out.push('highway');
+    if (tags.includes('industrial')) out.push('industrial');
+    if (tags.includes('forest')) out.push('birds');
+    if (tags.some((t) => ['commercial', 'dense', 'highrise'].includes(t))) out.push('traffic');
+    if (tags.some((t) => ['residential', 'suburb'].includes(t))) out.push('suburb');
+    if (!out.length) out.push('traffic');
+    call.env = out.slice(0, 3);
+    return call.env;
+  }
+  /** listen hard to the background: where they are, and sometimes what is going on */
+  listen(callId: string): { ok: boolean; reason?: string; kinds?: string[] } {
+    const st = this.state;
+    const call = st.calls[callId];
+    if (!call || call.state !== 'active') return { ok: false, reason: 'No active call' };
+    if (st.time - (call.listenedAt ?? -99) < 12) return { ok: false, reason: 'Give it a moment — keep listening' };
+    call.listenedAt = st.time;
+    st.stats.listens = (st.stats.listens ?? 0) + 1;
+    const inc = st.incidents[call.incidentId];
+    const env = this.soundscape(callId);
+    const heard = new Set(call.heardSounds ?? []);
+    const fresh = env.filter((k) => !heard.has(k));
+    const kinds = (fresh.length ? fresh : env).slice(0, 2);
+    if ((st.weather === 'rain' || st.weather === 'storm') && !heard.has('rain')) kinds.push('rain');
+    if (inc.category === 'fire' && STRUCTURE_FIRES.has(inc.templateId) && !heard.has('alarm')) kinds.push('alarm');
+    for (const k of kinds) heard.add(k);
+    call.heardSounds = [...heard];
+    this.addTranscript(call, 'SYSTEM', `You listen closely: ${kinds.map((k) => SOUND_CLUES[k]).join('; ')}.`);
+    return { ok: true, kinds };
+  }
+
+  // ── Escalation forecast ───────────────────────────────────────────────────
+  /** what happens next if the response stays as it is, and roughly when */
+  escalationForecast(incId: string): { next: string | null; eta: number | null; rising: boolean } {
+    const st = this.state;
+    const inc = st.incidents[incId];
+    if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status) || inc.requires.length === 0) return { next: null, eta: null, rising: false };
+    const tpl = TEMPLATE_BY_ID[inc.templateId];
+    const esc = tpl.escalate?.[inc.stage];
+    const next = inc.stage >= inc.maxStage ? 'The incident fails — people get hurt' : esc ? esc.text : null;
+    const here = this.onScene(inc);
+    const cov = matchCoverage(inc.requires, here);
+    const eff = here.length ? here.reduce((a, u) => a + this.unitEffectiveness(u), 0) / here.length : 1;
+    const rate = inc.growth * this.aidFactor(inc) * (1 - cov.f) - inc.clear * eff * cov.f * cov.f * 0.35;
+    return { next, eta: rate > 0.001 ? Math.max(0, (100 - inc.threat) / rate) : null, rising: rate > 0.001 };
+  }
+
+  // ── Crews asking dispatch for information ─────────────────────────────────
+  private static QUERY_TEXT: Record<string, string[]> = {
+    weapon: ['any weapons involved?', 'do we know if anyone is armed?'], suspect_desc: ['do we have a description of the suspect?', "what's our suspect wearing?"],
+    people: ['how many people are we dealing with?', 'how many involved?'], trapped: ['is anyone still inside?', 'any reports of people trapped?'],
+    hazard: ['any hazards on scene — gas, chemicals, cylinders?', 'anything dangerous we should know about?'], age: ["what's the patient's age?", 'how old is the patient?'],
+    conscious: ['is the patient conscious?', 'is the patient awake and talking?'], breathing: ['is the patient breathing?', 'do we know if they are breathing?'],
+    vehicles: ['how many vehicles involved?'], injured: ['how many injured?', 'how many patients do we have?'],
+  };
+  private queryKeys(inc: Incident): string[] {
+    const tid = inc.templateId, cat = inc.category;
+    const keys = tid.startsWith('collision') ? ['injured', 'trapped', 'vehicles'] : cat === 'police' ? ['weapon', 'suspect_desc', 'people'] : cat === 'fire' ? ['trapped', 'hazard', 'people'] : cat === 'medical' ? ['conscious', 'breathing', 'age'] : ['people', 'hazard'];
+    return keys.filter((k) => k in inc.truth);
+  }
+  /** randomness from the clock and an id: for side systems that must not shift the simulation's own random stream */
+  private hrand(id: number, salt: number): number {
+    let h = Math.imul(id + 0x9e3779b9, 2654435761) ^ Math.imul(Math.floor(this.state.time * 2) + salt * 7919, 0x85ebca6b);
+    h ^= h >>> 15; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 13;
+    return (h >>> 0) / 4294967296;
+  }
+  private unitQueriesTick() {
+    const st = this.state;
+    if (st.config.mode === 'tutorial' || st.config.script) return;
+    for (const q of st.unitQueries ?? []) {
+      if ((q.status === 'open' || q.status === 'standby') && st.time >= q.expiresAt) {
+        q.status = 'expired';
+        st.stats.unitQueriesMissed = (st.stats.unitQueriesMissed ?? 0) + 1;
+        const u = st.units[q.unitId], inc = st.incidents[q.incId];
+        if (inc && !['RESOLVED', 'CLOSED'].includes(inc.status)) { inc.work *= 1.05; if (u) this.radio(u.spoken, this.hrand(inc.num, 3) < 0.5 ? 'Copy, nothing from dispatch — going in blind.' : "No answer. We'll find out when we get there.", 'unit', u.id, inc.id); }
+      }
+    }
+    for (const inc of Object.values(st.incidents)) {
+      if (['RESOLVED', 'CLOSED'].includes(inc.status) || inc.hidden || inc.onView || inc.pursuit || inc.requires.length === 0 || (inc.queries ?? 0) >= 2) continue;
+      if ((st.unitQueries ?? []).some((q) => q.incId === inc.id && (q.status === 'open' || q.status === 'standby'))) continue;
+      const u = inc.assignedUnits.map((id) => st.units[id]).find((x) => x && x.status === 'EN_ROUTE' && !isAir(x) && (x.eta ?? 0) > 15 && (x.eta ?? 0) < 90);
+      if (!u || this.hrand(inc.num, 1) >= 0.045) continue;
+      const asked = new Set((st.unitQueries ?? []).filter((q) => q.incId === inc.id).map((q) => q.key));
+      const key = this.queryKeys(inc).find((k) => !asked.has(k));
+      if (!key) { inc.queries = 2; continue; }
+      inc.queries = (inc.queries ?? 0) + 1;
+      const opts = GameEngine.QUERY_TEXT[key] ?? ['anything else we should know?'];
+      const text = opts[Math.floor(this.hrand(inc.num, 2) * opts.length)];
+      (st.unitQueries ??= []).push({ id: `uq${st.unitQueries.length + 1}`, unitId: u.id, incId: inc.id, key, text, at: st.time, expiresAt: st.time + 30, status: 'open' });
+      st.stats.unitQueries = (st.stats.unitQueries ?? 0) + 1;
+      this.radio(u.spoken, `Dispatch, ${u.spoken} — ${text}`, 'unit', u.id, inc.id);
+    }
+  }
+  /** what dispatch can tell the crew: the caller's answer if there is one */
+  queryOptions(queryId: string): { known: { label: string; value: string } | null; canDeny: boolean } {
+    const st = this.state;
+    const q = st.unitQueries?.find((x) => x.id === queryId);
+    const inc = q ? st.incidents[q.incId] : undefined;
+    if (!q || !inc) return { known: null, canDeny: false };
+    const f = [...inc.facts].reverse().find((x) => x.key === q.key && x.confidence !== 'contradicted');
+    const v = (x: unknown) => (typeof x === 'boolean' ? (x ? 'yes' : 'no') : String(x));
+    return { known: f ? { label: f.label, value: v(f.value) } : null, canDeny: ['weapon', 'trapped', 'hazard'].includes(q.key) };
+  }
+  answerUnitQuery(queryId: string, mode: 'relay' | 'deny' | 'standby'): { ok: boolean; reason?: string; correct?: boolean } {
+    const st = this.state;
+    const q = st.unitQueries?.find((x) => x.id === queryId);
+    if (!q || (q.status !== 'open' && q.status !== 'standby')) return { ok: false, reason: 'Already answered' };
+    const inc = st.incidents[q.incId], u = st.units[q.unitId];
+    if (!inc) return { ok: false, reason: 'Incident gone' };
+    if (mode === 'standby') {
+      if (q.status === 'standby') return { ok: false, reason: 'Already on standby' };
+      q.status = 'standby'; q.expiresAt = st.time + 40;
+      this.radio('DISPATCH', `${u?.spoken ?? 'Unit'}, stand by — I'm finding out from the caller.`, 'dispatch', u?.id, inc.id);
+      return { ok: true };
+    }
+    const truth = inc.truth[q.key];
+    const truthy = (x: unknown) => x !== undefined && x !== false && x !== 0 && x !== 'none' && x !== null;
+    let said: string, correct: boolean;
+    if (mode === 'relay') {
+      const o = this.queryOptions(queryId).known;
+      if (!o) return { ok: false, reason: 'You do not know that yet — ask the caller' };
+      said = `${o.label}: ${o.value}`;
+      const f = [...inc.facts].reverse().find((x) => x.key === q.key && x.confidence !== 'contradicted')!;
+      correct = typeof truth === 'number' && typeof f.value === 'number' ? truth === f.value : typeof truth === 'boolean' || typeof f.value === 'boolean' ? truthy(truth) === truthy(f.value) : String(truth) === String(f.value) || (truthy(truth) && truthy(f.value));
+    } else {
+      said = q.key === 'weapon' ? 'no weapons reported' : q.key === 'trapped' ? 'nobody inside as far as we know' : 'no hazards reported';
+      correct = !truthy(truth);
+    }
+    q.status = 'answered'; q.said = said; q.correct = correct;
+    this.radio('DISPATCH', `${u?.spoken ?? 'Units'}, ${said}.`, 'dispatch', u?.id, inc.id);
+    if (u) this.radio(u.spoken, 'Copy.', 'unit', u.id, inc.id);
+    if (correct) {
+      st.stats.unitQueriesOk = (st.stats.unitQueriesOk ?? 0) + 1;
+      inc.work *= 0.93;
+      if (q.key === 'weapon' && truthy(truth)) inc.weaponRelayed = true;
+      if (q.key === 'trapped' && truthy(truth)) inc.knownReqs = inc.requires.map((r) => ({ ...r }));
+    } else {
+      if (q.key === 'weapon' && truthy(truth)) { inc.weaponMissed = true; this.consequence(inc, 'Officers were told there was no weapon — there was'); }
+      else if (q.key === 'trapped' && truthy(truth)) { inc.threat = Math.min(99, inc.threat + 15); this.consequence(inc, 'Crews were told nobody was inside — someone was'); }
+      else if (q.key === 'hazard' && truthy(truth)) { inc.threat = Math.min(99, inc.threat + 12); this.consequence(inc, 'Crews walked into a hazard nobody warned them about'); }
+      else { inc.work *= 1.08; this.consequence(inc, `Crews were given the wrong ${q.key === 'suspect_desc' ? 'description' : q.key}`); }
+    }
+    return { ok: true, correct };
   }
 
   // ── Outside agencies ──────────────────────────────────────────────────────
@@ -3004,10 +3593,17 @@ export class GameEngine {
   // ── Officer status checks ─────────────────────────────────────────────────
   private startStatusTimer(u: Unit, inc: Incident) {
     const st = this.state;
+    if (u.service === 'fire' && !isAir(u) && STRUCTURE_FIRES.has(inc.templateId) && st.config.mode !== 'tutorial') {
+      // crews working inside a burning building: dispatch runs PAR (personnel accountability) checks
+      u.checkDue = st.time + 75; u.lastCheck = st.time;
+      u.trouble = this.rng.chance(0.12) ? st.time + this.rng.range(50, 150) : null;
+      return;
+    }
     if (u.service !== 'police' || isAir(u) || inc.category !== 'police' || inc.pursuit || inc.search || st.config.mode === 'tutorial') return;
     u.checkDue = st.time + 60; u.lastCheck = st.time;
     const risky = RISKY_POLICE.has(inc.templateId) || (inc.truth.weapon !== false && inc.truth.weapon !== undefined && inc.truth.weapon !== 'none');
-    u.trouble = this.rng.chance(risky ? 0.2 : 0.05) ? st.time + this.rng.range(55, 150) : null;
+    const p = (risky ? 0.2 : 0.05) * (inc.weaponRelayed ? 0.45 : 1) + (inc.weaponMissed ? 0.3 : 0);
+    u.trouble = this.rng.chance(p) ? st.time + this.rng.range(55, 150) : null;
   }
   /** dispatch asks an officer on scene for a status; trouble that is brewing comes out early */
   statusCheck(unitId: string): { ok: boolean; reason?: string; text?: string; trouble?: boolean } {
@@ -3015,10 +3611,21 @@ export class GameEngine {
     const u = st.units[unitId];
     if (!u) return { ok: false, reason: 'Unknown unit' };
     const inc = u.assignedIncidentId ? st.incidents[u.assignedIncidentId] : undefined;
-    this.radio('DISPATCH', `${u.spoken}, status?`, 'dispatch', u.id, inc?.id);
+    const fire = u.service === 'fire';
+    this.radio('DISPATCH', fire ? `${u.spoken}, PAR check.` : `${u.spoken}, status?`, 'dispatch', u.id, inc?.id);
     st.stats.statusChecks = (st.stats.statusChecks ?? 0) + 1;
     u.lastCheck = st.time;
     if (u.checkDue != null) u.checkDue = st.time + 75;
+    if (fire && u.trouble != null && inc && st.time >= u.trouble - 45) {
+      u.trouble = null;
+      st.stats.statusSaves = (st.stats.statusSaves ?? 0) + 1;
+      const text = `${u.spoken} — we're one short on PAR. Firefighter not answering on the second floor, starting a search. Send us another company!`;
+      this.radio(u.spoken, text, 'alert', u.id, inc.id);
+      inc.requires = mergeReqs(inc.requires, [adaptReqForRank({ cap: 'fire_suppression', n: 2 }, st.rank)]); inc.knownReqs = inc.requires.map((x) => ({ ...x }));
+      this.notify(`${u.callsign} is missing a firefighter — your PAR check caught it early. Send another engine.`, 'warn', inc.id);
+      return { ok: true, text, trouble: true };
+    }
+    if (fire) { const text = `${u.spoken}, PAR — ${this.crewOf(u).length || 4} firefighters accounted for.`; this.radio(u.spoken, text, 'unit', u.id, inc?.id); return { ok: true, text }; }
     if (u.trouble != null && inc && st.time >= u.trouble - 45) {
       u.trouble = null;
       st.stats.statusSaves = (st.stats.statusSaves ?? 0) + 1;
@@ -3045,6 +3652,7 @@ export class GameEngine {
       if (st.time - u.checkDue > 45 && (u.lastCheck ?? 0) < u.checkDue && !u.note?.includes('overdue')) { st.stats.statusMissed = (st.stats.statusMissed ?? 0) + 1; u.note = 'Status overdue'; }
       if (u.trouble == null || st.time < u.trouble) continue;
       u.trouble = null;
+      if (u.service === 'fire') { this.mayday(u, inc, st.time >= u.checkDue); continue; }
       if (st.time < u.checkDue) {
         // dispatch was on top of things: the officer gets the call out in time
         this.radio(u.spoken, `Dispatch, ${u.spoken}. Start me another unit, code three — subject's fighting.`, 'alert', u.id, inc.id);
@@ -3101,7 +3709,7 @@ export class GameEngine {
     const due = st.alertCalls.filter((c) => st.time >= c.at);
     if (!due.length) return;
     st.alertCalls = st.alertCalls.filter((c) => st.time < c.at);
-    for (const c of due) this.spawnIncident('alert_query', c.district, { accuracy: 'exact' });
+    for (const c of due) this.spawnIncident(c.template ?? 'alert_query', c.district, { accuracy: 'exact' });
   }
 
   // ── Missing-person search grid ────────────────────────────────────────────
@@ -3384,6 +3992,7 @@ export class GameEngine {
     else if (id === 'hostage_barricade') d = { kind: 'barricade', prompt: `${u.spoken}: subject is barricaded with a weapon. Negotiate, or breach?`, options: [opt('negotiate', 'Negotiate', 'Slow, but usually ends without injury'), opt('breach', 'Breach now', 'Fast — dangerous without the tactical team')], defaultId: 'negotiate' };
     else if (id === 'active_shooter') d = { kind: 'shooter', prompt: `${u.spoken}: shots still being fired inside. Go in with what we have, or wait for tactical?`, options: [opt('enter', 'Go in now', 'Stops the killing sooner — officers at risk'), opt('wait', 'Wait for tactical', 'Safer for officers — more victims meanwhile')], defaultId: 'wait' };
     else if (['cardiac_arrest', 'drowning_pool', 'collapse_child', 'gunshot_victim', 'airport_medical', 'collision_trapped'].includes(id)) d = { kind: 'medical', prompt: `${u.spoken}: patient is critical. Treat on scene, or load and go?`, options: [opt('stay', 'Treat on scene', 'Right for a cardiac arrest — resuscitate where they are'), opt('go', 'Load and go', 'Right for bleeding trauma — surgery is the fix')], defaultId: 'stay' };
+    else if (['fall_elderly', 'sudden_illness', 'allergic_reaction', 'sports_injury', 'heat_exhaustion', 'workplace_injury', 'collision_injury', 'breathing_trouble'].includes(id) && inc.truth.conscious !== false && inc.needsTransport && u.capabilities.includes('transport') && this.rng.chance(0.18)) d = { kind: 'refusal', prompt: `${u.spoken}: patient is refusing to come with us — says they feel fine. How do you want to play it?`, options: [opt('persuade', 'Keep talking them round', 'Slower, but they get the care they need'), opt('sign', 'Let them sign a refusal', 'Frees the crew now — risky if they are worse than they think'), opt('police', 'Send an officer to help', 'Ties up a patrol car, usually works')], defaultId: 'persuade' };
     else if (id === 'bomb_threat') d = { kind: 'bomb', prompt: `${u.spoken}: station is still full of people. Evacuate first, or search with people inside?`, options: [opt('evacuate', 'Evacuate first', 'Slow and disruptive, but safe'), opt('search', 'Search now', 'Fast — dangerous if the threat is real')], defaultId: 'evacuate' };
     if (!d) return;
     if (!st.decisions) st.decisions = [];
@@ -3400,6 +4009,7 @@ export class GameEngine {
     const u = st.units[d.unitId];
     d.chosen = optionId; d.auto = auto;
     if (d.kind === 'break') return this.decideBreak(d, optionId, auto);
+    if (d.kind === 'mayday') return this.decideMayday(d, optionId, auto);
     if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) { d.outcome = 'The incident was already over.'; return { ok: true, outcome: d.outcome }; }
     const t = inc.truth;
     const n = (k: string) => (typeof t[k] === 'number' ? (t[k] as number) : 0);
@@ -3444,6 +4054,16 @@ export class GameEngine {
         out = h ? `${u?.callsign ?? 'Ambulance'} heading to ${h.name}.` : 'Destination set.';
         break;
       }
+      case 'refusal':
+        st.stats.refusals = (st.stats.refusals ?? 0) + 1;
+        if (optionId === 'persuade') { inc.work *= 1.3; out = 'The crew talked them round — they\'re coming in.'; }
+        else if (optionId === 'police') { inc.requires = mergeReqs(inc.requires, [{ cap: 'patrol', n: 1 }]); inc.knownReqs = inc.requires.map((x) => ({ ...x })); inc.work *= 1.1; out = 'An officer is on the way to help persuade them.'; }
+        else {
+          inc.needsTransport = false; inc.workProgress = Math.max(inc.workProgress, inc.work);
+          out = 'The patient signed a refusal and the crew cleared.';
+          if (this.rng.chance(0.35)) (st.relapses ??= []).push({ at: st.time + 70 + this.rng.range(0, 60), incId: inc.id });
+        }
+        break;
       case 'bomb':
         if (optionId === 'evacuate') { inc.work *= 1.25; out = 'Station evacuated — search under way with nobody inside.'; }
         else { inc.workProgress += inc.work * 0.4; if (inc.twist && this.rng.chance(0.35)) { inc.casualties += 2; st.stats.casualties += 2; this.consequence(inc, 'The device went off during a search with people still inside'); out = 'The device went off with people still inside.'; } else out = 'Quick search completed.'; }

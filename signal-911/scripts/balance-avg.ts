@@ -1,4 +1,5 @@
 // Averages a competent bot over many career seeds: npx vite-node scripts/balance-avg.ts
+import { TEMPLATE_BY_ID } from '../src/sim/content/templates';
 import { GameEngine, DT, recommendFor } from '../src/sim/engine';
 import { careerConfig, newProfile, setupFromProfile, computeResult } from '../src/sim/profile';
 import { rankForXp } from '../src/sim/progression';
@@ -48,6 +49,10 @@ function play(rank: number, seed: number) {
       }
     }
     for (const u of e.overdueChecks()) if (st.time - u.checkDue! > 6) e.statusCheck(u.id);
+    // non-emergency callers get sent to the non-emergency line once it is clear what they want
+    for (const c of Object.values(st.calls)) if (c.state === 'active' && st.time - (c.answeredAt ?? st.time) > 8 && TEMPLATE_BY_ID[st.incidents[c.incidentId].templateId]?.nonEmergency) e.redirectCall(c.id);
+    // crews asking for information get the caller's answer when there is one
+    for (const q of st.unitQueries ?? []) if (q.status === 'open' && st.time - q.at > 5) e.answerUnitQuery(q.id, e.queryOptions(q.id).known ? 'relay' : 'standby');
     // callers asking what to do get a sensible answer most of the time
     for (const c of Object.values(st.calls)) if (c.question && c.state === 'active' && st.time - c.question.at > 4) e.answerCaller(c.id, c.question.options[e.rng.chance(0.85) ? 0 : 1].id);
     for (const r of st.requests ?? []) if (r.status === 'open' && st.time >= r.at + 8) { e.runRequest(r.id); e.answerRequest(r.id, e.rng.chance(0.85) ? r.truth : 'clear', r.db.findIndex((h) => h.match)); }

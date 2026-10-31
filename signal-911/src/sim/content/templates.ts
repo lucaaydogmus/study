@@ -28,6 +28,7 @@ export interface Template {
   accuracyBias?: Partial<Record<string, number>>;
   outside?: boolean; noMap?: boolean; pursuit?: boolean;
   /** only created by other incidents or scripted events */ spawnOnly?: boolean;
+  /** not a 911 emergency: the right move is to send the caller to the non-emergency line or press office */ nonEmergency?: boolean;
   /** where on the map it happens */ nodeHint?: 'runway' | 'highway' | 'rail' | 'water' | 'pool' | 'stadium' | 'mall' | 'transit' | 'bank';
   /** seconds until something unstoppable happens (an aircraft landing); responders must be in place first */ deadline?: number;
   pursuitSpeed?: number; /** extra callers that will ring about the same event */ dupes?: number;
@@ -965,8 +966,52 @@ export const TEMPLATES: Template[] = [
     resolved: 'Hidden fire found and extinguished before it spread.', failed: 'The fire in the wall spread unseen.',
   }),
   base({
+    id: 'noise_complaint', category: 'unusual', label: 'Noise complaint', hint: 'no_response', cls: 'no_response', w: { residential: 1.1, dense: 1.2, campus: 1.4, suburb: 0.7 },
+    sev: [1, 1], nonEmergency: true,
+    truth: { people: 1, injured: 0, safe: true, weapon: false, suspect: false, false_alarm: true, cause: 'a neighbour playing loud music' }, reported: [],
+    requires: [], threat: [1, 0.01, 1.0], work: 10,
+    archetypes: [['angry_motorist', 3], ['worried_neighbor', 3], ['confused_elderly', 2], ['terse', 1]],
+    open: ["It's gone midnight and the people upstairs are STILL playing music. I've had enough. Send someone round.", "There's a party next door, the bass is shaking my windows. Can you make them stop?"],
+    cause: ["Just loud music. Nobody's hurt, it's just inconsiderate.", "They do this every weekend. I want it on record."],
+    scene: 'Loud music, no disturbance.', ambience: 'indoor',
+    resolved: 'The caller was pointed to the non-emergency line.', failed: 'A noise complaint tied up the 911 line.',
+  }),
+  base({
+    id: 'lost_pet', category: 'unusual', label: 'Lost pet', hint: 'no_response', cls: 'no_response', w: { residential: 1, suburb: 1.3, campus: 0.5 },
+    sev: [1, 1], nonEmergency: true,
+    truth: { people: 1, injured: 0, safe: true, weapon: false, suspect: false, animal: true, false_alarm: true, cause: 'a dog has run off from the garden' }, reported: [],
+    requires: [], threat: [1, 0.01, 1.0], work: 10,
+    archetypes: [['worried_neighbor', 3], ['child_caller', 2], ['confused_elderly', 2]],
+    open: ["My dog's got out of the garden and I can't find him anywhere! Biscuit — he's a little brown terrier!", "Our cat's been missing since this morning. Can the police look for her?"],
+    cause: ['The gate was left open. He just ran.', "She's never been gone this long."],
+    scene: 'Lost pet report.', ambience: 'outdoor',
+    resolved: 'The caller was given the animal warden and shelter numbers.', failed: 'A lost pet call tied up the 911 line.',
+  }),
+  base({
+    id: 'power_question', category: 'unusual', label: 'Power cut enquiry', hint: 'no_response', cls: 'no_response', w: { residential: 0.9, suburb: 0.9, commercial: 0.7, dense: 0.8 },
+    sev: [1, 1], nonEmergency: true,
+    truth: { people: 1, injured: 0, safe: true, weapon: false, suspect: false, hazard: false, false_alarm: true, cause: 'the power is out on the street' }, reported: [],
+    requires: [], threat: [1, 0.01, 1.0], work: 10,
+    archetypes: [['confused_elderly', 3], ['worried_neighbor', 3], ['professional', 1]],
+    open: ["The power's gone off on our whole street. When's it coming back on?", "Hello, all our lights have gone out — is it just us? Who do I call?"],
+    cause: ['Everything just went off. No sparks or anything, just dark.', "The whole street's dark. Nobody's hurt."],
+    scene: 'Street-wide outage, no hazard.', ambience: 'indoor',
+    resolved: 'The caller was given the power company number.', failed: 'A power cut enquiry tied up the 911 line.',
+  }),
+  base({
+    id: 'press_call', category: 'unusual', label: 'Reporter on the line', hint: 'no_response', cls: 'no_response', w: {},
+    sev: [1, 1], spawnOnly: true, nonEmergency: true,
+    truth: { people: 1, injured: 0, safe: true, weapon: false, suspect: false, false_alarm: true, cause: 'a journalist fishing for details of a major incident' }, reported: [],
+    requires: [], threat: [1, 0.01, 1.0], work: 10,
+    archetypes: [['professional', 6], ['terse', 2]],
+    open: ["Hi — Dana Reyes, Channel 6 News. We're hearing reports of a major incident downtown. Can you confirm casualties?", "This is the Ravenport Courier. Can you tell me how many units are at the scene and whether anyone's died?"],
+    cause: ["I just need a number for the six o'clock bulletin.", "Off the record is fine — how bad is it?"],
+    scene: 'Press enquiry.', ambience: 'indoor',
+    resolved: 'The reporter was sent to the press office.', failed: 'A reporter tied up the 911 line.',
+  }),
+  base({
     id: 'alert_query', category: 'unusual', label: 'Question about the emergency alert', hint: 'no_response', cls: 'no_response', w: { residential: 1, commercial: 1, suburb: 1, dense: 1 },
-    sev: [1, 1], spawnOnly: true,
+    sev: [1, 1], spawnOnly: true, nonEmergency: true,
     truth: { people: 1, injured: 0, safe: true, weapon: false, suspect: false, false_alarm: true, cause: 'a resident asking whether the emergency alert is real' }, reported: [],
     requires: [], threat: [1, 0.01, 1.0], work: 10,
     archetypes: [['worried_neighbor', 4], ['confused_elderly', 3], ['professional', 1]],

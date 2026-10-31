@@ -59,7 +59,19 @@ class AudioManager {
     if (s.music > 0.01 && !this.musicTimer) this.startMusic(); else if (s.music <= 0.01) this.stopMusic();
   }
 
-  private tone(freq: number, dur: number, opts: { type?: OscillatorType; gain?: number; at?: number; bus?: Bus; slide?: number; attack?: number } = {}) {
+  // everything heard through the caller's phone goes through a narrow telephone band
+  private phoneNode: AudioNode | null = null;
+  private phoneIn(): AudioNode | null {
+    const ctx = this.ensure(); if (!ctx) return null;
+    if (this.phoneNode) return this.phoneNode;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 320;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200;
+    const g = ctx.createGain(); g.gain.value = 1.2;
+    hp.connect(lp); lp.connect(g); g.connect(this.buses.ambience!);
+    this.phoneNode = hp;
+    return hp;
+  }
+  private tone(freq: number, dur: number, opts: { type?: OscillatorType; gain?: number; at?: number; bus?: Bus; slide?: number; attack?: number; phone?: boolean } = {}) {
     const ctx = this.ensure(); if (!ctx) return;
     const t0 = ctx.currentTime + (opts.at ?? 0);
     const o = ctx.createOscillator(), g = ctx.createGain();
@@ -70,10 +82,24 @@ class AudioManager {
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.linearRampToValueAtTime(peak, t0 + (opts.attack ?? 0.008));
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    o.connect(g); g.connect(this.buses[opts.bus ?? 'effects']!);
+    o.connect(g); g.connect((opts.phone ? this.phoneIn() : null) ?? this.buses[opts.bus ?? 'effects']!);
     o.start(t0); o.stop(t0 + dur + 0.05);
   }
-  private noise(dur: number, opts: { gain?: number; at?: number; bus?: Bus; lp?: number; hp?: number; bp?: number } = {}) {
+  /** a noise layer that swells in and out (crowds, jets, passing traffic) */
+  private swell(dur: number, opts: { gain?: number; at?: number; bp?: number; lp?: number; hp?: number; sweep?: number; phone?: boolean; bus?: Bus } = {}) {
+    const ctx = this.ensure(); if (!ctx || !this.noiseBuf) return;
+    const t0 = ctx.currentTime + (opts.at ?? 0);
+    const src = ctx.createBufferSource(); src.buffer = this.noiseBuf; src.loop = true;
+    const g = ctx.createGain(); const peak = opts.gain ?? 0.15;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(peak, t0 + dur * 0.4); g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    let node: AudioNode = src;
+    if (opts.bp) { const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.setValueAtTime(opts.bp, t0); if (opts.sweep) f.frequency.linearRampToValueAtTime(opts.sweep, t0 + dur); f.Q.value = 0.9; node.connect(f); node = f; }
+    if (opts.lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = opts.lp; node.connect(f); node = f; }
+    if (opts.hp) { const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = opts.hp; node.connect(f); node = f; }
+    node.connect(g); g.connect((opts.phone ? this.phoneIn() : null) ?? this.buses[opts.bus ?? 'ambience']!);
+    src.start(t0, Math.random() * 1.5); src.stop(t0 + dur + 0.05);
+  }
+  private noise(dur: number, opts: { gain?: number; at?: number; bus?: Bus; lp?: number; hp?: number; bp?: number; phone?: boolean } = {}) {
     const ctx = this.ensure(); if (!ctx || !this.noiseBuf) return;
     const t0 = ctx.currentTime + (opts.at ?? 0);
     const src = ctx.createBufferSource(); src.buffer = this.noiseBuf;
@@ -84,9 +110,73 @@ class AudioManager {
     if (opts.bp) { const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = opts.bp; f.Q.value = 0.8; node.connect(f); node = f; }
     if (opts.lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = opts.lp; node.connect(f); node = f; }
     if (opts.hp) { const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = opts.hp; node.connect(f); node = f; }
-    node.connect(g); g.connect(this.buses[opts.bus ?? 'effects']!);
+    node.connect(g); g.connect((opts.phone ? this.phoneIn() : null) ?? this.buses[opts.bus ?? 'effects']!);
     src.start(t0, Math.random() * 1.5); src.stop(t0 + dur + 0.05);
   }
+
+  // ── What can be heard behind a caller (through the phone line) ───────────
+  playClue(kind: string, level = 1) {
+    const L = Math.max(0.05, Math.min(1.4, level)), P = { phone: true };
+    const r = Math.random;
+    switch (kind) {
+      case 'train':
+        for (let i = 0; i < 8; i++) this.tone(i % 2 ? 690 : 830, 0.2, { type: 'square', gain: 0.045 * L, at: i * 0.3, ...P });
+        this.swell(2.8, { gain: 0.35 * L, lp: 160, ...P }); break;
+      case 'highway': [0, 0.8, 1.7].forEach((at) => this.swell(1.1, { gain: 0.22 * L, bp: 900, sweep: 500, at, ...P })); break;
+      case 'water': this.swell(2.6, { gain: 0.18 * L, lp: 600, ...P }); [0.3, 0.75, 1.7].forEach((at) => this.tone(1950, 0.28, { type: 'sine', gain: 0.05 * L, slide: 1300, at, ...P })); break;
+      case 'harbor':
+        this.tone(110, 1.7, { type: 'sawtooth', gain: 0.07 * L, attack: 0.18, ...P }); this.tone(165, 1.7, { type: 'sawtooth', gain: 0.05 * L, attack: 0.18, ...P });
+        [1.9, 2.3].forEach((at) => this.tone(1900, 0.28, { type: 'sine', gain: 0.05 * L, slide: 1250, at, ...P }));
+        [2.7, 3.0].forEach((at) => this.noise(0.09, { gain: 0.12 * L, bp: 2600, at, ...P })); break;
+      case 'jets': this.swell(3.2, { gain: 0.32 * L, bp: 2400, sweep: 500, ...P }); break;
+      case 'school':
+        for (let k = 0; k < 34; k++) this.tone(1650, 0.03, { type: 'square', gain: 0.028 * L, at: k * 0.042, ...P });
+        for (let k = 0; k < 6; k++) this.noise(0.18, { gain: 0.05 * L, bp: 1700 + r() * 600, at: 1.5 + k * 0.2, ...P }); break;
+      case 'bells':
+        for (let sIdx = 0; sIdx < 3; sIdx++) [1, 2, 2.4, 3, 4.2].forEach((m, i) => this.tone(392 * m, 2.4, { type: 'sine', gain: (0.05 / (i + 1)) * L, at: sIdx * 0.95, ...P })); break;
+      case 'crowd': this.swell(2.6, { gain: 0.22 * L, bp: 800, ...P }); this.swell(1.1, { gain: 0.14 * L, bp: 1600, at: 0.9, ...P }); break;
+      case 'industrial': this.tone(58, 2.2, { type: 'sawtooth', gain: 0.05 * L, attack: 0.2, ...P }); [0, 0.5, 1, 1.5].forEach((at) => this.tone(1050, 0.25, { type: 'square', gain: 0.03 * L, at, ...P })); break;
+      case 'birds': for (let k = 0; k < 9; k++) { const f = 2800 + r() * 1600; this.tone(f, 0.07, { type: 'sine', gain: 0.03 * L, slide: f * (0.8 + r() * 0.4), at: r() * 2.2, ...P }); } this.swell(2.4, { gain: 0.08 * L, bp: 500, ...P }); break;
+      case 'traffic': this.swell(2.2, { gain: 0.24 * L, lp: 450, ...P }); this.tone(392, 0.26, { type: 'sawtooth', gain: 0.035 * L, at: 0.7, ...P }); this.tone(494, 0.26, { type: 'sawtooth', gain: 0.035 * L, at: 0.7, ...P }); break;
+      case 'suburb':
+        for (const b of [0, 0.32, 1.25]) { this.noise(0.12, { gain: 0.22 * L, bp: 700, at: b, ...P }); this.tone(330, 0.12, { type: 'sawtooth', gain: 0.05 * L, slide: 180, at: b, ...P }); }
+        this.tone(88, 2.2, { type: 'sawtooth', gain: 0.02 * L, attack: 0.3, at: 0.4, ...P }); break;
+      case 'hospital': [0, 0.65, 1.3].forEach((at) => this.tone(680, 0.6, { type: 'sine', gain: 0.045 * L, slide: 980, at, ...P })); break;
+      case 'rain': this.swell(2.6, { gain: 0.22 * L, hp: 2200, ...P }); break;
+      case 'alarm': for (let k = 0; k < 6; k++) this.tone(3000, 0.18, { type: 'square', gain: 0.025 * L, at: k * 0.36, ...P }); break;
+      default: break;
+    }
+  }
+  /** gibberish "speech" in the caller's own pitch, so every line sounds like someone talking */
+  voice(text: string, pitch: number, agitated = false) {
+    const n = Math.max(3, Math.min(20, Math.round(text.length / 5)));
+    let t = 0.02;
+    this.noise(0.05, { gain: 0.03, bp: 1400, phone: true });
+    for (let i = 0; i < n; i++) {
+      const f = pitch * (0.85 + Math.random() * 0.35) * (agitated ? 1.12 : 1);
+      const d = 0.06 + Math.random() * 0.06;
+      this.tone(f, d, { type: 'triangle', gain: agitated ? 0.06 : 0.045, slide: f * (0.9 + Math.random() * 0.15), at: t, phone: true, attack: 0.01 });
+      t += d + 0.015 + Math.random() * (agitated ? 0.02 : 0.05);
+    }
+  }
+  mayday() { for (let k = 0; k < 6; k++) this.tone(k % 2 ? 1060 : 760, 0.22, { type: 'square', gain: 0.07, at: k * 0.24 }); }
+  attention() { this.tone(1000, 0.9, { type: 'sine', gain: 0.07 }); this.tone(1000, 0.12, { type: 'sine', gain: 0.07, at: 1.05 }); this.tone(1000, 0.12, { type: 'sine', gain: 0.07, at: 1.25 }); }
+  stinger() { this.tone(110, 1.4, { type: 'sawtooth', gain: 0.06, attack: 0.05 }); this.tone(116.5, 1.4, { type: 'sawtooth', gain: 0.05, attack: 0.05 }); this.swell(1.6, { gain: 0.12, lp: 300, bus: 'effects' }); }
+  /** a dispatch room never goes quiet: keyboards, colleagues on other calls, distant phones */
+  private lifeTimer: number | null = null;
+  startOfficeLife() {
+    if (this.lifeTimer !== null) return;
+    const tick = () => {
+      const r = Math.random();
+      if (r < 0.4) { const n = 4 + Math.floor(Math.random() * 9); for (let k = 0; k < n; k++) this.noise(0.02, { gain: 0.018, hp: 2800, bus: 'ambience', at: k * (0.08 + Math.random() * 0.07) }); }
+      else if (r < 0.75) { let t = 0; for (let k = 0; k < 8; k++) { const f = 140 + Math.random() * 90; this.tone(f, 0.09, { type: 'triangle', gain: 0.012, at: t, bus: 'ambience' }); t += 0.12 + Math.random() * 0.06; } }
+      else if (r < 0.9) { this.noise(0.07, { gain: 0.025, bp: 2400, bus: 'ambience' }); this.tone(1700, 0.04, { type: 'sine', gain: 0.012, at: 0.08, bus: 'ambience' }); }
+      else { [0, 0.42].forEach((at) => { this.tone(440, 0.3, { type: 'sine', gain: 0.008, at, bus: 'ambience' }); this.tone(480, 0.3, { type: 'sine', gain: 0.008, at, bus: 'ambience' }); }); }
+      this.lifeTimer = window.setTimeout(tick, 3500 + Math.random() * 6000);
+    };
+    this.lifeTimer = window.setTimeout(tick, 2500);
+  }
+  stopOfficeLife() { if (this.lifeTimer !== null) { clearTimeout(this.lifeTimer); this.lifeTimer = null; } }
 
   // ── UI & events ───────────────────────────────────────────────────────────
   click() { this.tone(1400, 0.035, { type: 'square', gain: 0.04 }); }

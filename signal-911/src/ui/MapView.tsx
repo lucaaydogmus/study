@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getCity, addressOf, WORLD_H, WORLD_W } from '../sim/city';
 import { SERVICE_META, isAir } from '../sim/fleet';
 import { AGENCY } from '../sim/engine';
+import { barOffset, vehicleSprite } from './vehicles';
 import { audio, type SirenVoice } from '../audio/audioManager';
 import { WEATHER_LABEL, WEATHER_SPEED } from '../sim/events';
 import type { GameEngine } from '../sim/engine';
@@ -328,6 +329,18 @@ export function MapView(props: MapProps) {
         ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.85 * night;
         if (liveCity) drawNightLights(ctx, view, { windows: false }); else ctx.drawImage(lightsCanvas(), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
         ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+      }
+      // cloud shadows drifting slowly over the city on a bright day
+      if (night < 0.6 && motion && !lowDetail && pr.layer === 'normal') {
+        const a = 0.09 * (1 - night / 0.6);
+        for (let k = 0; k < 5; k++) {
+          const span = WORLD_W + 900, cx = ((k * 613 + tSec * (5 + k)) % span) - 450, cy = (k * 389) % WORLD_H + 80 * Math.sin(tSec / 40 + k);
+          const r = 230 + (k * 97) % 160;
+          if (cx + r < view.x0 || cx - r > view.x1 || cy + r < view.y0 || cy - r > view.y1) continue;
+          const g = ctx.createRadialGradient(cx, cy, r * 0.15, cx, cy, r);
+          g.addColorStop(0, `rgba(30,40,58,${a})`); g.addColorStop(1, 'rgba(30,40,58,0)');
+          ctx.fillStyle = g; ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+        }
       }
       const layer = pr.layer;
       if (layer === 'traffic') {
@@ -670,15 +683,15 @@ export function MapView(props: MapProps) {
       for (const u of Object.values(st.units)) { if (u.speed > 0.05 || parkedAtBase(st, u)) continue; const k = `${Math.round(u.x / 6)},${Math.round(u.y / 6)}`; const g = groups.get(k); if (g) g.push(u); else groups.set(k, [u]); }
       offs.current.clear();
       const markers = z < 1.15;
-      const vs = Math.max(0.75, Math.min(1.5, 0.6 + z * 0.45));
+      const vs = Math.max(0.75, Math.min(1.8, 0.6 + z * 0.42));
       // crews sharing a scene line up nose-first under the pin in a tidy bay, with one caption for the group
       const bays: Array<{ x: number; y: number; w: number; h: number; units: Unit[] }> = [];
       for (const g of groups.values()) {
         if (g.length < 2) continue;
         g.sort((a, b) => a.id.localeCompare(b.id));
         const perRow = markers ? 4 : 5;
-        const pitchX = markers ? 15 : Math.round(9 * vs + 6), pitchY = markers ? 15 : Math.round(19 * vs + 4);
-        const dy0 = markers ? 28 : Math.round(30 + 9 * vs);
+        const pitchX = markers ? 15 : Math.round(10 * vs + 6), pitchY = markers ? 15 : Math.round(28 * vs + 6);
+        const dy0 = markers ? 28 : Math.round(30 + 14 * vs);
         g.forEach((u, i) => { const row = Math.floor(i / perRow), col = i % perRow, inRow = Math.min(perRow, g.length - row * perRow); offs.current.set(u.id, { dx: (col - (inRow - 1) / 2) * pitchX, dy: dy0 + row * pitchY }); });
         const rows = Math.ceil(g.length / perRow), cols = Math.min(perRow, g.length);
         const a = S(g[0].x, g[0].y);
@@ -709,13 +722,6 @@ export function MapView(props: MapProps) {
         const moving = u.speed > 0.1 && ['EN_ROUTE', 'TRANSPORTING', 'RETURNING'].includes(u.status);
         const v = VEH[u.service];
         ctx.globalAlpha = (u.status === 'OUT_OF_SERVICE' ? 0.4 : 1) * dimUnits;
-        // siren glow
-        if (responding && motion && !markers) {
-          const ph = Math.floor(now / 170) % 2;
-          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 18 * vs);
-          g.addColorStop(0, ph ? `${v.bar[0]}55` : `${v.bar[1]}55`); g.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, 18 * vs, 0, 7); ctx.fill();
-        }
         if (markers && !isAir(u)) {
           // zoomed out: a clean marker per unit, with a heading notch and flashing ring when responding
           const col = SERVICE_META[u.service].color;
@@ -730,20 +736,31 @@ export function MapView(props: MapProps) {
         } else if (isAir(u)) {
           drawHeli(ctx, st, u, p, hd.h, vs, now, motion, night, S);
         } else {
-        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(hd.h);
-        const L = (u.type === 'ladder' || u.type === 'heavy_rescue' ? 19 : u.type === 'motorcycle' ? 9 : 15) * vs, Wd = (u.type === 'motorcycle' ? 4 : 7.5) * vs;
-        if (night > 0.3 && moving) { ctx.fillStyle = `rgba(255,240,200,${0.14 * night})`; ctx.beginPath(); ctx.moveTo(L / 2, -Wd * 0.3); ctx.lineTo(L / 2 + 26 * vs, -10 * vs); ctx.lineTo(L / 2 + 26 * vs, 10 * vs); ctx.lineTo(L / 2, Wd * 0.3); ctx.closePath(); ctx.fill(); }
-        ctx.fillStyle = 'rgba(0,0,0,0.5)'; roundRect(ctx, -L / 2 + 1.5, -Wd / 2 + 2, L, Wd, 2 * vs); ctx.fill();
-        ctx.fillStyle = v.body; roundRect(ctx, -L / 2, -Wd / 2, L, Wd, 2 * vs); ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 1; ctx.stroke();
-        if (u.service === 'police') { ctx.fillStyle = v.trim; ctx.fillRect(-L * 0.12, -Wd / 2 + 1, L * 0.32, Wd - 2); }
-        else if (u.service === 'fire') { ctx.fillStyle = '#d65a5a'; ctx.fillRect(L * 0.18, -Wd / 2 + 0.8, L * 0.28, Wd - 1.6); if (u.type === 'ladder') { ctx.strokeStyle = '#d8dde3'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(-L / 2 + 2, -1.5); ctx.lineTo(L * 0.15, -1.5); ctx.moveTo(-L / 2 + 2, 1.5); ctx.lineTo(L * 0.15, 1.5); ctx.stroke(); } }
-        else { ctx.fillStyle = v.trim; ctx.fillRect(-L / 2 + 1, -0.9 * vs, L - 2, 1.8 * vs); ctx.fillStyle = '#D65353'; ctx.fillRect(-L * 0.25, -Wd * 0.28, 1.6 * vs, Wd * 0.56); }
-        // light bar
-        const ph2 = motion ? Math.floor(now / 140) % 2 : 0;
-        ctx.fillStyle = responding ? (ph2 ? v.bar[0] : v.bar[1]) : '#5a636e'; ctx.fillRect(L * 0.02, -Wd / 2 + 0.6, 2.4 * vs, Wd * 0.45);
-        ctx.fillStyle = responding ? (ph2 ? v.bar[1] : v.bar[0]) : '#5a636e'; ctx.fillRect(L * 0.02, 0, 2.4 * vs, Wd * 0.45 - 0.6);
-        ctx.restore();
+          // a proper model of the vehicle, its light bar flashing when it runs hot
+          const ph = responding ? (motion ? 1 + (Math.floor(now / 140) % 2) : 1) : 0;
+          const spr = vehicleSprite(u.type, u.service, ph);
+          const k = vs * 0.5, L = spr.len * k, Wd = spr.wid * k;
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(hd.h);
+          if (night > 0.3 && moving) {
+            const hg = ctx.createLinearGradient(L / 2, 0, L / 2 + 34 * k, 0);
+            hg.addColorStop(0, `rgba(255,244,210,${0.32 * night})`); hg.addColorStop(1, 'rgba(255,244,210,0)');
+            ctx.fillStyle = hg; ctx.beginPath(); ctx.moveTo(L / 2 - 2 * k, -Wd * 0.3); ctx.lineTo(L / 2 + 34 * k, -13 * k); ctx.lineTo(L / 2 + 34 * k, 13 * k); ctx.lineTo(L / 2 - 2 * k, Wd * 0.3); ctx.closePath(); ctx.fill();
+          }
+          ctx.fillStyle = 'rgba(0,0,0,0.38)'; roundRect(ctx, -L / 2 + 2.2 * k, -Wd / 2 + 2.6 * k, L - 2 * k, Wd - 2 * k, 2.5 * k); ctx.fill();
+          ctx.drawImage(spr.img, -L / 2, -Wd / 2, L, Wd);
+          if (ph) {
+            const bx = barOffset(u.type, u.service) * (L - 4 * k), rad = (7 + 6 * night) * vs;
+            ctx.globalCompositeOperation = 'lighter';
+            for (let i = 0; i < 2; i++) {
+              if ((ph === 1) !== (i === 0) && motion) continue;
+              const by = (i === 0 ? -1 : 1) * Wd * 0.18, col = v.bar[i];
+              const g = ctx.createRadialGradient(bx, by, 0, bx, by, rad);
+              g.addColorStop(0, `${col}aa`); g.addColorStop(0.35, `${col}44`); g.addColorStop(1, `${col}00`);
+              ctx.fillStyle = g; ctx.fillRect(bx - rad, by - rad, rad * 2, rad * 2);
+            }
+            ctx.globalCompositeOperation = 'source-over';
+          }
+          ctx.restore();
         }
         ctx.globalAlpha = 1;
         if (u.temp) { ctx.strokeStyle = '#E5AC4D'; ctx.setLineDash([2, 2]); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, 7); ctx.stroke(); ctx.setLineDash([]); }

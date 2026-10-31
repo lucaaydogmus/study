@@ -247,8 +247,9 @@ const poly = (ctx: CanvasRenderingContext2D, pts: Vec[]) => { ctx.moveTo(pts[0].
 
 export const MAP_COLORS = {
   sea: '#7fbfe3', seaShore: '#a5d6f0', river: '#86c4e8', riverLight: '#b8e2f6', land: '#e6e1d6', block: '#dad6cc',
-  casing: '#c4bdb0', local: '#ffffff', arterial: '#fff1bd', highway: '#ffcf73', bridge: '#f4f1ea',
-  casingArt: '#dfc27f', casingHwy: '#d6a03f',
+  // asphalt streets with concrete pavements either side
+  casing: '#d3cec4', local: '#626870', arterial: '#585e66', highway: '#4d535b', bridge: '#6c7178',
+  casingArt: '#cbc5b9', casingHwy: '#a39c90',
 };
 
 /**
@@ -392,7 +393,9 @@ export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View 
     }
   };
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  roadPath('local'); ctx.strokeStyle = C.casing; ctx.lineWidth = 5.4; ctx.stroke(); ctx.strokeStyle = C.local; ctx.lineWidth = 4; ctx.stroke();
+  // pavement first, then asphalt, then markings
+  roadPath('local'); ctx.strokeStyle = C.casing; ctx.lineWidth = 6.4; ctx.stroke(); ctx.strokeStyle = 'rgba(70,74,80,0.55)'; ctx.lineWidth = 4.5; ctx.stroke(); ctx.strokeStyle = C.local; ctx.lineWidth = 4; ctx.stroke();
+  if (lod >= 2) { ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = Math.max(0.25, px(0.6)); ctx.setLineDash([2.2, 3.2]); ctx.stroke(); ctx.setLineDash([]); }
   // runways sit over the local streets they replace
   for (const f of sc.features) {
     if (f.kind !== 'runway') continue;
@@ -402,11 +405,35 @@ export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View 
     ctx.strokeStyle = 'rgba(232,237,242,0.55)'; ctx.lineWidth = 1.1; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
     ctx.strokeStyle = 'rgba(232,237,242,0.25)'; ctx.lineWidth = 0.7; ctx.beginPath(); poly(ctx, f.pts); ctx.stroke();
   }
-  roadPath('arterial'); ctx.strokeStyle = C.casingArt; ctx.lineWidth = 8.6; ctx.stroke(); ctx.strokeStyle = C.arterial; ctx.lineWidth = 6.6; ctx.stroke();
-  if (lod >= 1) { ctx.strokeStyle = 'rgba(205,170,90,0.55)'; ctx.lineWidth = Math.max(0.45, px(0.9)); ctx.setLineDash([4, 5]); ctx.stroke(); ctx.setLineDash([]); }
-  roadPath('highway'); ctx.strokeStyle = C.casingHwy; ctx.lineWidth = 13; ctx.stroke(); ctx.strokeStyle = C.highway; ctx.lineWidth = 10.6; ctx.stroke();
-  if (lod >= 1) { ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = Math.max(0.4, px(0.9)); ctx.setLineDash([5, 6]); ctx.stroke(); ctx.setLineDash([]); }
-  roadPath('bridge'); ctx.strokeStyle = '#6f6a62'; ctx.lineWidth = 11.5; ctx.stroke(); ctx.strokeStyle = '#a9a39a'; ctx.lineWidth = 9.4; ctx.stroke(); ctx.strokeStyle = C.bridge; ctx.lineWidth = 7; ctx.stroke();
+  roadPath('arterial'); ctx.strokeStyle = C.casingArt; ctx.lineWidth = 9.4; ctx.stroke(); ctx.strokeStyle = 'rgba(60,64,70,0.6)'; ctx.lineWidth = 7.1; ctx.stroke(); ctx.strokeStyle = C.arterial; ctx.lineWidth = 6.6; ctx.stroke();
+  if (lod >= 1) {
+    // double yellow centre line, dashed white lanes either side
+    ctx.strokeStyle = 'rgba(240,196,64,0.9)'; ctx.lineWidth = Math.max(0.3, px(0.7)); ctx.stroke();
+    if (lod >= 2) { ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 0.28; ctx.setLineDash([2.4, 3.2]); ctx.translate(0, 1.6); ctx.stroke(); ctx.translate(0, -3.2); ctx.stroke(); ctx.restore(); ctx.setLineDash([]); }
+  }
+  roadPath('highway'); ctx.strokeStyle = C.casingHwy; ctx.lineWidth = 14; ctx.stroke(); ctx.strokeStyle = 'rgba(50,54,60,0.7)'; ctx.lineWidth = 11.3; ctx.stroke(); ctx.strokeStyle = C.highway; ctx.lineWidth = 10.6; ctx.stroke();
+  if (lod >= 1) {
+    ctx.strokeStyle = 'rgba(240,196,64,0.85)'; ctx.lineWidth = Math.max(0.35, px(0.8)); ctx.stroke();
+    ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = Math.max(0.3, px(0.6)); ctx.setLineDash([3.5, 4.5]); ctx.translate(0, 2.7); ctx.stroke(); ctx.translate(0, -5.4); ctx.stroke(); ctx.restore(); ctx.setLineDash([]);
+  }
+  roadPath('bridge'); ctx.strokeStyle = '#6f6a62'; ctx.lineWidth = 11.5; ctx.stroke(); ctx.strokeStyle = '#b4aea4'; ctx.lineWidth = 9.4; ctx.stroke(); ctx.strokeStyle = C.bridge; ctx.lineWidth = 7; ctx.stroke();
+  if (lod >= 1) { ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = Math.max(0.3, px(0.6)); ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]); }
+  // zebra crossings where busy streets meet (close-up only)
+  if (lod >= 2) {
+    ctx.fillStyle = 'rgba(245,245,240,0.85)';
+    for (const nd of city.nodes) {
+      if (!visible(view, nd.x, nd.y, 14)) continue;
+      const es = city.adj[nd.id].map((eid) => city.edges[eid]);
+      if (es.length < 3 || !es.some((e) => e.cls === 'arterial')) continue;
+      for (const e of es) {
+        if (e.cls === 'highway' || e.cls === 'bridge') continue;
+        const o = city.nodes[e.a === nd.id ? e.b : e.a];
+        const dx = o.x - nd.x, dy = o.y - nd.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
+        const half = (e.cls === 'arterial' ? 3.3 : 2) - 0.4, cx = nd.x + ux * 6.2, cy = nd.y + uy * 6.2;
+        for (let k = -half; k <= half; k += 0.95) ctx.fillRect(cx + -uy * k - 0.25 - ux * 0.9, cy + ux * k - 0.25 - uy * 0.9, Math.abs(ux) > 0.5 ? 1.8 : 0.5, Math.abs(ux) > 0.5 ? 0.5 : 1.8);
+      }
+    }
+  }
 }
 
 export function drawNightLights(ctx: CanvasRenderingContext2D, view: View | null, opts: { windows?: boolean; tilt?: number } = {}) {
@@ -475,6 +502,11 @@ export function drawBuildings3D(ctx: CanvasRenderingContext2D, view: View | null
   const k = LIFT * tilt;
   const px = (n: number) => n / scale;
   const lit = night > 0.25;
+  // contact shading where walls meet the ground
+  ctx.strokeStyle = nt('rgba(20,24,30,0.2)'); ctx.lineWidth = 2.4; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  for (const l of sortedLots) { if (l.style === 'tank' || !visible(view, l.cx, l.cy, l.r + 4)) continue; poly(ctx, l.pts); }
+  ctx.stroke();
   for (const l of sortedLots) {
     const rise = l.h * k;
     if (!visible(view, l.cx, l.cy - rise, l.r + rise + 4)) continue;
@@ -606,7 +638,12 @@ export function drawModels(ctx: CanvasRenderingContext2D, view: View | null, til
         shadow(34, 20, 10);
         const t = box(x, y, 36, 20, 0, 9, '#c9c4b8', '#b1aa9c');
         const c = centroid(t);
-        ctx.fillStyle = nt('#d8b25a'); ctx.beginPath(); ctx.ellipse(c.x, c.y, 7, 4.5, 0, 0, Math.PI); ctx.ellipse(c.x, c.y, 7, 7 * k + 2, 0, Math.PI, Math.PI * 2); ctx.fill();
+        { const dh = 4 * k + 2;
+          ctx.fillStyle = nt('#b9a98a'); ctx.fillRect(c.x - 5.2, c.y - 1.2 * k - 0.5, 10.4, 1.2 * k + 0.5);
+          const dg = ctx.createLinearGradient(c.x - 5, c.y - dh, c.x + 5, c.y);
+          dg.addColorStop(0, nt('#f4dc96')); dg.addColorStop(0.55, nt('#d4ab52')); dg.addColorStop(1, nt('#9c7a34'));
+          ctx.fillStyle = dg; ctx.beginPath(); ctx.ellipse(c.x, c.y - 1.2 * k, 5, 3, 0, 0, Math.PI); ctx.ellipse(c.x, c.y - 1.2 * k, 5, dh, 0, Math.PI, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = nt('#7a5f2a'); ctx.fillRect(c.x - 0.4, c.y - 1.2 * k - dh - 2.2, 0.8, 2.4); }
         ctx.fillStyle = nt('rgba(255,255,255,0.35)'); for (let i = -3; i <= 3; i++) ctx.fillRect(x + i * 4.5, y + 10 - 0.5, 1, -7 * k);
         break;
       }
