@@ -3925,7 +3925,7 @@ export class GameEngine {
       else if (def.kind === 'mutual') { const cov = matchCoverage(inc.requires, inc.assignedUnits.map((x) => st.units[x]).filter(Boolean)); recommended = cov.missing.some((r) => r.cap === def.cap || (def.cap === 'transport' && r.cap === 'bls')); if (inc.mutualAid >= 2) { ok = false; reason = 'Mutual aid limit reached for this incident'; } }
       else if (id === 'coroner') { ok = inc.casualties > 0; if (!ok) reason = 'No fatalities at this incident'; else recommended = true; }
       else if (id === 'publicworks') { ok = inc.blockedEdge !== null || !!def.templates?.includes(inc.templateId); if (!ok) reason = 'No road to clear here'; else recommended = recommended || inc.blockedEdge !== null; }
-      else { ok = !!def.templates?.includes(inc.templateId); if (!ok) reason = 'Not the right specialists for this incident'; }
+      else { ok = !!def.templates?.includes(inc.templateId); if (!ok) reason = 'Not the right specialists for this incident'; else recommended = true; }
     }
     if (status !== 'none') { ok = false; reason = status === 'here' ? 'On scene' : 'Already requested'; }
     return { ok, reason, recommended: recommended && status === 'none', asked: asked && status === 'none', status, eta };

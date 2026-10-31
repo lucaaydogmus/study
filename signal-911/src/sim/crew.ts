@@ -189,7 +189,7 @@ export function talkToUnit(e: GameEngine, unitId: string, input: { intent?: Crew
     default:
       reply = ['Say again, dispatch? You broke up.', "Dispatch, you're unreadable, say again?", 'Repeat your last, dispatch.'][pick(3)];
   }
-  reply = flavour(P, reply, pick);
+  reply = flavour(P, reply, pick).replace(/^(10-4\. |Copy\. )([a-z])/, (_m, a: string, b: string) => a + b.toUpperCase());
   e.radio(u.spoken, reply, 'unit', u.id, inc?.id);
   // crews ask back sometimes, especially the less experienced
   if (askBack && live && (P === 'rookie' || pick(3) === 0)) e.crewAsks(u.id);

@@ -83,8 +83,79 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 | `S` | Status check on the most overdue officer | Shift + drag | Box-select several units, then right-click an incident to send them all |
 | `Tab` (in the call box) | Say the top suggested reply | `C` | Count compressions with a caller doing CPR |
 | Listen (call controls) | Listen to the background for where the caller is | Calm / Jobs tabs | Keep the caller together and give them something useful to do |
+| `Q` | Resources panel (tow, utilities, specialists, federal team, Guard EOD, mutual aid) | Hold `V` | Push-to-talk to the caller or the selected crew |
 
 ## What is in the game
+
+### Remaster 10: a cinematic 3D city, crews you can talk to, and a city that works
+
+**A real 3D city**
+- The map is now rendered in 3D with three.js: every street with pavements, lane markings and zebra crossings,
+  raised bridges with railings and piers, river quays, the bay and a beach, and every building with walls, roofs,
+  parapets, rooftop plant, solar arrays, roof gardens and chimneys. Landmarks (hospitals, City Hall's dome, the
+  cathedral, the clock tower, terminal, stadium with floodlights, cranes, ships, trains) are proper models, and every
+  station is a building with apparatus bays.
+- A city shader draws window grids, glass curtain walls, shopfronts with awnings and doors, roller doors on
+  warehouses, and lit windows after dark; asphalt, grass and paving are textured; snow settles on roofs and roads
+  shine in the rain.
+- Sun and moon lighting with soft shadows that track the time of day, bloom, ACES tone mapping and colour grading.
+- **Every vehicle is a 3D model at true scale** (one world unit is 4 m): patrol cars, SUVs, vans, motorcycles,
+  bikes, officers on foot, engines with lockers, ladders with the aerial on top, rescue trucks, ambulances, the
+  helicopter with spinning rotors, and every specialist truck. Light bars flash and throw coloured light on the road.
+  Moving vehicles keep to their lane; crews at a scene park neatly along the kerb, nose to the junction.
+- Civilian traffic drives in proper lanes (two per side on main roads, three on the expressway), cars park along
+  the kerb and in car parks, street lights glow at night, fires burn with flames and rising smoke (and light up the
+  street), and crashes leave wrecked cars in the road.
+- Zoom from the whole city right down to street level (the camera tilts as you zoom). The 2D overlay (pins,
+  routes, labels, sectors) sits exactly on top, so everything stays clickable.
+- Settings → Graphics: *Cinematic 3D* or *Classic 2D*, and High / Medium / Low quality.
+
+**Talk to your crews**
+- The Radio tab is now a radio console: a channel per unit. Talk to a crew with quick chips (Status, ETA,
+  What do you see?, Need anything?, Expedite, Code 2, Use caution, Caller update, Suspect info, Patient condition,
+  Stage, Return, Good work), type anything, or hold **V** and speak.
+- Crews answer from what they can actually see: progress on scene, the patient's condition, what they still need.
+  Expedite and Code 2 change how they drive, "use caution" makes fire and EMS stage until police clear the scene,
+  thanking them lifts morale, and they ask you follow-up questions back.
+- Each crew has a personality from who is riding: veterans keep it short, rookies ask a lot, some are easy-going,
+  some go by the book with 10-codes.
+- Fire and EMS on a busy road ask for police traffic control; crews chat between themselves, from quarters, and
+  across services.
+
+**Calls**
+- **Real voices**: callers and crews speak their lines aloud with your browser's voices: a different voice, pitch
+  and pace for each caller, faster and higher when they panic.
+- **Push-to-talk**: hold V (or the mic button) and talk to the caller or a crew; your words appear and are sent.
+- **Protocol card** on every call: case entry, then the key questions for that kind of emergency, ticking off as
+  you ask.
+- **Bad mobile lines**: words drop out and whatever they said is lost until you ask them to say it again.
+
+**The resources panel (Q)**
+- One panel for everything outside your fleet: tow trucks, power and gas companies, animal control, public works,
+  the transit authority, the Red Cross, the medical examiner, a K-9 unit, crisis negotiators, the regional hazmat
+  team, an urban search and rescue task force, the Coast Guard, the federal tactical team, National Guard EOD and
+  mutual aid by capability. It shows what helps this incident, what the crews asked for, prices and ETAs, and what
+  is already on the way.
+- Specialist teams drive in from the city limits with their own models and work their own scenes much faster.
+  City services clear blocked roads, stop the trains and shelter families who lost their homes.
+
+**Stations and hospitals**
+- Vehicles wear down with hard driving. Worn ones are slower and break down more. Send them to the workshop
+  mid-shift (right-click a unit) or service the fleet between shifts; wear carries over in the career.
+- Arrests mean a trip to the nearest police station for booking (a prisoner van saves your patrol cars the trip).
+- People walk into fire and EMS stations needing help, and the crew on duty takes it.
+- Hospitals call 911 themselves: urgent transfers for specialist care, blood and organ runs that need a police
+  escort, violent patients in the ER.
+- Ask a hospital on diversion to take one more patient from the bed board.
+- Mass-casualty incidents ask you how patients are distributed (spread out, trauma centre or nearest), with real
+  effects on ER load.
+
+**More to happen, more to hear**
+- New calls: a child in a hot car, a road collapse with a car in a sinkhole, a drone over the runway, an overdose, an
+  armed robbery at a petrol station, a scaffolding collapse, road rage, pupils sick from fumes at a school.
+- Sound that follows the camera: traffic, water, birds by day and crickets at night, crowds, crackling fires, rain
+  and thunder. Plus station alert tones when a crew turns out, fire engine air horns, hospital pagers and the
+  custody door at booking.
 
 ### Remaster 9: big days, specialists and the garage
 
@@ -391,7 +462,8 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 
 ```
 src/sim/           engine, city generator, routing, dialogue, scoring, profile/economy, fleet, garage, scenarios, content/
-src/ui/            React screens: map (canvas), call console, panels, hub, report, settings
+src/ui/            React screens: map (canvas overlay), call console, radio console, resources panel, panels, hub, report, settings
+src/ui/world3d/    the three.js city: geometry builder, city shader, lighting and post-processing, vehicle models
 src/audio/         procedural audio manager
 src/persistence.ts IndexedDB / memory key-value store + SaveManager (versioned, migrations)
 src/store.ts       zustand app store (screens, profile, live engine)
