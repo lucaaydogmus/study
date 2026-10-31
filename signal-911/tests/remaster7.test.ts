@@ -47,7 +47,7 @@ describe('remaster 7: interactive calls', () => {
     call.mood.panic = 5; call.mood.base = 5;
     waitQuestion(e, call);
     expect(call.question).toBeTruthy();
-    run(e, 30);
+    run(e, 40); // callers wait longer now that answers are typed
     expect(call.question).toBeNull();
     expect(e.state.stats.harmfulAdvice).toBe(0);
   });
@@ -76,7 +76,7 @@ describe('remaster 7: interactive calls', () => {
     const cop = Object.values(e.state.units).find((u) => u.capabilities.includes('patrol') && !isAir(u))!;
     e.dispatch(cop.id, inc.id);
     run(e, 300, () => cop.status === 'ON_SCENE');
-    call.questionsAsked = ['eta'];
+    call.questionsAsked = ['eta']; call.question = null as typeof call.question;
     waitQuestion(e, call);
     expect(call.question?.kind).toBe('hangup');
     e.answerCaller(call.id, 'go');

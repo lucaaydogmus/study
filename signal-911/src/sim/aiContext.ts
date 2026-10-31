@@ -25,6 +25,17 @@ export function buildAiContext(engine: GameEngine, callId: string, lineIds: numb
   if (call.promises.length) events.push('the dispatcher promised that help is coming');
   if (inc.stage > 0) events.push('the situation has got worse since the call began');
   if (inc.aid) events.push(`the caller is doing what the dispatcher instructed: ${inc.aid.kind}`);
+  // who this caller really is: keep the AI consistent with the game's mechanics
+  const tp = inc.thirdParty;
+  if (tp && !tp.near) events.push(tp.kind === 'child' ? `the caller is a young child calling about ${tp.rel}, who is lying on the floor; the child is not next to them and cannot say if they are breathing` : `the caller is a neighbour outside a locked door and cannot see the patient at all${tp.window ? ' (they saw them through a window lying still)' : ''}`);
+  if (tp?.near) events.push(tp.handedAt !== undefined ? 'the parent has taken the phone from the child and is talking now' : 'the caller is now right beside the patient');
+  if (call.text) events.push('this is a TEXT-TO-911 conversation: the caller cannot speak (hiding or deaf) and is typing short text messages — no spoken sounds, keep it to a terse text');
+  if (inc.regular) events.push(inc.regular.real ? 'this caller rings 911 a lot about nothing and knows it — but THIS time it is real and they are desperate to be believed' : 'this caller rings 911 a lot about things that are not emergencies; they are chatty and a little sheepish');
+  if (inc.mover?.caller && !inc.mover.stopped) events.push('the caller is driving with a sick passenger and keeps moving; they only know where they are from signs and landmarks they pass');
+  if (inc.mover?.caller && inc.mover.stopped) events.push('the caller has pulled over and stopped the car');
+  if (inc.hoax) events.push('the caller is a calm, cold-sounding person who claims a hostage situation; they stay evasive, will not give a callback number or their name, and never add details beyond mustSay');
+  if (call.relay) events.push(call.relay === 'acn' ? 'the caller is a professional operator at a car crash-notification service relaying automatic data; they are not at the scene and only know the vehicle data' : 'the caller is a professional operator at an alarm monitoring company; they are not on site and only know the panel signal');
+  if (call.question) events.push(`the caller just asked the dispatcher: "${call.question.text}" and is waiting for an answer`);
   const freeForm = intent === 'unknown';
   const p = call.profile;
   return {

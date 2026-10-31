@@ -208,7 +208,7 @@ describe('remaster 8: keeping the caller together', () => {
     run(e, 120, () => (e.state.unitQueries ?? []).some((q) => q.incId === inc.id));
     h.hrand = orig;
     const q = e.state.unitQueries!.find((x) => x.incId === inc.id)!;
-    run(e, 32);
+    run(e, 44); // answers are typed on the radio now, so crews wait a little longer
     expect(q.status).toBe('expired');
     expect(e.state.stats.unitQueriesMissed).toBe(1);
   });

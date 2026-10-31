@@ -58,7 +58,7 @@ export function Section({ title, children, right, collapsible = true, defaultOpe
   const read = () => { try { const v = key ? sessionStorage.getItem(key) : null; return v === null ? defaultOpen : v === '1'; } catch { return defaultOpen; } };
   const [open, setOpen] = useOpenState(read, key);
   return (
-    <section className="section">
+    <section className="section" id={id ? `sec-${id}` : undefined}>
       <header onClick={() => collapsible && setOpen(!open)} className={collapsible ? 'clickable' : ''}>
         {collapsible && <Icon n={open ? 'chevD' : 'chevR'} size={12} />}<h3>{title}</h3><div className="grow" />{right}
       </header>

@@ -191,3 +191,64 @@ describe('remaster 12: more of the job', () => {
     expect(a[0].items.some((i) => /breathing/.test(i.text) && i.ok)).toBe(true);
   });
 });
+
+import { matchOption, pendingAsks, replyOnRadio } from '../src/sim/replies';
+describe('remaster 12: answering in your own words', () => {
+  it('reads yes, no and which-one from free text', () => {
+    const opts = [{ id: 'stay', label: 'No — stay outside', say: 'No. Do not go back inside.' }, { id: 'go', label: 'Go in quickly', say: "If you're quick, go in and get them." }];
+    expect(matchOption("no, don't go back in there", opts)).toBe('stay');
+    expect(matchOption('stay outside and wait for the firefighters', opts)).toBe('stay');
+    expect(matchOption('yes go quickly, stay low', opts)).toBe('go');
+    expect(matchOption('what colour is the car', opts)).toBeNull();
+    const brk = [{ id: 'approve', label: 'Approve the break', hint: '' }, { id: 'later', label: 'Not now — ask me later', hint: '' }, { id: 'deny', label: 'Deny it', hint: '' }];
+    expect(matchOption('approved, enjoy your meal', brk)).toBe('approve');
+    expect(matchOption('not now, ask me later', brk)).toBe('later');
+  });
+  it('a caller question is answered by what you type', () => {
+    const e = live(makeEngine(quiet));
+    const inc = e.spawnIncident('kitchen_fire', 'westres', { accuracy: 'exact', archetype: 'worried_neighbor' });
+    const call = e.state.calls[inc.callId!];
+    e.answerCall(call.id); run(e, 3);
+    call.question = { kind: 'goback', text: 'Should I go back in for the dog?', at: e.state.time, expiresAt: e.state.time + 30, lineIdx: 0, options: [{ id: 'stay', label: 'No — stay outside', say: 'No, stay out.', reply: 'Okay. Okay, I will.', effect: 'calm' }, { id: 'go', label: 'Go in quickly', say: 'Go, quickly.', reply: 'Going!', effect: 'calm' }], timeout: { effect: 'calm', line: '...' } };
+    e.ask(call.id, { text: "No, please don't go back inside — the firefighters will get him" });
+    expect(call.question).toBeNull();
+    expect(call.transcript.some((l) => l.who === 'DISPATCHER' && /don't go back inside/.test(l.text))).toBe(true);
+  });
+  it('crews ask on the radio and you answer in text on their channel', () => {
+    const e = live(makeEngine(quiet, { rank: 5 }));
+    const u = Object.values(e.state.units).find((x) => x.service === 'fire' && x.status === 'AVAILABLE')!;
+    for (const p of e.crewOf(u)) p.fatigue = 80;
+    e.state.nextBreakAt = 0;
+    run(e, 2);
+    const ask = pendingAsks(e).find((a) => a.unitId === u.id)!;
+    expect(ask).toBeTruthy();
+    expect(replyOnRadio(e, 'not now, ask me later', { unitId: u.id }).handled).toBe(true);
+    expect(e.state.decisions!.find((d) => d.id === ask.id)!.chosen).toBe('later');
+  });
+});
+
+import { buildAiContext } from '../src/sim/aiContext';
+describe('remaster 12: AI callers keep up with the new mechanics', () => {
+  it('the AI is told who the caller really is, and that a question is waiting', () => {
+    let e!: GameEngine, inc!: Incident;
+    for (let k = 0; k < 40; k++) { e = live(makeEngine({ ...quiet, seed: 300 + k })); inc = e.spawnIncident('fall_elderly', 'westres', { archetype: 'child_caller', accuracy: 'exact' }); if (inc.thirdParty) break; }
+    const call = e.state.calls[inc.callId!];
+    e.answerCall(call.id); run(e, 3);
+    call.question = { kind: 'x', text: 'Is Grandad going to be okay?', at: e.state.time, expiresAt: e.state.time + 30, lineIdx: 0, options: [], timeout: { effect: 'calm', line: '' } };
+    const ctx = buildAiContext(e, call.id, [], 'unknown', 'hello');
+    expect(ctx.events.some((x) => /young child/.test(x))).toBe(true);
+    expect(ctx.events.some((x) => /waiting for an answer/.test(x))).toBe(true);
+  });
+  it('your own words to a caller’s question go to the AI to voice their reaction', () => {
+    const e = live(makeEngine(quiet));
+    e.state.flags.ai = true;
+    const requests: string[] = [];
+    e.on((ev) => { if (ev.type === 'ai_request') requests.push(ev.intent); });
+    const inc = e.spawnIncident('kitchen_fire', 'westres', { accuracy: 'exact', archetype: 'worried_neighbor' });
+    const call = e.state.calls[inc.callId!];
+    e.answerCall(call.id); run(e, 1);
+    call.question = { kind: 'goback', text: 'Should I go back in?', at: e.state.time, expiresAt: e.state.time + 30, lineIdx: 0, options: [{ id: 'stay', label: 'No — stay outside', say: 'No.', reply: 'Okay, I will stay out.', effect: 'calm' }, { id: 'go', label: 'Go in quickly', say: 'Go.', reply: 'Going in!', effect: 'calm' }], timeout: { effect: 'calm', line: '' } };
+    e.ask(call.id, { text: 'No, stay right where you are, outside' });
+    expect(requests.some((r) => /answered their question: No/.test(r))).toBe(true);
+  });
+});

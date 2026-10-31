@@ -1,6 +1,8 @@
 // Browser side of the AI callers. Talks only to the local server (/api/ai/*), never to Anthropic directly.
 import type { GameEngine, EngineEvent } from '../sim/engine';
 import { buildAiContext } from '../sim/aiContext';
+import { personalityOf, speakerOf } from '../sim/crew';
+import { addressOf } from '../sim/city';
 
 export interface AiStatus {
   configured: boolean; mock: boolean; model: string; budgetUsd: number; estimatePerLine: number;
@@ -93,5 +95,31 @@ export class AiManager {
     } finally {
       if (this.inFlight.get(callId) === token) this.inFlight.delete(callId);
     }
+  }
+
+  /** what an answer means when plain keyword matching cannot tell ("best not, they're nearly there") */
+  async interpret(question: string, options: Array<{ id: string; label: string }>, reply: string): Promise<string | null> {
+    if (this.lines >= this.maxLinesPerShift) return null;
+    try { const r = await call<{ option: string | null }>('/api/ai/interpret', { question, options, reply }, 5000); this.lines++; return r.option; } catch { return null; }
+  }
+  /** a crew's radio answer, in their own voice: the facts and decisions stay the game's */
+  async voiceCrew(unitId: string, msgId: string, dispatcher: string): Promise<string | null> {
+    const eng = this.engine, st = eng.state;
+    const m = st.radio.find((x) => x.id === msgId), u = st.units[unitId];
+    if (!m || !u || this.lines >= this.maxLinesPerShift) return null;
+    const inc = u.assignedIncidentId ? st.incidents[u.assignedIncidentId] : undefined;
+    const ctx = {
+      unit: { callsign: u.callsign, type: u.typeLabel, service: u.service, status: u.status.replace(/_/g, ' ').toLowerCase(), note: u.note ?? null },
+      speaker: speakerOf(eng, u), personality: personalityOf(eng, u),
+      incident: inc ? { what: inc.label, where: addressOf(eng.city, inc.reportedNode ?? inc.nodeId), crewsOnScene: eng.onScene(inc).length } : null,
+      history: st.radio.filter((x) => x.unitId === u.id && x.id !== msgId).slice(-6).map((x) => `${x.from === 'DISPATCH' ? 'Dispatch' : u.callsign}: ${x.text}`),
+      dispatcher, mustSay: [m.text],
+    };
+    try {
+      const r = await call<{ reply: string }>('/api/ai/crew', ctx, 7000);
+      this.lines++;
+      if (r.reply && st.radio.includes(m)) m.text = r.reply.replace(/\s+/g, ' ').trim();
+      return m.text;
+    } catch { return null; }
   }
 }

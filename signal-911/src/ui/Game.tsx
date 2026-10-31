@@ -20,6 +20,7 @@ import { GRADE_COLOR } from './common';
 import { RecordsDock, RecordsTerminal, threatKnown } from './Ops';
 import { BoloDock, DecisionCards, DirectiveCard, MultiBar, NewsTicker, StatusDock } from './Field';
 import { CctvConsole } from './Cctv';
+import { mostUrgent, nextAction } from './flow';
 import { cadDown } from '../sim/ops';
 import { rollCall } from '../sim/radioops';
 import { MapMenu, handleDrop, type MenuState } from './MapMenu';
@@ -87,7 +88,7 @@ export function GameScreen() {
 
   // answering a call brings the console forward
   const activeId = st.activeCallId;
-  useEffect(() => { if (activeId) { setTab('call'); setSizes((s) => (s.b < 250 ? { ...s, b: 280 } : s)); setCollapsed((c) => ({ ...c, b: false })); } }, [activeId]);
+  useEffect(() => { if (activeId) { setTab('call'); setSizes((s) => { const want = window.innerHeight >= 820 ? 340 : 290; return s.b < want ? { ...s, b: want } : s; }); setCollapsed((c) => ({ ...c, b: false })); } }, [activeId]);
 
   // ── keyboard shortcuts ──
   useEffect(() => {
@@ -105,6 +106,12 @@ export function GameScreen() {
       else if (e.key === 'Escape') { if (menu) setMenu(null); else if (multi.length) setMulti([]); else if (target) setTarget(null); else if (s.selected.kind) { eng.select(null, null); bump(); } else useApp.getState().setPauseMenu(true); }
       else if (e.key === '?' ) setShowHelp(true);
       else if (e.key === 't' || e.key === 'T') setTerminal((v) => !v);
+      else if (e.key === 'n' || e.key === 'N') {
+        // jump to whatever needs you most: a ringing call, or the incident furthest behind
+        const m = mostUrgent(eng);
+        if (m?.kind === 'call') { eng.answerCall(m.id); bump(); }
+        else if (m) { eng.select('incident', m.id); const inc = s.incidents[m.id]; if (inc.reportedNode !== null) { const n = eng.city.nodes[inc.reportedNode]; doFocus(n.x, n.y, 2); } bump(); }
+      }
       else if (e.key === 'k' || e.key === 'K') { const ap = useApp.getState(); ap.setCctvOpen(!ap.cctvOpen); audio.click(); }
       else if (e.key === 's' || e.key === 'S') { const due = eng.overdueChecks(); if (due.length) { eng.statusCheck(due[0].id); audio.radioBlip(); bump(); } }
       else if (e.key === 'f' || e.key === 'F') {
@@ -209,7 +216,7 @@ export function GameScreen() {
           <div className="dockrow"><RecordsDock engine={engine} onOpen={() => setTerminal(true)} /><StatusDock engine={engine} /></div>
           <MultiBar engine={engine} ids={multi} onClear={() => setMulti([])} />
           <BoloDock engine={engine} />
-          <DecisionCards engine={engine} />
+          <DecisionCards engine={engine} onOpen={(uid, outside) => { setTab('radio'); setCollapsed((c) => ({ ...c, b: false })); if (outside) useApp.getState().openResources(null); else if (uid) { engine.select('unit', uid); bump(); } }} />
           <Cinematics engine={engine} />
           <NewsTicker engine={engine} />
           {menu && <MapMenu engine={engine} menu={menu} onClose={closeMenu} focus={doFocus} startReposition={(id) => setTarget({ kind: 'repos', id })} openTab={(t) => { setTab(t as BottomTab); setCollapsed((c) => ({ ...c, b: false })); }} />}
@@ -312,7 +319,7 @@ function LeftSidebar({ engine, doFocus }: { engine: GameEngine; doFocus: (x: num
           return (
             <button key={i.id} className={`inc ${st.selected.id === i.id ? 'sel' : ''} sev${i.severity}`} onClick={() => { engine.select('incident', i.id); if (i.reportedNode !== null) { const n = engine.city.nodes[i.reportedNode]; doFocus(n.x, n.y, 1.6); } bump(); }}>
               <span className="inc-ic"><Icon n={CAT_ICON[i.category]} size={14} /></span>
-              <span className="inc-main"><b>{i.label}</b><span className="small muted">{loc ?? 'Location unknown'}</span></span>
+              <span className="inc-main"><b>{i.label}</b><span className="small inc-next">{(() => { const a = nextAction(engine, i); return <><i className={`na-${a.tone}`}>{a.short}</i>{loc ? ` · ${loc}` : ''}</>; })()}</span></span>
               <span className="inc-side">{i.deadlineAt != null && i.deadlineMet == null ? <Badge tone="red">⏱ {fmtTime(i.deadlineAt - st.time)}</Badge> : i.lifeThreat && i.careAt == null && i.survival !== undefined && i.survival < 70 && threatKnown(i) ? <Badge tone={i.survival < 35 ? 'red' : 'amber'}>♥ {Math.round(i.survival)}%</Badge> : <StatusBadge s={i.status} />}<span className="small mono muted">{i.assignedUnits.length ? `${i.assignedUnits.length} unit${i.assignedUnits.length > 1 ? 's' : ''}` : 'no units'} · {fmtTime(st.time - i.createdAt)}</span></span>
             </button>
           );
@@ -340,7 +347,7 @@ function Legend({ layer }: { layer: LayerId }) {
 }
 
 export function HelpModal({ onClose }: { onClose: () => void }) {
-  const rows: Array<[string, string]> = [['Space', 'Pause / resume'], ['1 / 2 / 3', 'Set game speed'], ['A', 'Answer the next ringing call'], ['H', 'Hold / resume a call'], ['E', 'End the active call'], ['D', 'Open the active call’s incident'], ['T', 'Records terminal (officer ID / warrant / plate checks)'], ['R', 'Relay the helicopter’s position to ground units'], ['M', 'Cycle map layers'], ['Esc', 'Cancel / deselect / menu'], ['Enter', 'Dispatch the response plan for the selected incident'], ['F', 'Fly the camera to the selection'], ['B', 'Broadcast a BOLO for the selected incident'], ['Drag a pin', 'Move an incident, or drop it on another to link duplicates'], ['S', 'Status check on the most overdue officer'], ['Shift + drag', 'Box-select several units, then right-click an incident'], ['Right-click', 'Quick-order menu (incidents, units, stations, hospitals, streets)'], ['Drag unit → incident', 'Dispatch it (drag a station to send its next free unit)'], ['Scroll / drag', 'Zoom / pan the map'], ['?', 'This help']];
+  const rows: Array<[string, string]> = [['Space', 'Pause / resume'], ['1 / 2 / 3', 'Set game speed'], ['A', 'Answer the next ringing call'], ['H', 'Hold / resume a call'], ['E', 'End the active call'], ['D', 'Open the active call’s incident'], ['T', 'Records terminal (officer ID / warrant / plate checks)'], ['R', 'Relay the helicopter’s position to ground units'], ['M', 'Cycle map layers'], ['Esc', 'Cancel / deselect / menu'], ['Enter', 'Dispatch the response plan for the selected incident'], ['F', 'Fly the camera to the selection'], ['B', 'Broadcast a BOLO for the selected incident'], ['Drag a pin', 'Move an incident, or drop it on another to link duplicates'], ['S', 'Status check on the most overdue officer'], ['Shift + drag', 'Box-select several units, then right-click an incident'], ['Right-click', 'Quick-order menu (incidents, units, stations, hospitals, streets)'], ['Drag unit → incident', 'Dispatch it (drag a station to send its next free unit)'], ['Scroll / drag', 'Zoom / pan the map'], ['N', 'Jump to whatever needs you most (answer the oldest call, or the incident furthest behind)'], ['K', 'CCTV terminal — pick a camera, ← → to pan'], ['Q', 'Outside help on the radio (tow, utilities, specialists, mutual aid)'], ['Hold V', 'Push-to-talk to the caller or the selected crew'], ['?', 'This help']];
   return (
     <Modal title="Controls & shortcuts" onClose={onClose}>
       <table className="tbl"><tbody>{rows.map(([k, v]) => <tr key={k}><td><kbd>{k}</kbd></td><td>{v}</td></tr>)}</tbody></table>

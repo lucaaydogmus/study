@@ -10,6 +10,8 @@ import { CREW_CHIPS, personalityOf, speakerOf, talkToUnit, type CrewIntent } fro
 import { RESOURCES, RESOURCE_GROUPS, type GameEngine } from '../sim/engine';
 import { SERVICE_META, isAir } from '../sim/fleet';
 import { declineNeed, isOutside, parseRequest, pendingNeeds, radioRequest } from '../sim/radioreq';
+import { askFor, matchOption, pendingAsks, replyOnRadio } from '../sim/replies';
+import { getAi } from '../store';
 import { ackEmergency, emergencyOn, patchIncident, rollCall, sayAgainRadio, setEmergencyTraffic, talkgroupOf, TALKGROUPS, type Talkgroup } from '../sim/radioops';
 import type { RadioMsg, Unit } from '../sim/types';
 import { useApp } from '../store';
@@ -41,7 +43,7 @@ export function RadioConsole({ engine }: { engine: GameEngine }) {
   useEffect(() => { const el = ref.current; if (el) el.scrollTop = el.scrollHeight; }, [msgs.length, chan]);
   const needs = pendingNeeds(engine).filter((n) => chan === 'all' || chan === 'outside' || (unit ? n.unitId === unit.id : true));
   const allNeeds = pendingNeeds(engine);
-  const queries = (st.unitQueries ?? []).filter((q) => (q.status === 'open' || q.status === 'standby') && (!unit || q.unitId === unit.id));
+  const asks = pendingAsks(engine).filter((a) => (unit ? a.unitId === unit.id : chan === 'outside' ? st.decisions?.find((d) => d.id === a.id)?.kind === 'aidOut' : true));
   const ems = (st.radioCtl?.emergencies ?? []).filter((x) => !x.done);
   const patchable = Object.values(st.incidents).filter((i) => i.patchAsked && !i.patched && !['RESOLVED', 'CLOSED'].includes(i.status));
   const unreadTg = (t: Talkgroup) => st.radio.slice(-10).some((m) => st.time - m.t < 15 && (t === 'outside' ? isOutside(m) : talkgroupOf(st, m) === t));
@@ -52,17 +54,45 @@ export function RadioConsole({ engine }: { engine: GameEngine }) {
     const sp = engine.crewOf(u)[0];
     window.setTimeout(() => speakLine(line, { sex: sp ? sexOfName(sp.name) : 'M', age: 38, panic: u.status === 'ON_SCENE' ? 45 : 30, radio: true, seed: u.id.length * 7 + u.callsign.charCodeAt(u.callsign.length - 1) }, `radio:${u.id}`), 380);
   };
+  /** the crew answers in their own voice when AI is on, then over the speaker */
+  const voiceAndSpeak = (unitId: string, msgId: string, said: string) => {
+    const u = st.units[unitId]; if (!u) return;
+    const ai = getAi();
+    if (!ai) { const m = st.radio.find((x) => x.id === msgId); if (m) speak(u, m.text); return; }
+    void ai.voiceCrew(unitId, msgId, said).then((txt) => { const m = st.radio.find((x) => x.id === msgId); if (m) speak(u, txt ?? m.text); bump(); });
+  };
   const request = (incId: string, resId: string) => toast(radioRequest(engine, incId, resId), `${RESOURCES.find((r) => r.id === resId)?.name} requested on the outside line`);
   const send = (input: { intent?: CrewIntent; text?: string }) => {
     setText('');
+    // someone asked you something: what you transmit is your answer
+    if (input.text) {
+      const ctx = { unitId: unit?.id, channel: chan };
+      const before = st.radio.length;
+      const after = (r: { handled: boolean; reason?: string }) => {
+        if (!r.handled) return false;
+        audio.radioBlip(); if (r.reason) useApp.getState().showToast(r.reason, 'warn');
+        const last = st.radio.slice(before).reverse().find((m) => m.kind === 'unit' && m.unitId);
+        if (last) voiceAndSpeak(last.unitId!, last.id, input.text!);
+        bump(); return true;
+      };
+      const target = askFor(engine, input.text, ctx);
+      const d = target?.kind === 'decision' ? st.decisions?.find((x) => x.id === target.id) : undefined;
+      const ai = getAi();
+      // an answer the keywords cannot place: let the AI read what you meant before asking them to say again
+      if (d && ai && !matchOption(input.text, d.options)) { void ai.interpret(target!.text, d.options.map((o) => ({ id: o.id, label: o.label })), input.text).then((opt) => { after(replyOnRadio(engine, input.text!, ctx, opt ?? undefined)); }); return; }
+      if (after(replyOnRadio(engine, input.text, ctx))) return;
+    }
     // anything that sounds like a request goes out on the outside line
     const want = input.text ? parseRequest(input.text) : null;
     const target = unit?.assignedIncidentId ?? (chan === 'outside' || !unit ? (reqInc || (st.selected.kind === 'incident' ? st.selected.id : '')) : '');
     if (want && target) { engine.radio('DISPATCH', input.text!, 'dispatch', unit?.id, target); request(target, want); return; }
     if (!unit) { if (want) toast({ ok: false, reason: 'Pick the incident it is for' }); else toast({ ok: false, reason: 'Pick a unit to talk to — or ask for something by name: "tow", "K-9", "gas company"' }); return; }
+    const before = st.radio.length;
     const r = talkToUnit(engine, unit.id, input);
     audio.radioBlip();
-    if (r.ok && r.reply) speak(unit, r.reply);
+    const last = st.radio.slice(before).reverse().find((m) => m.unitId === unit.id && m.kind !== 'dispatch');
+    if (r.ok && last) voiceAndSpeak(unit.id, last.id, input.text ?? CREW_CHIPS.find((c) => c.intent === input.intent)?.label ?? '');
+    else if (r.ok && r.reply) speak(unit, r.reply);
     bump();
   };
   const tgBtn = (t: Talkgroup) => {
@@ -88,7 +118,7 @@ export function RadioConsole({ engine }: { engine: GameEngine }) {
               <Icon n={SERVICE_ICON[u.service]} size={11} /> <b>{u.callsign}</b>
               <span className={`rc-st ${u.status.toLowerCase()}`}>{u.missedTones ? 'no ack' : u.status === 'ON_SCENE' ? 'on scene' : u.status === 'EN_ROUTE' ? 'en route' : u.status.replace(/_/g, ' ').toLowerCase()}</span>
               {unread(u) && <i className="rc-dot" />}
-              {(st.unitQueries ?? []).some((q) => q.unitId === u.id && q.status === 'open') || allNeeds.some((n) => n.unitId === u.id) ? <i className="rc-ask">?</i> : null}
+              {pendingAsks(engine).some((a) => a.unitId === u.id) || allNeeds.some((n) => n.unitId === u.id) ? <i className="rc-ask">?</i> : null}
             </button>
           ))}
           {!units.length && <p className="muted small pad">{tg === 'outside' ? 'No outside units rolling.' : 'No units.'}</p>}
@@ -144,19 +174,14 @@ export function RadioConsole({ engine }: { engine: GameEngine }) {
             ))}
           </div>
         )}
-        {queries.length > 0 && (
+        {asks.length > 0 && (
           <div className="rc-queries">
-            {queries.map((q) => {
-              const opt = engine.queryOptions(q.id);
-              const u = st.units[q.unitId];
+            {asks.map((a) => {
+              const u = st.units[a.unitId];
               return (
-                <div className="rc-q" key={q.id}>
-                  <span><b>{u?.callsign}</b> asks: “{q.text}”</span>
-                  <div className="btnrow">
-                    <Btn size="sm" kind="primary" disabled={!opt.known} onClick={() => { engine.answerUnitQuery(q.id, 'relay'); audio.radioBlip(); bump(); }} title={opt.known ? `Relay: ${opt.known.value}` : 'You do not know yet — ask the caller'}>{opt.known ? `Relay: ${opt.known.label}` : 'Unknown yet'}</Btn>
-                    {opt.canDeny && <Btn size="sm" onClick={() => { engine.answerUnitQuery(q.id, 'deny'); bump(); }}>No / none</Btn>}
-                    {q.status === 'open' && <Btn size="sm" onClick={() => { engine.answerUnitQuery(q.id, 'standby'); bump(); }}>Stand by</Btn>}
-                  </div>
+                <div className="rc-q" key={a.id}>
+                  <span className="rask-led" /><span className="grow"><b>{st.decisions?.find((d) => d.id === a.id)?.kind === 'aidOut' ? 'Harlow County' : u?.callsign}</b> is waiting: “{a.text}” <span className="muted small">— answer below in your own words ({a.hints.slice(0, 3).map((h) => `“${h}”`).join(', ')}…)</span></span>
+                  <span className="mono small">{Math.ceil(Math.max(0, a.expiresAt - st.time))}s</span>
                 </div>
               );
             })}
@@ -167,7 +192,7 @@ export function RadioConsole({ engine }: { engine: GameEngine }) {
           {unit && <div className="rc-chips">{CREW_CHIPS.filter((c) => chipFits(c.intent, unit)).map((c) => <button key={c.intent} className="chip" onClick={() => send({ intent: c.intent })}>{c.label}</button>)}</div>}
           <form className="rc-input" onSubmit={(e) => { e.preventDefault(); if (text.trim()) send({ text: text.trim() }); }}>
             <MicButton onText={(t) => setText(t)} onFinal={(t) => send({ text: t })} title={unit ? `Hold to talk to ${unit.callsign} (or hold V)` : 'Hold to talk'} />
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder={unit ? `Talk to ${unit.callsign} — “what do you see?”, “use caution”, “I'll get a tow rolling”` : chan === 'outside' ? 'Ask for it by name: “tow truck”, “gas company”, “K-9”, “mutual aid ambulance”…' : 'Pick a crew to talk to — or ask for outside help by name'} aria-label="Radio message" />
+            <input value={text} onChange={(e) => setText(e.target.value)} placeholder={asks[0] ? `Answer ${st.units[asks[0].unitId]?.callsign ?? 'them'} in your own words — e.g. “${asks[0].hints[0]}”` : unit ? `Talk to ${unit.callsign} — “what do you see?”, “use caution”, “I'll get a tow rolling”` : chan === 'outside' ? 'Ask for it by name: “tow truck”, “gas company”, “K-9”, “mutual aid ambulance”…' : 'Pick a crew to talk to — or ask for outside help by name'} aria-label="Radio message" />
             <Btn kind="primary" icon="send" disabled={!text.trim()}>Transmit</Btn>
           </form>
         </div>

@@ -84,23 +84,16 @@ export function CallerLine({ engine, call, inc, line, fresh, plain }: { engine: 
 
 // ── questions the caller asks the dispatcher ────────────────────────────────
 export function CallerQuestionPrompt({ engine, call }: { engine: GameEngine; call: Call }) {
-  const bump = useApp((s) => s.bump);
   const q = call.question;
   const seen = useRef<number | null>(null);
   useEffect(() => { if (q && seen.current !== q.at) { seen.current = q.at; audio.notify(); } }, [q?.at]);
   if (!q) return null;
   const total = q.expiresAt - q.at, left = Math.max(0, q.expiresAt - engine.state.time);
+  // no answer buttons: they asked in the chat, you answer in your own words
   return (
-    <div className="cq" role="group" aria-label="The caller is asking you">
-      <div className="cq-head"><Icon n="help" size={12} /> <b>Caller asks:</b><span className="cq-q" title={q.text}>“{q.text}”</span><span className="mono small">{Math.ceil(left)}s</span></div>
-      <div className="cq-bar"><i style={{ width: `${(left / total) * 100}%` }} /></div>
-      <div className="cq-opts">
-        {q.options.map((o) => (
-          <button key={o.id} className="cq-opt" title={o.say} onClick={() => { const r = engine.answerCaller(call.id, o.id); if (r.ok) audio.click(); bump(); }}>
-            <b>{o.label}</b><span>“{o.say}”</span>
-          </button>
-        ))}
-      </div>
+    <div className="cq slim" role="status">
+      <Icon n="help" size={12} /><span><b>{call.profile.name.split(' ')[0]}</b> is waiting for your answer — type it below.</span>
+      <div className="cq-bar"><i style={{ width: `${(left / total) * 100}%` }} /></div><span className="mono small">{Math.ceil(left)}s</span>
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { EVENT_DEFS, WEATHER_SPEED, WEATHER_TRAFFIC, WEATHER_LABEL, nextWeather 
 import { numWord, UNIT_TYPE_BY_ID, makeUnit, isAir, AIR_SPEED } from './fleet';
 import { cameraList, cctvTracking, type Camera } from './cctv';
 import { needsTick } from './radioreq';
+import { matchOption } from './replies';
 import { aidOutTick, cadDown, cadTick, decideAidOut, directiveTick, hoaxTick, learnPremise, maybeText, premiseArrival, pursuitRisk, textSpeak } from './ops';
 import { bookPrisoner, buildingsTick, onReturn, reTone, suppliesFactor, turnoutDelay, useSupplies } from './buildings';
 import { emergencyActivation, emergencyTick, heldTick, isHeld, maybeBreak, patchAskTick, radioQueueTick, reportPosition, talkgroupOf } from './radioops';
@@ -1173,10 +1174,18 @@ export class GameEngine {
     const text = (input.text ?? QUICK_QUESTIONS.find((q) => q.intent === input.intent)?.text ?? '').trim();
     if (!text) return;
     if (!input.intent && /\b(say (that )?again|repeat (that|yourself)|breaking up|didn'?t (catch|get) (that|you)|come again|you('re| are) cutting out|bad line)\b/i.test(text)) { this.sayAgain(callId, text); return; }
+    // the caller asked you something: what you say is your answer, if it answers it
+    if (call.question) { const opt = matchOption(text, call.question.options); if (opt) { this.answerCaller(callId, opt, text); return; } }
     const intent: Intent = input.intent ?? classifyIntent(text);
     this.addTranscript(call, 'DISPATCHER', text);
     const blocked = thirdPartyBlock(inc, intent) ?? relayBlock(call, intent);
-    if (blocked) { call.asked[intent] = (call.asked[intent] ?? 0) + 1; call.pending.push({ at: Math.max(st.time, ...call.pending.map((p) => p.at)) + 1.6, text: blocked }); return; }
+    if (blocked) {
+      call.asked[intent] = (call.asked[intent] ?? 0) + 1;
+      const line = { at: Math.max(st.time, ...call.pending.map((p) => p.at)) + 1.6, text: blocked };
+      call.pending.push(line);
+      if (this.aiMode && this.aiVoiced(call)) this.holdForAi(call, [line], `${intent} (they cannot know this)`, text);
+      return;
+    }
     const env = this.env(call);
     const r = replyTo(env, intent, text);
     call.asked[intent] = (call.asked[intent] ?? 0) + 1;
@@ -3077,7 +3086,7 @@ export class GameEngine {
       call.lastQuestionAt = st.time;
       const f = (x: string) => fill(x, inc.vars);
       this.deliver(call, { at: st.time, text });
-      call.question = { kind, text: f(text), at: st.time, expiresAt: st.time + 22, lineIdx: call.transcript.length - 1, options: options.map(([id, label, say, reply, effect]) => ({ id, label: f(label), say: f(say), reply: f(reply), effect })), timeout: { effect: timeout.effect, line: f(timeout.line) } };
+      call.question = { kind, text: f(text), at: st.time, expiresAt: st.time + 32, lineIdx: call.transcript.length - 1, options: options.map(([id, label, say, reply, effect]) => ({ id, label: f(label), say: f(say), reply: f(reply), effect })), timeout: { effect: timeout.effect, line: f(timeout.line) } };
     };
     // ordered by urgency: the first one that fits is asked
     if (has('goback') && ['kitchen_fire', 'apartment_fire', 'electrical_fire'].includes(tid) && inc.firstArrivalAt === null) {
@@ -3210,7 +3219,7 @@ export class GameEngine {
     }
   }
   /** the dispatcher answers the caller's question */
-  answerCaller(callId: string, optId: string): { ok: boolean; reason?: string } {
+  answerCaller(callId: string, optId: string, words?: string): { ok: boolean; reason?: string } {
     const st = this.state;
     const call = st.calls[callId];
     const q = call?.question;
@@ -3219,9 +3228,12 @@ export class GameEngine {
     if (!opt) return { ok: false, reason: 'Unknown answer' };
     call.question = null;
     st.stats.callerAnswers = (st.stats.callerAnswers ?? 0) + 1;
-    this.addTranscript(call, 'DISPATCHER', opt.say);
+    this.addTranscript(call, 'DISPATCHER', words?.trim() || opt.say);
     const inc = st.incidents[call.incidentId];
-    call.pending.push({ at: st.time + 1.1 + opt.reply.length * 0.02, text: opt.reply });
+    const line = { at: st.time + 1.1 + opt.reply.length * 0.02, text: opt.reply };
+    call.pending.push(line);
+    // the caller reacts to what you actually said (the decision itself stays the game's)
+    if (this.aiMode && this.aiVoiced(call)) this.holdForAi(call, [line], `answered their question: ${opt.label}`, words?.trim() || opt.say);
     this.questionEffect(call, inc, opt.effect);
     return { ok: true };
   }
@@ -4626,7 +4638,12 @@ export class GameEngine {
   }
   private updateDecisions() {
     const st = this.state;
-    for (const d of st.decisions ?? []) if (!d.chosen && st.time >= d.expiresAt) this.decide(d.id, d.defaultId, true);
+    for (const d of st.decisions ?? []) {
+      // answers are typed on the radio now: give a little longer than a button press took
+      if (!d.chosen && !d.auto && d.extended === undefined) { d.extended = true; d.expiresAt += 10; }
+      if (!d.chosen && st.time >= d.expiresAt) this.decide(d.id, d.defaultId, true);
+    }
+    for (const q of st.unitQueries ?? []) if (q.status === 'open' && q.extended === undefined) { q.extended = true; q.expiresAt += 10; }
   }
 
   // ── Hospital coordination ─────────────────────────────────────────────────

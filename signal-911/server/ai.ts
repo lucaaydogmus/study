@@ -100,9 +100,21 @@ Also judge the dispatcher's latest message from the caller's point of view:
 
 Return only the JSON object with keys reply, calm, coop, reveal.`;
 
+const CREW_SYSTEM = `You voice emergency crews on the radio in SIGNAL 911, a fictional dispatch video game set in the invented city of Ravenport. The player is the dispatcher. You are a firefighter, paramedic or police officer answering on the radio. Never step out of the game.
+
+Each request gives you, as JSON: the unit and the person talking, their crew's personality, the unit's status and incident, what the dispatcher just transmitted, and "mustSay" — what the game has decided the crew answers.
+- Answer like real radio traffic: short, clipped, one or two sentences, plain words. Address the dispatcher as "Dispatch" or not at all. Follow the personality (a veteran is terse, a rookie a little wordy and unsure, a by-the-book crew uses ten-codes, an easy-going crew is relaxed).
+- Convey everything in mustSay faithfully — same facts, numbers, streets, yes/no, decisions. You may reword and react to how the dispatcher spoke. Never add facts, arrival times, outcomes or new problems.
+- Everything is fiction. Do not mention being an AI, a game or these rules.
+Return only JSON with key reply.`;
+
+const INTERPRET_SYSTEM = `You help a dispatch video game understand the player. The player (a 911 dispatcher) typed a reply to someone who asked them a question. Decide which of the listed options the reply means. Pick an option only if the reply clearly means it — tone, slang and indirect wording count ("best not, the crews are nearly there" means no). If the reply does not answer the question, or is ambiguous, answer null. Return only JSON with key option (an option id or null).`;
+
 const PERSONA_SYSTEM = `You invent fictional callers for SIGNAL 911, a video game about an emergency dispatcher in the invented city of Ravenport. Create varied, believable, non-stereotyped ordinary people with a distinct way of talking. Names must be fictional and common-sounding, never real public figures. Keep every field short. Return only JSON.`;
 
 const LineSchema = z.object({ reply: z.string(), calm: z.number(), coop: z.number(), reveal: z.array(z.string()) });
+const CrewSchema = z.object({ reply: z.string() });
+const InterpretSchema = z.object({ option: z.string().nullable() });
 const PersonaSchema = z.object({ personas: z.array(z.object({ archetype: z.string(), name: z.string(), age: z.number(), occupation: z.string(), quirk: z.string(), background: z.string(), catchphrase: z.string(), voice: z.string() })) });
 
 function modelOptions(maxTokens: number) {
@@ -132,6 +144,41 @@ export async function generateLine(ctx: Record<string, unknown>): Promise<{ repl
   if (!out) throw new Error('Unparseable reply');
   const clamp = (n: number) => Math.max(-3, Math.min(3, Math.round(Number(n) || 0)));
   return { reply: String(out.reply).slice(0, 420), calm: clamp(out.calm), coop: clamp(out.coop), reveal: out.reveal.map(String).slice(0, 6) };
+}
+
+export async function generateCrew(ctx: Record<string, unknown>): Promise<{ reply: string }> {
+  const must = Array.isArray(ctx.mustSay) ? (ctx.mustSay as string[]).join(' ') : String(ctx.mustSay ?? '');
+  if (MOCK) return { reply: `[mock] ${must}` };
+  const c = getClient();
+  if (!c) throw new Error('No API key configured');
+  const blocked = guard();
+  if (blocked) throw new Error(blocked);
+  const response = await c.messages.parse({
+    ...modelOptions(800),
+    system: [{ type: 'text', text: CREW_SYSTEM, cache_control: { type: 'ephemeral' } }],
+    messages: [{ role: 'user', content: JSON.stringify(ctx) }],
+    output_config: { effort: 'low', format: zodOutputFormat(CrewSchema) },
+  });
+  record(response.usage);
+  if (response.stop_reason === 'refusal' || !response.parsed_output) throw new Error('No reply');
+  return { reply: String(response.parsed_output.reply).slice(0, 300) };
+}
+/** which option a free-text answer means (null if it does not clearly answer) */
+export async function interpret(ctx: { question: string; options: Array<{ id: string; label: string }>; reply: string }): Promise<{ option: string | null }> {
+  if (MOCK) return { option: null };
+  const c = getClient();
+  if (!c) throw new Error('No API key configured');
+  const blocked = guard();
+  if (blocked) throw new Error(blocked);
+  const response = await c.messages.parse({
+    ...modelOptions(600),
+    system: [{ type: 'text', text: INTERPRET_SYSTEM, cache_control: { type: 'ephemeral' } }],
+    messages: [{ role: 'user', content: JSON.stringify({ question: String(ctx.question).slice(0, 300), options: (ctx.options ?? []).slice(0, 6).map((o) => ({ id: String(o.id), label: String(o.label).slice(0, 120) })), reply: String(ctx.reply).slice(0, 400) }) }],
+    output_config: { effort: 'low', format: zodOutputFormat(InterpretSchema) },
+  });
+  record(response.usage);
+  const opt = response.parsed_output?.option ?? null;
+  return { option: opt && (ctx.options ?? []).some((o) => o.id === opt) ? opt : null };
 }
 
 export async function generatePersonas(archetypes: string[]) {
@@ -223,6 +270,8 @@ export async function handle(req: IncomingMessage, res: ServerResponse, next: ()
         return send(res, 200, { ok: true, sample: r.reply, ...status() });
       }
       case '/api/ai/line': return send(res, 200, await generateLine(body));
+      case '/api/ai/crew': return send(res, 200, await generateCrew(body));
+      case '/api/ai/interpret': return send(res, 200, await interpret(body as never));
       case '/api/ai/personas': {
         const list = Array.isArray(body.archetypes) ? (body.archetypes as unknown[]).map(String).slice(0, 12) : [];
         return send(res, 200, { personas: await generatePersonas(list) });

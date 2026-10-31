@@ -83,10 +83,50 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 | `S` | Status check on the most overdue officer | Shift + drag | Box-select several units, then right-click an incident to send them all |
 | `Tab` (in the call box) | Say the top suggested reply | `C` | Count compressions with a caller doing CPR |
 | Listen (call controls) | Listen to the background for where the caller is | Calm / Jobs tabs | Keep the caller together and give them something useful to do |
-| `Q` | Resources panel (tow, utilities, specialists, federal team, Guard EOD, mutual aid) | Hold `V` | Push-to-talk to the caller or the selected crew |
+| `Q` | Outside help on the radio's outside line (tow, utilities, specialists, federal team, Guard EOD, mutual aid) | Hold `V` | Push-to-talk to the caller or the selected crew |
+| `N` | Jump to whatever needs you most (oldest ringing call, or the incident furthest behind) | Type your answer | Callers and crews ask in the chat or on the radio — answer in your own words |
 | `K` | CCTV terminal: pick a camera, wait for the stream, pan with ← → | Click a camera on the map | Connect to it (while the CCTV terminal is open) |
 
 ## What is in the game
+
+### Remaster 12: the radio desk, answering in your own words, and a cleaner dispatch flow
+
+- **No more answer buttons.** When a caller asks you something ("should I go back in for the cat?") it is just a
+  line in the chat; you answer by typing (or saying) what you would say. When a crew needs a decision (a meal
+  break, a tactical call, a stressed crew asking to stand down, Harlow County asking for help) you get a radio
+  notification with a pager tone. Open that channel and answer them in text. The game reads yes and no, "go" and
+  "stay", and which option you mean. With AI callers on, Claude interprets answers the keywords cannot place
+  and voices the caller's or crew's reaction. If it really is unclear, they ask you to say again.
+- **Outside help is requested on the radio.** The Resources panel is gone. The radio has an outside line for
+  county, utilities, state and federal agencies. Crews ask there for what they need (tow, gas company, K-9,
+  negotiators, hazmat, USAR, Coast Guard, the federal team, Guard EOD, mutual aid). You request it by button or
+  just by typing "get a tow down here". If you forget, they chase you at about 45, 95 and 150 seconds, and the
+  third miss costs the scene. You can also tell them none is available.
+- **The radio desk.**
+  - Talkgroups: Ops 1 (police), Fire 2 (fire/EMS) and the outside line, plus a private channel per crew.
+  - Emergency traffic only holds routine chatter. Release it, because crews pile up behind it.
+  - Roll call has every unit report its position.
+  - You can patch police and fire together on big incidents.
+  - Transmissions that get stepped on or lost in a dead spot need a "say again".
+  - When an officer hits the orange emergency button you have about 20 seconds to acknowledge it and get backup
+    rolling.
+- **Stations are buildings with upkeep.** Bay doors jam, the station alerting system fails so crews miss the
+  tones (re-tone them), generators die in blackouts, fuel tanks run dry, stores run out, and police cells fill
+  up. Repair from the station card, or fix everything between shifts in the hub.
+- **Hospitals:** call the charge nurse to get an ambulance released from the ER door.
+- **New calls and situations:**
+  - Text-to-911 sessions from people who cannot talk.
+  - Swatting hoaxes: ring the address before officers go in.
+  - Car chases you may need to call off before someone gets hurt.
+  - CAD outages, when the map only shows where units last reported.
+  - Premise hazard flags on addresses, learned over your career.
+  - A supervisor with timed directives, and an end-of-shift review of a few of your calls.
+- **A cleaner dispatch flow.**
+  - Every incident has a sticky header with a four-step tracker (Location, Type, Units, On scene) and one line
+    saying what to do next, with a button for it.
+  - The incident list shows each incident's next step, and `N` jumps to whatever needs you most.
+  - Call controls sit in one strip above the conversation, and the call panel opens taller when a call is
+    live.
 
 ### Remaster 11: one realistic mode, a camera network, and callers who are not simple
 

@@ -47,6 +47,8 @@ let toastId = 0;
 let unsub: (() => void) | null = null;
 let snapshotTimer: number | null = null;
 let aiMgr: AiManager | null = null;
+/** the running AI manager, if AI callers are on (for crew voices and reading free-text answers) */
+export const getAi = () => aiMgr;
 function stopAi() { aiMgr?.stop(); aiMgr = null; useApp.setState({ aiActive: false }); }
 function startAi(engine: GameEngine) {
   stopAi();

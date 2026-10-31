@@ -14,6 +14,7 @@ import { CrewBriefing, FieldOps, SceneCommand, UnitCommands, openCctv } from './
 import { AIR_HELPS } from '../sim/engine';
 import { SYSTEMS, repairStation, systemsOf } from '../sim/buildings';
 import { premiseFlags, terminatePursuit, warnPremise } from '../sim/ops';
+import { STEPS, nextAction, stepState } from './flow';
 
 export interface PanelCtx { setPreview: (p: Preview) => void; engine: GameEngine; pickLocation: (incId: string | null) => void; pickingFor: string | null; repositioning: string | null; startReposition: (unitId: string | null) => void; focus: (x: number, y: number, zoom?: number) => void; openCall: () => void; setBottom: (t: string) => void }
 
@@ -166,7 +167,7 @@ function UnitPanel({ engine, unit, startReposition, repositioning, focus, setBot
   );
 }
 
-function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall, setPreview }: PanelCtx & { inc: Incident }) {
+function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall, setPreview, setBottom }: PanelCtx & { inc: Incident }) {
   const st = engine.state, city = engine.city;
   const bump = useApp((s) => s.bump);
   const [q, setQ] = useState('');
@@ -190,36 +191,7 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
 
   return (
     <div className="panel-scroll">
-      <Section title={<span><span className="mono dim">INC-{String(inc.num).padStart(4, '0')}</span> {inc.label}</span>} collapsible={false} right={<StatusBadge s={inc.status} />}>
-        <div className="kv"><span>Priority</span><span className="pips" aria-label={`Priority ${inc.severity} of 5`}>{[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= inc.severity ? 'on' : ''} />)}<b className="mono">P{6 - inc.severity}</b></span></div>
-        <div className="kv"><span>Reported</span><b className="mono">{fmtTime(st.time - inc.createdAt)} ago</b></div>
-        {inc.stage > 0 && <div className="kv"><span>Escalation</span><Badge tone="red">STAGE {inc.stage}</Badge></div>}
-        {!done && !inc.pursuit && (() => {
-          const f = engine.escalationForecast(inc.id);
-          if (!f.next) return null;
-          return (
-            <div className={`escal ${f.rising ? (f.eta !== null && f.eta < 40 ? 'hot' : 'rising') : 'held'}`}>
-              <div className="escal-top"><Icon n="alert" size={12} /> <b>{f.rising ? 'Getting worse' : 'Holding'}</b><span className="grow" /><span className="mono small">{f.rising && f.eta !== null ? `next stage ~${f.eta >= 60 ? `${Math.floor(f.eta / 60)}m ${String(Math.round(f.eta % 60)).padStart(2, '0')}s` : `${Math.round(f.eta)}s`}` : 'contained for now'}</span></div>
-              <div className="escal-bar"><i style={{ width: `${Math.min(100, inc.threat)}%` }} /></div>
-              <div className="small">{f.rising ? 'If nothing changes: ' : 'Stops it getting to: '}<b>{f.next}</b></div>
-            </div>
-          );
-        })()}
-        {inc.relatedIds.length > 0 && <div className="kv"><span>Related</span><b>{inc.relatedIds.map((r) => st.incidents[r] && `INC-${String(st.incidents[r].num).padStart(4, '0')}`).join(', ')}</b></div>}
-        {call && <div className="kv"><span>Caller</span><span><b>{call.profile.name}</b> · {call.callerId}</span></div>}
-        <div className="btnrow">
-          {call && (call.state === 'active' || call.state === 'hold') && <Btn size="sm" icon="phone" onClick={openCall}>Go to call</Btn>}
-          {!done && call && !['active', 'hold', 'ringing'].includes(call.state) && !inc.onView && <Btn size="sm" icon="phone" onClick={() => { const r = engine.redial(inc.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); else openCall(); bump(); }} title="Call the caller back on their number">Call back</Btn>}
-          {!done && !inc.truth.outside && <Btn size="sm" icon="map" onClick={() => openCctv()} title="Open the CCTV terminal (K) — you pick the camera">CCTV</Btn>}
-          {inc.category === 'police' && inc.status !== 'CLOSED' && (() => { const b = engine.boloInfo(inc.id); const out = (st.bolos ?? []).find((x) => x.incId === inc.id && x.status === 'active'); return <Btn size="sm" icon="search" kind={out ? 'primary' : 'default'} disabled={!b.ok} onClick={() => { const r = engine.broadcastBolo(inc.id); if (r.ok) audio.dispatchConfirm(); else useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }} title={b.ok ? 'Broadcast the suspect description to every patrol (B)' : b.reason}>{out ? 'BOLO out' : 'BOLO'}</Btn>; })()}
-        </div>
-        {inc.truth.outside && <div className="note-line warn"><Icon n="alert" size={12} /> Caller is outside Ravenport. Use <b>TRANSFER</b> to hand them to the neighbouring agency.</div>}
-        {!done && inc.command && <SceneCommand engine={engine} inc={inc} />}
-        {!done && <FieldOps engine={engine} inc={inc} />}
-        {inc.parentId && st.incidents[inc.parentId] && <div className="note-line"><Icon n="layers" size={12} /> Broke out of INC-{String(st.incidents[inc.parentId].num).padStart(4, '0')} {st.incidents[inc.parentId].label} — crews there can be sent straight here.</div>}
-        <DeadlineBanner engine={engine} inc={inc} />
-        {!done && <LifeMeter inc={inc} />}
-      </Section>
+      <IncidentHeader engine={engine} inc={inc} call={call} done={done} openCall={openCall} setBottom={setBottom} />
 
       {inc.pursuit && inc.mover && !done && (
         <Section title="Pursuit" id="pursuit" right={<Badge tone={inc.mover.contact ? 'green' : inc.mover.heliId ? 'green' : inc.mover.tracked ? 'blue' : 'amber'}>{inc.mover.contact ? `IN CONTACT ×${inc.mover.contact}` : inc.mover.heliId ? 'AIR HAS EYES' : inc.mover.tracked ? 'TRACKING' : 'LOST VISUAL'}</Badge>}>
@@ -299,7 +271,7 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
         {cls === 'no_response' && !done && <Btn size="sm" kind="success" icon="check" onClick={() => { engine.dismissIncident(inc.id); bump(); }}>Close — no emergency</Btn>}
       </Section>
 
-      {!done && !inc.truth.outside && <DispatchConsole engine={engine} inc={inc} rec={rec} setPreview={setPreview} assists={assists} />}
+      {!done && !inc.truth.outside && <div id="sec-dispatch"><DispatchConsole engine={engine} inc={inc} rec={rec} setPreview={setPreview} assists={assists} /></div>}
 
       <Section title={`Assigned units (${assigned.length})`} id="assigned" right={inc.outcome ? <Badge tone={inc.outcome === 'success' || inc.outcome === 'false_alarm' ? 'green' : 'red'}>{inc.outcome.replace('_', ' ').toUpperCase()}</Badge> : null}>
         {!assigned.length && <p className="muted small">No units assigned.</p>}
@@ -313,6 +285,14 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
         ))}
         {inc.status === 'ON_SCENE' && here.length > 0 && !done && <div className="small muted">Work in progress on scene…</div>}
         {!done && <CrewBriefing engine={engine} inc={inc} />}
+      </Section>
+
+      <Section title="Scene" id="scene">
+        {inc.relatedIds.length > 0 && <div className="kv"><span>Related</span><b>{inc.relatedIds.map((r) => st.incidents[r] && `INC-${String(st.incidents[r].num).padStart(4, '0')}`).join(', ')}</b></div>}
+        {inc.truth.outside && <div className="note-line warn"><Icon n="alert" size={12} /> Caller is outside Ravenport. Use <b>TRANSFER</b> to hand them to the neighbouring agency.</div>}
+        {!done && inc.command && <SceneCommand engine={engine} inc={inc} />}
+        {!done && <FieldOps engine={engine} inc={inc} />}
+        {inc.parentId && st.incidents[inc.parentId] && <div className="note-line"><Icon n="layers" size={12} /> Broke out of INC-{String(st.incidents[inc.parentId].num).padStart(4, '0')} {st.incidents[inc.parentId].label} — crews there can be sent straight here.</div>}
       </Section>
 
       <Section title={`Information (${inc.facts.length})`} id="facts">
@@ -366,5 +346,51 @@ function StationUpkeep({ engine, id }: { engine: GameEngine; id: string }) {
       {s.service === 'police' && <div className="upkeep"><span className="uk-l">Holding cells</span><Bar value={(sys.cells ?? 0) * 100 / 6} tone={(sys.cells ?? 0) > 5 ? 'red' : (sys.cells ?? 0) > 3 ? 'amber' : 'green'} /><Btn size="sm" kind="ghost" disabled={!sys.cells} onClick={() => act(repairStation(engine, id, 'cells'))} title="Send the prisoners to county jail">{sys.cells ?? 0}/6 · to county</Btn></div>}
       <p className="small muted">Worn doors jam on turnout, a failing alerting system means crews miss the tones, a dead generator leaves the station dark in a blackout, an empty tank sends crews to the city yard, and empty stores slow crews down on scene.</p>
     </Section>
+  );
+}
+
+/** the top of the incident: what it is, where it is in the flow, the one thing to do next, and quick tools */
+function IncidentHeader({ engine, inc, call, done, openCall, setBottom }: { engine: GameEngine; inc: Incident; call: import('../sim/types').Call | undefined; done: boolean; openCall: () => void; setBottom?: (t: string) => void }) {
+  const st = engine.state;
+  const bump = useApp((s) => s.bump);
+  const na = nextAction(engine, inc);
+  const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const go = () => {
+    switch (na.act) {
+      case 'call': if (call?.state === 'ringing') { engine.answerCall(call.id); bump(); } openCall(); break;
+      case 'location': jump('sec-loc'); break;
+      case 'classify': jump('sec-cls'); break;
+      case 'dispatch': jump('sec-dispatch'); break;
+      case 'radio': useApp.getState().openResources(inc.id); setBottom?.('radio'); break;
+    }
+  };
+  const f = !done && !inc.pursuit ? engine.escalationForecast(inc.id) : null;
+  const bolo = inc.category === 'police' && !done ? engine.boloInfo(inc.id) : null;
+  const boloOut = (st.bolos ?? []).some((x) => x.incId === inc.id && x.status === 'active');
+  return (
+    <div className="inchead">
+      <div className="ih-top">
+        <span className="mono dim">INC-{String(inc.num).padStart(4, '0')}</span><b className="ih-label">{inc.label}</b>
+        <span className="pips" aria-label={`Priority ${inc.severity} of 5`}>{[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= inc.severity ? 'on' : ''} />)}</span>
+        <span className="grow" /><span className="mono small muted">{fmtTime(st.time - inc.createdAt)}</span><StatusBadge s={inc.status} />
+      </div>
+      {!done && <div className="stepper">{STEPS.map((s, i) => { const k = stepState(engine, inc, s.id); return <button key={s.id} className={`stp ${k}`} onClick={() => jump(s.id === 'location' ? 'sec-loc' : s.id === 'classify' ? 'sec-cls' : s.id === 'dispatch' ? 'sec-dispatch' : 'sec-assigned')}><i>{k === 'done' ? '✓' : i + 1}</i>{s.label}</button>; })}</div>}
+      {!done && <div className={`nextact ${na.tone}`}><span className="na-dot" /><span className="grow">{na.text}</span>{na.act && <Btn size="sm" kind={na.tone === 'red' ? 'danger' : 'primary'} onClick={go}>{na.act === 'call' ? (call?.state === 'ringing' ? 'Answer' : 'Go to call') : na.act === 'location' ? 'Locate' : na.act === 'classify' ? 'Classify' : na.act === 'dispatch' ? 'Dispatch' : 'Radio'}</Btn>}</div>}
+      {f?.next && <div className={`escal slim ${f.rising ? (f.eta !== null && f.eta < 40 ? 'hot' : 'rising') : 'held'}`} title={`${f.rising ? 'If nothing changes' : 'Holding off'}: ${f.next}`}>
+        <Icon n="alert" size={11} /><b>{f.rising ? 'Worsening' : 'Holding'}</b><div className="escal-bar"><i style={{ width: `${Math.min(100, inc.threat)}%` }} /></div>
+        <span className="mono small">{f.rising && f.eta !== null ? (f.eta >= 60 ? `${Math.floor(f.eta / 60)}m${String(Math.round(f.eta % 60)).padStart(2, '0')}` : `${Math.round(f.eta)}s`) : '—'}</span>
+        <span className="small ih-next">→ {f.next}</span>
+      </div>}
+      {inc.stage > 0 && <div className="small warn">Escalated to stage {inc.stage}</div>}
+      <div className="ih-tools">
+        {call && (call.state === 'active' || call.state === 'hold') && <Btn size="sm" icon="phone" onClick={openCall} title={`${call.profile.name} · ${call.callerId}`}>Call</Btn>}
+        {!done && call && !['active', 'hold', 'ringing'].includes(call.state) && !inc.onView && <Btn size="sm" icon="phone" onClick={() => { const r = engine.redial(inc.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); else openCall(); bump(); }} title="Call the caller back on their number">Call back</Btn>}
+        {!done && !inc.truth.outside && <Btn size="sm" icon="map" onClick={() => openCctv()} title="Open the CCTV terminal (K) — you pick the camera">CCTV</Btn>}
+        {!done && <Btn size="sm" icon="radio" onClick={() => { useApp.getState().openResources(inc.id); setBottom?.('radio'); }} title="Outside help — tow, utilities, K-9, specialists, mutual aid — on the radio (Q)">Outside help</Btn>}
+        {bolo && <Btn size="sm" icon="search" kind={boloOut ? 'primary' : 'default'} disabled={!bolo.ok} onClick={() => { const r = engine.broadcastBolo(inc.id); if (r.ok) audio.dispatchConfirm(); else useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }} title={bolo.ok ? 'Broadcast the suspect description to every patrol (B)' : bolo.reason}>{boloOut ? 'BOLO out' : 'BOLO'}</Btn>}
+      </div>
+      <DeadlineBanner engine={engine} inc={inc} />
+      {!done && <LifeMeter inc={inc} />}
+    </div>
   );
 }

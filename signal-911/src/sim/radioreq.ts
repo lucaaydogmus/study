@@ -31,7 +31,7 @@ export function needsTick(e: GameEngine) {
   if (st.config.mode === 'tutorial' || st.config.script) return;
   // 1. a scene that is short of a capability your fleet does not have free: they ask for mutual aid
   for (const inc of Object.values(st.incidents)) {
-    if (!live(inc) || inc.pursuit || !inc.sceneSeen || st.time - (inc.sceneAt ?? st.time) < 25) continue;
+    if (!live(inc) || inc.pursuit || !inc.sceneSeen || inc.severity < 3 || st.time - (inc.sceneAt ?? st.time) < 25) continue;
     if (Object.keys(inc.resAsked ?? {}).some((k) => k.startsWith('ma_'))) continue;
     const here = e.onScene(inc).filter((u) => !isAir(u));
     if (!here.length) continue;

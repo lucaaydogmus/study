@@ -126,7 +126,7 @@ describe('remaster 5', () => {
     run(e, 2);
     const d2 = e.state.decisions!.filter((x) => x.kind === 'break').pop()!;
     expect(d2.id).not.toBe(d.id);
-    run(e, 30);
+    run(e, 42); // answered on the radio now, so the window is longer
     expect(d2.chosen).toBe('later');
     expect(d2.auto).toBe(true);
   });

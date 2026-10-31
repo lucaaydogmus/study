@@ -4,6 +4,7 @@ import { GameEngine, DT, recommendFor } from '../src/sim/engine';
 import { careerConfig, newProfile, setupFromProfile, computeResult } from '../src/sim/profile';
 import { rankForXp } from '../src/sim/progression';
 import { assignSector, sectorFit, setCommander } from '../src/sim/field';
+import { declineNeed } from '../src/sim/radioreq';
 
 function play(rank: number, seed: number) {
   const p = newProfile('Bot', seed);
@@ -49,7 +50,7 @@ function play(rank: number, seed: number) {
       if (['RESOLVED', 'CLOSED'].includes(inc.status) || inc.hidden) continue;
       if (inc.agency && inc.agency.askedAt !== null && inc.agency.calledAt === null && st.time - inc.agency.askedAt > 8) e.callAgency(inc.id);
       for (const k of Object.keys(inc.specialistAsked ?? {}) as Array<'federal' | 'eod'>) if (!inc.specialists?.[k]) e.requestSpecialist(inc.id, k);
-      for (const k of Object.keys(inc.resAsked ?? {})) if (!inc.resources?.[k]) e.requestResource(inc.id, k);
+      for (const k of Object.keys(inc.resAsked ?? {})) if (!inc.resources?.[k] && !inc.declined?.[k]) { if (k.startsWith('ma_') && inc.severity < 5) declineNeed(e, inc.id, k); else e.requestResource(inc.id, k); }
       if (inc.search && !inc.search.found && Math.floor(st.time) % 6 === 0) {
         const open = inc.search.sectors.map((x, i) => ({ x, i })).filter((o) => o.x.searched < 1 && !inc.assignedUnits.some((id) => st.units[id]?.searchSector === o.i)).sort((a, b) => b.x.p - a.x.p);
         if (open.length) e.assignSearch(inc.id, open[0].i);

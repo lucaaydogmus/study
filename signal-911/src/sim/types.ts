@@ -197,7 +197,7 @@ export interface HospitalState {
 }
 export interface Decision {
   id: string; incId: string; unitId: string; at: number; expiresAt: number; kind: string; prompt: string;
-  options: Array<{ id: string; label: string; hint: string }>; defaultId: string; chosen?: string; outcome?: string; auto?: boolean;
+  options: Array<{ id: string; label: string; hint: string }>; defaultId: string; chosen?: string; outcome?: string; auto?: boolean; extended?: boolean;
 }
 /** be-on-the-lookout broadcast: patrols watch for a suspect the caller described */
 export interface Bolo {
@@ -207,7 +207,7 @@ export interface Bolo {
   status: 'active' | 'found' | 'expired'; foundBy?: string;
 }
 /** a crew on the way asks dispatch for something they need to know */
-export interface UnitQuery { id: string; unitId: string; incId: string; key: string; text: string; at: number; expiresAt: number; status: 'open' | 'standby' | 'answered' | 'expired'; said?: string; correct?: boolean }
+export interface UnitQuery { id: string; unitId: string; incId: string; key: string; text: string; at: number; expiresAt: number; status: 'open' | 'standby' | 'answered' | 'expired'; said?: string; correct?: boolean; extended?: boolean }
 /** a spike strip run out ahead of a fleeing vehicle */
 export interface Stinger { id: string; unitId: string; incId: string; node: number; laidAt: number | null; expiresAt: number; result?: 'hit' | 'missed' | 'cancelled' }
 export interface CallTrace {
@@ -424,7 +424,7 @@ export interface ShiftStats {
   boloHits?: number; stingerHits?: number; breaksGiven?: number;
   callerAnswers?: number; cprPaced?: number; handoffs?: number; calmActions?: number; calmGood?: number; tasksDone?: number; callerBreakdowns?: number; redirectsOk?: number; redirectsBad?: number; listens?: number; unitQueries?: number; unitQueriesOk?: number; unitQueriesMissed?: number; maydays?: number; maydaySaved?: number; refusals?: number;
   specialistCalls?: number; specialistWasted?: number; majorsHandled?: number;
-  cctvTags?: number; stressCalls?: number; commandSet?: number; needsMissed?: number; radioRequests?: number; radioHeldLong?: number; rollCalls?: number; emergenciesHandled?: number; patches?: number; doorJams?: number; missedTones?: number; stationRepairs?: number; offloadsExpedited?: number; hoaxesCaught?: number; pursuitCrashes?: number; pursuitsTerminated?: number; cadOutages?: number; premiseWarnings?: number; directivesDone?: number;
+  cctvTags?: number; stressCalls?: number; commandSet?: number; needsMissed?: number; radioRequests?: number; radioHeldLong?: number; rollCalls?: number; emergenciesHandled?: number; patches?: number; doorJams?: number; missedTones?: number; stationRepairs?: number; offloadsExpedited?: number; hoaxesCaught?: number; sayAgainAsks?: number; pursuitCrashes?: number; pursuitsTerminated?: number; cadOutages?: number; premiseWarnings?: number; directivesDone?: number;
   crewTalks?: number; sayAgains?: number; resourceCalls?: number; arrests?: number; services?: number; hospitalCalls?: number; mciPlans?: number; walkIns?: number;
   agencyCalls?: number; agencyLate?: number; statusChecks?: number; statusSaves?: number; statusMissed?: number; alertsRight?: number; alertsWrong?: number; searchFinds?: number;
 }

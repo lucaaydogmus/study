@@ -8,6 +8,7 @@ import type { Call, Incident, Unit } from '../sim/types';
 import { audio } from '../audio/audioManager';
 import { useApp } from '../store';
 import { SECTORS, assignSector, commandFactor, sectorFit, setCommander, type Sector } from '../sim/field';
+import { pendingAsks } from '../sim/replies';
 import { Badge, Btn, Icon, fmtEta, fmtTime } from './common';
 
 const toast = (r: { ok: boolean; reason?: string } | boolean, okText?: string) => {
@@ -92,47 +93,27 @@ export function CrewBriefing({ engine, inc }: { engine: GameEngine; inc: Inciden
 }
 
 /** tactical questions from crews, as cards over the map */
-export function DecisionCards({ engine }: { engine: GameEngine }) {
+export function DecisionCards({ engine, onOpen }: { engine: GameEngine; onOpen?: (unitId: string | null, outside?: boolean) => void }) {
   const st = engine.state;
-  const bump = useApp((s) => s.bump);
   const now = st.time;
-  const live = (st.decisions ?? []).filter((d) => !d.chosen);
-  const recent = (st.decisions ?? []).filter((d) => d.chosen && d.outcome && now - (d.expiresAt - 25) < 40 && now - d.at < 45).slice(-2);
-  const queries = (st.unitQueries ?? []).filter((q) => q.status === 'open' || q.status === 'standby');
-  if (!live.length && !recent.length && !queries.length) return null;
+  const asks = pendingAsks(engine);
+  const seen = useRef(new Set<string>());
+  // a radio notification: tones and a light, not a menu — answer on the crew's channel
+  useEffect(() => { for (const a of asks) if (!seen.current.has(a.id)) { seen.current.add(a.id); audio.pager(); window.setTimeout(() => audio.radioBlip(), 350); } }, [asks.map((a) => a.id).join()]);
+  const recent = (st.decisions ?? []).filter((d) => d.chosen && d.outcome && now - d.at < 45 && now - (d.expiresAt - 25) < 40).slice(-2);
+  if (!asks.length && !recent.length) return null;
   return (
-    <div className="decisions">
-      {queries.map((q) => {
-        const u = st.units[q.unitId], inc = st.incidents[q.incId];
-        const o = engine.queryOptions(q.id);
-        const left = Math.max(0, q.expiresAt - now);
-        const ans = (mode: 'relay' | 'deny' | 'standby') => { const r = engine.answerUnitQuery(q.id, mode); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); else audio.radioBlip(); bump(); };
+    <div className="decisions radioasks">
+      {asks.map((a) => {
+        const u = st.units[a.unitId];
+        const left = Math.max(0, a.expiresAt - now);
+        const outside = st.decisions?.find((d) => d.id === a.id)?.kind === 'aidOut';
         return (
-          <div key={q.id} className={`decision query ${q.status}`} role="alertdialog" aria-label="Crew asking for information">
-            <div className="dc-head"><Icon n="radio" size={13} /> <b>{u?.callsign ?? 'Unit'}</b><span className="muted small">· {inc?.label} · en route</span><span className="grow" /><span className="mono small">{Math.ceil(left)}s</span></div>
-            <div className="dc-bar"><i style={{ width: `${(left / (q.status === 'standby' ? 40 : 30)) * 100}%` }} /></div>
-            <div className="dc-q">“Dispatch — {q.text}”</div>
-            <div className="dc-opts">
-              {o.known ? <button className="dc-opt" onClick={() => ans('relay')}><b>Relay: {o.known.label} — {o.known.value}</b><span>What the caller told you</span></button>
-                : <button className="dc-opt" disabled><b>You don't know yet</b><span>Ask the caller, then relay it here</span></button>}
-              {o.canDeny && <button className="dc-opt" onClick={() => ans('deny')}><b>{q.key === 'weapon' ? 'No weapons reported' : q.key === 'trapped' ? 'Nobody inside that we know of' : 'No hazards reported'}</b><span>Only if you're sure — wrong is dangerous</span></button>}
-              {q.status === 'open' && <button className="dc-opt" onClick={() => ans('standby')}><b>Stand by — I'll find out</b><span>Buys time to ask the caller</span></button>}
-            </div>
-            {inc && <button className="linkish small" onClick={() => { engine.select('incident', inc.id); bump(); }}>Open incident</button>}
-          </div>
-        );
-      })}
-      {live.map((d) => {
-        const u = st.units[d.unitId], inc = st.incidents[d.incId];
-        const left = Math.max(0, d.expiresAt - now);
-        return (
-          <div key={d.id} className="decision" role="alertdialog" aria-label="Crew needs a decision">
-            <div className="dc-head"><Icon n={d.kind === 'break' ? 'clock' : 'radio'} size={13} /> <b>{u?.callsign ?? 'Unit'}</b><span className="muted small">· {d.kind === 'break' ? 'Code 7 request' : inc?.label}</span><span className="grow" /><span className="mono small">{Math.ceil(left)}s</span></div>
-            <div className="dc-bar"><i style={{ width: `${(left / 25) * 100}%` }} /></div>
-            <div className="dc-q">{d.prompt.replace(/^[^:]+: /, '')}</div>
-            <div className="dc-opts">{d.options.map((o) => <button key={o.id} className="dc-opt" onClick={() => { engine.decide(d.id, o.id); audio.radioBlip(); bump(); }}><b>{o.label}</b><span>{o.hint}</span></button>)}</div>
-            {inc ? <button className="linkish small" onClick={() => { engine.select('incident', d.incId); bump(); }}>Open incident</button> : u && <button className="linkish small" onClick={() => { engine.select('unit', u.id); bump(); }}>Open unit</button>}
-          </div>
+          <button key={a.id} className={`rask ${left < 8 ? 'late' : ''}`} onClick={() => onOpen?.(outside ? null : a.unitId, outside)} title="Open the radio channel and answer in your own words">
+            <span className="rask-led" /><Icon n="radio" size={12} /><b>{outside ? 'Harlow County' : u?.callsign ?? 'Unit'}</b>
+            <span className="rask-q">“{a.text.length > 70 ? a.text.slice(0, 67) + '…' : a.text}”</span>
+            <span className="mono small">{Math.ceil(left)}s</span><span className="rask-go">Answer on radio ›</span>
+          </button>
         );
       })}
       {recent.map((d) => <div key={d.id} className={`decision done ${/hurt|shot|did not|went off|cost|wrong|not happy/.test(d.outcome ?? '') ? 'bad' : 'good'}`}><b>{d.options.find((o) => o.id === d.chosen)?.label}{d.auto ? ' (crew decided)' : ''}</b> — {d.outcome}</div>)}
