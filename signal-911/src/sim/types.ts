@@ -264,8 +264,6 @@ export interface Incident {
   specialistAsked?: Partial<Record<SpecialistKind, number>>;
   /** a major incident's breaking-news moment (game time) */
   breakAt?: number;
-  /** riot / protest: how hot the crowd is (0 calm … 100 violent) */
-  crowdHeat?: number;
 }
 export type AgencyKind = 'tow' | 'power' | 'gas' | 'animal';
 export type SpecialistKind = 'federal' | 'eod';

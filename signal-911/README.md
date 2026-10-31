@@ -86,6 +86,60 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 
 ## What is in the game
 
+### Remaster 9: big days, specialists and the garage
+
+**Anything can happen**
+- **Major incidents happen on ordinary shifts**: career, free play and endless can now throw a bank robbery, active
+  shooter, bomb threat, armed siege, kidnapping, crowd crush, derailment, tanker fire, riot or vehicle attack at you
+  out of nowhere. They are rare (roughly one shift in three, more at higher ranks and difficulties), always within
+  what your rank has unlocked, and they make the breaking news a few seconds after the first call.
+- **Surprise city events**: rush hour, storms, heat waves, festivals, and four new ones: a **mass protest** (closed
+  roads, a march that can turn ugly), **civil unrest** (a riot breaks out, with looting, burning cars and group assaults),
+  the **city marathon** (closed course, collapsing runners) and a **transit strike** (everyone drives).
+- **Threat level at the briefing**: low, guarded, elevated or severe. It hints at what the analysts expect without
+  spoiling it. Scheduled events (marches, the marathon, strikes) and weather forecasts are listed with their start time.
+- **New calls**: riots, protest marches, looting, a man beaten by a group, suspicious packages (sometimes a real device
+  with wires and a phone taped inside), chemical spills, vehicles driven into crowds, and runners collapsing.
+- Free play has a **Surprises on/off** switch and all the new events.
+
+**Call in the big guns**
+- **Federal tactical team**: for active shooters, sieges, kidnappings, bank robberies, vehicle attacks and riots. Slow to
+  mobilise and they drive in from the city limits, but they are decisive on arrival and bring a crisis negotiator
+  (talks almost never break down when they are on scene).
+- **National Guard EOD**: bomb technicians with a robot for bomb threats and real devices. A suspected device now needs
+  bomb disposal, from your own bomb squad, mutual aid or the Guard.
+- Crews on scene **ask you** for them over the radio. The request button pulses on the incident card and is in the
+  right-click menu too.
+- New field decisions: hold, push or pull back from a riot line; talk to march organisers or clear the road; wait for
+  EOD or let an officer look at the device.
+- Handling a major incident well earns a **hazard grant** and extra XP.
+
+**New units (unlocked by rank)**
+- Police: **foot patrol** and **bike units** (cheap, slow, great in crowds and disturbances), **public order unit**
+  (riot police) and the **bomb squad**.
+- Fire: **fire rescue ambulance**, **paramedic engine** (fights fire and gives advanced life support) and **hazmat**.
+- Specialists work their own scenes much faster: public order at riots, hazmat at spills, bomb techs at devices.
+
+**The garage (shift preparation)**
+- Every vehicle can be fitted out before a shift. Pick a **chassis**: an interceptor is faster but has one equipment
+  slot, an SUV is slower with three slots and all-weather grip, an armoured truck is slow and nearly unstoppable. Fire
+  and medical have their own (rapid intervention, heavy pumper, box ambulance, all-terrain 4×4).
+- Load **equipment slots** with kits that really change the sim: AED (officers give first aid), less-lethal, riot
+  shields (a patrol car can hold a protest line), K-9, patrol rifle, spike strip, thermal camera, hydraulic rescue
+  tools, foam, swiftwater kit, mechanical CPR, an ALS upgrade (a basic ambulance becomes a paramedic unit), trauma
+  packs, powered stretchers and a paediatric kit.
+- Pick a **livery** and give the vehicle a **nickname**. The vehicle on the map is drawn the way you built it, lights
+  flashing in the showroom bay. Kits and chassis are rank-locked and cost money; removing kit and repainting are free.
+- The prep screen also has **deployment presets** (all at stations, or spread across your districts).
+
+**A city worth looking at**
+- Close-up buildings now have real facades: window grids with reflections, glass curtain walls with mullions on the
+  towers, shopfronts with coloured awnings, front doors and framed windows on houses, roller doors on warehouses, and
+  shading where walls meet the street. Flat roofs have parapets.
+- Street lights pool on the ground under the buildings at night, the river has stone embankments and a deep channel,
+  there is a beach along the bay, the side streets recede in the overview so the main roads read first, and the whole
+  city is lit by a warm north-west sun.
+
 ### Remaster 8: keep them together, use your crews, hear the city
 
 **The call**
@@ -336,7 +390,7 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 ## Project layout
 
 ```
-src/sim/           engine, city generator, routing, dialogue, scoring, profile/economy, fleet, scenarios, content/
+src/sim/           engine, city generator, routing, dialogue, scoring, profile/economy, fleet, garage, scenarios, content/
 src/ui/            React screens: map (canvas), call console, panels, hub, report, settings
 src/audio/         procedural audio manager
 src/persistence.ts IndexedDB / memory key-value store + SaveManager (versioned, migrations)

@@ -272,6 +272,7 @@ export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View 
   }
   ctx.globalAlpha = 1;
   // water
+  ctx.lineJoin = 'round'; ctx.strokeStyle = '#e4d6ae'; ctx.lineWidth = 11; ctx.beginPath(); ctx.moveTo(-80, city.coast[0].y); for (const p of city.coast) ctx.lineTo(p.x, p.y); ctx.lineTo(WORLD_W + 80, city.coast[city.coast.length - 1].y); ctx.stroke();
   const sg = ctx.createLinearGradient(0, city.coast[0].y, 0, WORLD_H + 80);
   sg.addColorStop(0, C.seaShore); sg.addColorStop(0.35, C.sea); sg.addColorStop(1, '#5ea4cf');
   ctx.fillStyle = sg;
@@ -279,9 +280,11 @@ export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View 
   ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-80, city.coast[0].y); for (const p of city.coast) ctx.lineTo(p.x, p.y); ctx.stroke();
   const rl = city.riverline;
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.strokeStyle = '#a3cfe6'; ctx.lineWidth = 34; ctx.beginPath(); ctx.moveTo(-60, rl[0].y); for (const p of rl) ctx.lineTo(p.x, p.y); ctx.lineTo(WORLD_W + 60, rl[rl.length - 1].y); ctx.stroke();
-  ctx.strokeStyle = C.river; ctx.lineWidth = 26; ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 8; ctx.stroke();
+  ctx.strokeStyle = '#a49e92'; ctx.lineWidth = 37.5; ctx.beginPath(); ctx.moveTo(-60, rl[0].y); for (const p of rl) ctx.lineTo(p.x, p.y); ctx.lineTo(WORLD_W + 60, rl[rl.length - 1].y); ctx.stroke();
+  ctx.strokeStyle = '#a3cfe6'; ctx.lineWidth = 33.5; ctx.stroke();
+  ctx.strokeStyle = C.river; ctx.lineWidth = 27; ctx.stroke();
+  ctx.strokeStyle = 'rgba(34,98,150,0.2)'; ctx.lineWidth = 15; ctx.stroke();
+  ctx.strokeStyle = 'rgba(28,84,132,0.16)'; ctx.lineWidth = 7; ctx.stroke();
 
   // block ground (yards, paving)
   for (const g of sc.ground) { const c = g.pts[0]; if (!visible(view, c.x + 25, c.y + 25, 40)) continue; ctx.fillStyle = g.color; ctx.beginPath(); poly(ctx, g.pts); ctx.fill(); }
@@ -332,7 +335,7 @@ export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View 
     }
   }
   // building shadows (sun from the north-west)
-  ctx.fillStyle = 'rgba(70,58,44,0.22)';
+  ctx.fillStyle = 'rgba(34,42,64,0.24)';
   ctx.beginPath();
   for (const l of sc.lots) {
     if (!visible(view, l.cx, l.cy, l.r + l.h)) continue;
@@ -394,7 +397,8 @@ export function drawCity(ctx: CanvasRenderingContext2D, lod: number, view: View 
   };
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   // pavement first, then asphalt, then markings
-  roadPath('local'); ctx.strokeStyle = C.casing; ctx.lineWidth = 6.4; ctx.stroke(); ctx.strokeStyle = 'rgba(70,74,80,0.55)'; ctx.lineWidth = 4.5; ctx.stroke(); ctx.strokeStyle = C.local; ctx.lineWidth = 4; ctx.stroke();
+  // from far away the side streets recede so the arterial network reads first
+  roadPath('local'); ctx.strokeStyle = C.casing; ctx.lineWidth = 6.4; ctx.stroke(); ctx.strokeStyle = lod === 0 ? 'rgba(110,114,120,0.45)' : 'rgba(70,74,80,0.55)'; ctx.lineWidth = 4.5; ctx.stroke(); ctx.strokeStyle = lod === 0 ? '#8d929a' : C.local; ctx.lineWidth = 4; ctx.stroke();
   if (lod >= 2) { ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = Math.max(0.25, px(0.6)); ctx.setLineDash([2.2, 3.2]); ctx.stroke(); ctx.setLineDash([]); }
   // runways sit over the local streets they replace
   for (const f of sc.features) {
@@ -516,12 +520,18 @@ export function drawBuildings3D(ctx: CanvasRenderingContext2D, view: View | null
     const wallS = l.style === 'tower' ? shade(l.roof, 0.8) : shade(l.roof, 0.74), wallE = l.style === 'tower' ? shade(l.roof, 0.92) : shade(l.roof, 0.87);
     let r = prism(ctx, p, 0, tiered ? l.h * 0.62 : l.h, k, l.roof, wallS, wallE);
     // windows on the walls facing the viewer
-    if (detail && rise * scale > 9 && l.style !== 'warehouse' && l.style !== 'hangar') windowsOn(ctx, p, tiered ? l.h * 0.62 : l.h, k, l, lit, night);
+    if (detail && rise * scale > 9) windowsOn(ctx, p, tiered ? l.h * 0.62 : l.h, k, l, lit, night, 0, scale);
     if (tiered) {
       const upper = subQuad(p, 0.17, 0.17, 0.83, 0.83);
       ctx.fillStyle = nt(shade(l.roof, 1.12)); ctx.beginPath(); poly(ctx, r); ctx.fill();
       r = prism(ctx, upper, l.h * 0.62, l.h, k, l.roof, shade(l.roof, 0.78), shade(l.roof, 0.95));
-      if (detail && rise * scale > 9) windowsOn(ctx, upper, l.h, k, l, lit, night, l.h * 0.62);
+      if (detail && rise * scale > 9) windowsOn(ctx, upper, l.h, k, l, lit, night, l.h * 0.62, scale);
+    }
+    if ((l.style === 'office' || l.style === 'tower') && rise * scale > 3) {
+      // parapet: a raised rim around a slightly darker roof deck
+      const inner = subQuad(r, 0.07, 0.07, 0.93, 0.93);
+      ctx.fillStyle = nt(shade(l.roof, 0.9)); ctx.beginPath(); poly(ctx, inner); ctx.fill();
+      ctx.strokeStyle = nt(shade(l.roof, 0.74)); ctx.lineWidth = Math.max(0.25, px(0.6)); ctx.stroke();
     }
     ctx.strokeStyle = nt(l.edge); ctx.lineWidth = Math.max(0.5, px(0.9));
     ctx.beginPath(); ctx.moveTo(r[3].x, r[3].y); ctx.lineTo(r[0].x, r[0].y); ctx.lineTo(r[1].x, r[1].y); ctx.stroke();
@@ -531,24 +541,94 @@ export function drawBuildings3D(ctx: CanvasRenderingContext2D, view: View | null
   NIGHT_A = 0;
 }
 
-function windowsOn(ctx: CanvasRenderingContext2D, p: Pt[], h: number, k: number, l: Lot, lit: boolean, night: number, hb = 0) {
+function windowsOn(ctx: CanvasRenderingContext2D, p: Pt[], h: number, k: number, l: Lot, lit: boolean, night: number, hb = 0, scale = 1) {
   const ox = h * k * LEAN, oy = -h * k, bx = hb * k * LEAN, by = -hb * k;
+  const floors = Math.max(1, Math.floor((h - hb) / 2.4));
+  // how tall one storey is on screen decides how much facade detail is worth drawing
+  const floorPx = ((h - hb) / floors) * k * scale;
+  const hsh = (n: number) => (((l.seed + n * 7919) * 2654435761) >>> 0) % 1000;
   for (let i = 0; i < 4; i++) {
     const a = p[i], b = p[(i + 1) % 4];
     const nx = b.y - a.y, ny = -(b.x - a.x);
     if (-nx * (ox - bx) - ny * (oy - by) <= 0) continue;
-    const floors = Math.max(1, Math.floor((h - hb) / 2.4));
+    const south = ny > Math.abs(nx);
     const len = Math.hypot(b.x - a.x, b.y - a.y);
     const q = (u: number, v: number) => ({ x: a.x + (b.x - a.x) * u + bx + (ox - bx) * v, y: a.y + (b.y - a.y) * u + by + (oy - by) * v });
     const path = new Path2D();
-    const quad = (u0: number, u1: number, v0: number, v1: number) => { const w0 = q(u0, v0), w1 = q(u1, v0), w2 = q(u1, v1), w3 = q(u0, v1); path.moveTo(w0.x, w0.y); path.lineTo(w1.x, w1.y); path.lineTo(w2.x, w2.y); path.lineTo(w3.x, w3.y); path.closePath(); };
+    const quad = (pth: Path2D, u0: number, u1: number, v0: number, v1: number) => { const w0 = q(u0, v0), w1 = q(u1, v0), w2 = q(u1, v1), w3 = q(u0, v1); pth.moveTo(w0.x, w0.y); pth.lineTo(w1.x, w1.y); pth.lineTo(w2.x, w2.y); pth.lineTo(w3.x, w3.y); pth.closePath(); };
+    const cols = Math.max(1, Math.floor(len / (l.style === 'tower' ? 3.2 : l.style === 'house' ? 5.5 : 4.2)));
     if (!lit) {
-      for (let f = 0; f < floors; f++) quad(0.06, 0.94, (f + 0.3) / floors, (f + 0.72) / floors);
-      ctx.fillStyle = nt(l.style === 'tower' ? 'rgba(52,92,135,0.42)' : 'rgba(60,80,105,0.24)'); ctx.fill(path);
+      if (floorPx < 4.5) {
+        // far away: a hint of glazing per storey
+        for (let f = 0; f < floors; f++) quad(path, 0.06, 0.94, (f + 0.3) / floors, (f + 0.72) / floors);
+        ctx.fillStyle = nt(l.style === 'tower' ? 'rgba(52,92,135,0.42)' : 'rgba(60,80,105,0.24)'); ctx.fill(path);
+        continue;
+      }
+      if (l.style === 'warehouse' || l.style === 'hangar') {
+        // loading bays: roller doors on the front, a strip of high windows elsewhere
+        if (south && l.style === 'warehouse' && l.h > 2.4) {
+          const doors = new Path2D(), slats = new Path2D();
+          const nd = Math.max(1, Math.min(4, Math.floor(len / 9)));
+          for (let d = 0; d < nd; d++) {
+            const u0 = (d + 0.22) / nd, u1 = (d + 0.78) / nd, v1 = Math.min(0.8, 3 / Math.max(1, h));
+            quad(doors, u0, u1, 0, v1);
+            for (let k = 1; k < 5; k++) { const w0 = q(u0, (v1 * k) / 5), w1 = q(u1, (v1 * k) / 5); slats.moveTo(w0.x, w0.y); slats.lineTo(w1.x, w1.y); }
+          }
+          ctx.fillStyle = nt('#8f979f'); ctx.fill(doors);
+          ctx.strokeStyle = nt('rgba(60,66,74,0.55)'); ctx.lineWidth = Math.max(0.1, 0.5 / scale); ctx.stroke(slats);
+          ctx.fillStyle = nt(['#e0a526', '#2f6f9e', '#c3423a'][hsh(8) % 3]); const st = new Path2D(); quad(st, 0, 1, 0.9, 0.97); ctx.fill(st);
+        } else {
+          const strip = new Path2D(); quad(strip, 0.08, 0.92, 0.72, 0.86); ctx.fillStyle = nt('rgba(70,98,124,0.6)'); ctx.fill(strip);
+        }
+      } else if (l.style === 'tower') {
+        // glass curtain wall reflecting the sky, with mullions and spandrel bands
+        const top = q(0.5, 1), bot = q(0.5, 0);
+        const g = ctx.createLinearGradient(top.x, top.y, bot.x, bot.y);
+        g.addColorStop(0, nt(south ? 'rgba(196,222,244,0.78)' : 'rgba(176,206,232,0.72)')); g.addColorStop(0.55, nt('rgba(92,134,176,0.7)')); g.addColorStop(1, nt('rgba(52,82,116,0.78)'));
+        quad(path, 0.03, 0.97, 0.02, 0.985); ctx.fillStyle = g; ctx.fill(path);
+        const lines = new Path2D();
+        for (let c = 1; c < cols; c++) { const u = c / cols, w0 = q(u, 0.02), w1 = q(u, 0.985); lines.moveTo(w0.x, w0.y); lines.lineTo(w1.x, w1.y); }
+        for (let f = 1; f < floors; f++) { const v = f / floors, w0 = q(0.03, v), w1 = q(0.97, v); lines.moveTo(w0.x, w0.y); lines.lineTo(w1.x, w1.y); }
+        ctx.strokeStyle = nt('rgba(225,236,246,0.42)'); ctx.lineWidth = Math.max(0.12, 0.6 / scale); ctx.stroke(lines);
+        // a diagonal sheen sliding across the glass
+        const s0 = q(0.15 + (hsh(5) % 300) / 1000, 1), s1 = q(0.45 + (hsh(5) % 300) / 1000, 0);
+        ctx.strokeStyle = nt('rgba(255,255,255,0.16)'); ctx.lineWidth = len * 0.08; ctx.beginPath(); ctx.moveTo(s0.x, s0.y); ctx.lineTo(s1.x, s1.y); ctx.stroke();
+      } else if (l.style === 'house' || l.style === 'terrace') {
+        const win = new Path2D(), frame = new Path2D();
+        for (let f = 0; f < floors; f++) for (let c = 0; c < cols; c++) {
+          if (south && f === 0 && c === Math.floor(cols / 2)) continue;
+          quad(win, (c + 0.28) / cols, (c + 0.72) / cols, (f + 0.3) / floors, (f + 0.74) / floors);
+          quad(frame, (c + 0.25) / cols, (c + 0.75) / cols, (f + 0.27) / floors, (f + 0.77) / floors);
+        }
+        ctx.fillStyle = nt('rgba(250,248,242,0.9)'); ctx.fill(frame);
+        ctx.fillStyle = nt('#4f6479'); ctx.fill(win);
+        if (south) { const door = new Path2D(); const c = Math.floor(cols / 2); quad(door, (c + 0.34) / cols, (c + 0.66) / cols, 0, 0.62 / floors); ctx.fillStyle = nt(['#5b3a2a', '#2f4a63', '#6b2a2a', '#2e4a37'][hsh(6) % 4]); ctx.fill(door); }
+      } else {
+        // punched windows in a grid, with a light lintel reflection
+        const win = new Path2D(), glint = new Path2D();
+        const shop = (l.style === 'office' || l.style === 'campus') && south && floors > 1;
+        for (let f = shop ? 1 : 0; f < floors; f++) for (let c = 0; c < cols; c++) {
+          quad(win, (c + 0.2) / cols, (c + 0.8) / cols, (f + 0.28) / floors, (f + 0.78) / floors);
+          quad(glint, (c + 0.2) / cols, (c + 0.8) / cols, (f + 0.66) / floors, (f + 0.78) / floors);
+        }
+        ctx.fillStyle = nt(l.style === 'campus' ? '#55687a' : '#4d6680'); ctx.fill(win);
+        ctx.fillStyle = nt('rgba(214,230,244,0.35)'); ctx.fill(glint);
+        if (shop) {
+          // ground-floor shopfronts with awnings
+          const sf = new Path2D(); quad(sf, 0.05, 0.95, 0.06, 0.78 / floors); ctx.fillStyle = nt('#3d5266'); ctx.fill(sf);
+          const aw = new Path2D(); quad(aw, 0.03, 0.97, 0.78 / floors, 0.95 / floors); ctx.fillStyle = nt(['#c3423a', '#2f6f9e', '#3a8a5a', '#d08a2c', '#6a4a8a'][hsh(7) % 5]); ctx.fill(aw);
+        }
+      }
     } else {
-      const cols = Math.max(1, Math.floor(len / (l.style === 'tower' ? 3.2 : 4.5)));
-      for (let f = 0; f < floors; f++) for (let c = 0; c < cols; c++) if ((((l.seed + i * 977 + f * 131 + c * 71) * 2654435761) >>> 0) % 100 < 42) quad((c + 0.25) / cols, (c + 0.75) / cols, (f + 0.3) / floors, (f + 0.75) / floors);
+      for (let f = 0; f < floors; f++) for (let c = 0; c < cols; c++) if ((((l.seed + i * 977 + f * 131 + c * 71) * 2654435761) >>> 0) % 100 < 42) quad(path, (c + 0.25) / cols, (c + 0.75) / cols, (f + 0.3) / floors, (f + 0.75) / floors);
       ctx.fillStyle = `rgba(255,212,140,${0.55 + 0.4 * night})`; ctx.fill(path);
+    }
+    // contact shadow where the wall meets the street
+    if (hb === 0 && floorPx >= 4.5) {
+      const g0 = q(0.5, 0), g1 = q(0.5, Math.min(1, 1.6 / Math.max(1, h)));
+      const g = ctx.createLinearGradient(g0.x, g0.y, g1.x, g1.y);
+      g.addColorStop(0, 'rgba(10,14,20,0.32)'); g.addColorStop(1, 'rgba(10,14,20,0)');
+      const ao = new Path2D(); quad(ao, 0, 1, 0, Math.min(1, 1.6 / Math.max(1, h))); ctx.fillStyle = g; ctx.fill(ao);
     }
   }
 }

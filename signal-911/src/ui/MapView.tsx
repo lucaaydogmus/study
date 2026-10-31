@@ -259,7 +259,7 @@ export function MapView(props: MapProps) {
       raf = requestAnimationFrame(draw);
       const dtMs = Math.min(100, now - lastT); lastT = now;
       frameEma += (dtMs - frameEma) * 0.05;
-      if (!lowDetail && frameEma > 29) lowDetail = true; else if (lowDetail && frameEma < 19) lowDetail = false;
+      if (!lowDetail && frameEma > 29 && !(window as unknown as { __sig911HQ?: boolean }).__sig911HQ) lowDetail = true; else if (lowDetail && frameEma < 19) lowDetail = false;
       const pr = P.current, eng = pr.engine, st = eng.state, c = cam.current;
       const motion = !pr.reduceMotion;
       if (pr.focus && pr.focus.key !== lastFocus.current) { lastFocus.current = pr.focus.key; c.tx = pr.focus.x; c.ty = pr.focus.y; if (pr.focus.zoom) c.tz = Math.max(c.fit, pr.focus.zoom); }
@@ -313,7 +313,18 @@ export function MapView(props: MapProps) {
       };
       // the live close-up darkens the ground first and draws night-graded buildings over it, so lit windows glow
       const liveCity = live3d || eff > 2.6;
-      if (liveCity) { darken(); drawBuildings3D(ctx, liveView, tilt, night, z, !lowDetail, nightA * 0.92); drawModels(ctx, liveView, tilt, night, z, nightA * 0.92); }
+      if (liveCity) {
+        darken();
+        // street lights pool on the ground, under the buildings that rise in front of them
+        if (night > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.85 * night; drawNightLights(ctx, view, { windows: false }); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
+        drawBuildings3D(ctx, liveView, tilt, night, z, !lowDetail, nightA * 0.92); drawModels(ctx, liveView, tilt, night, z, nightA * 0.92);
+      }
+      // broad daylight falls from the north-west: a warm lift on one side of the city, a cool falloff on the other
+      if (night < 0.9 && pr.layer === 'normal') {
+        const sun = ctx.createLinearGradient(0, 0, WORLD_W, WORLD_H);
+        sun.addColorStop(0, `rgba(255,244,214,${0.1 * (1 - night)})`); sun.addColorStop(0.5, 'rgba(255,255,255,0)'); sun.addColorStop(1, `rgba(24,40,78,${0.1 * (1 - night)})`);
+        ctx.fillStyle = sun; ctx.fillRect(vr.x, vr.y, vr.w, vr.h);
+      }
       // locked districts are greyed out
       const lockedFill = liveCity ? `rgba(${Math.round(64 - 56 * nightA)},${Math.round(70 - 56 * nightA)},${Math.round(82 - 48 * nightA)},0.45)` : 'rgba(64,70,82,0.45)';
       for (const d of city.districts) {
@@ -326,9 +337,11 @@ export function MapView(props: MapProps) {
       }
       if (night > 0) {
         if (!liveCity) darken();
-        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.85 * night;
-        if (liveCity) drawNightLights(ctx, view, { windows: false }); else ctx.drawImage(lightsCanvas(), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
-        ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+        if (!liveCity) {
+          ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.85 * night;
+          ctx.drawImage(lightsCanvas(), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
+          ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+        }
       }
       // cloud shadows drifting slowly over the city on a bright day
       if (night < 0.6 && motion && !lowDetail && pr.layer === 'normal') {
@@ -942,6 +955,7 @@ export function MapView(props: MapProps) {
         const m = mc.getContext('2d')!;
         const mw = mc.width, mh = mc.height;
         m.drawImage(cityCanvas(1, active, activeKey), 0, 0, mw, mh);
+        if (night > 0) { m.fillStyle = `rgba(8,14,34,${0.62 * night})`; m.fillRect(0, 0, mw, mh); }
         const sx = mw / (WORLD_W + PAD * 2), sy = mh / (WORLD_H + PAD * 2);
         for (const inc of Object.values(st.incidents)) { if (inc.reportedNode === null || inc.hidden || ['RESOLVED', 'CLOSED'].includes(inc.status)) continue; const n = city.nodes[inc.reportedNode]; m.fillStyle = sevColor(inc.severity); m.beginPath(); m.arc((n.x + PAD) * sx, (n.y + PAD) * sy, 3, 0, 7); m.fill(); }
         for (const u of Object.values(st.units)) { m.fillStyle = SERVICE_META[u.service].color; m.fillRect((u.x + PAD) * sx - 1, (u.y + PAD) * sy - 1, 2, 2); }
