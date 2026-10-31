@@ -286,8 +286,21 @@ function handleEngineEvent(e: EngineEvent, engine: GameEngine) {
     case 'ring': break;
     case 'answer': audio.pickup(); updateAmbience(engine); break;
     case 'hangup': audio.hangup(); updateAmbience(engine); break;
-    case 'radio': audio.radioBlip(); break;
-    case 'dispatch': audio.dispatchConfirm(); break;
+    case 'radio': {
+      audio.radioBlip();
+      const m = engine.state.radio[engine.state.radio.length - 1];
+      if (m?.kind === 'hospital') audio.pager();
+      else if (m && /booking now/.test(m.text)) audio.booking();
+      break;
+    }
+    case 'dispatch': {
+      audio.dispatchConfirm();
+      const u = engine.state.units[e.unitId];
+      // the crew at quarters hears the station alert tones
+      if (u && !u.temp && u.status === 'DISPATCHED') { const sn = engine.state.stations[u.stationId]; const n = sn ? engine.city.nodes[sn.nodeId] : null; if (n && Math.hypot(n.x - u.x, n.y - u.y) < 6) window.setTimeout(() => audio.stationTones(u.service), 350); }
+      if (u && u.service === 'fire' && Math.random() < 0.3) window.setTimeout(() => audio.airHorn(), 2200);
+      break;
+    }
     case 'arrive': audio.notify(); break;
     case 'alert': if (e.text === 'MAYDAY') audio.mayday(); else if (e.text === 'BOLO' || e.text === 'BOLO hit — pursuit') audio.attention(); else if (e.text === 'breaking') audio.stinger(); else audio.alert(); break;
     case 'caller_line': {

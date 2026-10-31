@@ -2298,6 +2298,18 @@ export class GameEngine {
     this.requestAgency(inc, u);
     this.askSpecialist(inc, u);
     this.askResources(inc, u);
+    // fire and EMS on a busy road want police to hold the traffic back
+    if (u.service !== 'police' && !inc.trafficAsked && st.config.mode !== 'tutorial') {
+      inc.trafficAsked = true;
+      const busy = this.city.adj[inc.reportedNode ?? inc.nodeId].some((eid) => ['arterial', 'highway'].includes(this.city.edges[eid].cls));
+      const pdThere = inc.assignedUnits.some((id) => st.units[id]?.service === 'police');
+      if (busy && !pdThere && !inc.requires.some((r) => r.cap === 'patrol') && this.hrand(inc.num, 51) < 0.35) {
+        inc.requires = mergeReqs(inc.requires, [{ cap: 'patrol', n: 1 }]);
+        inc.knownReqs = inc.requires.map((r) => ({ ...r }));
+        this.radio(u.spoken, this.hrand(inc.num, 52) < 0.5 ? `Dispatch, ${u.spoken} — can we get PD down here for traffic control? Cars are going round us at speed.` : `${u.spoken} to dispatch, we need a police unit to shut the junction, it's not safe to work.`, 'unit', u.id, inc.id);
+        this.notify(`${u.callsign} needs police for traffic control`, 'warn', inc.id);
+      }
+    }
     for (const [k, v] of Object.entries(inc.truth)) if (['fire', 'smoke', 'injured', 'trapped', 'vehicles', 'hazard', 'people'].includes(k) && inc.facts.every((x) => x.key !== k)) this.addFact(inc, k, v, 'confirmed', 'scene');
     // upgrade confidence of existing
     for (const x of inc.facts) if (x.confidence === 'unconfirmed' && inc.truth[x.key] === x.value) x.confidence = 'confirmed';
@@ -4678,6 +4690,11 @@ export class GameEngine {
     const pool: Array<() => void> = [];
     if (patrol.length >= 2) pool.push(() => { const [a, b] = this.rng.shuffle(patrol).slice(0, 2); say(a, b, this.rng.pick([`${b.spoken}, ${a.spoken} — meet you at the Gas & Go when you're clear?`, `${b.spoken}, heads up, there's a crowd building outside the bar on ${this.city.nodes[a.prevNode].addrStreet}.`, `${b.spoken}, I'll cover your beat for ten, go grab something to eat.`, `${b.spoken}, that silver hatchback is back on ${this.city.nodes[a.prevNode].addrStreet}, keep an eye out.`])); });
     if (patrol.length) pool.push(() => { const a = this.rng.pick(patrol); say(a, null, this.rng.pick([`${a.spoken}, all quiet on ${this.city.nodes[a.prevNode].addrStreet}.`, `${a.spoken}, 10-8, back on patrol.`, `${a.spoken}, slow-rolling past the school, all clear.`])); });
+    // crews at quarters, and across services
+    const home = units.filter((u) => u.status === 'AVAILABLE' && !this.onPatrol(u) && !isAir(u));
+    if (home.length) pool.push(() => { const a = this.rng.pick(home); say(a, null, this.rng.pick(a.service === 'fire' ? [`${a.spoken} back in quarters. Crew's checking the gear — available.`, `${a.spoken}, in quarters. Someone's put dinner on, so naturally the tones will go any second.`, `${a.spoken}, available, doing pump checks on the apron.`] : a.service === 'medical' ? [`${a.spoken}, restocked and available.`, `${a.spoken} clear at base, cleaning the truck — available.`, `${a.spoken}, available. We're down to our last box of gloves, will grab more at the hospital.`] : [`${a.spoken}, available at the station, finishing paperwork.`, `${a.spoken}, clear and available.`])); });
+    const pairs = units.filter((u) => u.status === 'RETURNING');
+    if (pairs.length && units.length > 3) pool.push(() => { const a = this.rng.pick(pairs); const b = this.rng.pick(units.filter((x) => x.service !== a.service)); if (b) say(a, b, this.rng.pick([`${b.spoken}, ${a.spoken} — thanks for the hand back there.`, `${b.spoken}, good work on that last one.`, `${b.spoken}, ${a.spoken}, coffee's on us next time.`])); });
     if (st.weather !== 'clear') pool.push(() => { const a = this.rng.pick(units); say(a, null, `All units, ${a.spoken} — roads are ${st.weather === 'snow' ? 'icy' : st.weather === 'fog' ? 'thick with fog' : 'slick'} on ${this.city.nodes[a.prevNode].addrStreet}, take it easy out there.`); });
     const heavy = Object.entries(st.districtTraffic).filter(([d, v]) => v > 0.65 && st.config.districts.includes(d));
     if (heavy.length) pool.push(() => { const a = this.rng.pick(units); const [d] = this.rng.pick(heavy); say(a, null, `${a.spoken} — traffic is solid through ${this.city.districtById[d].name}, avoid it if you can.`); });

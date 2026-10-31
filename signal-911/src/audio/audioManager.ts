@@ -255,6 +255,57 @@ class AudioManager {
     }
   }
 
+  // ── The world under the camera: a layered bed that follows where you look ─
+  private world: Record<string, { src: AudioBufferSourceNode; gain: GainNode; filt: BiquadFilterNode }> = {};
+  private chirpT = 0; private thunderT = 0;
+  /** levels 0..1 for each layer, from what is on screen; call a few times a second */
+  setWorldMix(mix: { traffic: number; water: number; wind: number; crowd: number; fire: number; rain: number; birds: number; crickets: number; storm: number }) {
+    const ctx = this.ensure(); if (!ctx || !this.noiseBuf) return;
+    const layer = (k: string, type: BiquadFilterType, freq: number, q: number) => {
+      let l = this.world[k];
+      if (!l) {
+        const src = ctx.createBufferSource(); src.buffer = this.noiseBuf; src.loop = true; src.playbackRate.value = 0.8 + Math.random() * 0.4;
+        const filt = ctx.createBiquadFilter(); filt.type = type; filt.frequency.value = freq; filt.Q.value = q;
+        const gain = ctx.createGain(); gain.gain.value = 0;
+        src.connect(filt); filt.connect(gain); gain.connect(this.buses.ambience!); src.start();
+        l = this.world[k] = { src, gain, filt };
+      }
+      return l;
+    };
+    const set = (k: string, type: BiquadFilterType, freq: number, q: number, v: number) => { const l = layer(k, type, freq, q); l.gain.gain.setTargetAtTime(Math.max(0, Math.min(1, v)), ctx.currentTime, 0.6); };
+    set('traffic', 'lowpass', 380, 0.7, mix.traffic * 0.22);
+    set('water', 'bandpass', 520, 0.5, mix.water * 0.16 * (0.7 + 0.3 * Math.sin(ctx.currentTime * 0.6)));
+    set('wind', 'bandpass', 300, 0.35, mix.wind * 0.14);
+    set('crowd', 'bandpass', 780, 0.6, mix.crowd * 0.2);
+    set('fire', 'highpass', 1800, 0.4, mix.fire * 0.16 * (0.6 + 0.4 * Math.random()));
+    set('rain', 'highpass', 2600, 0.5, mix.rain * 0.18);
+    // birdsong by day, crickets after dark: little synthesized chirps
+    const now = ctx.currentTime;
+    if (mix.birds > 0.05 && now > this.chirpT) {
+      this.chirpT = now + 0.6 + Math.random() * 2.4 / mix.birds;
+      const f = 2600 + Math.random() * 1800, n = 2 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < n; i++) this.tone(f * (0.9 + Math.random() * 0.25), 0.05 + Math.random() * 0.05, { type: 'sine', gain: 0.012 * mix.birds, slide: f * (1.1 + Math.random() * 0.3), at: i * 0.09, bus: 'ambience' });
+    } else if (mix.crickets > 0.05 && now > this.chirpT) {
+      this.chirpT = now + 0.25 + Math.random() * 0.6;
+      for (let i = 0; i < 3; i++) this.tone(4300 + Math.random() * 200, 0.03, { type: 'square', gain: 0.004 * mix.crickets, at: i * 0.06, bus: 'ambience' });
+    }
+    if (mix.storm > 0.1 && now > this.thunderT) { this.thunderT = now + 9 + Math.random() * 18; this.thunder(mix.storm); }
+  }
+  stopWorld() { for (const l of Object.values(this.world)) l.gain.gain.value = 0; }
+  thunder(level = 1) { this.noise(2.6, { gain: 0.22 * level, lp: 180, bus: 'ambience' }); this.noise(0.25, { gain: 0.12 * level, lp: 900, bus: 'ambience', at: 0.05 }); }
+  /** the alerting tones a station hears when you send its crew out */
+  stationTones(service: string) {
+    if (service === 'fire') { this.tone(853, 0.5, { type: 'sine', gain: 0.05 }); this.tone(960, 0.5, { type: 'sine', gain: 0.05, at: 0.52 }); for (let k = 0; k < 3; k++) this.tone(1500, 0.04, { type: 'square', gain: 0.03, at: 1.1 + k * 0.12 }); }
+    else if (service === 'medical') { this.tone(1046, 0.18, { type: 'triangle', gain: 0.05 }); this.tone(784, 0.18, { type: 'triangle', gain: 0.05, at: 0.2 }); this.tone(1046, 0.25, { type: 'triangle', gain: 0.05, at: 0.4 }); }
+    else { this.tone(700, 0.08, { type: 'square', gain: 0.03 }); this.tone(1050, 0.12, { type: 'square', gain: 0.03, at: 0.1 }); }
+  }
+  /** a hospital pager going off */
+  pager() { for (let k = 0; k < 4; k++) this.tone(k % 2 ? 2400 : 2000, 0.07, { type: 'square', gain: 0.03, at: k * 0.09 }); }
+  /** a heavy door and a cell lock: someone booked into custody */
+  booking() { this.noise(0.18, { gain: 0.1, lp: 400 }); this.tone(180, 0.12, { type: 'square', gain: 0.04, at: 0.18 }); }
+  /** an air horn blast from a fire engine forcing through traffic */
+  airHorn() { this.tone(233, 0.55, { type: 'sawtooth', gain: 0.045, bus: 'sirens' }); this.tone(277, 0.55, { type: 'sawtooth', gain: 0.035, bus: 'sirens' }); }
+
   // ── Music (optional): slow generative pad ─────────────────────────────────
   private startMusic() {
     const ctx = this.ensure(); if (!ctx || this.musicTimer) return;

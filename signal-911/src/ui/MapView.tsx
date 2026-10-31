@@ -947,6 +947,23 @@ export function MapView(props: MapProps) {
       }
 
       // positional sirens and rotors for what is on (or just off) screen
+      if (pr.sounds && now - lastSnd > 150 && Math.floor(now / 300) !== Math.floor(lastSnd / 300)) {
+        // the world under the camera: traffic, water, birds or crickets, crowds and fires close by
+        const close = Math.max(0, Math.min(1, (z - c.fit) / 5));
+        const cn = city.nodes[city.nearestNode(c.x, c.y)];
+        const dist = city.districtById[cn.district];
+        const tags = dist?.tags ?? [];
+        const rl = city.riverline; let dw = Infinity; for (const p of rl) dw = Math.min(dw, Math.hypot(p.x - c.x, p.y - c.y)); const coastY = city.coast[Math.floor((Math.max(0, Math.min(WORLD_W, c.x)) / WORLD_W) * (city.coast.length - 1))].y; dw = Math.min(dw, Math.abs(coastY - c.y));
+        const near = (tpl: (i: Incident) => boolean) => Object.values(st.incidents).reduce((m, i) => (['RESOLVED', 'CLOSED'].includes(i.status) || !tpl(i) ? m : Math.max(m, 1 - Math.hypot(city.nodes[i.nodeId].x - c.x, city.nodes[i.nodeId].y - c.y) / 160)), 0);
+        const green = tags.some((t) => ['residential', 'suburb', 'forest', 'campus', 'river'].includes(t)) ? 1 : 0.35;
+        const running = st.phase === 'running' && !st.paused && !document.hidden;
+        audio.setWorldMix(running ? {
+          traffic: (st.districtTraffic[cn.district] ?? 0.3) * (0.35 + 0.65 * close), water: Math.max(0, 1 - dw / 140) * (0.3 + 0.7 * close), wind: (['snow', 'storm', 'fog'].includes(st.weather) ? 0.6 : 0.15) * (0.5 + 0.5 * close),
+          crowd: Math.max(near((i) => ['riot', 'protest_march', 'crowd_crush', 'public_disturbance', 'looting', 'active_shooter'].includes(i.templateId)), st.events.some((e) => e.active && ['festival', 'protest', 'riot', 'marathon'].includes(e.type) && e.districts.includes(cn.district)) ? 0.5 : 0) * (0.3 + 0.7 * close),
+          fire: near((i) => i.category === 'fire' && i.requires.length > 0) * close, rain: ['rain', 'storm'].includes(st.weather) ? st.weatherIntensity : 0,
+          birds: (1 - night) * green * close * (st.weather === 'clear' || st.weather === 'heat' ? 1 : 0.3), crickets: night * green * close * (st.weather === 'clear' ? 1 : 0.2), storm: st.weather === 'storm' ? st.weatherIntensity : 0,
+        } : { traffic: 0, water: 0, wind: 0, crowd: 0, fire: 0, rain: 0, birds: 0, crickets: 0, storm: 0 });
+      }
       if (pr.sounds && now - lastSnd > 150) {
         lastSnd = now;
         const list: SirenVoice[] = [];
@@ -998,7 +1015,7 @@ export function MapView(props: MapProps) {
     return () => {
       cancelAnimationFrame(raf); ro.disconnect(); clearTimeout(warm);
       if (w3 && w3.canvas.parentElement === el) el.removeChild(w3.canvas);
-      if (P.current.sounds) audio.updateSirens([]);
+      if (P.current.sounds) { audio.updateSirens([]); audio.stopWorld(); }
       canvas.removeEventListener('pointerdown', onDown); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
       canvas.removeEventListener('contextmenu', onCtx); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('pointerleave', onLeave);
       mc?.removeEventListener('pointerdown', onMini);

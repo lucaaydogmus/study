@@ -77,6 +77,9 @@ describe('duplicate calls', () => {
   it('closing the original folds remaining duplicates in', () => {
     const { e, src, dup } = setup();
     for (const u of Object.values(e.state.units).filter((x) => x.service === 'fire' || x.capabilities.includes('bls'))) e.dispatch(u.id, src.id);
+    // crews on a busy road may ask for police traffic control
+    const pd = Object.values(e.state.units).find((x) => x.type === 'patrol' && x.status === 'AVAILABLE');
+    if (pd) e.dispatch(pd.id, src.id);
     run(e, 900, () => src.status === 'RESOLVED');
     expect(src.status).toBe('RESOLVED');
     expect(dup.status).toBe('RESOLVED');

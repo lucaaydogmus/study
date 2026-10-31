@@ -274,6 +274,7 @@ export interface Incident {
   /** crews on scene asked for these resources (game time) */
   resAsked?: Record<string, number>;
   /** the mass-casualty distribution question was asked */ mciAsked?: boolean;
+  /** a fire/EMS crew already decided whether it needs traffic control */ trafficAsked?: boolean;
   /** a major incident's breaking-news moment (game time) */
   breakAt?: number;
 }
