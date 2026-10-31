@@ -5,6 +5,7 @@ import { AGENCY } from '../sim/engine';
 import { barOffset, vehicleSprite } from './vehicles';
 import { getWorld3D, pitchFor } from './world3d/World3D';
 import { useApp } from '../store';
+import { atStation, slotOf, stationLayout, VisualFleet, type Pose } from './stationsLayout';
 import { audio, type SirenVoice } from '../audio/audioManager';
 import { WEATHER_LABEL, WEATHER_SPEED } from '../sim/events';
 import type { GameEngine } from '../sim/engine';
@@ -100,6 +101,8 @@ export function MapView(props: MapProps) {
   const offs = useRef(new Map<string, { dx: number; dy: number }>());
   const heading = useRef(new Map<string, { x: number; y: number; h: number }>());
   const smoke = useRef(new Map<string, Puff[]>());
+  const stationPts = useRef(new Map<string, { x: number; y: number }>());
+  const fleet2d = useRef(new VisualFleet());
 
   useEffect(() => {
     const canvas = ref.current!, el = wrap.current!;
@@ -149,13 +152,14 @@ export function MapView(props: MapProps) {
         if (Math.hypot(p.x - sx, p.y - sy) < 13) return { kind: 'heard', id: h.id, label: h.label };
       }
       for (const u of Object.values(st.units)) {
-        if (parkedAtBase(st, u) && !(st.selected.kind === 'unit' && st.selected.id === u.id)) continue;
+        if (parkedAtBase(st, u) && !offs.current.has(u.id) && !(st.selected.kind === 'unit' && st.selected.id === u.id)) continue;
         const p = toScreen(u.x, u.y); const o = offs.current.get(u.id) ?? { dx: 0, dy: 0 };
         if (Math.hypot(p.x + o.dx - sx, p.y + o.dy - sy) < 12) return { kind: 'unit', id: u.id, label: `${u.callsign} · ${u.typeLabel} — ${u.status.replace(/_/g, ' ')}${u.note ? ` (${u.note})` : ''}` };
       }
       for (const s of Object.values(st.stations)) {
-        const n = city.nodes[s.nodeId]; const p = toScreen(n.x, n.y);
-        if (Math.hypot(p.x - sx, p.y - sy) < 13) return { kind: 'station', id: s.id, label: s.name };
+        const p = stationPts.current.get(s.id) ?? (() => { const n = city.nodes[s.nodeId]; return toScreen(n.x, n.y); })();
+        const lay = stationLayout(city, s); const b = toScreen(lay.x, lay.y);
+        if (Math.hypot(p.x - sx, p.y - sy) < 14 || Math.hypot(b.x - sx, b.y - sy) < Math.max(10, 9 * cam.current.z)) return { kind: 'station', id: s.id, label: `${s.name} — drag onto an incident to send its next crew` };
       }
       if (cam.current.z > 0.55) for (const l of city.landmarks) {
         if (l.kind !== 'hospital') continue;
@@ -427,6 +431,7 @@ export function MapView(props: MapProps) {
         ctx.strokeStyle = ev ? 'rgba(200,40,40,0.9)' : 'rgba(210,140,30,0.95)'; ctx.lineWidth = Math.max(3, 3.5 / z); ctx.setLineDash([12 / z, 7 / z]);
         ctx.beginPath(); ctx.moveTo(d.poly[0].x, d.poly[0].y); for (const p of d.poly) ctx.lineTo(p.x, p.y); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
       }
+      if (!w3 && z > 0.9) for (const s of Object.values(st.stations)) drawStation2D(ctx, stationLayout(city, s), s.service, night, z);
       if (st.selected.kind === 'district') { const d = city.districtById[st.selected.id!]; if (d) { ctx.strokeStyle = '#4A9CD6'; ctx.lineWidth = Math.max(2, 2 / z); ctx.beginPath(); ctx.moveTo(d.poly[0].x, d.poly[0].y); for (const p of d.poly) ctx.lineTo(p.x, p.y); ctx.closePath(); ctx.stroke(); } }
       ctx.restore();
 
@@ -489,27 +494,44 @@ export function MapView(props: MapProps) {
           if (z > 2) { ctx.font = '500 10px Inter, system-ui, sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,18,0.8)'; ctx.strokeText(l.name, p.x, p.y + 12); ctx.fillStyle = 'rgba(200,210,222,0.9)'; ctx.fillText(l.name, p.x, p.y + 12); }
         }
       }
-      // stations, with a dot per vehicle parked inside (green ready, amber busy, red out of service)
+      // stations: a sign over the building, with a dot per vehicle at quarters (green ready, amber busy, red out of service)
       const parkedBy = new Map<string, Unit[]>();
-      for (const u of Object.values(st.units)) if (parkedAtBase(st, u)) { const g = parkedBy.get(u.stationId); if (g) g.push(u); else parkedBy.set(u.stationId, [u]); }
+      for (const u of Object.values(st.units)) if (parkedAtBase(st, u) || atStation(city, st, u)) { const g = parkedBy.get(u.stationId); if (g) g.push(u); else parkedBy.set(u.stationId, [u]); }
+      stationPts.current.clear();
       for (const s of Object.values(st.stations)) {
+        const lay = stationLayout(city, s);
         const here = parkedBy.get(s.id) ?? [];
-        if (here.length) {
-          const n = city.nodes[s.nodeId]; const p = S(n.x, n.y);
-          const show = here.slice(0, 8), w = show.length * 6;
-          ctx.fillStyle = 'rgba(8,12,18,0.82)'; roundRect(ctx, p.x - w / 2 - 3, p.y + 12, w + 6, 8, 4); ctx.fill();
-          show.forEach((u, i) => { ctx.fillStyle = u.status === 'AVAILABLE' ? '#54B889' : u.status === 'OUT_OF_SERVICE' ? '#D65353' : '#E5AC4D'; ctx.beginPath(); ctx.arc(p.x - w / 2 + 3 + i * 6, p.y + 16, 2.2, 0, 7); ctx.fill(); });
-        }
-        const n = city.nodes[s.nodeId]; const p = S(n.x, n.y); const m = SERVICE_META[s.service];
+        const close = z > (w3 ? 3.2 : 1.6);
+        const p = w3 ? S3(lay.at(0, 2).x, lay.at(0, 2).y, s.service === 'police' ? 9 : 8) : close ? S(lay.at(0, 2).x, lay.at(0, 2).y) : (() => { const n = city.nodes[s.nodeId]; return S(n.x, n.y); })();
+        if (!w3 && close) p.y -= 18;
+        stationPts.current.set(s.id, p);
+        const m = SERVICE_META[s.service];
         const off = s.disabledShifts > 0;
         ctx.globalAlpha = off ? 0.45 : 1;
-        ctx.fillStyle = 'rgba(0,0,0,0.5)'; roundRect(ctx, p.x - 9, p.y - 7, 20, 20, 5); ctx.fill();
-        ctx.fillStyle = '#121820'; ctx.strokeStyle = m.color; ctx.lineWidth = 2;
-        roundRect(ctx, p.x - 10, p.y - 10, 20, 20, 5); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = m.color; ctx.font = '800 11px Inter, system-ui, sans-serif'; ctx.fillText(m.glyph, p.x, p.y + 0.5);
-        if (z > 1.25) { ctx.font = '600 9px Inter, system-ui, sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,18,0.8)'; ctx.strokeText(s.name, p.x, p.y - 17); ctx.fillStyle = 'rgba(214,224,234,0.85)'; ctx.fillText(s.name, p.x, p.y - 17); }
+        if (close) {
+          // a slim sign: service badge and name
+          ctx.font = '700 10px Inter, system-ui, sans-serif';
+          const tw = ctx.measureText(s.name).width + 26;
+          ctx.fillStyle = 'rgba(10,14,20,0.86)'; roundRect(ctx, p.x - tw / 2, p.y - 9, tw, 18, 9); ctx.fill();
+          ctx.strokeStyle = m.color; ctx.lineWidth = 1.5; ctx.stroke();
+          ctx.fillStyle = m.color; ctx.beginPath(); ctx.arc(p.x - tw / 2 + 9, p.y, 6, 0, 7); ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.font = '800 8px Inter, system-ui, sans-serif'; ctx.fillText(m.glyph, p.x - tw / 2 + 9, p.y + 0.5);
+          ctx.fillStyle = '#e8edf2'; ctx.font = '700 10px Inter, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(s.name, p.x - tw / 2 + 19, p.y + 0.5); ctx.textAlign = 'center';
+          if (here.length) { const w = here.length * 6; here.forEach((u, i) => { ctx.fillStyle = u.status === 'AVAILABLE' ? '#54B889' : u.status === 'OUT_OF_SERVICE' ? '#D65353' : '#E5AC4D'; ctx.beginPath(); ctx.arc(p.x - w / 2 + 3 + i * 6, p.y + 14, 2.2, 0, 7); ctx.fill(); }); }
+          if (st.selected.kind === 'station' && st.selected.id === s.id) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; roundRect(ctx, p.x - tw / 2 - 4, p.y - 13, tw + 8, 26, 12); ctx.stroke(); }
+        } else {
+          if (here.length) {
+            const show = here.slice(0, 8), w = show.length * 6;
+            ctx.fillStyle = 'rgba(8,12,18,0.82)'; roundRect(ctx, p.x - w / 2 - 3, p.y + 12, w + 6, 8, 4); ctx.fill();
+            show.forEach((u, i) => { ctx.fillStyle = u.status === 'AVAILABLE' ? '#54B889' : u.status === 'OUT_OF_SERVICE' ? '#D65353' : '#E5AC4D'; ctx.beginPath(); ctx.arc(p.x - w / 2 + 3 + i * 6, p.y + 16, 2.2, 0, 7); ctx.fill(); });
+          }
+          ctx.fillStyle = 'rgba(0,0,0,0.5)'; roundRect(ctx, p.x - 9, p.y - 7, 20, 20, 5); ctx.fill();
+          ctx.fillStyle = '#121820'; ctx.strokeStyle = m.color; ctx.lineWidth = 2;
+          roundRect(ctx, p.x - 10, p.y - 10, 20, 20, 5); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = m.color; ctx.font = '800 11px Inter, system-ui, sans-serif'; ctx.fillText(m.glyph, p.x, p.y + 0.5);
+          if (st.selected.kind === 'station' && st.selected.id === s.id) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; roundRect(ctx, p.x - 14, p.y - 14, 28, 28, 7); ctx.stroke(); }
+        }
         ctx.globalAlpha = 1;
-        if (st.selected.kind === 'station' && st.selected.id === s.id) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; roundRect(ctx, p.x - 14, p.y - 14, 28, 28, 7); ctx.stroke(); }
       }
 
       // routes
@@ -744,7 +766,22 @@ export function MapView(props: MapProps) {
         ctx.strokeStyle = 'rgba(232,237,242,0.22)'; ctx.lineWidth = 1; ctx.stroke();
       }
       for (const u of Object.values(st.units)) {
-        // parked vehicles are the dots under their station; only units out on the road are drawn
+        // classic view: vehicles at quarters sit on the station forecourt and are seen pulling out and backing in
+        if (!w3 && !isAir(u) && !u.temp && st.stations[u.stationId]) {
+          const lay = stationLayout(city, st.stations[u.stationId]);
+          const k = Math.min(lay.slots.length - 1, slotOf(st, u));
+          const hd0 = heading.current.get(u.id)?.h ?? lay.heading;
+          const vp = fleet2d.current.pose(u, { x: u.x, y: u.y, heading: hd0 }, { slot: lay.slots[k], exit: lay.exits[k] }, atStation(city, st, u), now);
+          if ((vp.parked || vp.moving) && !markers) {
+            const q = S(vp.pose.x, vp.pose.y), p0 = S(u.x, u.y);
+            offs.current.set(u.id, { dx: q.x - p0.x, dy: q.y - p0.y });
+            drawParkedSprite(ctx, u, q, vp.pose.heading, z, now, motion, night);
+            if (sel.kind === 'unit' && sel.id === u.id) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.arc(q.x, q.y, 12, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+            if (vp.moving) heading.current.set(u.id, { x: u.x, y: u.y, h: vp.pose.heading });
+            continue;
+          }
+        }
+        // parked vehicles show in their bays; only units out on the road get the full treatment
         if (parkedAtBase(st, u) && !(sel.kind === 'unit' && sel.id === u.id)) continue;
         const o0 = offs.current.get(u.id) ?? { dx: 0, dy: 0 };
         const p0 = S(u.x, u.y); const p = { x: p0.x + o0.dx, y: p0.y + o0.dy };
@@ -1100,4 +1137,44 @@ function glyph(ctx: CanvasRenderingContext2D, cat: string, x: number, y: number,
   else if (cat === 'fire') { ctx.moveTo(x, y - s * 1.15); ctx.quadraticCurveTo(x + s * 1.25, y, x + s * 0.55, y + s); ctx.lineTo(x - s * 0.55, y + s); ctx.quadraticCurveTo(x - s * 1.25, y, x, y - s * 1.15); ctx.fill(); }
   else if (cat === 'police') { ctx.moveTo(x - s, y - s); ctx.lineTo(x + s, y - s); ctx.lineTo(x + s, y + s * 0.2); ctx.lineTo(x, y + s * 1.1); ctx.lineTo(x - s, y + s * 0.2); ctx.closePath(); ctx.fill(); }
   else { ctx.font = '900 12px Inter, system-ui, sans-serif'; ctx.fillText('?', x, y + 0.5); }
+}
+
+/** classic 2D: a station seen from above — roof, service stripe, open bays and a forecourt */
+function drawStation2D(ctx: CanvasRenderingContext2D, L: ReturnType<typeof stationLayout>, service: string, night: number, z: number) {
+  const poly = (pts: Array<{ x: number; y: number }>) => { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (const p of pts) ctx.lineTo(p.x, p.y); ctx.closePath(); };
+  const rect = (u0: number, v0: number, u1: number, v1: number) => [L.at(u0, v0), L.at(u1, v0), L.at(u1, v1), L.at(u0, v1)];
+  const roof = service === 'fire' ? '#7a3e30' : service === 'police' ? '#8f969d' : '#dfe5ea';
+  const stripe = service === 'fire' ? '#c43b3b' : service === 'police' ? '#1f4f9a' : '#2f9e4f';
+  const dim = 1 - night * 0.55;
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = `rgba(190,185,175,${dim})`; poly(rect(-10.5, -8.2, 10.5, -2.4)); ctx.fill();
+  poly(rect(10.5, -8.2, 14.8, 6.6)); ctx.fill();
+  ctx.fillStyle = 'rgba(30,36,44,0.35)'; poly(rect(-9.4, -1.6, 10.8, 7.4)); ctx.fill();
+  ctx.fillStyle = roof; poly(rect(-10, -2.5, 10, 6.5)); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = Math.max(0.2, 1 / z); ctx.stroke();
+  ctx.fillStyle = stripe; poly(rect(-10, -2.5, 10, -1.6)); ctx.fill();
+  if (service !== 'police') { ctx.fillStyle = '#1a1c20'; for (const u of [-7.5, -2.5, 2.5, 7.5]) { poly(rect(u - 1.8, -2.5, u + 1.8, -1.9)); ctx.fill(); } }
+  if (service === 'fire') { ctx.fillStyle = '#9c4a38'; poly(rect(-9.3, 2.9, -5.9, 6.3)); ctx.fill(); }
+  // the service emblem on the roof
+  const c = L.at(0, 2.4);
+  ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(c.x, c.y, 2.4, 0, 7); ctx.fill();
+  ctx.fillStyle = stripe; ctx.font = '900 3px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(service === 'fire' ? 'F' : service === 'police' ? 'P' : '+', c.x, c.y + 0.2);
+  ctx.strokeStyle = service === 'fire' ? 'rgba(226,178,60,0.8)' : 'rgba(240,240,234,0.8)'; ctx.lineWidth = Math.max(0.15, 0.6 / z);
+  ctx.beginPath(); for (const u of [-10, -5, 0, 5, 10]) { const a = L.at(u, -8), b = L.at(u, -3); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); } ctx.stroke();
+}
+/** classic 2D: a vehicle on the forecourt, at true-ish scale, lights going while the crew turns out */
+function drawParkedSprite(ctx: CanvasRenderingContext2D, u: Unit, q: { x: number; y: number }, h: number, z: number, now: number, motion: boolean, night: number) {
+  const turning = u.status === 'DISPATCHED' && u.code !== 2;
+  const ph = turning ? (motion ? 1 + (Math.floor(now / 140) % 2) : 1) : 0;
+  const spr = vehicleSprite(u.type, u.service, ph, u.fit?.livery, u.fit?.chassis);
+  const k = Math.min(0.9, Math.max(0.16, z * 0.075));
+  const L = spr.len * k, Wd = spr.wid * k;
+  ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(h);
+  ctx.globalAlpha = u.status === 'OUT_OF_SERVICE' ? 0.5 : 1;
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(-L / 2 + 1, -Wd / 2 + 1.4, L, Wd);
+  ctx.drawImage(spr.img, -L / 2, -Wd / 2, L, Wd);
+  if (ph) { ctx.globalCompositeOperation = 'lighter'; const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 10 + 8 * night); const col = ph === 1 ? '#ff2e3b' : '#2f7bff'; g.addColorStop(0, `${col}99`); g.addColorStop(1, `${col}00`); ctx.fillStyle = g; ctx.fillRect(-20, -20, 40, 40); ctx.globalCompositeOperation = 'source-over'; }
+  ctx.restore();
+  ctx.globalAlpha = 1;
 }

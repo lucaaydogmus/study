@@ -106,6 +106,11 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 - Civilian traffic drives in proper lanes (two per side on main roads, three on the expressway), cars park along
   the kerb and in car parks, street lights glow at night, fires burn with flames and rising smoke (and light up the
   street), and crashes leave wrecked cars in the road.
+- Every station is a real building: a red-brick firehouse with open bays and a hose tower, a police station with a
+  glass entrance and comms mast, an EMS base with a canopied forecourt. Vehicles at quarters sit on the
+  forecourt in their own bays (click them there). When you send one, its lights come on while the crew turns out,
+  then you watch it pull out of its bay onto the road; it reverses back in when it returns. (The classic 2D view
+  shows the same, from above.)
 - Zoom from the whole city right down to street level (the camera tilts as you zoom). The 2D overlay (pins,
   routes, labels, sectors) sits exactly on top, so everything stays clickable.
 - Settings → Graphics: *Cinematic 3D* or *Classic 2D*, and High / Medium / Low quality.

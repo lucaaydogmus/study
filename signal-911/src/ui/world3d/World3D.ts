@@ -15,6 +15,7 @@ import { CAR_COLORS, getLanes, getScenery, hash, laneAt, quadPt, type Lot } from
 import { buildCity, DECK, ROAD } from './build';
 import { Geo, SURF, WIN, lin } from './geo';
 import { civilianCarGeometry, civilianLampGeometry, lampMat, makeVehicle, type Vehicle3D } from './vehicles3d';
+import { atStation, slotOf, stationLayout, VisualFleet, type StationLayout } from '../stationsLayout';
 
 export interface Frame3D {
   engine: GameEngine; cx: number; cy: number; z: number; W: number; H: number; pitch: number; dpr: number;
@@ -176,6 +177,7 @@ export class World3D {
   private fires: Array<{ flames: THREE.Sprite[]; smoke: THREE.Sprite[] }> = [];
   private crashes: THREE.Group[] = [];
   private shadowR = 0;
+  private fleet = new VisualFleet();
   private W = 1; private H = 1; private dpr = 1;
   layout = new Map<string, UnitPose>();
   quality: 'high' | 'medium' | 'low' = 'high';
@@ -346,18 +348,18 @@ export class World3D {
     this.stationKey = key;
     const city = this.city;
     const g = new Geo();
-    const foot: Array<{ x: number; y: number; r: number }> = [];
-    for (const s of stations) {
-      const pose = stationPose(city, s);
-      foot.push({ x: pose.x, y: pose.y, r: 12 });
-      stationModel(g, s, pose);
-    }
+    const lays: StationLayout[] = [];
+    for (const st0 of stations) { const lay = stationLayout(city, st0); lays.push(lay); stationModel(g, st0, lay); }
     if (this.stationMesh) { this.scene.remove(this.stationMesh); this.stationMesh.geometry.dispose(); }
     this.stationMesh = new THREE.Mesh(g.build(), this.cityMat); this.stationMesh.castShadow = true; this.stationMesh.receiveShadow = true;
     this.scene.add(this.stationMesh);
     // rebuild the buildings without the lots under the stations
     const sc = getScenery();
-    const skip = (l: Lot) => foot.some((f) => Math.hypot(l.cx - f.x, l.cy - f.y) < f.r + l.r * 0.5);
+    const skip = (l: Lot) => lays.some((lay) => {
+      const dx = l.cx - lay.x, dy = l.cy - lay.y, c = Math.cos(lay.rot), sn = Math.sin(lay.rot);
+      const u = dx * c + dy * sn, v = -dx * sn + dy * c, m = l.r * 0.7;
+      return u > -11 - m && u < 15 - m * 0 + m && v > -8 - m && v < 7 + m;
+    });
     const meshes = buildCity(city, sc, skip);
     meshes.ground.dispose(); meshes.water.dispose();
     if (this.buildingsMesh) { this.buildingsMesh.geometry.dispose(); this.buildingsMesh.geometry = meshes.buildings; }
@@ -478,7 +480,7 @@ export class World3D {
     this.trafficLampMat.color.setScalar(0.25 + night * 1.6);
 
     // emergency units
-    this.layout = computeLayout(st, city, f.parkedAtBase, this.units);
+    this.layout = computeLayout(st, city, this.units, this.fleet, f.now);
     const seen = new Set<string>();
     let si = 0;
     const phaseBase = Math.floor(f.now / 140);
@@ -509,7 +511,7 @@ export class World3D {
       if (v.air && night > 0.3 && si < 238) { m.compose(pv.set(pose.x, 0.14, pose.y), q.identity(), sv.set(9, 1, 9)); this.spills.setMatrixAt(si, m); this.spills.setColorAt(si, col.setRGB(0.9, 0.95, 1).multiplyScalar(night * 0.9)); si++; }
       if (lightsOn && night > 0.3 && !v.air && u.speed > 0.05 && gi < sc.lights.length + 790) { m.compose(pv.set(pose.x + Math.cos(pose.heading) * 2.6, 0.13, pose.y + Math.sin(pose.heading) * 2.6), q.setFromAxisAngle(yAxis, -pose.heading), sv.set(4.2, 1, 1.9)); this.glows.setMatrixAt(gi, m); this.glows.setColorAt(gi, col.setRGB(0.7, 0.65, 0.55)); gi++; }
     }
-    for (const [id, rec] of this.units) if (!seen.has(id)) { if (st.units[id]) rec.v.group.visible = false; else { this.scene.remove(rec.v.group); this.units.delete(id); } }
+    for (const [id, rec] of this.units) if (!seen.has(id)) { if (st.units[id]) rec.v.group.visible = false; else { this.scene.remove(rec.v.group); this.units.delete(id); this.fleet.forget(id); } }
     this.spills.count = si; this.spills.instanceMatrix.needsUpdate = true; if (this.spills.instanceColor) this.spills.instanceColor.needsUpdate = true;
     this.glows.count = gi; this.glows.instanceMatrix.needsUpdate = true; if (this.glows.instanceColor) this.glows.instanceColor.needsUpdate = true;
 
@@ -601,65 +603,72 @@ function fireSite(city: City, sc: ReturnType<typeof getScenery>, inc: Incident):
   return { x: best.cx, y: best.style === 'house' || best.style === 'terrace' ? Math.min(best.h, 3.4) + 1 : best.h * (best.style === 'tower' ? 1.4 : best.style === 'office' ? 1.3 : 1), z: best.cy, r: Math.min(5, best.r * 0.6) };
 }
 
-/** where a station stands: in a built block on one corner of its junction, facing the road */
-export function stationPose(city: City, s: Station): { x: number; y: number; rot: number } {
-  const n = city.nodes[s.nodeId];
-  const inside = (px: number, py: number) => city.blocks.some((b) => b.kind === 'building' && pointInQuad(px, py, b.poly));
-  for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
-    const x = n.x + sx * 12, y = n.y + sy * 10.5;
-    if (inside(x, y)) return { x, y, rot: sy > 0 ? 0 : Math.PI };
-  }
-  return { x: n.x + 12, y: n.y + 10.5, rot: 0 };
-}
-function pointInQuad(x: number, y: number, q: Array<{ x: number; y: number }>): boolean {
-  let inside = false;
-  for (let i = 0, j = q.length - 1; i < q.length; j = i++) {
-    const xi = q[i].x, yi = q[i].y, xj = q[j].x, yj = q[j].y;
-    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
-  }
-  return inside;
-}
-
-function stationModel(g: Geo, s: Station, p: { x: number; y: number; rot: number }) {
-  const c = Math.cos(p.rot), sn = Math.sin(p.rot);
-  const at = (u: number, v: number) => ({ x: p.x + u * c - v * sn, y: p.y + u * sn + v * c });
-  const B = (u: number, v: number, w: number, d: number, y0: number, y1: number, wall: string, top: string, style = 0) => { const q = at(u, v); g.box(q.x, q.y, w, d, y0, y1, p.rot, lin(wall), lin(top), style ? { style, seed: 0.42 } : undefined); };
-  // front faces the road (v negative = towards the junction row)
+/** a station as a real building: brick firehouse with open bays and a hose tower, police station
+ *  with a glass entrance and comms mast, EMS base with a canopied forecourt; vehicles park out front */
+function stationModel(g: Geo, s: Station, L: StationLayout) {
+  const at = L.at;
+  const B = (u: number, v: number, w: number, d: number, y0: number, y1: number, wall: string, top: string, style = 0, seed = 0.42) => { const q = at(u, v); g.box(q.x, q.y, w, d, y0, y1, L.rot, lin(wall), lin(top), style ? { style, seed } : undefined); };
+  const front = (u: number, w: number, y0: number, y1: number, col: string, glow = 0) => {
+    // a panel on the front wall (v = −2.5), facing the road
+    const a = at(u - w / 2, -2.53), b = at(u + w / 2, -2.53);
+    g.ext = [glow, 0, SURF.none, 0];
+    const out = at(0, -10); const ctr = at(0, -2.53);
+    g.quad([a.x, y0, a.y], [b.x, y0, b.y], [b.x, y1, b.y], [a.x, y1, a.y], lin(col), [out.x - ctr.x, 0, out.y - ctr.y]);
+    g.ext = [0, 0, SURF.none, 0];
+  };
+  // forecourt, kerb line and the side lot
   g.ext = [0, 0, SURF.paving, 0];
-  g.flat([at(-11, -6.5), at(11, -6.5), at(11, 7), at(-11, 7)], 0.04, lin('#bdb7ac'));
+  g.flat([at(-10.5, -8.2), at(10.5, -8.2), at(10.5, -2.4), at(-10.5, -2.4)], 0.045, lin('#c7c2b8'));
+  g.flat([at(10.5, -8.2), at(14.8, -8.2), at(14.8, 6.6), at(10.5, 6.6)], 0.045, lin('#b9b5ab'));
+  g.ext = [0, 0, SURF.none, 0];
+  for (const u of [-10, -5, 0, 5, 10]) { const a2 = at(u, -8), b2 = at(u, -3); g.ribbon(a2.x, a2.y, b2.x, b2.y, 0.12, 0.06, lin(s.service === 'fire' ? '#e2b23c' : '#f0f0ea')); }
+  for (const v of [-2.4, 1.4, 5.2]) { const a2 = at(10.8, v), b2 = at(14.6, v); g.ribbon(a2.x, a2.y, b2.x, b2.y, 0.12, 0.06, lin('#f0f0ea')); }
   if (s.service === 'fire') {
-    g.ext = [0, 0, SURF.none, 4.4];
-    B(0, 1.5, 18, 10, 0, 4.4, '#a8503c', '#7a3e30', WIN.house);
-    for (let k = 0; k < 3; k++) { g.ext = [0, 0, SURF.none, 0]; B(-5.5 + k * 5.5, -3.55, 4.4, 0.12, 0, 2.9, '#e8e4dc', '#e8e4dc'); B(-5.5 + k * 5.5, -3.62, 3.8, 0.1, 0.05, 2.7, '#c43b3b', '#c43b3b'); }
-    B(7.5, 4, 3, 3, 0, 9, '#a8503c', '#7a3e30', WIN.stone);
-    g.ext = [1, 0, SURF.none, 0]; B(0, -3.7, 6, 0.1, 3.3, 3.9, '#ffe2a0', '#ffe2a0');
-    g.ext = [0, 0, SURF.none, 0]; { const q = at(-9, -5.5); g.cyl(q.x, q.y, 0.07, 0.07, 0, 7, 6, lin('#d0d4d8')); } B(-8.4, -5.5, 1.2, 0.05, 6.1, 6.8, '#c43b3b', '#c43b3b');
+    g.ext = [0, 0, SURF.none, 5.2];
+    B(0, 2, 20, 9, 0, 5.2, '#a8503c', '#6e3a2e', WIN.house, 0.3);
+    g.ext = [0, 0, SURF.gravel, 0]; { const q = [at(-10, -2.5), at(10, -2.5), at(10, 6.5), at(-10, 6.5)]; g.flat(q, 5.22, lin('#5b4a42')); }
+    // four tall bay openings, doors rolled up, with white frames
+    for (const u of [-7.5, -2.5, 2.5, 7.5]) { front(u, 4.2, 0, 3.9, '#f2efe8'); front(u, 3.6, 0.02, 3.5, '#1a1c20'); front(u, 3.6, 3.2, 3.5, '#9aa0a6'); }
+    front(0, 14, 4.2, 4.9, '#efe6cf', 1);
+    // hose-drying tower and flag
+    g.ext = [0, 0, SURF.none, 12];
+    B(-7.6, 4.6, 3.4, 3.4, 0, 12, '#9c4a38', '#5b4a42', WIN.stone, 0.6);
+    g.ext = [0, 0, SURF.none, 0];
+    { const q = at(-9.8, -7.6); g.cyl(q.x, q.y, 0.07, 0.06, 0, 9, 6, lin('#d0d4d8')); }
+    B(-9.2, -7.6, 1.4, 0.05, 8, 8.8, '#c43b3b', '#c43b3b');
   } else if (s.service === 'police') {
-    g.ext = [0, 0, SURF.none, 5];
-    B(0, 1.5, 18, 10, 0, 5, '#d5d9de', '#9ea4ab', WIN.office);
+    g.ext = [0, 0, SURF.none, 6.2];
+    B(0, 2, 20, 9, 0, 6.2, '#d8dce1', '#9ea4ab', WIN.office, 0.55);
+    g.ext = [0, 0, SURF.gravel, 0]; { const q = [at(-10, -2.5), at(10, -2.5), at(10, 6.5), at(-10, 6.5)]; g.flat(q, 6.22, lin('#8f969d')); }
+    front(0, 20.05, 4.3, 4.9, '#1f4f9a');
+    front(-6, 5, 0, 3.4, '#4d6c8a');
+    B(-6, -3.6, 6.4, 2.4, 3.4, 3.7, '#c9cdd2', '#e0e3e7');
+    front(-6, 4.6, 3.6, 4.15, '#5aa0ff', 1.2);
+    { const q = at(7, 4.5); g.cyl(q.x, q.y, 0.14, 0.06, 6.2, 16, 4, lin('#c9ced4')); }
+    g.ext = [1.4, 0, SURF.none, 0]; B(7, 4.5, 0.35, 0.35, 16, 16.35, '#ff3a3a', '#ff3a3a');
     g.ext = [0, 0, SURF.none, 0];
-    B(0, -3.55, 18.1, 0.12, 3.6, 4.1, '#1f4f9a', '#1f4f9a');
-    B(-4, -4.6, 6, 2.2, 2.6, 2.9, '#c9cdd2', '#e0e3e7'); for (const u of [-6.8, -1.2]) B(u, -5.5, 0.25, 0.25, 0, 2.6, '#9ea4ab', '#9ea4ab');
-    g.ext = [1, 0, SURF.none, 0]; B(-4, -5.75, 3.5, 0.1, 2.0, 2.5, '#5aa0ff', '#5aa0ff');
-    g.ext = [0, 0, SURF.none, 0]; { const q = at(7, 4); g.cyl(q.x, q.y, 0.12, 0.06, 5, 13, 4, lin('#c9ced4')); } g.ext = [1.2, 0, SURF.none, 0]; B(7, 4, 0.3, 0.3, 13, 13.3, '#ff3a3a', '#ff3a3a');
+    { const q = at(-9.5, -7.5); g.cyl(q.x, q.y, 0.06, 0.05, 0, 3.2, 6, lin('#d0d4d8')); }
+    g.ext = [1, 0, SURF.none, 0]; B(-9.5, -7.5, 1.4, 0.18, 2.4, 3.1, '#2f6fd0', '#2f6fd0');
   } else {
-    g.ext = [0, 0, SURF.none, 3.8];
-    B(0, 2, 18, 9, 0, 3.8, '#eef1f4', '#cfd6dd', WIN.office);
-    g.ext = [0, 0, SURF.none, 0];
-    B(0, -2.55, 18.1, 0.12, 2.6, 3.0, '#2f9e4f', '#2f9e4f');
-    B(0, -4.2, 16, 4, 3.2, 3.5, '#e6ebef', '#f2f5f7'); for (const u of [-7.5, 7.5]) B(u, -6, 0.25, 0.25, 0, 3.2, '#cfd6dd', '#cfd6dd');
-    B(0, 2, 2.2, 6, 3.8, 3.86, '#2f6fd0', '#2f6fd0'); B(0, 2, 6, 2.2, 3.8, 3.86, '#2f6fd0', '#2f6fd0');
-    g.ext = [1, 0, SURF.none, 0]; B(0, -6.25, 5, 0.1, 2.6, 3.1, '#9ef0c0', '#9ef0c0');
+    g.ext = [0, 0, SURF.none, 4.4];
+    B(0, 2, 20, 9, 0, 4.4, '#eef1f4', '#cfd6dd', WIN.office, 0.7);
+    g.ext = [0, 0, SURF.gravel, 0]; { const q = [at(-10, -2.5), at(10, -2.5), at(10, 6.5), at(-10, 6.5)]; g.flat(q, 4.42, lin('#b8bfc6')); }
+    for (const u of [-7.5, -2.5, 2.5, 7.5]) { front(u, 3.8, 0, 3.2, '#e8ecef'); front(u, 3.3, 0.02, 2.9, '#23272c'); }
+    front(0, 20.05, 3.3, 3.75, '#2f9e4f');
+    // canopy over the bay doors, and the star of life on the roof
+    B(0, -3.4, 20, 1.8, 3.4, 3.65, '#e6ebef', '#f4f6f8');
+    B(0, 2, 2.6, 7, 4.42, 4.48, '#2f6fd0', '#2f6fd0'); B(0, 2, 7, 2.6, 4.42, 4.48, '#2f6fd0', '#2f6fd0');
+    g.ext = [1, 0, SURF.none, 0]; front(0, 6, 3.75, 4.2, '#9ef0c0', 1);
   }
   g.ext = [0, 0, SURF.none, 0];
 }
 
 /** neat positions for every vehicle on the map: in their lane when moving, parked tidily around a scene */
-function computeLayout(st: GameState, city: City, parkedAtBase: (st: GameState, u: Unit) => boolean, prev: Map<string, { hd: number; lx: number; ly: number }>): Map<string, UnitPose> {
+function computeLayout(st: GameState, city: City, prev: Map<string, { hd: number; lx: number; ly: number }>, fleet: VisualFleet, now: number): Map<string, UnitPose> {
   const out = new Map<string, UnitPose>();
   const groups = new Map<number, Unit[]>();
+  const road = new Map<string, UnitPose>();
   for (const u of Object.values(st.units)) {
-    if (parkedAtBase(st, u)) continue;
     const rec = prev.get(u.id);
     let hd = rec?.hd ?? -Math.PI / 2;
     if (rec && Math.hypot(u.x - rec.lx, u.y - rec.ly) > 0.05) {
@@ -668,26 +677,27 @@ function computeLayout(st: GameState, city: City, parkedAtBase: (st: GameState, 
       hd += diff * 0.25;
     }
     if (rec) { rec.hd = hd; rec.lx = u.x; rec.ly = u.y; }
-    if (isAir(u)) { out.set(u.id, { x: u.x, y: u.y, h: 9, top: 9.8, heading: hd }); continue; }
+    if (isAir(u)) { road.set(u.id, { x: u.x, y: u.y, h: 9, top: 9.8, heading: hd }); continue; }
+    if (atStation(city, st, u)) continue;
     if (u.speed > 0.05) {
       const next = u.route[0] ?? u.prevNode;
       const eid = city.edgeBetween.get(u.prevNode * 100000 + next);
       const cls = eid !== undefined ? city.edges[eid].cls : 'local';
       const off = cls === 'arterial' ? 1.5 : cls === 'highway' ? 2.3 : cls === 'bridge' ? 1.4 : 0.8;
       const yy = cls === 'bridge' ? DECK : 0;
-      out.set(u.id, { x: u.x - Math.sin(hd) * off, y: u.y + Math.cos(hd) * off, h: yy, top: yy + 1.2, heading: hd });
+      road.set(u.id, { x: u.x - Math.sin(hd) * off, y: u.y + Math.cos(hd) * off, h: yy, top: yy + 1.2, heading: hd });
       continue;
     }
     const n = city.nearestNode(u.x, u.y);
     const node = city.nodes[n];
     if (Math.hypot(node.x - u.x, node.y - u.y) < 2) { const g = groups.get(n); if (g) g.push(u); else groups.set(n, [u]); }
-    else out.set(u.id, { x: u.x, y: u.y, h: 0, top: 1.2, heading: hd });
+    else road.set(u.id, { x: u.x, y: u.y, h: 0, top: 1.2, heading: hd });
   }
   for (const [n, list] of groups) {
     const node = city.nodes[n];
     list.sort((a, b) => a.id.localeCompare(b.id));
     const dirs = city.adj[n].map((eid) => { const e = city.edges[eid]; const o = city.nodes[e.a === n ? e.b : e.a]; const d = Math.hypot(o.x - node.x, o.y - node.y) || 1; return { ux: (o.x - node.x) / d, uy: (o.y - node.y) / d, cls: e.cls, len: d }; }).filter((d) => d.cls !== 'highway' && d.cls !== 'bridge');
-    if (!dirs.length) { list.forEach((u, i) => out.set(u.id, { x: node.x + i * 1.8, y: node.y, h: 0, top: 1.2, heading: 0 })); continue; }
+    if (!dirs.length) { list.forEach((u, i) => road.set(u.id, { x: node.x + i * 1.8, y: node.y, h: 0, top: 1.2, heading: 0 })); continue; }
     const used = dirs.map(() => 0);
     list.forEach((u, i) => {
       const k = i % dirs.length, d = dirs[k];
@@ -695,11 +705,22 @@ function computeLayout(st: GameState, city: City, parkedAtBase: (st: GameState, 
       const L = u.service === 'fire' ? 2.9 : 1.9;
       const dist = w.asphalt / 2 + 2.2 + used[k] + L / 2;
       used[k] += L + 0.5;
-      // nose towards the junction, pulled over to the kerb
       const heading = Math.atan2(-d.uy, -d.ux);
       const lat = w.asphalt / 2 - 0.55;
-      out.set(u.id, { x: node.x + d.ux * dist - Math.sin(heading) * lat, y: node.y + d.uy * dist + Math.cos(heading) * lat, h: 0, top: 1.2, heading });
+      road.set(u.id, { x: node.x + d.ux * dist - Math.sin(heading) * lat, y: node.y + d.uy * dist + Math.cos(heading) * lat, h: 0, top: 1.2, heading });
     });
+  }
+  // every vehicle of ours gets a pose: in its bay at quarters, on the road otherwise, and animated in between
+  for (const u of Object.values(st.units)) {
+    if (isAir(u)) { const r = road.get(u.id); if (r) out.set(u.id, r); continue; }
+    const stn = st.stations[u.stationId];
+    const lay = stn && !u.temp ? stationLayout(city, stn) : null;
+    const k = lay ? Math.min(lay.slots.length - 1, slotOf(st, u)) : 0;
+    const parked = atStation(city, st, u);
+    const node = stn ? city.nodes[stn.nodeId] : null;
+    const r = road.get(u.id) ?? { x: node?.x ?? u.x, y: node?.y ?? u.y, h: 0, top: 1.2, heading: lay?.heading ?? 0 };
+    const v = fleet.pose(u, { x: r.x, y: r.y, heading: r.heading }, lay ? { slot: lay.slots[k], exit: lay.exits[k] } : null, parked, now);
+    out.set(u.id, { x: v.pose.x, y: v.pose.y, h: v.parked || v.moving ? 0.05 : r.h, top: (v.parked || v.moving ? 0.05 : r.h) + 1.2, heading: v.pose.heading });
   }
   return out;
 }
