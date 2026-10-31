@@ -42,10 +42,10 @@ export const AGENCY_FOR: Record<string, AgencyKind> = {
 };
 /** outside specialists for the very worst days: a federal tactical team and National Guard bomb technicians */
 export const SPECIALIST: Record<SpecialistKind, { name: string; short: string; unitType: string; cost: number; mobilise: [number, number]; spoken: string; ask: string[]; arrive: string }> = {
-  federal: { name: 'Federal Tactical Team', short: 'FED', unitType: 'federal_tactical', cost: 12000, mobilise: [70, 110], spoken: 'Federal Team',
+  federal: { name: 'Federal Tactical Team', short: 'FED', unitType: 'federal_tactical', cost: 9000, mobilise: [70, 110], spoken: 'Federal Team',
     ask: ['This is beyond what we have here — recommend you request the federal tactical team.', 'Dispatch, we are outgunned. Get the feds rolling — tactical and a negotiator.'],
     arrive: 'Federal tactical team on scene — we have command of the inner cordon.' },
-  eod: { name: 'National Guard EOD', short: 'EOD', unitType: 'guard_eod', cost: 7500, mobilise: [55, 95], spoken: 'Guard EOD',
+  eod: { name: 'National Guard EOD', short: 'EOD', unitType: 'guard_eod', cost: 6000, mobilise: [55, 95], spoken: 'Guard EOD',
     ask: ['We need bomb technicians here — get EOD rolling, nobody goes near this thing until they arrive.', 'Dispatch, we have a possible device. Request EOD — National Guard if the bomb squad is not available.'],
     arrive: 'Guard EOD on scene. Robot is going down to the device now.' },
 };
@@ -54,6 +54,34 @@ export const SPECIALIST_FOR: Record<string, SpecialistKind> = {
   active_shooter: 'federal', hostage_barricade: 'federal', kidnapping: 'federal', bank_robbery: 'federal', vehicle_ramming: 'federal', riot: 'federal',
   bomb_threat: 'eod', suspicious_package: 'eod',
 };
+/** the outside-resources catalogue: everything dispatch can phone in, from a tow truck to the federal team */
+export type ResourceKind = 'agency' | 'unit' | 'mutual';
+export interface ResourceDef { id: string; name: string; short: string; group: string; kind: ResourceKind; cost: number; eta: [number, number]; desc: string; icon: string; unitType?: string; spoken?: string; cap?: Capability; arrive?: string; templates?: string[] }
+export const RESOURCE_GROUPS = ['Utilities & city services', 'Police specialists', 'Fire & rescue specialists', 'Federal & military', 'Mutual aid'] as const;
+export const RESOURCES: ResourceDef[] = [
+  { id: 'tow', name: 'Tow truck', short: 'TOW', group: 'Utilities & city services', kind: 'agency', cost: 150, eta: [45, 85], icon: 'car', desc: 'Clears wrecked and disabled vehicles so the road can reopen.' },
+  { id: 'power', name: 'Power company', short: 'POWER CO', group: 'Utilities & city services', kind: 'agency', cost: 250, eta: [60, 110], icon: 'bolt', desc: 'Kills live feeds and makes downed lines safe.' },
+  { id: 'gas', name: 'Gas company', short: 'GAS CO', group: 'Utilities & city services', kind: 'agency', cost: 250, eta: [55, 100], icon: 'flame', desc: 'Isolates gas mains at the street.' },
+  { id: 'animal', name: 'Animal control', short: 'ANIMAL CTRL', group: 'Utilities & city services', kind: 'agency', cost: 120, eta: [45, 85], icon: 'heart', desc: 'Captures and removes dangerous or loose animals.' },
+  { id: 'publicworks', name: 'Public works road crew', short: 'DPW', group: 'Utilities & city services', kind: 'agency', cost: 600, eta: [70, 130], icon: 'wrench', desc: 'Clears debris, sandbags and reopens blocked roads.', templates: ['collision_multi', 'collision_trapped', 'tanker_fire', 'building_collapse', 'flooded_basement', 'water_rescue', 'power_line_down', 'protest_march', 'riot', 'vehicle_ramming'] },
+  { id: 'transit', name: 'Transit authority', short: 'TRANSIT', group: 'Utilities & city services', kind: 'agency', cost: 0, eta: [15, 35], icon: 'clock', desc: 'Stops trains and diverts buses around the scene.', templates: ['train_derailment', 'bomb_threat', 'suspicious_package', 'riot', 'protest_march', 'crowd_crush'] },
+  { id: 'redcross', name: 'Red Cross disaster team', short: 'RED CROSS', group: 'Utilities & city services', kind: 'agency', cost: 0, eta: [90, 160], icon: 'heart', desc: 'Shelter, food and care for families who have lost their homes.', templates: ['apartment_fire', 'house_explosion', 'building_collapse', 'flooded_basement', 'kitchen_fire', 'electrical_fire'] },
+  { id: 'coroner', name: 'Medical examiner', short: 'M.E.', group: 'Utilities & city services', kind: 'agency', cost: 400, eta: [90, 150], icon: 'note', desc: 'Takes charge of the deceased so crews can clear the scene.' },
+  { id: 'k9', name: 'K-9 unit', short: 'K9', group: 'Police specialists', kind: 'unit', unitType: 'k9_unit', spoken: 'K-Nine', cost: 800, eta: [25, 50], icon: 'search', desc: 'A tracking and detection dog: finds missing people, hidden suspects and explosives.', arrive: 'K-9 on scene. Dog is working.', templates: ['missing_person', 'lost_child', 'lost_hiker', 'burglary_progress', 'suspicious_activity', 'robbery', 'kidnapping', 'suspicious_package', 'bomb_threat', 'trespassing'] },
+  { id: 'negotiator', name: 'Crisis negotiation team', short: 'CNT', group: 'Police specialists', kind: 'unit', unitType: 'negotiator_team', spoken: 'Negotiator', cost: 2000, eta: [45, 85], icon: 'phone', desc: 'Trained negotiators for sieges, hostage-takers and people in crisis.', arrive: 'Negotiators on scene. We have the phone line.', templates: ['hostage_barricade', 'kidnapping', 'bank_robbery', 'domestic_disturbance', 'silent_call'] },
+  { id: 'regional_hazmat', name: 'Regional hazmat team', short: 'RHT', group: 'Fire & rescue specialists', kind: 'unit', unitType: 'regional_hazmat', spoken: 'Regional Hazmat', cost: 3500, eta: [70, 120], icon: 'alert', desc: 'Level A suits, a decon line and a detection lab for chemical releases.', arrive: 'Regional hazmat on scene. Setting up the hot zone and decon.', templates: ['hazmat_spill', 'gas_leak', 'tanker_fire', 'train_derailment', 'industrial_accident', 'carbon_monoxide', 'warehouse_smoke'] },
+  { id: 'usar', name: 'Urban search & rescue', short: 'USAR', group: 'Fire & rescue specialists', kind: 'unit', unitType: 'usar', spoken: 'Task Force', cost: 5000, eta: [100, 160], icon: 'wrench', desc: 'A state task force with shoring, listening gear and search dogs for collapses.', arrive: 'Task force on scene. Shoring and search teams going in.', templates: ['building_collapse', 'house_explosion', 'train_derailment', 'collision_trapped', 'crowd_crush', 'industrial_accident'] },
+  { id: 'coast_guard', name: 'Coast Guard rescue', short: 'USCG', group: 'Fire & rescue specialists', kind: 'unit', unitType: 'coast_guard', spoken: 'Coast Guard', cost: 3000, eta: [60, 110], icon: 'pin', desc: 'Rescue swimmers and a fast boat for the river and the bay.', arrive: 'Coast Guard on scene, boat in the water.', templates: ['water_rescue', 'boat_fire', 'flooded_basement'] },
+  { id: 'federal', name: 'Federal tactical team', short: 'FED', group: 'Federal & military', kind: 'unit', unitType: 'federal_tactical', cost: 9000, eta: [70, 110], icon: 'shield', desc: 'An elite federal hostage-rescue team with a negotiator. Slow to mobilise, decisive on arrival.' },
+  { id: 'eod', name: 'National Guard EOD', short: 'EOD', group: 'Federal & military', kind: 'unit', unitType: 'guard_eod', cost: 6000, eta: [55, 95], icon: 'alert', desc: 'Army bomb technicians with a robot: the safe way to deal with a device.' },
+  { id: 'ma_police', name: 'Mutual aid — police', short: 'MA-PD', group: 'Mutual aid', kind: 'mutual', cap: 'patrol', cost: 4000, eta: [60, 120], icon: 'shield', desc: 'A patrol car from a neighbouring city.' },
+  { id: 'ma_fire', name: 'Mutual aid — fire engine', short: 'MA-FD', group: 'Mutual aid', kind: 'mutual', cap: 'fire_suppression', cost: 4000, eta: [60, 120], icon: 'flame', desc: 'An engine company from a neighbouring city.' },
+  { id: 'ma_ems', name: 'Mutual aid — ambulance', short: 'MA-EMS', group: 'Mutual aid', kind: 'mutual', cap: 'transport', cost: 4000, eta: [60, 120], icon: 'cross', desc: 'An ambulance from a neighbouring service.' },
+  { id: 'ma_als', name: 'Mutual aid — paramedics', short: 'MA-ALS', group: 'Mutual aid', kind: 'mutual', cap: 'als', cost: 4000, eta: [60, 120], icon: 'cross', desc: 'A paramedic unit from a neighbouring service.' },
+  { id: 'ma_rescue', name: 'Mutual aid — rescue', short: 'MA-RSQ', group: 'Mutual aid', kind: 'mutual', cap: 'rescue', cost: 4000, eta: [60, 120], icon: 'wrench', desc: 'A rescue company with cutting tools.' },
+  { id: 'ma_crowd', name: 'Mutual aid — public order', short: 'MA-POU', group: 'Mutual aid', kind: 'mutual', cap: 'crowd', cost: 4000, eta: [60, 120], icon: 'users', desc: 'Officers trained for crowds and disorder.' },
+];
+export const RESOURCE_BY_ID: Record<string, ResourceDef> = Object.fromEntries(RESOURCES.map((r) => [r.id, r]));
 /** unit types that are much better than generalists at certain jobs */
 const SPECIALIST_FIT: Array<{ types: string[]; tpl: Set<string>; m: number }> = [
   { types: ['public_order'], tpl: new Set(['riot', 'protest_march', 'looting', 'public_disturbance', 'assault_mob', 'unruly_passenger']), m: 1.45 },
@@ -61,6 +89,11 @@ const SPECIALIST_FIT: Array<{ types: string[]; tpl: Set<string>; m: number }> = 
   { types: ['bomb_squad', 'guard_eod'], tpl: new Set(['bomb_threat', 'suspicious_package']), m: 1.35 },
   { types: ['foot', 'bicycle'], tpl: new Set(['public_disturbance', 'protest_march', 'shoplifting', 'public_intoxication', 'lost_child', 'suspicious_activity', 'assault_mob']), m: 1.25 },
   { types: ['paramedic_engine'], tpl: new Set(['collision_trapped', 'collision_multi', 'house_explosion', 'apartment_fire']), m: 1.15 },
+  { types: ['k9_unit'], tpl: new Set(RESOURCES.find((r) => r.id === 'k9')!.templates), m: 1.45 },
+  { types: ['negotiator_team'], tpl: new Set(['hostage_barricade', 'kidnapping', 'bank_robbery', 'domestic_disturbance']), m: 1.3 },
+  { types: ['regional_hazmat'], tpl: new Set(RESOURCES.find((r) => r.id === 'regional_hazmat')!.templates), m: 1.55 },
+  { types: ['usar'], tpl: new Set(RESOURCES.find((r) => r.id === 'usar')!.templates), m: 1.6 },
+  { types: ['coast_guard'], tpl: new Set(['water_rescue', 'boat_fire']), m: 1.5 },
 ];
 /** which public alert actually protects people for each kind of incident */
 export const ALERT_RIGHT: Record<string, AlertKind> = {
@@ -401,6 +434,7 @@ export class GameEngine {
     this.updateStingers();
     this.breakRequests();
     this.updateAgencies();
+    this.updateResources();
     this.updateStatusChecks();
     this.updateAlertCalls();
     this.updateRelapses();
@@ -802,7 +836,7 @@ export class GameEngine {
     void opts.noCall;
     const call: Call = {
       id: callId, incidentId: id, state: 'ringing', profile, isCallback: false, callerId: this.callerId(profile),
-      ringStart: st.time, ringTimeout: diff.ring + (st.rank <= 1 ? 8 : 0), answeredAt: null, endedAt: null, transcript: [], badLine: profile.callerIdType === 'mobile' && !opts.tutorial && st.rank >= 1 && ((num * 2654435761) >>> 0) % 100 < 16, mood, asked: {}, promises: [], promiseAt: null, complained: 0,
+      ringStart: st.time, ringTimeout: diff.ring + (st.rank <= 1 ? 8 : 0), answeredAt: null, endedAt: null, transcript: [], badLine: profile.callerIdType === 'mobile' && !opts.tutorial && st.rank >= 1 && ((num * 2654435761) >>> 0) % 100 < 11, mood, asked: {}, promises: [], promiseAt: null, complained: 0,
       heard: [], usedLines: {}, pending: [], holdSince: null, holdTotal: 0, aliUsed: false, verifyAsked: [], locPlan, typing: false, spokeFirst: false, misunderstood: 0, lastSpontaneous: st.time, stateNote: '',
     };
     st.calls[callId] = call;
@@ -978,7 +1012,7 @@ export class GameEngine {
     let text = line.hangup || line.ai || line.system ? line.text : speak(line.text, call, this.rng, (s) => fill(s, inc.vars));
     if (call.interpreter === 'on' && !line.hangup && !line.system) text = `(via interpreter) ${text}`;
     // a weak mobile signal: words drop out, and whatever they said is lost until you ask them to repeat it
-    if (call.badLine && !line.clear && !line.hangup && !line.system && text.length > 28 && !/^\(/.test(text) && this.hrand(call.transcript.length + inc.num * 31, 77) < 0.38) {
+    if (call.badLine && !line.clear && !line.hangup && !line.system && text.length > 28 && !/^\(/.test(text) && this.hrand(call.transcript.length + inc.num * 31, 77) < 0.3) {
       call.lastGarbled = { ...line, text, clear: true, at: st.time };
       const words = text.split(' ');
       const garbled = words.map((w, k) => (this.hrand(k + inc.num, 78 + k) < 0.4 ? '—' : w)).join(' ').replace(/(— ?){2,}/g, '— ');
@@ -2239,6 +2273,7 @@ export class GameEngine {
     if (cov.missing.length) this.radio(u.spoken, `Dispatch, requesting ${reqText(cov.missing)} at this location.`, 'unit', u.id, inc.id);
     this.requestAgency(inc, u);
     this.askSpecialist(inc, u);
+    this.askResources(inc, u);
     for (const [k, v] of Object.entries(inc.truth)) if (['fire', 'smoke', 'injured', 'trapped', 'vehicles', 'hazard', 'people'].includes(k) && inc.facts.every((x) => x.key !== k)) this.addFact(inc, k, v, 'confirmed', 'scene');
     // upgrade confidence of existing
     for (const x of inc.facts) if (x.confidence === 'unconfirmed' && inc.truth[x.key] === x.value) x.confidence = 'confirmed';
@@ -3744,8 +3779,124 @@ export class GameEngine {
     this.emit({ type: 'alert', text: 'Specialist requested' });
     return { ok: true, eta };
   }
+  // ── The resources panel ────────────────────────────────────────────────────
+  /** can this resource help here, has it been asked for, and where is it */
+  resourceInfo(incId: string, id: string): { ok: boolean; reason?: string; recommended: boolean; asked: boolean; status: 'none' | 'requested' | 'enroute' | 'here'; eta?: number } {
+    const st = this.state;
+    const inc = st.incidents[incId];
+    const def = RESOURCE_BY_ID[id];
+    if (!inc || !def) return { ok: false, reason: 'No incident selected', recommended: false, asked: false, status: 'none' };
+    const live = !['RESOLVED', 'CLOSED'].includes(inc.status);
+    let status: 'none' | 'requested' | 'enroute' | 'here' = 'none', eta: number | undefined;
+    const asked = inc.resAsked?.[id] !== undefined || (id in AGENCY && inc.agency?.kind === id && inc.agency.askedAt !== null) || ((id === 'federal' || id === 'eod') && inc.specialistAsked?.[id] !== undefined);
+    // status
+    if (id in AGENCY && inc.agency?.kind === id && inc.agency.calledAt != null) { status = inc.agency.here ? 'here' : 'enroute'; eta = (inc.agency.arriveAt ?? st.time) - st.time; }
+    const unitId = id === 'federal' || id === 'eod' ? inc.specialists?.[id]?.unitId : inc.resources?.[id]?.unitId;
+    if (unitId) { const u = st.units[unitId]; status = !u ? 'here' : u.status === 'ON_SCENE' ? 'here' : u.status === 'DISPATCHED' ? 'requested' : 'enroute'; eta = u ? (u.status === 'DISPATCHED' ? u.timer : 0) + (u.eta ?? 0) : 0; }
+    else if (inc.resources?.[id]) { const r = inc.resources[id]; status = r.here ? 'here' : 'enroute'; eta = r.arriveAt - st.time; }
+    // applicability
+    let ok = live && inc.reportedNode !== null, reason = !live ? 'Incident closed' : inc.reportedNode === null ? 'Set the incident location first' : undefined;
+    let recommended = asked;
+    if (ok) {
+      if (id in AGENCY) { ok = this.agencyFor(inc) === id; if (!ok) reason = 'Not needed for this kind of incident'; else recommended = true; }
+      else if (id === 'federal' || id === 'eod') { ok = this.specialistFor(inc) === id; if (!ok) reason = id === 'eod' ? 'No suspected device here' : 'Only for the most serious armed threats'; else recommended = recommended || inc.severity >= 5 || inc.requires.some((r) => r.cap === 'eod'); }
+      else if (def.kind === 'mutual') { const cov = matchCoverage(inc.requires, inc.assignedUnits.map((x) => st.units[x]).filter(Boolean)); recommended = cov.missing.some((r) => r.cap === def.cap || (def.cap === 'transport' && r.cap === 'bls')); if (inc.mutualAid >= 2) { ok = false; reason = 'Mutual aid limit reached for this incident'; } }
+      else if (id === 'coroner') { ok = inc.casualties > 0; if (!ok) reason = 'No fatalities at this incident'; else recommended = true; }
+      else if (id === 'publicworks') { ok = inc.blockedEdge !== null || !!def.templates?.includes(inc.templateId); if (!ok) reason = 'No road to clear here'; else recommended = recommended || inc.blockedEdge !== null; }
+      else { ok = !!def.templates?.includes(inc.templateId); if (!ok) reason = 'Not the right specialists for this incident'; }
+    }
+    if (status !== 'none') { ok = false; reason = status === 'here' ? 'On scene' : 'Already requested'; }
+    return { ok, reason, recommended: recommended && status === 'none', asked: asked && status === 'none', status, eta };
+  }
+  /** phone in an outside resource for an incident */
+  requestResource(incId: string, id: string): { ok: boolean; reason?: string; eta?: number } {
+    const st = this.state;
+    const info = this.resourceInfo(incId, id);
+    if (!info.ok) return { ok: false, reason: info.reason };
+    const inc = st.incidents[incId];
+    const def = RESOURCE_BY_ID[id];
+    if (id in AGENCY) return this.callAgency(incId);
+    if (id === 'federal' || id === 'eod') return this.requestSpecialist(incId, id);
+    if (def.kind === 'mutual') return this.requestMutualAid(incId, def.cap!);
+    st.stats.resourceCalls = (st.stats.resourceCalls ?? 0) + 1;
+    if (def.kind === 'unit') {
+      const u = this.spawnOutside(inc, { unitType: def.unitType!, name: def.name, short: def.short, spoken: def.spoken ?? def.short, mobilise: def.eta, cost: def.cost });
+      (inc.resources ??= {})[id] = { at: st.time, arriveAt: st.time + u.timer + (u.eta ?? 0), here: false, unitId: u.id };
+      this.radio(def.name, `Ravenport, ${def.name.toLowerCase()} copies. Mobilising now — about ${Math.max(1, Math.round((u.timer + (u.eta ?? 0)) / 60))} minutes.`, 'unit', u.id, inc.id);
+      return { ok: true, eta: u.timer + (u.eta ?? 0) };
+    }
+    const night = st.timeOfDay % 24 >= 21 || st.timeOfDay % 24 < 5;
+    const eta = Math.round(this.rng.range(def.eta[0], def.eta[1]) * (night ? 1.2 : 1));
+    (inc.resources ??= {})[id] = { at: st.time, arriveAt: st.time + eta, here: false };
+    st.budget -= def.cost; st.stats.costs += def.cost;
+    this.radio('DISPATCH', `Units at INC-${String(inc.num).padStart(4, '0')}, ${def.name.toLowerCase()} is on the way, about ${Math.max(1, Math.round(eta / 60))} minute${Math.round(eta / 60) > 1 ? 's' : ''}.`, 'dispatch', undefined, inc.id);
+    this.notify(`${def.name} requested${def.cost ? ` (−$${def.cost.toLocaleString()})` : ''}`, 'info', inc.id);
+    return { ok: true, eta };
+  }
+  /** an outside vehicle that mobilises, then drives in from the city limits */
+  private spawnOutside(inc: Incident, sp: { unitType: string; name: string; short: string; spoken: string; mobilise: [number, number]; cost: number }): Unit {
+    const st = this.state;
+    const def = UNIT_TYPE_BY_ID[sp.unitType];
+    const n = this.city.nodes[inc.reportedNode ?? inc.nodeId];
+    const edgeNodes = this.city.nodes.filter((x) => (x.i === 0 || x.i === 40 || x.j === 0) && this.city.adj[x.id].length);
+    let best = edgeNodes[0], bd = Infinity;
+    for (const e of edgeNodes) { const d = Math.hypot(e.x - n.x, e.y - n.y); if (d < bd) { bd = d; best = e; } }
+    const station: Station = { id: 'outside', name: sp.name, service: def.service, nodeId: best.id, district: best.district, capacity: 99, disabledShifts: 0 };
+    const k = (st.stats.specialistCalls ?? 0) + 1;
+    const idn = 9500 + Object.keys(st.units).length + st.uniqueNameCounter++;
+    const u = makeUnit(def, station, Object.values(st.units), idn);
+    u.id = `sp${idn}`; u.callsign = `${sp.short}-${k}`; u.spoken = `${sp.spoken} ${numWord(k)}`;
+    u.temp = true; u.minCrew = 0; u.stationId = 'outside'; u.speedModifier = def.speed; u.postNode = best.id;
+    const night = st.timeOfDay % 24 >= 21 || st.timeOfDay % 24 < 5;
+    u.timer = Math.round(this.rng.range(sp.mobilise[0], sp.mobilise[1]) * (night ? 1.2 : 1));
+    st.units[u.id] = u;
+    st.budget -= sp.cost; st.stats.costs += sp.cost;
+    st.stats.specialistCalls = k;
+    this.dispatch(u.id, inc.id, { code: 3 });
+    this.radio('DISPATCH', `${sp.name}, Ravenport dispatch. Requesting response to ${addressOf(this.city, inc.reportedNode ?? inc.nodeId)} — ${inc.label.toLowerCase()}.`, 'dispatch', u.id, inc.id);
+    this.notify(`${sp.name} requested (−$${sp.cost.toLocaleString()})`, 'info', inc.id);
+    this.log('dispatch', `${sp.name} requested for ${inc.label}`, { incidentId: inc.id, good: true });
+    this.emit({ type: 'alert', text: 'Specialist requested' });
+    return u;
+  }
+  /** city services that turn up and help without a vehicle on the map */
+  private updateResources() {
+    const st = this.state;
+    for (const inc of Object.values(st.incidents)) {
+      if (!inc.resources || ['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
+      for (const [id, r] of Object.entries(inc.resources)) {
+        if (r.here || r.unitId || st.time < r.arriveAt) continue;
+        r.here = true;
+        const def = RESOURCE_BY_ID[id];
+        this.radio(def.name, `${def.name} on scene at ${addressOf(this.city, inc.reportedNode ?? inc.nodeId)}.`, 'chatter', undefined, inc.id);
+        this.fx('info', inc.reportedNode ?? inc.nodeId, `${def.short} on scene`);
+        if (id === 'publicworks') { if (inc.blockedEdge !== null) { inc.blockedEdge = null; this.notify('Public works reopened the road', 'good', inc.id); } inc.work *= 0.92; }
+        else if (id === 'transit') { inc.threat = Math.max(0, inc.threat - 15); inc.growth *= 0.7; this.radio('Transit Control', 'All trains through the area are held. Buses diverting.', 'chatter', undefined, inc.id); }
+        else if (id === 'redcross') { st.reputation = Math.min(100, st.reputation + 0.6); this.headline('Red Cross opens shelter for families displaced by the fire', 'good'); }
+        else if (id === 'coroner') inc.work *= 0.85;
+      }
+    }
+  }
+  /** crews on scene ask for the specialists they know would help */
+  private askResources(inc: Incident, u: Unit) {
+    const st = this.state;
+    if (st.config.mode === 'tutorial' || inc.resAsked) return;
+    const want = RESOURCES.find((r) => r.kind === 'unit' && r.id !== 'federal' && r.id !== 'eod' && r.templates?.includes(inc.templateId) && (inc.severity >= 4 || r.id === 'k9' || r.id === 'transit'))
+      ?? (inc.templateId === 'train_derailment' ? RESOURCE_BY_ID.transit : inc.casualties > 0 ? RESOURCE_BY_ID.coroner : undefined);
+    if (!want || this.hrand(inc.num, 41) > 0.45) { inc.resAsked = {}; return; }
+    inc.resAsked = { [want.id]: st.time };
+    const lines: Record<string, string> = {
+      k9: 'Can we get a K-9 out here? The dog will find them faster than we will.', negotiator: 'Request the crisis negotiation team — we need someone talking to him.',
+      regional_hazmat: 'This is beyond our hazmat unit — request the regional team.', usar: 'We need urban search and rescue. There could be people under this.',
+      coast_guard: 'Get the Coast Guard rolling — we need a boat and swimmers.', transit: 'Get the trains stopped on this line, now!', coroner: "We've got a fatality. We'll need the medical examiner.",
+    };
+    this.radio(u.spoken, `Dispatch, ${u.spoken}. ${lines[want.id] ?? `Request ${want.name.toLowerCase()}.`}`, 'unit', u.id, inc.id);
+    this.notify(`${u.callsign} asks for: ${want.name} — open Resources (Q)`, 'warn', inc.id);
+  }
   /** a specialist team reached the scene */
   private specialistArrived(inc: Incident, u: Unit) {
+    const res = Object.entries(inc.resources ?? {}).find(([, r]) => r.unitId === u.id);
+    if (res) { const def = RESOURCE_BY_ID[res[0]]; res[1].here = true; this.radio(u.spoken, `Dispatch, ${u.spoken}. ${def.arrive ?? 'On scene.'}`, 'unit', u.id, inc.id); this.fx('info', inc.reportedNode ?? inc.nodeId, `${def.short} on scene`); inc.threat = Math.max(0, inc.threat - 12); return; }
     const kind = (Object.keys(inc.specialists ?? {}) as SpecialistKind[]).find((k) => inc.specialists?.[k]?.unitId === u.id);
     if (!kind) return;
     this.radio(u.spoken, `Dispatch, ${u.spoken}. ${SPECIALIST[kind].arrive}`, 'unit', u.id, inc.id);

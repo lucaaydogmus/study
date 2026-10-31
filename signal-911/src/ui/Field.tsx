@@ -2,7 +2,7 @@
 // the breaking-news banner and the news ticker.
 import { useEffect, useRef, useState } from 'react';
 import { addressOf, getCity } from '../sim/city';
-import { AGENCY, SPECIALIST, gameClock, type GameEngine } from '../sim/engine';
+import { RESOURCES, gameClock, type GameEngine } from '../sim/engine';
 import { isAir } from '../sim/fleet';
 import type { Call, Incident, Unit } from '../sim/types';
 import { audio } from '../audio/audioManager';
@@ -264,43 +264,34 @@ export function BoloDock({ engine }: { engine: GameEngine }) {
   );
 }
 
+/** outside resources on this incident, and a way into the resources panel */
+function ResourceSummary({ engine, inc }: { engine: GameEngine; inc: Incident }) {
+  const open = useApp((s) => s.openResources);
+  const rows = RESOURCES.map((r) => ({ r, i: engine.resourceInfo(inc.id, r.id) })).filter((x) => x.i.status !== 'none' || x.i.recommended);
+  const asked = rows.filter((x) => x.i.asked);
+  return (
+    <div className={`agency ressum ${asked.length ? 'ask' : ''}`}>
+      <Icon n="phone" size={13} />
+      <div className="grow">
+        <b>Outside resources</b>
+        <div className="small muted">{rows.length ? rows.map((x) => `${x.r.short} ${x.i.status === 'here' ? '✓ on scene' : x.i.status === 'none' ? (x.i.asked ? '— crew asked' : '— suggested') : `· ${fmtTime(Math.max(0, x.i.eta ?? 0))}`}`).join('  ·  ') : 'Tow, utilities, K-9, negotiators, hazmat, USAR, Coast Guard, federal team, Guard EOD, mutual aid'}</div>
+      </div>
+      <Btn size="sm" kind={asked.length ? 'primary' : 'default'} onClick={() => open(inc.id)}>Resources (Q)</Btn>
+    </div>
+  );
+}
+
 /** incident card: outside agency, public alert and the search grid */
 export function FieldOps({ engine, inc }: { engine: GameEngine; inc: Incident }) {
   const st = engine.state;
   const bump = useApp((s) => s.bump);
   const [alertOpen, setAlertOpen] = useState(false);
-  const kind = engine.agencyFor(inc);
-  const a = inc.agency;
   const S = inc.search;
   const al = engine.alertInfo(inc.id);
   const district = al.district ? engine.city.districtById[al.district]?.name : inc.reportedNode !== null ? engine.city.districtById[engine.city.nodes[inc.reportedNode].district]?.name : '';
-  const asked = a?.askedAt != null && a.calledAt == null;
-  const spec = engine.specialistFor(inc);
-  const sp = spec ? inc.specialists?.[spec] : undefined;
-  const spUnit = sp ? st.units[sp.unitId] : undefined;
-  const spAsked = spec ? inc.specialistAsked?.[spec] : undefined;
   return (
     <>
-      {spec && inc.reportedNode !== null && (
-        <div className={`agency specialist ${spec} ${spAsked !== undefined && !sp ? 'ask' : ''} ${spUnit?.status === 'ON_SCENE' ? 'here' : ''}`}>
-          <Icon n={spec === 'eod' ? 'alert' : 'shield'} size={13} />
-          <div className="grow">
-            <b>{SPECIALIST[spec].name}</b>
-            <div className="small muted">{spUnit?.status === 'ON_SCENE' ? 'On scene' : sp ? (spUnit?.status === 'DISPATCHED' ? `Mobilising · ${fmtTime(spUnit.timer)}` : `Inbound · ${fmtEta(spUnit?.eta ?? 0)}`) : spAsked !== undefined ? `Crew requested ${fmtTime(st.time - spAsked)} ago` : spec === 'eod' ? 'Bomb technicians with a robot — the only safe way to deal with a device' : 'Elite tactical team and a crisis negotiator — slow to mobilise, decisive on arrival'}</div>
-          </div>
-          {!sp && <Btn size="sm" kind={spAsked !== undefined ? 'primary' : 'default'} onClick={() => { toast(engine.requestSpecialist(inc.id, spec), `${SPECIALIST[spec].name} requested`); bump(); }}>Request · ${SPECIALIST[spec].cost.toLocaleString()}</Btn>}
-        </div>
-      )}
-      {kind && inc.reportedNode !== null && (
-        <div className={`agency ${asked ? 'ask' : ''} ${a?.here ? 'here' : ''}`}>
-          <Icon n="phone" size={13} />
-          <div className="grow">
-            <b>{AGENCY[kind].name}</b>
-            <div className="small muted">{a?.here ? 'On scene' : a?.calledAt != null ? `En route · ${fmtTime((a.arriveAt ?? st.time) - st.time)}` : asked ? `Crew asked ${fmtTime(st.time - a!.askedAt!)} ago — the scene can't clear without it` : 'Likely needed — calling ahead saves time'}</div>
-          </div>
-          {a?.calledAt == null && <Btn size="sm" kind={asked ? 'primary' : 'default'} onClick={() => { toast(engine.callAgency(inc.id), `${AGENCY[kind].name} called`); bump(); }}>Call · ${AGENCY[kind].cost}</Btn>}
-        </div>
-      )}
+      <ResourceSummary engine={engine} inc={inc} />
       {S && !S.found && (
         <div className="searchgrid">
           <div className="sub">SEARCH SECTORS {S.exhausted && <Badge tone="red">AREA EXHAUSTED</Badge>}</div>

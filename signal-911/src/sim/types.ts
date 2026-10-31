@@ -265,6 +265,10 @@ export interface Incident {
   specialists?: Partial<Record<SpecialistKind, { at: number; unitId: string; asked?: number }>>;
   /** crews on scene asked for a specialist (game time) */
   specialistAsked?: Partial<Record<SpecialistKind, number>>;
+  /** outside resources requested from the resources panel */
+  resources?: Record<string, { at: number; arriveAt: number; here: boolean; unitId?: string }>;
+  /** crews on scene asked for these resources (game time) */
+  resAsked?: Record<string, number>;
   /** a major incident's breaking-news moment (game time) */
   breakAt?: number;
 }
@@ -365,7 +369,7 @@ export interface ShiftStats {
   boloHits?: number; stingerHits?: number; breaksGiven?: number;
   callerAnswers?: number; cprPaced?: number; handoffs?: number; calmActions?: number; calmGood?: number; tasksDone?: number; callerBreakdowns?: number; redirectsOk?: number; redirectsBad?: number; listens?: number; unitQueries?: number; unitQueriesOk?: number; unitQueriesMissed?: number; maydays?: number; maydaySaved?: number; refusals?: number;
   specialistCalls?: number; specialistWasted?: number; majorsHandled?: number;
-  crewTalks?: number; sayAgains?: number;
+  crewTalks?: number; sayAgains?: number; resourceCalls?: number;
   agencyCalls?: number; agencyLate?: number; statusChecks?: number; statusSaves?: number; statusMissed?: number; alertsRight?: number; alertsWrong?: number; searchFinds?: number;
 }
 

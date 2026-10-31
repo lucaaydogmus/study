@@ -39,6 +39,7 @@ interface AppStore {
   startCareerShift: () => void; startChapter: (id: string) => void; startScenario: (id: string) => void; startFree: (cfg: ShiftConfig, opts: Session['setupOpts']) => void;
   startTutorial: () => void; startEndless: (reset?: boolean) => void; setPauseMenu: (b: boolean) => void; startDaily: () => void;
   newAchievements: string[]; checkLiveAchievements: () => void; aiActive: boolean;
+  /** the resources panel (incident it opened for) */ resPanel: { incId: string | null } | null; openResources: (incId: string | null) => void; closeResources: () => void;
 }
 
 let toastId = 0;
@@ -77,6 +78,9 @@ export const useApp = create<AppStore>((set, get) => ({
   bump: () => set((s) => ({ rev: s.rev + 1 })),
   refresh: () => set((s) => ({ rev: s.rev + 1 })),
   showToast: (text, level = 'info') => set({ toast: { text, level, id: ++toastId } }),
+  resPanel: null,
+  openResources: (incId) => { audio.click(); set({ resPanel: { incId } }); },
+  closeResources: () => set({ resPanel: null }),
   setPauseMenu: (b) => { const e = get().engine; if (e) e.state.paused = b ? true : false; set({ pauseMenu: b }); },
 
   init: async () => {

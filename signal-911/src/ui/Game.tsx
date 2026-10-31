@@ -1,3 +1,4 @@
+import { ResourcesPanel } from './Resources';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { audio } from '../audio/audioManager';
 import { addressOf } from '../sim/city';
@@ -36,6 +37,7 @@ export function GameScreen() {
   const settings = useApp((s) => s.settings);
   const pauseMenu = useApp((s) => s.pauseMenu);
   useApp((s) => s.rev);
+  const resPanel = useApp((s) => s.resPanel);
   const bump = useApp((s) => s.bump);
   const [sizes, setSizes] = useSizes();
   const [layer, setLayer] = useState<LayerId>('normal');
@@ -103,6 +105,7 @@ export function GameScreen() {
         const at = sel.kind === 'unit' && sel.id && s.units[sel.id] ? { x: s.units[sel.id].x, y: s.units[sel.id].y } : sel.kind === 'incident' && sel.id && s.incidents[sel.id]?.reportedNode != null ? eng.city.nodes[s.incidents[sel.id].reportedNode!] : sel.kind === 'station' && sel.id && s.stations[sel.id] ? eng.city.nodes[s.stations[sel.id].nodeId] : null;
         if (at) doFocus(at.x, at.y, 2.6);
       }
+      else if (e.key === 'q' || e.key === 'Q') { const id = s.selected.kind === 'incident' ? s.selected.id : s.activeCallId ? s.calls[s.activeCallId]?.incidentId ?? null : null; const ap = useApp.getState(); if (ap.resPanel) ap.closeResources(); else ap.openResources(id); }
       else if (e.key === 'b' || e.key === 'B') {
         const id = s.selected.kind === 'incident' ? s.selected.id : s.activeCallId ? s.calls[s.activeCallId]?.incidentId : null;
         if (id) { const r = eng.broadcastBolo(id); if (r.ok) { audio.dispatchConfirm(); useApp.getState().showToast('BOLO broadcast to all units', 'info'); } else { audio.error(); useApp.getState().showToast(r.reason ?? '', 'warn'); } bump(); }
@@ -199,6 +202,7 @@ export function GameScreen() {
           <BoloDock engine={engine} />
           <DecisionCards engine={engine} />
           <Cinematics engine={engine} />
+          {resPanel && <ResourcesPanel engine={engine} incId={resPanel.incId} onClose={() => useApp.getState().closeResources()} />}
           <NewsTicker engine={engine} />
           {menu && <MapMenu engine={engine} menu={menu} onClose={closeMenu} focus={doFocus} startReposition={(id) => setTarget({ kind: 'repos', id })} openTab={(t) => { setTab(t as BottomTab); setCollapsed((c) => ({ ...c, b: false })); }} />}
           {cctv && <CctvViewer engine={engine} view={cctv} onClose={() => setCctv(null)} />}
