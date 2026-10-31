@@ -81,6 +81,7 @@ export interface Unit {
   checkDue?: number | null; lastCheck?: number; trouble?: number | null;
   /** garage fit chosen in shift prep: chassis, equipment kits and livery */
   fit?: UnitFit;
+  /** last time dispatch thanked the crew (game time) */ thankedAt?: number;
 }
 
 export interface Station {
@@ -108,7 +109,7 @@ export interface CallerVoice {
   formal: boolean; slang: boolean; caps: boolean; stutter: boolean; trail: boolean; short: boolean;
 }
 
-export interface TranscriptLine { t: number; clock: string; who: 'CALLER' | 'DISPATCHER' | 'SYSTEM'; text: string }
+export interface TranscriptLine { t: number; clock: string; who: 'CALLER' | 'DISPATCHER' | 'SYSTEM'; text: string; /** the line broke up on a bad mobile signal */ garbled?: boolean }
 
 export interface HeardLocation {
   id: string; nodeId: number; label: string; source: 'address' | 'landmark' | 'cross' | 'ali' | 'district';
@@ -120,7 +121,7 @@ export interface Mood { panic: number; base: number; cooperation: number; frustr
 export interface PendingLine {
   at: number; text: string; facts?: Record<string, FactVal>; unsure?: string[]; heard?: Omit<HeardLocation, 'id' | 'at'>[];
   /** AI voicing: line ids are held until the dialogue model rewrites them (or a timeout releases the scripted text) */
-  id?: number; hold?: boolean; ai?: boolean; system?: boolean;
+  id?: number; hold?: boolean; ai?: boolean; system?: boolean; /** a repeat after 'say again': never breaks up */ clear?: boolean;
   twist?: boolean; hangup?: boolean; endReason?: string;
 }
 
@@ -156,6 +157,8 @@ export interface Call {
   tasks?: CallTask[]; panicSince?: number | null; brokeDown?: boolean; lastWaitLine?: number;
   /** what can be heard behind the caller (derived from where they really are), and when the dispatcher last listened */
   env?: string[]; listenedAt?: number; heardSounds?: string[];
+  /** weak mobile signal: lines can break up */ badLine?: boolean;
+  /** the last line that broke up, kept so 'say again' can repeat it */ lastGarbled?: import('./types').PendingLine | null;
 }
 export interface UnitFit { chassis: string; kits: string[]; livery: string; eff?: number; grip?: number; nickname?: string }
 /** a job the dispatcher gave the caller: it keeps them busy (and calmer) and helps the crews */
@@ -362,6 +365,7 @@ export interface ShiftStats {
   boloHits?: number; stingerHits?: number; breaksGiven?: number;
   callerAnswers?: number; cprPaced?: number; handoffs?: number; calmActions?: number; calmGood?: number; tasksDone?: number; callerBreakdowns?: number; redirectsOk?: number; redirectsBad?: number; listens?: number; unitQueries?: number; unitQueriesOk?: number; unitQueriesMissed?: number; maydays?: number; maydaySaved?: number; refusals?: number;
   specialistCalls?: number; specialistWasted?: number; majorsHandled?: number;
+  crewTalks?: number; sayAgains?: number;
   agencyCalls?: number; agencyLate?: number; statusChecks?: number; statusSaves?: number; statusMissed?: number; alertsRight?: number; alertsWrong?: number; searchFinds?: number;
 }
 

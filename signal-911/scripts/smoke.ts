@@ -18,6 +18,7 @@ function play(id: string, seed: number, smart: boolean) {
       else if (c.state === 'active') {
         const inc = st.incidents[c.incidentId];
         const since = st.time - (c.answeredAt ?? st.time);
+        if (c.lastGarbled && c.pending.length === 0) e.sayAgain(c.id);
         if (c.pending.length === 0 && c.transcript.length) {
           const order = ['address', 'landmark', 'injuries', 'breathing', 'conscious', 'fire', 'suspect', 'safe', 'promise'];
           const next = order.find((k) => !c.asked[k] && !(k === 'landmark' && inc.reportedNode !== null));

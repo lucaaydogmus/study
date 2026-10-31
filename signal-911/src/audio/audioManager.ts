@@ -159,6 +159,8 @@ class AudioManager {
       t += d + 0.015 + Math.random() * (agitated ? 0.02 : 0.05);
     }
   }
+  /** the faint click of a phone line opening before the caller speaks */
+  lineClick() { this.noise(0.05, { gain: 0.03, bp: 1400, phone: true }); }
   mayday() { for (let k = 0; k < 6; k++) this.tone(k % 2 ? 1060 : 760, 0.22, { type: 'square', gain: 0.07, at: k * 0.24 }); }
   attention() { this.tone(1000, 0.9, { type: 'sine', gain: 0.07 }); this.tone(1000, 0.12, { type: 'sine', gain: 0.07, at: 1.05 }); this.tone(1000, 0.12, { type: 'sine', gain: 0.07, at: 1.25 }); }
   stinger() { this.tone(110, 1.4, { type: 'sawtooth', gain: 0.06, attack: 0.05 }); this.tone(116.5, 1.4, { type: 'sawtooth', gain: 0.05, attack: 0.05 }); this.swell(1.6, { gain: 0.12, lp: 300, bus: 'effects' }); }

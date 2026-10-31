@@ -1,6 +1,7 @@
 // Application store: screens, the active profile, the live engine, and glue to audio & persistence.
 import { create } from 'zustand';
 import { audio } from './audio/audioManager';
+import { speakLine, speechSupported, configureSpeech, sexOfName, type VoiceProfile } from './audio/speech';
 import { SaveManager } from './persistence';
 import { GameEngine, type EngineEvent } from './sim/engine';
 import {
@@ -80,7 +81,7 @@ export const useApp = create<AppStore>((set, get) => ({
 
   init: async () => {
     const settings = saves.loadSettingsSync();
-    audio.configure(settings);
+    audio.configure(settings); configureSpeech({ enabled: settings.tts !== false && !settings.muted, volume: settings.master });
     set({ settings });
     await get().refreshSaves();
     const snap = await saves.loadShift().catch(() => null);
@@ -132,7 +133,7 @@ export const useApp = create<AppStore>((set, get) => ({
   updateSettings: (p) => {
     const settings = { ...get().settings, ...p };
     set({ settings });
-    audio.configure(settings);
+    audio.configure(settings); configureSpeech({ enabled: settings.tts !== false && !settings.muted, volume: settings.master });
     void saves.saveSettings(settings);
   },
 
@@ -288,7 +289,10 @@ function handleEngineEvent(e: EngineEvent, engine: GameEngine) {
     case 'caller_line': {
       const call = engine.state.calls[e.callId];
       const line = call?.transcript[call.transcript.length - 1];
-      if (call && line?.who === 'CALLER' && engine.state.activeCallId === call.id && !/^\(/.test(line.text)) audio.voice(line.text, callerPitch(call), call.mood.panic > 65);
+      if (call && line?.who === 'CALLER' && engine.state.activeCallId === call.id && !/^\(/.test(line.text)) {
+        if (st.settings.tts !== false && speechSupported() && !st.settings.muted) { audio.lineClick(); speakLine(line.text, voiceProfile(call), call.mood.panic > 80); }
+        else audio.voice(line.text, callerPitch(call), call.mood.panic > 65);
+      }
       break;
     }
     case 'resolved': audio.good(); break;
@@ -297,6 +301,11 @@ function handleEngineEvent(e: EngineEvent, engine: GameEngine) {
     case 'ended': st.finishShift(); break;
     default: break;
   }
+}
+/** who the caller sounds like: sex from their first name, age and how panicked they are */
+export function voiceProfile(call: import('./sim/types').Call): VoiceProfile {
+  let h = 0; for (const ch of call.profile.name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return { sex: sexOfName(call.profile.name), age: call.profile.archetype === 'child_caller' ? 9 : call.profile.age, panic: call.mood.panic, seed: h };
 }
 /** a voice pitch for the caller: children high, older callers a little lower, men lower than women */
 export function callerPitch(call: import('./sim/types').Call): number {

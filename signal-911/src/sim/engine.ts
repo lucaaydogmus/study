@@ -802,7 +802,7 @@ export class GameEngine {
     void opts.noCall;
     const call: Call = {
       id: callId, incidentId: id, state: 'ringing', profile, isCallback: false, callerId: this.callerId(profile),
-      ringStart: st.time, ringTimeout: diff.ring + (st.rank <= 1 ? 8 : 0), answeredAt: null, endedAt: null, transcript: [], mood, asked: {}, promises: [], promiseAt: null, complained: 0,
+      ringStart: st.time, ringTimeout: diff.ring + (st.rank <= 1 ? 8 : 0), answeredAt: null, endedAt: null, transcript: [], badLine: profile.callerIdType === 'mobile' && !opts.tutorial && st.rank >= 1 && ((num * 2654435761) >>> 0) % 100 < 16, mood, asked: {}, promises: [], promiseAt: null, complained: 0,
       heard: [], usedLines: {}, pending: [], holdSince: null, holdTotal: 0, aliUsed: false, verifyAsked: [], locPlan, typing: false, spokeFirst: false, misunderstood: 0, lastSpontaneous: st.time, stateNote: '',
     };
     st.calls[callId] = call;
@@ -966,8 +966,8 @@ export class GameEngine {
     this.log('failed', `${inc.label}: unhandled (${reason})`, { incidentId: inc.id, good: false });
   }
 
-  private addTranscript(call: Call, who: 'CALLER' | 'DISPATCHER' | 'SYSTEM', text: string) {
-    call.transcript.push({ t: this.state.time, clock: gameClock(this.state), who, text });
+  private addTranscript(call: Call, who: 'CALLER' | 'DISPATCHER' | 'SYSTEM', text: string, garbled = false) {
+    call.transcript.push({ t: this.state.time, clock: gameClock(this.state), who, text, ...(garbled ? { garbled: true } : {}) });
     if (who === 'DISPATCHER') call.lastDispatcherAt = this.state.time;
   }
 
@@ -977,6 +977,16 @@ export class GameEngine {
     // scripted lines pass through the caller's own voice (AI-written lines already have it)
     let text = line.hangup || line.ai || line.system ? line.text : speak(line.text, call, this.rng, (s) => fill(s, inc.vars));
     if (call.interpreter === 'on' && !line.hangup && !line.system) text = `(via interpreter) ${text}`;
+    // a weak mobile signal: words drop out, and whatever they said is lost until you ask them to repeat it
+    if (call.badLine && !line.clear && !line.hangup && !line.system && text.length > 28 && !/^\(/.test(text) && this.hrand(call.transcript.length + inc.num * 31, 77) < 0.38) {
+      call.lastGarbled = { ...line, text, clear: true, at: st.time };
+      const words = text.split(' ');
+      const garbled = words.map((w, k) => (this.hrand(k + inc.num, 78 + k) < 0.4 ? '—' : w)).join(' ').replace(/(— ?){2,}/g, '— ');
+      this.addTranscript(call, 'CALLER', `${garbled} [line breaking up]`, true);
+      call.spokeFirst = true; call.lastSpontaneous = st.time;
+      this.emit({ type: 'caller_line', callId: call.id });
+      return;
+    }
     this.addTranscript(call, line.hangup || line.system ? 'SYSTEM' : 'CALLER', text);
     call.spokeFirst = true;
     call.lastSpontaneous = st.time;
@@ -1082,6 +1092,7 @@ export class GameEngine {
     const inc = st.incidents[call.incidentId];
     const text = (input.text ?? QUICK_QUESTIONS.find((q) => q.intent === input.intent)?.text ?? '').trim();
     if (!text) return;
+    if (!input.intent && /\b(say (that )?again|repeat (that|yourself)|breaking up|didn'?t (catch|get) (that|you)|come again|you('re| are) cutting out|bad line)\b/i.test(text)) { this.sayAgain(callId, text); return; }
     const intent: Intent = input.intent ?? classifyIntent(text);
     this.addTranscript(call, 'DISPATCHER', text);
     const env = this.env(call);
@@ -1329,6 +1340,19 @@ export class GameEngine {
   }
 
   say(callId: string, text: string) { this.ask(callId, { text }); }
+  /** ask a caller on a bad line to repeat what was lost */
+  sayAgain(callId: string, text = "Say again? You're breaking up."): boolean {
+    const st = this.state;
+    const call = st.calls[callId];
+    if (!call || call.state !== 'active') return false;
+    this.addTranscript(call, 'DISPATCHER', text);
+    const g = call.lastGarbled;
+    if (!g) { call.pending.push({ at: st.time + 1, text: this.qpick(call, ["I said — never mind, can you hear me now?", 'Hello? Can you hear me?', "I didn't say anything — I'm waiting!"]) }); return false; }
+    call.lastGarbled = null;
+    call.pending.push({ ...g, at: st.time + 1.2, text: `${this.qpick(call, ['I SAID — ', 'Can you hear me now? ', 'Sorry — ', ''])}${g.text}`, clear: true, ai: true });
+    st.stats.sayAgains = (st.stats.sayAgains ?? 0) + 1;
+    return true;
+  }
 
   /** read-back verification of a candidate location with the caller */
   verifyLocation(callId: string, nodeId: number) {
@@ -2063,7 +2087,7 @@ export class GameEngine {
       u.note = undefined;
       if (u.stationId === 'outside') this.specialistArrived(inc, u);
       // fire and EMS walking into an unsecured scene with an armed suspect can be attacked
-      if (u.service !== 'police' && this.sceneUnsafe(inc) && !this.policeOnScene(inc) && this.rng.chance(inc.truth.weapon && inc.truth.weapon !== 'none' ? 0.2 : 0.07)) {
+      if (u.service !== 'police' && !u.staging && this.sceneUnsafe(inc) && !this.policeOnScene(inc) && this.rng.chance(inc.truth.weapon && inc.truth.weapon !== 'none' ? 0.2 : 0.07)) {
         this.radio(u.spoken, `Dispatch, ${u.spoken}! We're being threatened on scene — crew pulling back! We need PD here now!`, 'alert', u.id, inc.id);
         this.consequence(inc, `${u.callsign} went in before police secured the scene and the crew was attacked`);
         for (const p of this.crewOf(u)) p.morale = Math.max(10, p.morale - 15);
@@ -3536,6 +3560,24 @@ export class GameEngine {
       st.stats.unitQueries = (st.stats.unitQueries ?? 0) + 1;
       this.radio(u.spoken, `Dispatch, ${u.spoken} — ${text}`, 'unit', u.id, inc.id);
     }
+  }
+  /** a crew asks dispatch a follow-up right now (used when you talk to them on the radio) */
+  crewAsks(unitId: string): boolean {
+    const st = this.state;
+    const u = st.units[unitId];
+    const inc = u?.assignedIncidentId ? st.incidents[u.assignedIncidentId] : undefined;
+    if (!u || !inc || ['RESOLVED', 'CLOSED'].includes(inc.status) || inc.requires.length === 0) return false;
+    if ((st.unitQueries ?? []).some((q) => q.incId === inc.id && (q.status === 'open' || q.status === 'standby'))) return false;
+    const asked = new Set((st.unitQueries ?? []).filter((q) => q.incId === inc.id).map((q) => q.key));
+    const key = this.queryKeys(inc).find((k) => !asked.has(k));
+    if (!key) return false;
+    inc.queries = (inc.queries ?? 0) + 1;
+    const opts = GameEngine.QUERY_TEXT[key] ?? ['anything else we should know?'];
+    const text = opts[Math.floor(this.hrand(inc.num, 9) * opts.length)];
+    (st.unitQueries ??= []).push({ id: `uq${st.unitQueries.length + 1}`, unitId: u.id, incId: inc.id, key, text, at: st.time, expiresAt: st.time + 35, status: 'open' });
+    st.stats.unitQueries = (st.stats.unitQueries ?? 0) + 1;
+    this.radio(u.spoken, `Also, dispatch — ${text}`, 'unit', u.id, inc.id);
+    return true;
   }
   /** what dispatch can tell the crew: the caller's answer if there is one */
   queryOptions(queryId: string): { known: { label: string; value: string } | null; canDeny: boolean } {

@@ -14,7 +14,7 @@ function Slider({ label, k }: { label: string; k: 'master' | 'effects' | 'radio'
     </label>
   );
 }
-function Toggle({ label, desc, k }: { label: string; desc?: string; k: 'hideIntense' | 'reduceMotion' | 'highContrast' | 'autoSave' | 'showHints' | 'muted' | 'heartbeat' }) {
+function Toggle({ label, desc, k }: { label: string; desc?: string; k: 'hideIntense' | 'reduceMotion' | 'highContrast' | 'autoSave' | 'showHints' | 'muted' | 'heartbeat' | 'tts' }) {
   const v = useApp((s) => s.settings[k]);
   const update = useApp((s) => s.updateSettings);
   return (
@@ -47,7 +47,8 @@ export function SettingsPanel({ compact }: { compact?: boolean }) {
         <h3>Audio</h3>
         <Toggle label="Mute everything" k="muted" />
         <Slider label="Master" k="master" /><Slider label="Effects" k="effects" /><Slider label="Radio" k="radio" /><Slider label="Sirens & rotors" k="sirens" /><Slider label="Ambience" k="ambience" /><Slider label="Music" k="music" />
-        <p className="muted small">All audio is synthesised in your browser — phone rings, radio squelch, dispatch tones and call-context ambience. Callers are text-based; there is no microphone and nothing is recorded.</p>
+        <Toggle label="Spoken voices" desc="Callers and crews speak their lines aloud with your browser's voices (different voice, pitch and pace per caller)." k="tts" />
+        <p className="muted small">All other audio is synthesised in your browser. Push-to-talk (hold V or the mic button) uses your browser's speech recognition to turn what you say into text; nothing is recorded or stored by the game.</p>
       </div>
       <div className="setcol">
         <h3>Gameplay</h3>

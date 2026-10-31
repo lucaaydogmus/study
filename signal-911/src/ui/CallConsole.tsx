@@ -1,5 +1,7 @@
 // The live 911 call: a chat with the caller, their composure, calming techniques, jobs to give them,
 // the questions they ask, and the call controls.
+import { MicButton } from './Voice';
+import { ProtocolCard } from './Protocol';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { assistsOn, SOUND_CLUES, type CalmKind, type GameEngine } from '../sim/engine';
 import { classifyIntent, QUICK_QUESTIONS, type Intent } from '../sim/dialogue';
@@ -172,9 +174,10 @@ export function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngi
             {call.transcript.map((l, i) => l.who === 'SYSTEM'
               ? <div key={i} className="sysmsg"><span>{l.text}</span></div>
               : (
-                <div key={i} className={`bubble ${l.who === 'CALLER' ? 'caller' : 'me'} ${l.who === 'CALLER' && /^\(/.test(l.text) ? 'action' : ''}`}>
+                <div key={i} className={`bubble ${l.who === 'CALLER' ? 'caller' : 'me'} ${l.who === 'CALLER' && /^\(/.test(l.text) ? 'action' : ''} ${l.garbled ? 'garbled' : ''}`}>
                   <div className="bmeta">{l.who === 'CALLER' ? first : 'You'} · {l.clock.slice(0, 5)}</div>
-                  <div className="btext">{l.who === 'CALLER' ? <CallerLine engine={engine} call={call} inc={inc} line={l} fresh={i === call.transcript.length - 1 && st.time - l.t < 2} plain={!assists} /> : l.text}</div>
+                  <div className="btext">{l.who === 'CALLER' && !l.garbled ? <CallerLine engine={engine} call={call} inc={inc} line={l} fresh={i === call.transcript.length - 1 && st.time - l.t < 2} plain={!assists} /> : l.text}</div>
+                  {l.garbled && call.lastGarbled && i === call.transcript.map((x) => !!x.garbled).lastIndexOf(true) && <button className="chip sayagain" onClick={() => { engine.sayAgain(call.id); stick.current = true; bump(); }}><Icon n="phone" size={11} /> Say again?</button>}
                 </div>
               ))}
             {doing.map((t) => (
@@ -184,8 +187,10 @@ export function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngi
             {call.typing && <div className="bubble caller typing"><div className="btext"><i className="dots"><b /><b /><b /></i></div></div>}
           </div>
         </div>
+        <ProtocolCard engine={engine} call={call} inc={inc} onAsk={(intent) => send(intent as Intent)} />
         {assists && <SuggestedReplies items={sugg} onPick={(q) => send(q.intent, q.text)} />}
         <div className="inputrow">
+ <MicButton onText={(t) => setText(t)} onFinal={(t) => send(undefined, t)} title={`Hold to talk to ${first} (or hold V)`} />
           <input aria-label="Say to caller" placeholder={aiActive ? `Talk to ${first} in your own words…` : 'Type what you say… (e.g. “What is the address?”)'} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); else if (e.key === 'Tab' && !text.trim() && sugg[0]) { e.preventDefault(); send(sugg[0].intent, sugg[0].text); } e.stopPropagation(); }} />
           {detected && detected !== 'unknown' && <span className="detect small muted">{detected}</span>}
           <Btn kind="primary" icon="send" onClick={submit} disabled={!text.trim()}>Say</Btn>

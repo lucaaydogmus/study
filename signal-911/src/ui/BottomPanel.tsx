@@ -1,3 +1,4 @@
+import { RadioConsole } from './RadioConsole';
 import { useEffect, useRef, useState } from 'react';
 import { addressOf } from '../sim/city';
 import { gameClock, type GameEngine } from '../sim/engine';
@@ -37,7 +38,7 @@ export function BottomPanel({ engine, tab, setTab, openDispatch, tutorialHint }:
       </div>
       <div className="bbody">
         {tab === 'call' && <CallConsole engine={engine} setTab={(t) => setTab(t as BottomTab)} openDispatch={openDispatch} />}
-        {tab === 'radio' && <RadioLog engine={engine} />}
+        {tab === 'radio' && <RadioConsole engine={engine} />}
         {tab === 'units' && <UnitRoster engine={engine} />}
         {tab === 'hospitals' && <HospitalBoard engine={engine} />}
         {tab === 'log' && <Timeline engine={engine} />}
@@ -47,7 +48,7 @@ export function BottomPanel({ engine, tab, setTab, openDispatch, tutorialHint }:
   );
 }
 
-function RadioLog({ engine }: { engine: GameEngine }) {
+export function RadioLog({ engine }: { engine: GameEngine }) {
   const st = engine.state;
   const [f, setF] = useState<Service | 'all'>('all');
   const ref = useRef<HTMLDivElement>(null);
