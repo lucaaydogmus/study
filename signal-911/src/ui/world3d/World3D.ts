@@ -596,7 +596,49 @@ export class World3D {
     });
   }
 
-  dispose() { this.renderer.dispose(); }
+  // ── CCTV: the same city, seen from a camera on a pole ─────────────────────
+  private camRT: THREE.WebGLRenderTarget | null = null;
+  private camBuf: Uint8Array | null = null;
+  private pcam = new THREE.PerspectiveCamera(40, 16 / 9, 0.3, 600);
+  /**
+   * Render the live city from a street camera into a 2D canvas. Returns a projector from map space
+   * (x, y, height) to feed pixels, for drawing analytics boxes over what the camera sees.
+   */
+  renderCctv(o: { x: number; y: number; h: number; heading: number; fov: number; far: number; tilt: number }, ctx: CanvasRenderingContext2D, w: number, h: number): ((x: number, y: number, z: number) => { x: number; y: number; ok: boolean }) | null {
+    if (!this.ok) return null;
+    if (!this.camRT || this.camRT.width !== w || this.camRT.height !== h) {
+      this.camRT?.dispose();
+      this.camRT = new THREE.WebGLRenderTarget(w, h, { colorSpace: THREE.SRGBColorSpace, depthBuffer: true });
+      this.camBuf = new Uint8Array(w * h * 4);
+    }
+    const c = this.pcam;
+    c.aspect = w / h;
+    c.fov = (2 * Math.atan(Math.tan(o.fov / 2) / c.aspect) * 180) / Math.PI;
+    c.near = 0.3; c.far = o.far;
+    c.position.set(o.x, o.h, o.y);
+    c.up.set(0, 1, 0);
+    c.lookAt(o.x + Math.cos(o.heading) * 20, o.h - 20 * Math.tan(o.tilt), o.y + Math.sin(o.heading) * 20);
+    c.updateProjectionMatrix();
+    // reuse the main view's shadow map rather than re-rendering it for a second camera
+    const au = this.renderer.shadowMap.autoUpdate;
+    this.renderer.shadowMap.autoUpdate = false;
+    try {
+      this.renderer.setRenderTarget(this.camRT);
+      this.renderer.clear();
+      this.renderer.render(this.scene, c);
+    } finally {
+      this.renderer.setRenderTarget(null);
+      this.renderer.shadowMap.autoUpdate = au;
+    }
+    const buf = this.camBuf!;
+    this.renderer.readRenderTargetPixels(this.camRT, 0, 0, w, h, buf);
+    const img = ctx.createImageData(w, h);
+    for (let row = 0; row < h; row++) img.data.set(buf.subarray((h - 1 - row) * w * 4, (h - row) * w * 4), row * w * 4);
+    ctx.putImageData(img, 0, 0);
+    const v = new THREE.Vector3();
+    return (x, y, z) => { v.set(x, z, y).project(c); return { x: ((v.x + 1) / 2) * w, y: ((1 - v.y) / 2) * h, ok: v.z > -1 && v.z < 1 && Math.abs(v.x) < 1.2 }; };
+  }
+  dispose() { this.renderer.dispose(); this.camRT?.dispose(); }
 }
 
 function deckHeight(city: City, l: ReturnType<typeof getLanes>[0], p: { x: number; y: number; seg: number }): number {

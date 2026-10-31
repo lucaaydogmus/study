@@ -148,7 +148,7 @@ export function MapMenu({ engine, menu, onClose, focus, startReposition, openTab
         {heli && <Item icon="heli" sub={fmtEta(engine.estimate(heli.id, inc.reportedNode!)?.eta)} onClick={run(() => feedback(engine.dispatch(heli.id, inc.id), `${heli.callsign} launching`))}>Request air support</Item>}
         <div className="mm-sep" />
         {assigned.length > 0 && <Item icon="radio" onClick={run(() => feedback(engine.briefUnits(inc.id), 'Crews briefed'))}>Brief responding crews</Item>}
-        {!inc.truth.outside && <Item icon="map" onClick={run(() => openCctv(engine, inc.id))}>Check nearest CCTV</Item>}
+        {!inc.truth.outside && <Item icon="map" onClick={run(() => openCctv())}>Open CCTV terminal (K)</Item>}
         {live(inc) && <Item icon="phone" tone={RESOURCES.some((r) => engine.resourceInfo(inc.id, r.id).asked) ? 'primary' : undefined} sub="Q" onClick={run(() => useApp.getState().openResources(inc.id))}>Request resources…{RESOURCES.some((r) => engine.resourceInfo(inc.id, r.id).asked) ? ' — crew is asking' : ''}</Item>}
         {engine.alertInfo(inc.id).ok && (sub === 'alert' ? (
           <>

@@ -7,7 +7,7 @@ export function avgResponse(st: GameState): number { return avg(st.stats.respons
 
 export function computeScore(st: GameState): ShiftScore {
   const s = st.stats;
-  const diffTarget = { casual: 150, standard: 120, hard: 105, expert: 90 }[st.config.difficulty];
+  const diffTarget = { casual: 150, standard: 120, hard: 114, expert: 90 }[st.config.difficulty];
   const handled = Object.values(st.incidents).filter((i) => !i.truth.outside && !i.duplicateOf && i.outcome !== 'merged' && i.templateId !== 'traffic_stop');
   const needResponse = handled.filter((i) => i.requires.length > 0 || i.outcome === 'false_alarm');
 

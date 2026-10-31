@@ -32,7 +32,7 @@ describe('save system (10)', () => {
     expect(env.version).toBe(PROFILE_VERSION);
     expect(env.profile.units.filter((u) => u.type === 'helicopter').length).toBe(1);
     expect(env.profile.achievements).toEqual({});
-    expect(env.profile.flags.difficulty).toBe('standard');
+    expect(env.profile.flags.difficulty).toBe('hard');
     expect(env.profile.version).toBe(PROFILE_VERSION);
     expect(env.settings.master).toBe(DEFAULT_SETTINGS.master);
   });

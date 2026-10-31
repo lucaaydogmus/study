@@ -8,6 +8,7 @@ function play(rank: number, seed: number) {
   const p = newProfile('Bot', seed);
   p.xp = [0, 0, 450, 1200, 2400, 4200, 6800, 10000][rank]; p.rank = rankForXp(p.xp);
   p.flags.duration = 15 * 60;
+  if (process.env.DIFF) p.flags.difficulty = process.env.DIFF as never;
   const e = GameEngine.fromConfig(careerConfig(p, { seed }), setupFromProfile(p));
   const st = e.state;
   let guard = 0;

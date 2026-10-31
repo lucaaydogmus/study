@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getCity, addressOf, WORLD_H, WORLD_W } from '../sim/city';
 import { SERVICE_META, isAir } from '../sim/fleet';
 import { AGENCY } from '../sim/engine';
+import { cctvConnect } from '../sim/cctv';
 import { barOffset, vehicleSprite } from './vehicles';
 import { getWorld3D, pitchFor } from './world3d/World3D';
 import { useApp } from '../store';
@@ -140,7 +141,7 @@ export function MapView(props: MapProps) {
     const toScreen = (x: number, y: number) => ({ x: (x - cam.current.x) * cam.current.z + W / 2, y: (y - cam.current.y) * cam.current.z * cam.current.gy + H / 2 });
     const pinPos = (inc: Incident) => { const n = city.nodes[inc.reportedNode!]; return toScreen(n.x, n.y); };
 
-    const hit = (sx: number, sy: number): { kind: 'incident' | 'unit' | 'station' | 'heard' | 'hospital'; id: string; label: string } | null => {
+    const hit = (sx: number, sy: number): { kind: 'incident' | 'unit' | 'station' | 'heard' | 'hospital' | 'camera'; id: string; label: string } | null => {
       const st = P.current.engine.state;
       if (P.current.showIncidents !== false) for (const inc of Object.values(st.incidents)) {
         if (inc.reportedNode === null || inc.hidden || ['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
@@ -160,6 +161,10 @@ export function MapView(props: MapProps) {
         const p = stationPts.current.get(s.id) ?? (() => { const n = city.nodes[s.nodeId]; return toScreen(n.x, n.y); })();
         const lay = stationLayout(city, s); const b = toScreen(lay.x, lay.y);
         if (Math.hypot(p.x - sx, p.y - sy) < 14 || Math.hypot(b.x - sx, b.y - sy) < Math.max(10, 9 * cam.current.z)) return { kind: 'station', id: s.id, label: `${s.name} — drag onto an incident to send its next crew` };
+      }
+      if (useApp.getState().cctvOpen && cam.current.z > 0.7) for (const c of P.current.engine.cameras()) {
+        const p = toScreen(c.x, c.y);
+        if (Math.hypot(p.x - sx, p.y - sy) < 9) return { kind: 'camera', id: c.id, label: `${c.id} · ${c.street} / ${c.cross}${c.ptz ? ' · PTZ' : ''} — click to connect` };
       }
       if (cam.current.z > 0.55) for (const l of city.landmarks) {
         if (l.kind !== 'hospital') continue;
@@ -238,6 +243,7 @@ export function MapView(props: MapProps) {
       if (h) {
         if (h.kind === 'heard') { const hh = (P.current.heard ?? []).find((x) => x.id === h.id); if (hh) P.current.onPickHeard?.(hh); }
         else if (h.kind === 'hospital') P.current.onContext?.(Number(h.id), { kind: 'hospital', id: h.id }, { x: sx, y: sy });
+        else if (h.kind === 'camera') { cctvConnect(P.current.engine, h.id); audio.click(); }
         else P.current.onSelect(h.kind as 'incident' | 'unit' | 'station', h.id);
         return;
       }
@@ -647,10 +653,26 @@ export function MapView(props: MapProps) {
         const lbl = `TRACE ±${Math.max(10, Math.round(tr.radius * 4 / 10) * 10)} m`;
         ctx.strokeText(lbl, p.x, p.y - r - 8); ctx.fillStyle = tr.done ? '#9fd3f5' : '#f0c070'; ctx.fillText(lbl, p.x, p.y - r - 8);
       }
-      // city cameras
-      if (z > 1.6 && layer === 'normal') {
-        ctx.fillStyle = 'rgba(200,210,222,0.55)';
-        for (const cam of eng.cameras()) { const p = S(cam.x, cam.y); if (p.x < -10 || p.y < -10 || p.x > W + 10 || p.y > H + 10) continue; ctx.fillRect(p.x + 7, p.y - 9, 5, 3.5); ctx.beginPath(); ctx.moveTo(p.x + 12, p.y - 8.5); ctx.lineTo(p.x + 15, p.y - 10); ctx.lineTo(p.x + 15, p.y - 5.5); ctx.closePath(); ctx.fill(); }
+      // city cameras: shown while the CCTV terminal is open (click one to pull its stream)
+      if (useApp.getState().cctvOpen && layer === 'normal' && z > 0.7) {
+        const link = st.cctv?.link ?? null, tried = st.cctv?.tried ?? {};
+        for (const cam of eng.cameras()) {
+          const p = S(cam.x, cam.y); if (p.x < -10 || p.y < -10 || p.x > W + 10 || p.y > H + 10) continue;
+          const live = link?.cam === cam.id;
+          if (live) {
+            const hd = cam.heading + link!.pan, fov = cam.fov / link!.zoom, R = cam.range * (cam.ptz ? 1 + (link!.zoom - 1) * 0.55 : 1);
+            ctx.fillStyle = 'rgba(127,182,230,0.13)'; ctx.strokeStyle = 'rgba(127,182,230,0.7)'; ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.moveTo(p.x, p.y);
+            for (let k = 0; k <= 12; k++) { const a = hd - fov / 2 + (fov * k) / 12; const q = S(cam.x + Math.cos(a) * R, cam.y + Math.sin(a) * R); ctx.lineTo(q.x, q.y); }
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+          }
+          ctx.fillStyle = tried[cam.id] === 'offline' ? 'rgba(220,90,90,0.9)' : live ? '#7fb6e6' : cam.ptz ? 'rgba(210,225,240,0.9)' : 'rgba(180,192,206,0.8)';
+          ctx.strokeStyle = 'rgba(8,12,18,0.85)'; ctx.lineWidth = 2;
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(cam.heading);
+          ctx.beginPath(); ctx.rect(-4, -2.5, 6, 5); ctx.moveTo(2, -1.5); ctx.lineTo(6, -3.5); ctx.lineTo(6, 3.5); ctx.lineTo(2, 1.5); ctx.closePath(); ctx.stroke(); ctx.fill();
+          ctx.restore();
+          if (z > 2.2) { ctx.font = '600 9px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeText(cam.id, p.x, p.y + 13); ctx.fillText(cam.id, p.x, p.y + 13); }
+        }
       }
 
       // pursuit suspects

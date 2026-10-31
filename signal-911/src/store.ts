@@ -7,7 +7,7 @@ import { GameEngine, type EngineEvent } from './sim/engine';
 import {
   applyShift, careerConfig, computeResult, newProfile, setupFromProfile, temporarySetup, DEFAULT_SETTINGS, type Profile, type Settings, type ShiftResult,
 } from './sim/profile';
-import { CHAPTERS, SCENARIOS, TUTORIAL_CONFIG, baseConfig, ALL_DISTRICTS, dailyConfig, rollStoryline, rollSurprises } from './sim/scenarios';
+import { CHAPTERS, SCENARIOS, TUTORIAL_CONFIG, baseConfig, ALL_DISTRICTS, dailyConfig, rollStoryline, rollSurprises, realistic } from './sim/scenarios';
 import { evaluateAchievements, ACHIEVEMENT_BY_ID } from './sim/achievements';
 import { rollExtras } from './sim/extras';
 import { AiManager, aiApi } from './ai/aiClient';
@@ -39,6 +39,7 @@ interface AppStore {
   startCareerShift: () => void; startChapter: (id: string) => void; startScenario: (id: string) => void; startFree: (cfg: ShiftConfig, opts: Session['setupOpts']) => void;
   startTutorial: () => void; startEndless: (reset?: boolean) => void; setPauseMenu: (b: boolean) => void; startDaily: () => void;
   newAchievements: string[]; checkLiveAchievements: () => void; aiActive: boolean;
+  /** the CCTV terminal is on screen */ cctvOpen: boolean; setCctvOpen: (b: boolean) => void;
   /** the resources panel (incident it opened for) */ resPanel: { incId: string | null } | null; openResources: (incId: string | null) => void; closeResources: () => void;
 }
 
@@ -61,7 +62,7 @@ function startAi(engine: GameEngine) {
 
 export const useApp = create<AppStore>((set, get) => ({
   screen: 'menu', back: [], hubTab: 'overview', profile: null, slot: 'auto', settings: DEFAULT_SETTINGS, saveList: [], hasShiftSnapshot: false,
-  brief: (s) => { set({ pending: s }); get().go('briefing'); },
+  brief: (s) => { realistic(s.config); set({ pending: s }); get().go('briefing'); },
   pending: null, setPending: (s) => set({ pending: s }), beginPending: () => { const s = get().pending; if (s) get().startSession(s); },
   newAchievements: [], aiActive: false,
   checkLiveAchievements: () => {
@@ -79,6 +80,7 @@ export const useApp = create<AppStore>((set, get) => ({
   refresh: () => set((s) => ({ rev: s.rev + 1 })),
   showToast: (text, level = 'info') => set({ toast: { text, level, id: ++toastId } }),
   resPanel: null,
+  cctvOpen: false, setCctvOpen: (b) => set({ cctvOpen: b }),
   openResources: (incId) => { audio.click(); set({ resPanel: { incId } }); },
   closeResources: () => set({ resPanel: null }),
   setPauseMenu: (b) => { const e = get().engine; if (e) e.state.paused = b ? true : false; set({ pauseMenu: b }); },
@@ -157,7 +159,7 @@ export const useApp = create<AppStore>((set, get) => ({
     let profile = get().profile;
     if (!profile) { profile = newProfile('Guest'); set({ profile, slot: 'auto' }); }
     const settings = get().settings;
-    const config = { ...s.config, hideIntense: settings.hideIntense };
+    const config = realistic({ ...s.config, hideIntense: settings.hideIntense });
     let engine: GameEngine;
     if (s.kind === 'career' || s.kind === 'chapter') engine = GameEngine.fromConfig(config, setupFromProfile(profile));
     else engine = GameEngine.fromConfig(config, temporarySetup({ ...s.setupOpts, rank: config.mode === 'tutorial' ? 1 : s.setupOpts?.rank ?? 7 }));

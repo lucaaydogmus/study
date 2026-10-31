@@ -388,11 +388,23 @@ aside.right { text-align: left; }
 .dc-opt:hover { background: rgba(229,172,77,.14); border-color: var(--amber); } .dc-opt span { font-size: 10.5px; color: var(--text2); line-height: 1.3; }
 .trace { display: flex; align-items: center; gap: 8px; padding: 4px 10px; font-size: 12px; color: #f0c070; background: rgba(229,172,77,.08); border-bottom: 1px solid rgba(229,172,77,.3); }
 .trace.done { color: #9fd3f5; background: rgba(74,156,214,.08); border-color: rgba(74,156,214,.3); }
-.cctv-back { position: absolute; inset: 0; z-index: 21; background: rgba(3,6,9,.55); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(1.5px); }
-.cctv { background: #0b0f14; border: 1px solid #3a4a5e; border-radius: 10px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.6); animation: pop .18s ease-out; max-width: calc(100% - 24px); }
-.cctv-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 12px; }
-.cctv canvas { display: block; width: 560px; max-width: 100%; height: auto; image-rendering: pixelated; }
-.cctv-text { padding: 8px 12px; font-size: 12.5px; color: var(--text2); border-top: 1px solid var(--line); } .cctv-text.ok { color: #a7e3c6; }
+.cctvc { position: absolute; left: 12px; top: 12px; z-index: 22; width: min(780px, calc(100% - 24px)); background: #0b0f14; border: 1px solid #3a4a5e; border-radius: 10px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.6); animation: pop .18s ease-out; outline: none; }
+.cctvc-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 12px; background: #0f151c; }
+.cctvc-body { display: grid; grid-template-columns: 230px 1fr; min-height: 0; }
+.cctvc-list { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-right: 1px solid var(--line); min-width: 0; }
+.cctvc-list select, .cctvc-list input, .cctvc-ctl select { background: #131a22; color: var(--text); border: 1px solid #2c3846; border-radius: 6px; padding: 5px 7px; font-size: 12px; min-width: 0; }
+.cctvc-cams { overflow-y: auto; max-height: 300px; display: flex; flex-direction: column; gap: 3px; }
+.cctvc-cams .cam { display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; text-align: left; background: #111820; border: 1px solid #1f2a36; border-radius: 6px; padding: 5px 7px; color: var(--text); cursor: pointer; font-size: 11.5px; }
+.cctvc-cams .cam:hover { border-color: #3d5670; } .cctvc-cams .cam.on { border-color: #7fb6e6; background: #142231; } .cctvc-cams .cam.dead { opacity: .55; }
+.cctvc-cams .cam-st { color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cctvc-cams .cam-tags { grid-column: 1 / -1; display: flex; gap: 4px; } .cctvc-cams .cam-tags i { font-style: normal; font-size: 9.5px; font-weight: 700; letter-spacing: .04em; color: #9fc7ea; background: #16283a; border-radius: 3px; padding: 0 4px; } .cctvc-cams .cam-tags i.bad { color: #ffb0b0; background: #3a1616; }
+.cctvc-feed { display: flex; flex-direction: column; min-width: 0; }
+.cctvc-feed canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #000; cursor: crosshair; image-rendering: pixelated; }
+.cctvc-ctl { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.cctvc-ctl select { max-width: 230px; }
+.cctvc-msg { padding: 6px 10px; font-size: 12.5px; color: var(--text2); border-top: 1px solid var(--line); min-height: 18px; } .cctvc-msg.good { color: #a7e3c6; } .cctvc-msg.warn { color: #f0c070; }
+.cctvc-hint { padding: 0 10px 8px; }
+@media (max-width: 720px) { .cctvc-body { grid-template-columns: 1fr; } .cctvc-cams { max-height: 120px; } }
 .breaking { position: absolute; left: 50%; top: 84px; transform: translateX(-50%); z-index: 10; display: flex; align-items: stretch; border-radius: 6px; overflow: hidden; box-shadow: 0 14px 34px rgba(0,0,0,.55); animation: breakIn .5s cubic-bezier(.2,.9,.3,1.2); max-width: 70%; }
 .bk-tag { background: #c62828; color: #fff; font-weight: 900; letter-spacing: .14em; padding: 8px 12px; font-size: 13px; display: flex; align-items: center; animation: bkflash 1s steps(2) infinite; }
 .bk-text { background: rgba(250,250,250,.96); color: #0b0f14; font-weight: 800; padding: 8px 14px; font-size: 14px; letter-spacing: .01em; }

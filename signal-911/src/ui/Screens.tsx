@@ -149,7 +149,7 @@ export function MainMenu() {
         </div>
         <div className="hcard daily">
           <div className="hc-head"><Icon n="clock" size={14} /><b>DAILY CHALLENGE</b><span className="grow" />{dailyDone && <Badge tone="green">DONE</Badge>}</div>
-          <div className="small muted">{todayKey()} · <Icon n={weatherIcon(daily.weather)} size={11} /> {WEATHER_LABEL[daily.weather]} · {DIFFICULTY[daily.difficulty].label}</div>
+          <div className="small muted">{todayKey()} · <Icon n={weatherIcon(daily.weather)} size={11} /> {WEATHER_LABEL[daily.weather]}</div>
           <div className="small">Same city, same calls for everyone today.{daily.storyline ? ' A major incident is coming.' : ''}</div>
           <Btn size="sm" kind="primary" icon="play" onClick={() => startDaily()}>Play today’s shift</Btn>
         </div>
@@ -164,7 +164,6 @@ export function MainMenu() {
 export function NewCareer() {
   const { newCareer, goBack, startTutorial } = useApp();
   const [name, setName] = useState('');
-  const [diff, setDiff] = useState<Difficulty>('standard');
   const [tut, setTut] = useState(true);
   return (
     <div className="screen">
@@ -173,10 +172,9 @@ export function NewCareer() {
         <div className="card">
           <p>You are a <b>Trainee Dispatcher</b> at Ravenport Emergency Dispatch with 12 vehicles, 4 core districts and a $250,000 budget. Earn experience, get promoted, and grow the service into a city-wide operation.</p>
           <div className="field"><label htmlFor="nm">Your name</label><input id="nm" value={name} placeholder="Dispatcher" maxLength={24} onChange={(e) => setName(e.target.value)} /></div>
-          <div className="field"><label>Default difficulty</label>
-            <div className="seg">{(Object.keys(DIFFICULTY) as Difficulty[]).map((d) => <button key={d} className={diff === d ? 'on' : ''} onClick={() => setDiff(d)}>{DIFFICULTY[d].label}</button>)}</div></div>
+          <p className="muted small">There is one mode: realistic. Callers are scared and confused, addresses are wrong, escalation does not wait, and nothing is done for you — no response plans, no auto-classification, no one-click locations.</p>
           <label className="toggle"><input type="checkbox" checked={tut} onChange={(e) => setTut(e.target.checked)} /><span className="tg" /><span><b>Play the tutorial first</b><span className="muted small block">About five minutes. Strongly recommended for new dispatchers.</span></span></label>
-          <div className="row end"><Btn kind="primary" size="lg" icon="play" onClick={async () => { await newCareer(name.trim() || 'Dispatcher', diff); if (tut) startTutorial(); }}>Start career</Btn></div>
+          <div className="row end"><Btn kind="primary" size="lg" icon="play" onClick={async () => { await newCareer(name.trim() || 'Dispatcher', 'hard'); if (tut) startTutorial(); }}>Start career</Btn></div>
         </div>
       </div>
     </div>
@@ -258,7 +256,7 @@ export function ScenarioScreen() {
             <div className={`card scen ${s.special ? 'special' : ''}`} key={s.id} style={{ borderTopColor: s.accent, ['--acc' as string]: s.accent }}>
               {s.special && <span className="newtag">NEW</span>}
               <h2>{s.title}</h2><div className="tagline">{s.tagline}</div><p className="muted">{s.description}</p>
-              <div className="chips"><Badge>{s.minutes} min</Badge><Badge tone={s.difficulty === 'hard' ? 'amber' : 'blue'}>{DIFFICULTY[s.difficulty].label}</Badge>{s.reducedFleet && <Badge tone="red">Reduced staff</Badge>}</div>
+              <div className="chips"><Badge>{s.minutes} min</Badge>{s.reducedFleet && <Badge tone="red">Reduced staff</Badge>}</div>
               <div className="row gap center">{r ? <><Grade g={r.best} size={32} /><span className="muted small">best {r.bestScore} · {r.plays} plays</span></> : <span className="muted small">Not yet played</span>}<div className="grow" /><Btn kind="primary" icon="play" onClick={() => startScenario(s.id)}>Play</Btn></div>
             </div>); })}
         </div>
@@ -273,7 +271,6 @@ export function FreePlayScreen() {
   const [budget, setBudget] = useState(200000);
   const [rate, setRate] = useState(1);
   const [unusual, setUnusual] = useState(1);
-  const [diff, setDiff] = useState<Difficulty>('standard');
   const [mins, setMins] = useState(12);
   const [weather, setWeather] = useState<WeatherType>('clear');
   const [hour, setHour] = useState(12);
@@ -295,7 +292,6 @@ export function FreePlayScreen() {
             <h3>Pressure</h3>
             <label className="slider"><span>Incident frequency</span><input type="range" min={0.4} max={2.2} step={0.1} value={rate} onChange={(e) => setRate(+e.target.value)} /><span className="mono">{rate.toFixed(1)}×</span></label>
             <label className="slider"><span>Unusual / prank calls</span><input type="range" min={0} max={4} step={0.25} value={unusual} onChange={(e) => setUnusual(+e.target.value)} /><span className="mono">{unusual.toFixed(2)}×</span></label>
-            <div className="field"><label>Difficulty</label><div className="seg">{(Object.keys(DIFFICULTY) as Difficulty[]).map((d) => <button key={d} className={diff === d ? 'on' : ''} onClick={() => setDiff(d)}>{DIFFICULTY[d].label}</button>)}</div></div>
             <label className="slider"><span>Shift duration</span><input type="range" min={5} max={30} step={1} value={mins} onChange={(e) => setMins(+e.target.value)} /><span className="mono">{mins} min</span></label>
           </div>
           <div className="card">
@@ -309,7 +305,7 @@ export function FreePlayScreen() {
               <div className="seg wrap">{city.districts.map((d) => <button key={d.id} className={districts.includes(d.id) ? 'on' : ''} onClick={() => setDistricts(districts.length > 1 || !districts.includes(d.id) ? toggle(districts, d.id) : districts)}>{d.name}</button>)}</div></div>
           </div>
         </div>
-        <div className="row end"><Btn kind="primary" size="lg" icon="play" onClick={() => startFree(baseConfig({ mode: 'free', title: 'Free play', briefing: 'A shift built to your settings.', difficulty: diff, durationSec: mins * 60, incidentRate: rate, unusualBias: unusual, weather, startHour: hour, districts, startBudget: budget, events: events.map((t, i) => ({ type: t, at: 60 + i * 80, duration: Math.max(180, mins * 60 - 120 - i * 80) })), objectives: [], surprises }), { units, budget, rank: 7 })}>Continue to briefing</Btn></div>
+        <div className="row end"><Btn kind="primary" size="lg" icon="play" onClick={() => startFree(baseConfig({ mode: 'free', title: 'Free play', briefing: 'A shift built to your settings.', difficulty: 'hard', durationSec: mins * 60, incidentRate: rate, unusualBias: unusual, weather, startHour: hour, districts, startBudget: budget, events: events.map((t, i) => ({ type: t, at: 60 + i * 80, duration: Math.max(180, mins * 60 - 120 - i * 80) })), objectives: [], surprises }), { units, budget, rank: 7 })}>Continue to briefing</Btn></div>
       </div>
     </div>
   );
@@ -345,7 +341,7 @@ export function BriefingScreen() {
           <div className="hub-map"><MapView engine={engine} layer="coverage" mode="select" selected={{ kind: null, id: null }} onSelect={() => undefined} showIncidents={false} /><div className="maphint">Opening coverage with your starting fleet.</div></div>
           <div className="hub-side">
             <div className="card brief"><h3>Situation</h3><p>{c.briefing}</p>
-              <div className="kv"><span>Difficulty</span><b>{DIFFICULTY[c.difficulty].label}</b></div><div className="kv"><span>Length</span><b>{Math.round(c.durationSec / 60)} min</b></div>
+              <div className="kv"><span>Mode</span><b>{DIFFICULTY[c.difficulty].label}</b></div><div className="kv"><span>Length</span><b>{Math.round(c.durationSec / 60)} min</b></div>
               <div className="kv"><span>Weather</span><b><Icon n={weatherIcon(c.weather)} size={13} /> {WEATHER_LABEL[c.weather]}</b></div>
               <div className="kv"><span>Starts</span><b className="mono">{String(Math.floor(c.startHour)).padStart(2, '0')}:00</b></div>
               <div className="kv"><span>Districts</span><b>{c.districts.length} / 12</b></div>

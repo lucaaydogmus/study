@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { cameraOffline, cctvConnect, cctvTag, cctvView } from '../src/sim/cctv';
 import { makeEngine, run } from './helpers';
 import { STORYLINES, baseConfig, rollStoryline } from '../src/sim/scenarios';
 import { makeVoice, speak } from '../src/sim/voices';
@@ -126,15 +127,26 @@ describe('remaster 4', () => {
     expect(e.state.calls[e.state.activeCallId!].outbound).toBe(true);
   });
 
-  it('city cameras confirm what is happening near a camera', () => {
+  it('city cameras have to be picked, connected, aimed and read before they tell you anything', () => {
     const e = makeEngine(quiet, { rank: 7 });
-    const cam = e.cameras()[0];
-    const inc = e.spawnIncident('vehicle_fire', e.city.nodes[cam.node].district, { nodeId: cam.node, accuracy: 'exact' });
-    answer(e, inc); locate(e, inc);
-    const r = e.viewCctv(inc.id);
+    const cams = e.cameras();
+    const cam = cams.find((c) => !cameraOffline(e, c))!;
+    const n = e.city.nodes.filter((m) => { const d = Math.hypot(m.x - cam.x, m.y - cam.y); const a = Math.atan2(m.y - cam.y, m.x - cam.x) - cam.heading; return d > 25 && d < cam.range * 0.5 && Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < cam.fov / 3; })[0];
+    if (!n) return;
+    e.state.timeOfDay = 12; e.state.weather = 'clear';
+    const inc = e.spawnIncident('vehicle_fire', n.district, { nodeId: n.id, accuracy: 'exact' });
+    answer(e, inc);
+    expect(cctvConnect(e, cam.id).ok).toBe(true);
+    expect(cctvView(e)!.state).toBe('connecting');
+    run(e, 10);
+    const v = cctvView(e)!;
+    expect(v.state).toBe('live');
+    const det = v.detections.find((d) => d.key === `i:${inc.id}`)!;
+    expect(det).toBeTruthy();
+    const r = cctvTag(e, det.key, inc.id);
     expect(r.ok).toBe(true);
-    expect(r.sees).toBe(true);
-    expect(e.viewCctv(inc.id).ok).toBe(false);
+    expect(inc.facts.some((f) => f.source === 'scene')).toBe(true);
+    expect(cctvTag(e, det.key, inc.id).ok).toBe(false);
   });
 
   it('crews ask for tactical decisions and the answer changes the outcome', () => {

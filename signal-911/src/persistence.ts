@@ -64,7 +64,7 @@ export function migrate(raw: SaveEnvelope): SaveEnvelope {
   let v = out.version ?? 1;
   const p = out.profile as Profile & Record<string, unknown>;
   if (v < 2) {
-    p.flags = (p.flags as Profile['flags']) ?? { tutorialDone: false, difficulty: 'standard', duration: 15 * 60 };
+    p.flags = (p.flags as Profile['flags']) ?? { tutorialDone: false, difficulty: 'hard', duration: 15 * 60 };
     p.endless = (p.endless as Profile['endless']) ?? { bestWave: 0, bestScore: 0, current: { wave: 0, score: 0, active: false } };
     p.scenarios = (p.scenarios as Profile['scenarios']) ?? {};
     p.city = (p.city as Profile['city']) ?? { closedRoads: [], districtTraffic: {}, damagedStations: {}, log: [] };

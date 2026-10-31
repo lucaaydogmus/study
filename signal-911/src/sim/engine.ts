@@ -10,6 +10,7 @@ import { backgroundClue } from './content/clues';
 import { aidVerdict, lifeThreatOf, FIRE_LIKE, TOPIC_FACTS, aliLookup, classifyIntent, makeCallerProfile, makeLocPlan, makeVars, fill, openingLines, replyTo, spontaneous, verifyReply, QUICK_QUESTIONS, type DialogueEnv, type Intent } from './dialogue';
 import { EVENT_DEFS, WEATHER_SPEED, WEATHER_TRAFFIC, WEATHER_LABEL, nextWeather } from './events';
 import { numWord, UNIT_TYPE_BY_ID, makeUnit, isAir, AIR_SPEED } from './fleet';
+import { cameraList, cctvTracking, type Camera } from './cctv';
 import { applyFit, KIT_BY_ID } from './garage';
 import { makeRequest, requestText, replyText, returnText, searchRecords, CHECK_LABEL, DANGEROUS, type RecordQuery } from './records';
 import { speak } from './voices';
@@ -28,6 +29,8 @@ export const REVEAL_KEYS = TOPIC_FACTS as Record<string, string[]>;
 export const STATE_VERSION = 1;
 /** global pacing knob: scales how quickly unattended incidents deteriorate */
 export const THREAT_SCALE = 0.55;
+/** escalating incidents never sit still for long: the slowest one still reaches its next stage in about three minutes */
+export const STAGE_FLOOR = 0.27;
 
 /** outside agencies crews ask dispatch to call */
 export const AGENCY: Record<AgencyKind, { name: string; short: string; cost: number; eta: [number, number]; ask: string[] }> = {
@@ -145,7 +148,7 @@ export const AIR_HELPS = new Set(['lost_hiker', 'kidnapping', 'active_shooter', 
 export const DIFFICULTY = {
   casual: { rate: 0.7, ring: 55, coop: 8, esc: 0.8, wrong: 0.4, label: 'Casual' },
   standard: { rate: 1, ring: 42, coop: 0, esc: 1, wrong: 1, label: 'Standard' },
-  hard: { rate: 1.25, ring: 34, coop: -6, esc: 1.15, wrong: 1.3, label: 'Hard' },
+  hard: { rate: 1.05, ring: 36, coop: -5, esc: 1.05, wrong: 1.25, label: 'Realistic' },
   expert: { rate: 1.5, ring: 28, coop: -10, esc: 1.3, wrong: 1.6, label: 'Expert' },
 } as const;
 
@@ -795,7 +798,7 @@ export class GameEngine {
     const inc: Incident = {
       id, num, templateId, category: tpl.category, label: tpl.label, severity: sev, status: 'REPORTED', nodeId, district: districtId, reportedNode: null, locationConfirmed: false,
       classification: null, callId, callerName: profile.name, requires, knownReqs: [], stage: 0, maxStage: tpl.escalate?.length ?? 0,
-      threat: Math.min(80, tpl.threat[0] * (0.9 + rng.next() * 0.3)), growth: tpl.threat[1] * THREAT_SCALE * esc * (0.9 + rng.next() * 0.25) * (tpl.weather?.[st.weather] && tpl.weather[st.weather]! > 1 ? 1.0 : 1), clear: tpl.threat[2], work: tpl.work,
+      threat: Math.min(80, tpl.threat[0] * (0.9 + rng.next() * 0.3)), growth: ((g) => (tpl.escalate?.length ? Math.max(STAGE_FLOOR * (0.9 + (g % 0.01) * 20), g) : g))(tpl.threat[1] * THREAT_SCALE * esc * (0.9 + rng.next() * 0.25)), clear: tpl.threat[2], work: tpl.work,
       assignedUnits: [], everAssigned: [], createdAt: st.time, answeredAt: null, locatedAt: null, firstArrivalAt: null, resolvedAt: null, lastStageAt: st.time,
       facts: [], truth, knows: [], unsureKeys: tpl.unsure ? [...tpl.unsure] : [], notes: '', casualties: 0, saved: 0, needsTransport: !!tpl.transport,
       twistRevealed: false, dismissed: false, hidden: false, stabilizeTimer: 0, callbackAt: null, callbackCount: 0, missedCalls: 0, safetyAdvised: false,
@@ -2726,7 +2729,7 @@ export class GameEngine {
     const call = this.callFor(inc);
     const following = !!call && call.state === 'active' && !call.stopFollowing && st.time - (call.answeredAt ?? st.time) < (call.following ? 260 : 160);
     // the live position only reaches ground units through the caller or a crew with eyes on (air positions are relayed by dispatch)
-    m.tracked = following || contacts.length > 0 || assigned.some((u) => Math.hypot(u.x - m.x, u.y - m.y) < 120 && !evading);
+    m.tracked = following || contacts.length > 0 || assigned.some((u) => Math.hypot(u.x - m.x, u.y - m.y) < (m.foot ? 60 : 120) && !evading) || cctvTracking(this, inc);
     if (inc.reportedNode !== null) {
       if (m.tracked && st.time - m.lastUpdate >= 2.5) { m.lastUpdate = st.time; inc.reportedNode = inc.nodeId; }
       else if (!m.tracked && st.time - m.lastSighting > 22) {
@@ -4373,47 +4376,12 @@ export class GameEngine {
     return { ok: true };
   }
 
-  /** city CCTV: cameras at major junctions and landmarks */
-  cameras(): Array<{ id: string; node: number; x: number; y: number }> {
-    if (this.camCache) return this.camCache;
-    const out: Array<{ id: string; node: number; x: number; y: number }> = [];
-    const seen = new Set<number>();
-    const add = (n: number) => { if (seen.has(n)) return; seen.add(n); const m = this.city.nodes[n]; out.push({ id: `CAM-${String(out.length + 1).padStart(3, '0')}`, node: n, x: m.x, y: m.y }); };
-    for (const l of this.city.landmarks) add(l.nodeId);
-    for (const m of this.city.nodes) if (m.i % 4 === 0 && m.j % 3 === 0 && this.city.adj[m.id].some((e) => this.city.edges[e].cls !== 'local')) add(m.id);
-    this.camCache = out;
-    return out;
-  }
-  private camCache: Array<{ id: string; node: number; x: number; y: number }> | null = null;
-  /** look at the nearest camera to where you think the incident is */
-  viewCctv(incId: string, at?: { x: number; y: number }): { ok: boolean; reason?: string; cam?: string; x?: number; y?: number; sees?: boolean; text?: string } {
-    const st = this.state;
-    const inc = st.incidents[incId];
-    if (!inc) return { ok: false, reason: 'Unknown incident' };
-    if (st.time - (inc.cctvAt ?? -99) < 20) return { ok: false, reason: 'Camera is still repositioning' };
-    let p = at ?? null;
-    const call = Object.values(st.calls).filter((c) => c.incidentId === incId).sort((a, b) => b.ringStart - a.ringStart)[0];
-    if (!p && inc.reportedNode !== null) p = this.city.nodes[inc.reportedNode];
-    if (!p && call?.trace && call.trace.stage >= 0) p = { x: call.trace.x, y: call.trace.y };
-    if (!p && call?.heard.length) p = this.city.nodes[call.heard[call.heard.length - 1].nodeId];
-    if (!p) return { ok: false, reason: 'Set a location, trace the call or get a landmark first' };
-    const cam = this.cameras().map((c) => ({ c, d: Math.hypot(c.x - p!.x, c.y - p!.y) })).sort((a, b) => a.d - b.d)[0];
-    if (!cam || cam.d > 170) return { ok: false, reason: 'No city camera covers that area' };
-    inc.cctvAt = st.time;
-    const t = this.city.nodes[inc.nodeId];
-    const sees = Math.hypot(cam.c.x - t.x, cam.c.y - t.y) < 140 && !inc.truth.outside;
-    const tpl = this.instanceTemplate(inc);
-    let text: string;
-    if (sees) {
-      const visible = ['fire', 'smoke', 'vehicles', 'people', 'trapped'].filter((k) => k in inc.truth);
-      if (tpl.ambience === 'traffic' || tpl.ambience === 'crowd') visible.push('injured', 'suspect');
-      for (const k of visible) if (inc.facts.every((f) => f.key !== k || f.confidence === 'contradicted')) this.addFact(inc, k, inc.truth[k], 'confirmed', 'scene');
-      if (call) this.addHeard(call, { nodeId: inc.nodeId, label: `${cam.c.id}: incident visible at ${addressOf(this.city, inc.nodeId)}`, source: 'landmark', reliability: 'sure' });
-      if (inc.reportedNode !== null && inc.reportedNode !== inc.nodeId && Math.hypot(this.city.nodes[inc.reportedNode].x - t.x, this.city.nodes[inc.reportedNode].y - t.y) > 90) text = `${cam.c.id} shows the incident — but at ${addressOf(this.city, inc.nodeId)}, not where you have it.`;
-      else text = `${cam.c.id}: incident in view at ${addressOf(this.city, inc.nodeId)}. ${tpl.category === 'fire' ? 'Smoke and flames visible.' : tpl.category === 'medical' ? 'People gathered around someone on the ground.' : tpl.category === 'police' ? 'Activity consistent with the call.' : 'Something is going on.'}`;
-    } else text = `${cam.c.id} (${addressOf(this.city, cam.c.node)}): nothing unusual in view.`;
-    this.log('info', `CCTV ${cam.c.id} checked for ${inc.label}`, { incidentId: inc.id });
-    return { ok: true, cam: cam.c.id, x: cam.c.x, y: cam.c.y, sees, text };
+  /** city CCTV network (see cctv.ts) */
+  cameras(): Camera[] { return cameraList(this.city); }
+  /** a location lead from outside the call (CCTV, sightings): goes on the call's list of places heard */
+  noteHeard(inc: Incident, nodeId: number, label: string, reliability: 'sure' | 'unsure') {
+    const call = Object.values(this.state.calls).filter((c) => c.incidentId === inc.id).sort((a, b) => b.ringStart - a.ringStart)[0];
+    if (call) this.addHeard(call, { nodeId, label, source: 'landmark', reliability });
   }
 
   // ── Tactical decisions from crews on scene ────────────────────────────────

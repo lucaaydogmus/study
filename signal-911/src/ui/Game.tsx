@@ -19,7 +19,8 @@ import { computeScore } from '../sim/scoring';
 import { contractProgress, MODIFIER_BY_ID } from '../sim/extras';
 import { GRADE_COLOR } from './common';
 import { RecordsDock, RecordsTerminal, threatKnown } from './Ops';
-import { BoloDock, CctvViewer, DecisionCards, MultiBar, NewsTicker, StatusDock, useCctvSink } from './Field';
+import { BoloDock, DecisionCards, MultiBar, NewsTicker, StatusDock } from './Field';
+import { CctvConsole } from './Cctv';
 import { MapMenu, handleDrop, type MenuState } from './MapMenu';
 import { Cinematics } from './Cinematic';
 
@@ -50,11 +51,10 @@ export function GameScreen() {
   const [preview, setPreview] = useState<Preview>(null);
   const [collapsed, setCollapsed] = useState({ l: false, r: false, b: false });
   const [terminal, setTerminal] = useState(false);
-  const [cctv, setCctv] = useState<Parameters<typeof CctvViewer>[0]['view'] | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [multi, setMulti] = useState<string[]>([]);
   const closeMenu = useCallback(() => setMenu(null), []);
-  useCctvSink(setCctv);
+  const cctvOpen = useApp((x) => x.cctvOpen);
   const st = engine.state;
   const focusKey = useRef(0);
   const doFocus = useCallback((x: number, y: number, zoom?: number) => setFocus({ x, y, zoom, key: ++focusKey.current }), []);
@@ -102,6 +102,7 @@ export function GameScreen() {
       else if (e.key === 'Escape') { if (menu) setMenu(null); else if (multi.length) setMulti([]); else if (target) setTarget(null); else if (s.selected.kind) { eng.select(null, null); bump(); } else useApp.getState().setPauseMenu(true); }
       else if (e.key === '?' ) setShowHelp(true);
       else if (e.key === 't' || e.key === 'T') setTerminal((v) => !v);
+      else if (e.key === 'k' || e.key === 'K') { const ap = useApp.getState(); ap.setCctvOpen(!ap.cctvOpen); audio.click(); }
       else if (e.key === 's' || e.key === 'S') { const due = eng.overdueChecks(); if (due.length) { eng.statusCheck(due[0].id); audio.radioBlip(); bump(); } }
       else if (e.key === 'f' || e.key === 'F') {
         const sel = s.selected;
@@ -208,7 +209,7 @@ export function GameScreen() {
           {resPanel && <ResourcesPanel engine={engine} incId={resPanel.incId} onClose={() => useApp.getState().closeResources()} />}
           <NewsTicker engine={engine} />
           {menu && <MapMenu engine={engine} menu={menu} onClose={closeMenu} focus={doFocus} startReposition={(id) => setTarget({ kind: 'repos', id })} openTab={(t) => { setTab(t as BottomTab); setCollapsed((c) => ({ ...c, b: false })); }} />}
-          {cctv && <CctvViewer engine={engine} view={cctv} onClose={() => setCctv(null)} />}
+          {cctvOpen && <CctvConsole engine={engine} onClose={() => useApp.getState().setCctvOpen(false)} />}
           {terminal && <RecordsTerminal engine={engine} onClose={() => setTerminal(false)} />}
           <GoalsCard engine={engine} />
           <Legend layer={layer} />

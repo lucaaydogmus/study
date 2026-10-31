@@ -209,6 +209,12 @@ export interface Mover {
   x: number; y: number; prev: number; next: number; came: number; speed: number; tracked: boolean; trail: Vec[]; startAt: number; lastUpdate: number; lastSighting: number; contact: number; heading: number;
   /** air unit with eyes on the vehicle (positions only reach ground units when dispatch relays them) */
   heliId?: string | null; heliSince?: number; lastHeliReport?: number; evadeUntil?: number;
+  /** a suspect on foot (slower, hides, only seen by cameras, crews close by and people who call it in) */
+  foot?: boolean;
+  /** the caller is the one moving (driving someone to hospital); stops when told to pull over */
+  caller?: boolean; stopped?: boolean; dest?: number;
+  /** picked up on a city camera: stays tracked while the camera keeps it in frame */
+  camTag?: { cam: string; at: number } | null;
 }
 
 export interface Fx { id: number; t: number; kind: 'good' | 'bad' | 'warn' | 'info'; x: number; y: number; text: string }
@@ -375,6 +381,7 @@ export interface ShiftStats {
   boloHits?: number; stingerHits?: number; breaksGiven?: number;
   callerAnswers?: number; cprPaced?: number; handoffs?: number; calmActions?: number; calmGood?: number; tasksDone?: number; callerBreakdowns?: number; redirectsOk?: number; redirectsBad?: number; listens?: number; unitQueries?: number; unitQueriesOk?: number; unitQueriesMissed?: number; maydays?: number; maydaySaved?: number; refusals?: number;
   specialistCalls?: number; specialistWasted?: number; majorsHandled?: number;
+  cctvTags?: number;
   crewTalks?: number; sayAgains?: number; resourceCalls?: number; arrests?: number; services?: number; hospitalCalls?: number; mciPlans?: number; walkIns?: number;
   agencyCalls?: number; agencyLate?: number; statusChecks?: number; statusSaves?: number; statusMissed?: number; alertsRight?: number; alertsWrong?: number; searchFinds?: number;
 }
@@ -412,6 +419,8 @@ export interface GameState {
   /** hospital departments, beds and diversions, keyed by hospital node */
   hospitals?: Record<string, HospitalState>;
   lastChatter?: number; lastHospitalCall?: number; lastWalkIn?: number;
+  /** the CCTV terminal: which camera is streaming, and which cameras turned out to be dead */
+  cctv?: { link: import('./cctv').CctvLink | null; tried: Record<string, 'ok' | 'offline'>; tags: number; wrong: number };
 }
 
 export interface ShiftScore {

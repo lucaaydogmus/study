@@ -206,7 +206,7 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
         <div className="btnrow">
           {call && (call.state === 'active' || call.state === 'hold') && <Btn size="sm" icon="phone" onClick={openCall}>Go to call</Btn>}
           {!done && call && !['active', 'hold', 'ringing'].includes(call.state) && !inc.onView && <Btn size="sm" icon="phone" onClick={() => { const r = engine.redial(inc.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); else openCall(); bump(); }} title="Call the caller back on their number">Call back</Btn>}
-          {!done && !inc.truth.outside && <Btn size="sm" icon="map" onClick={() => { openCctv(engine, inc.id); bump(); }} title="Check the nearest city camera">CCTV</Btn>}
+          {!done && !inc.truth.outside && <Btn size="sm" icon="map" onClick={() => openCctv()} title="Open the CCTV terminal (K) — you pick the camera">CCTV</Btn>}
           {inc.category === 'police' && inc.status !== 'CLOSED' && (() => { const b = engine.boloInfo(inc.id); const out = (st.bolos ?? []).find((x) => x.incId === inc.id && x.status === 'active'); return <Btn size="sm" icon="search" kind={out ? 'primary' : 'default'} disabled={!b.ok} onClick={() => { const r = engine.broadcastBolo(inc.id); if (r.ok) audio.dispatchConfirm(); else useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }} title={b.ok ? 'Broadcast the suspect description to every patrol (B)' : b.reason}>{out ? 'BOLO out' : 'BOLO'}</Btn>; })()}
         </div>
         {inc.truth.outside && <div className="note-line warn"><Icon n="alert" size={12} /> Caller is outside Ravenport. Use <b>TRANSFER</b> to hand them to the neighbouring agency.</div>}

@@ -14,6 +14,9 @@ export function baseConfig(p: Partial2): ShiftConfig {
     events: [], objectives: [], seed: Math.floor(Math.random() * 2 ** 31), ...p,
   };
 }
+/** the game has one mode: realistic. Only the tutorial is gentler. */
+export const REALISTIC: Difficulty = 'hard';
+export function realistic(cfg: ShiftConfig): ShiftConfig { if (cfg.mode !== 'tutorial') cfg.difficulty = REALISTIC; return cfg; }
 const obj = (id: string, text: string, kind: string, target: number, optional = false): Objective => ({ id, text, kind, target, optional });
 
 export interface Chapter {
@@ -196,7 +199,7 @@ export function dailyConfig(key = todayKey()): { config: ShiftConfig; units: num
   const weather = rng.pick<WeatherType>(['clear', 'clear', 'rain', 'fog', 'storm', 'snow', 'heat']);
   const eventPool: CityEventType[] = ['storm', 'blackout', 'festival', 'rush_hour', 'flood', 'heat_wave', 'winter_storm', 'industrial_fire', 'protest', 'marathon', 'transit_strike'];
   const ev = rng.pick(eventPool);
-  const difficulty = rng.pick<Difficulty>(['standard', 'standard', 'hard']);
+  const difficulty: Difficulty = REALISTIC;
   const modifier = rng.pick(MODIFIERS.filter((m) => m.id !== 'quiet')).id;
   const contracts = rng.shuffle(CONTRACTS).slice(0, 3).map((c) => ({ id: c.id, target: c.target(5) }));
   const units = 11 + rng.int(0, 4);

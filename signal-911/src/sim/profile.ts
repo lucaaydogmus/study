@@ -54,7 +54,7 @@ export function newProfile(name = 'Dispatcher', seed = Date.now() % 2 ** 31): Pr
     stations: fleet.stations, units: fleet.units, personnel: fleet.personnel, upgrades: { ali: 1 },
     city: { closedRoads: [], districtTraffic: {}, damagedStations: {}, log: [] }, stats: emptyLifetime(), history: [],
     campaign: { completed: [], grades: {} }, scenarios: {}, endless: { bestWave: 0, bestScore: 0, current: { wave: 0, score: 0, active: false } },
-    counters: { unit: fleet.units.length + 1, person: fleet.personnel.length + 1, shift: 1, seed }, flags: { tutorialDone: false, difficulty: 'standard', duration: 15 * 60 },
+    counters: { unit: fleet.units.length + 1, person: fleet.personnel.length + 1, shift: 1, seed }, flags: { tutorialDone: false, difficulty: 'hard', duration: 15 * 60 },
     achievements: {}, daily: {},
   };
 }
