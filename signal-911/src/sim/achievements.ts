@@ -63,6 +63,14 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'right_alert', name: 'Clear the Area', desc: 'Send the right public alert for a dangerous incident.', icon: 'alert', tier: 'silver', check: (c) => (c.st?.stats.alertsRight ?? 0) >= 1 },
   { id: 'logistics', name: 'Logistics', desc: 'Call 3 outside agencies before crews have to chase you in one shift.', icon: 'phone', tier: 'bronze', check: (c) => (c.st?.stats.agencyCalls ?? 0) - (c.st?.stats.agencyLate ?? 0) >= 3 },
   { id: 'daily7', name: 'Regular', desc: 'Complete 7 different Daily Challenges.', icon: 'clock', tier: 'gold', check: (c) => Object.keys(c.profile.daily ?? {}).length >= 7 },
+  { id: 'hoax_buster', name: 'Not Today', desc: 'Catch a swatting hoax by ringing the address.', icon: 'phone', tier: 'silver', check: (c) => (c.st?.stats.hoaxesCaught ?? 0) >= 1 },
+  { id: 'orange_button', name: 'I’ve Got You', desc: 'Answer an emergency activation and get the officer home safe.', icon: 'shield', tier: 'silver', check: (c) => (c.st?.stats.emergenciesHandled ?? 0) >= 1 },
+  { id: 'good_neighbour', name: 'Good Neighbour', desc: 'Send help when Harlow County asks for it.', icon: 'users', tier: 'bronze', check: (c) => (c.st?.decisions ?? []).some((d) => d.kind === 'aidOut' && d.chosen === 'send') },
+  { id: 'right_floor', name: 'Stay or Go', desc: 'Give two high-rise callers the right advice for their floor.', icon: 'flame', tier: 'silver', check: (c) => (c.st?.stats.highriseRight ?? 0) >= 2 },
+  { id: 'downwind', name: 'Which Way the Wind Blows', desc: 'Tell a district downwind of a chemical plume to shelter.', icon: 'alert', tier: 'bronze', check: (c) => (c.st?.stats.plumeAlerts ?? 0) >= 1 },
+  { id: 'teamwork', name: 'Desk Two', desc: 'Let your colleague take three overflow calls in one shift.', icon: 'users', tier: 'bronze', check: (c) => (c.st?.stats.colleagueCalls ?? 0) >= 3 },
+  { id: 'wrong_way', name: 'Head-On Averted', desc: 'Stop a wrong-way driver before anyone is hurt.', icon: 'car', tier: 'gold', check: (c) => incidents(c).some((i) => i.templateId === 'wrong_way_driver' && i.outcome === 'success' && !i.casualties) },
+  { id: 'all_ears', name: 'Clear Copy', desc: 'Have three of your radio answers understood in one shift.', icon: 'radio', tier: 'bronze', check: (c) => (c.st?.radio ?? []).filter((m) => m.understood).length >= 3 },
 ];
 export const ACHIEVEMENT_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a])) as Record<string, AchievementDef>;
 

@@ -1,4 +1,5 @@
 // Application store: screens, the active profile, the live engine, and glue to audio & persistence.
+import { talkgroupOf } from './sim/radioops';
 import { create } from 'zustand';
 import { audio } from './audio/audioManager';
 import { speakLine, speechSupported, configureSpeech, sexOfName, stopChannel, type VoiceProfile } from './audio/speech';
@@ -47,6 +48,9 @@ let toastId = 0;
 let unsub: (() => void) | null = null;
 let snapshotTimer: number | null = null;
 let aiMgr: AiManager | null = null;
+let roomTimer: number | null = null;
+/** the dispatch room hums along while a shift is running */
+function startRoom() { if (roomTimer) clearInterval(roomTimer); roomTimer = window.setInterval(() => { const s = useApp.getState(); if (s.engine && !s.paused && s.engine.state.phase === 'running' && s.screen === 'game' && !s.settings.muted) audio.roomTick(); }, 2600); }
 /** the running AI manager, if AI callers are on (for crew voices and reading free-text answers) */
 export const getAi = () => aiMgr;
 function stopAi() { aiMgr?.stop(); aiMgr = null; useApp.setState({ aiActive: false }); }
@@ -156,6 +160,7 @@ export const useApp = create<AppStore>((set, get) => ({
 
   startSession: (s) => {
     audio.unlock();
+    startRoom();
     audio.stopAllRings();
     unsub?.();
     let profile = get().profile;
@@ -291,8 +296,8 @@ function handleEngineEvent(e: EngineEvent, engine: GameEngine) {
     case 'answer': audio.pickup(); updateAmbience(engine); break;
     case 'hangup': audio.hangup(); updateAmbience(engine); break;
     case 'radio': {
-      audio.radioBlip();
       const m = engine.state.radio[engine.state.radio.length - 1];
+      if (m) audio.chanBlip(talkgroupOf(engine.state, m) ?? 'all'); else audio.radioBlip();
       if (m?.kind === 'hospital') audio.pager();
       else if (m && /booking now/.test(m.text)) audio.booking();
       break;

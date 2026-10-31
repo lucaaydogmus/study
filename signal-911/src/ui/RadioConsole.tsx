@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { audio } from '../audio/audioManager';
 import { sexOfName, speakLine } from '../audio/speech';
 import { CREW_CHIPS, personalityOf, speakerOf, talkToUnit, type CrewIntent } from '../sim/crew';
-import { RESOURCES, RESOURCE_GROUPS, type GameEngine } from '../sim/engine';
+import { RESOURCES, RESOURCE_BY_ID, RESOURCE_GROUPS, type GameEngine } from '../sim/engine';
 import { SERVICE_META, isAir } from '../sim/fleet';
 import { declineNeed, isOutside, parseRequest, pendingNeeds, radioRequest } from '../sim/radioreq';
 import { askFor, matchOption, pendingAsks, replyOnRadio } from '../sim/replies';
@@ -162,7 +162,7 @@ export function RadioConsole({ engine }: { engine: GameEngine }) {
           <div className="rc-needs">
             {needs.map((n) => (
               <div className={`rc-need nag${Math.min(2, n.nag)}`} key={n.incId + n.resId}>
-                <span><b>{n.unitId ? st.units[n.unitId]?.callsign : 'Crews'}</b> at {incName(engine, n.incId)} need <b>{n.name.toLowerCase()}</b> <span className="muted small">· asked {fmtTime(st.time - n.at)} ago{n.nag ? ` · chased ×${n.nag}` : ''}</span></span>
+                <span><b>{n.unitId ? st.units[n.unitId]?.callsign : 'Crews'}</b> at {incName(engine, n.incId)} need <b>{n.name.toLowerCase()}</b> <span className="muted small">· asked {fmtTime(st.time - n.at)} ago{n.nag ? ` · chased ×${n.nag}` : ''} · {RESOURCE_BY_ID[n.resId]?.cost ? `$${RESOURCE_BY_ID[n.resId].cost.toLocaleString()}` : 'no charge'}</span></span>
                 <div className="btnrow"><Btn size="sm" kind="primary" onClick={() => request(n.incId, n.resId)}>Request it</Btn><Btn size="sm" onClick={() => toast(declineNeed(engine, n.incId, n.resId))}>None available</Btn></div>
               </div>
             ))}
@@ -210,6 +210,7 @@ function Msg({ m, onRepeat }: { m: RadioMsg; onRepeat: () => void }) {
       {m.broken
         ? <span className="rc-text">▒▒ {m.brokenWhy === 'stepped' ? 'two units keyed up at once' : 'broken and unreadable'} ▒▒ <button className="linkish" onClick={onRepeat}>Say again</button></span>
         : <span className="rc-text">{m.text}</span>}
+      {m.understood && <span className="understood">understood as: {m.understood}</span>}
       <span className="mono rc-t">{m.clock}</span>
     </div>
   );

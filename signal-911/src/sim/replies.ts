@@ -75,6 +75,8 @@ export function replyOnRadio(e: GameEngine, text: string, ctx: { unitId?: string
     if (mode === 'relay' && !opt.known) { e.radio('DISPATCH', `${u?.spoken ?? 'Unit'}, ${clean}`, 'dispatch', u?.id, q.incId); if (u) e.radio(u.spoken, 'Copy... is that from the caller? Confirm when you have it.', 'unit', u.id, q.incId); return { handled: true, reason: 'You have not got that from the caller yet' }; }
     if (mode === 'standby' && q.status === 'standby') { e.radio('DISPATCH', `${u?.spoken ?? 'Unit'}, still working on it.`, 'dispatch', u?.id, q.incId); return { handled: true }; }
     const r = e.answerUnitQuery(q.id, mode);
+    const sent = [...st.radio].reverse().find((m) => m.from === 'DISPATCH');
+    if (sent) sent.understood = mode === 'relay' ? 'relayed what the caller told you' : mode === 'deny' ? 'none / negative' : 'stand by';
     return { handled: true, reason: r.ok ? undefined : r.reason };
   }
   const d = st.decisions!.find((x) => x.id === target.id) as Decision;
@@ -85,6 +87,8 @@ export function replyOnRadio(e: GameEngine, text: string, ctx: { unitId?: string
     st.stats.sayAgainAsks = (st.stats.sayAgainAsks ?? 0) + 1;
     return { handled: true, reason: 'They did not understand — be clearer' };
   }
+  const sent = [...st.radio].reverse().find((m) => m.from === 'DISPATCH');
+  if (sent) sent.understood = d.options.find((o) => o.id === opt)?.label;
   const r = e.decide(d.id, opt);
   return { handled: true, reason: r.ok ? undefined : r.reason };
 }

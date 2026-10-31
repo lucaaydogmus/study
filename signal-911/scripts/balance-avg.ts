@@ -5,6 +5,7 @@ import { careerConfig, newProfile, setupFromProfile, computeResult } from '../sr
 import { rankForXp } from '../src/sim/progression';
 import { assignSector, sectorFit, setCommander } from '../src/sim/field';
 import { declineNeed } from '../src/sim/radioreq';
+import { shelterDownwind } from '../src/sim/more';
 
 function play(rank: number, seed: number) {
   const p = newProfile('Bot', seed);
@@ -69,6 +70,7 @@ function play(rank: number, seed: number) {
       }
       if (!inc.command.ic && here.length) setCommander(e, inc.id, (here.find((u) => !used.has(u.id)) ?? here[0]).id);
     }
+    for (const inc of Object.values(st.incidents)) if (inc.plume && inc.plume.district !== inc.district && inc.plumeAlerted !== inc.plume.district) shelterDownwind(e, inc.id);
     for (const d of st.decisions ?? []) if (!d.chosen && d.kind === 'stress' && st.time - d.at > 3) e.decide(d.id, d.options.some((o) => o.id === 'rotate') ? 'rotate' : 'rest');
     // non-emergency callers get sent to the non-emergency line once it is clear what they want
     for (const c of Object.values(st.calls)) if (c.state === 'active' && st.time - (c.answeredAt ?? st.time) > 8 && TEMPLATE_BY_ID[st.incidents[c.incidentId].templateId]?.nonEmergency) e.redirectCall(c.id);

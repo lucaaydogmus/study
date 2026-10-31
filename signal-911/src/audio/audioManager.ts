@@ -191,6 +191,18 @@ class AudioManager {
   alert() { this.tone(440, 0.16, { type: 'sawtooth', gain: 0.07 }); this.tone(330, 0.22, { type: 'sawtooth', gain: 0.07, at: 0.17 }); }
   error() { this.tone(220, 0.14, { type: 'square', gain: 0.06 }); }
   siren() { this.sirenBurst('police', 1.6, 0.9); }
+  /** the dispatch room around you: keyboards, a phone on another desk, a colleague murmuring */
+  roomTick() {
+    const r = Math.random();
+    if (r < 0.45) { const n = 3 + Math.floor(Math.random() * 7); for (let k = 0; k < n; k++) this.noise(0.012, { gain: 0.035, hp: 2500, bus: 'ambience', at: k * (0.07 + Math.random() * 0.08) }); }
+    else if (r < 0.55) { for (let k = 0; k < 2; k++) { this.tone(1350, 0.32, { type: 'sine', gain: 0.008, at: k * 0.5 }); this.tone(1700, 0.32, { type: 'sine', gain: 0.006, at: k * 0.5 }); } }
+    else if (r < 0.7) this.noise(1.6 + Math.random(), { gain: 0.02, bp: 420, bus: 'ambience' });
+  }
+  /** a different key-up tone per talkgroup, so you can hear which channel is talking */
+  chanBlip(tg: string) {
+    const f = tg === 'police' ? 1250 : tg === 'fire' ? 900 : tg === 'outside' ? 700 : 1050;
+    this.tone(f, 0.05, { type: 'square', gain: 0.03 }); this.tone(f * 1.5, 0.04, { type: 'square', gain: 0.02, at: 0.06 });
+  }
   radioBlip() {
     this.noise(0.09, { gain: 0.12, bus: 'radio', bp: 2400 });
     this.tone(1800, 0.05, { type: 'sine', gain: 0.05, bus: 'radio', at: 0.09 });

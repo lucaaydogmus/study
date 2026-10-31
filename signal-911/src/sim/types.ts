@@ -127,7 +127,7 @@ export interface CallerVoice {
   formal: boolean; slang: boolean; caps: boolean; stutter: boolean; trail: boolean; short: boolean;
 }
 
-export interface TranscriptLine { t: number; clock: string; who: 'CALLER' | 'DISPATCHER' | 'SYSTEM'; text: string; /** the line broke up on a bad mobile signal */ garbled?: boolean }
+export interface TranscriptLine { t: number; clock: string; who: 'CALLER' | 'DISPATCHER' | 'SYSTEM'; text: string; /** the line broke up on a bad mobile signal */ garbled?: boolean; /** how the game read what you said */ understood?: string }
 
 export interface HeardLocation {
   id: string; nodeId: number; label: string; source: 'address' | 'landmark' | 'cross' | 'ali' | 'district';
@@ -181,6 +181,8 @@ export interface Call {
   relay?: 'acn' | 'alarm';
   /** a text-to-911 session instead of a voice call */
   text?: boolean;
+  /** your colleague at desk 2 has this call */
+  colleague?: { name: string; since: number };
 }
 export interface UnitFit { chassis: string; kits: string[]; livery: string; eff?: number; grip?: number; nickname?: string }
 /** a job the dispatcher gave the caller: it keeps them busy (and calmer) and helps the crews */
@@ -232,6 +234,8 @@ export interface Mover {
   foot?: boolean;
   /** the caller is the one moving (driving someone to hospital); stops when told to pull over */
   caller?: boolean; stopped?: boolean; dest?: number;
+  /** driving the wrong way down the motorway */
+  wrongWay?: boolean;
   /** the route a driving caller is taking */
   path?: number[];
   /** picked up on a city camera: stays tracked while the camera keeps it in frame */
@@ -280,6 +284,9 @@ export interface Incident {
   cctvAt?: number; decided?: boolean; spread?: boolean; storyline?: string;
   /** how many times crews have chased something they asked for, and what dispatch said no to */
   needNag?: Record<string, number>; declined?: Record<string, number>;
+  /** where the air ambulance lands; the chemical plume and who was told to shelter; carried over from the last shift */
+  plumeBucket?: number;
+  lz?: string; plume?: { dir: number; len: number; district: string } | null; plumeAlerted?: string; carried?: boolean; newsDone?: boolean;
   /** swatting: a hoax, checked by ringing the address */
   hoax?: boolean; verified?: boolean; hoaxDone?: boolean; premisesCalled?: number;
   /** address hazard flags: crews warned, and whether the first crew has met them */
@@ -395,6 +402,8 @@ export interface ShiftConfig {
   threatLevel?: 'low' | 'guarded' | 'elevated' | 'severe';
   /** random major incidents and city events may be rolled for this shift */
   surprises?: boolean;
+  /** notes and open calls left by the previous shift */
+  handover?: import('./more').Handover;
   /** addresses this career has learned are dangerous */
   premises?: Record<number, string[]>;
   /** what this career knows about its regular callers */
@@ -406,7 +415,7 @@ export interface TimelineEntry {
   text: string; incidentId?: string; unitId?: string; good?: boolean | null;
 }
 
-export interface RadioMsg { id: string; t: number; clock: string; from: string; text: string; unitId?: string; incidentId?: string; kind: 'unit' | 'dispatch' | 'alert' | 'hospital' | 'chatter'; to?: string; /** talkgroup: outside line, fireground, emergency */ chan?: string; /** garbled: two units keyed up at once, or a dead spot */ broken?: boolean; brokenWhy?: 'stepped' | 'dead'; repeated?: boolean }
+export interface RadioMsg { id: string; t: number; clock: string; from: string; text: string; unitId?: string; incidentId?: string; kind: 'unit' | 'dispatch' | 'alert' | 'hospital' | 'chatter'; to?: string; /** talkgroup: outside line, fireground, emergency */ chan?: string; /** garbled: two units keyed up at once, or a dead spot */ broken?: boolean; brokenWhy?: 'stepped' | 'dead'; repeated?: boolean; /** how the crew read what you said */ understood?: string }
 
 export interface Notification { id: string; t: number; text: string; level: 'info' | 'good' | 'warn' | 'bad'; incidentId?: string }
 
@@ -424,7 +433,7 @@ export interface ShiftStats {
   boloHits?: number; stingerHits?: number; breaksGiven?: number;
   callerAnswers?: number; cprPaced?: number; handoffs?: number; calmActions?: number; calmGood?: number; tasksDone?: number; callerBreakdowns?: number; redirectsOk?: number; redirectsBad?: number; listens?: number; unitQueries?: number; unitQueriesOk?: number; unitQueriesMissed?: number; maydays?: number; maydaySaved?: number; refusals?: number;
   specialistCalls?: number; specialistWasted?: number; majorsHandled?: number;
-  cctvTags?: number; stressCalls?: number; commandSet?: number; needsMissed?: number; radioRequests?: number; radioHeldLong?: number; rollCalls?: number; emergenciesHandled?: number; patches?: number; doorJams?: number; missedTones?: number; stationRepairs?: number; offloadsExpedited?: number; hoaxesCaught?: number; sayAgainAsks?: number; pursuitCrashes?: number; pursuitsTerminated?: number; cadOutages?: number; premiseWarnings?: number; directivesDone?: number;
+  cctvTags?: number; stressCalls?: number; commandSet?: number; needsMissed?: number; radioRequests?: number; radioHeldLong?: number; rollCalls?: number; emergenciesHandled?: number; patches?: number; doorJams?: number; missedTones?: number; stationRepairs?: number; offloadsExpedited?: number; hoaxesCaught?: number; sayAgainAsks?: number; colleagueCalls?: number; plumeAlerts?: number; highriseRight?: number; pursuitCrashes?: number; pursuitsTerminated?: number; cadOutages?: number; premiseWarnings?: number; directivesDone?: number;
   crewTalks?: number; sayAgains?: number; resourceCalls?: number; arrests?: number; services?: number; hospitalCalls?: number; mciPlans?: number; walkIns?: number;
   agencyCalls?: number; agencyLate?: number; statusChecks?: number; statusSaves?: number; statusMissed?: number; alertsRight?: number; alertsWrong?: number; searchFinds?: number;
 }
@@ -471,6 +480,14 @@ export interface GameState {
   radioCtl?: { held: Partial<Record<'police' | 'fire', number>>; queue: Array<{ at: number; from: string; text: string; unitId?: string; incId?: string; roll?: string }>; emergencies: Array<{ id: string; unitId: string; incId: string; at: number; until: number; acked: boolean; done: boolean }>; repeats: number };
   /** CAD outage: the map only knows what units last reported */
   nextStationFault?: number;
+  /** frames for the end-of-shift time-lapse: units [x, y, service, busy] and open incidents [node, severity] */
+  replay?: Array<{ t: number; u: Array<[number, number, number, number]>; i: Array<[number, number]> }>;
+  colleague?: { name: string; skill: number; callId: string | null; doneAt: number; handled: number; mistakes: number };
+  wind?: { dir: number; speed: number; nextShift: number };
+  /** how each district feels about the service (0..100), carried across a career */
+  trust?: Record<string, number>;
+  handoverDone?: boolean; prepostSet?: boolean; lastStrike?: number; strikeAt?: { x: number; y: number; t: number };
+  newsHeli?: { incId: string; x: number; y: number; until: number; tfr: boolean; asked: boolean } | null;
   premiseLog?: Record<number, string[]>; directives?: import('./ops').Directive[]; nextDirectiveAt?: number; aidOutAsked?: boolean;
   cad?: { downUntil: number; snap: Record<string, { x: number; y: number; status: string; t: number }>; nextAt?: number };
   /** regular callers who rang this shift */
@@ -483,6 +500,6 @@ export interface ShiftScore {
   response: number; outcomes: number; accuracy: number; calls: number; coverage: number; penalties: number;
 }
 
-export interface CityState { closedRoads: Array<{ edge: number; shifts: number }>; districtTraffic: Record<string, number>; damagedStations: Record<string, number>; log: string[] }
+export interface CityState { closedRoads: Array<{ edge: number; shifts: number }>; districtTraffic: Record<string, number>; damagedStations: Record<string, number>; log: string[]; trust?: Record<string, number> }
 
 export const GRADE_ORDER: ShiftScore['grade'][] = ['F', 'D', 'C', 'B', 'A', 'S'];

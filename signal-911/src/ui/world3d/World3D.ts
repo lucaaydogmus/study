@@ -149,7 +149,7 @@ function radialTexture(stops: Array<[number, string]>, size = 128): THREE.Canvas
   return t;
 }
 
-const FIRE_TPL = new Set(['kitchen_fire', 'apartment_fire', 'electrical_fire', 'warehouse_smoke', 'house_explosion', 'brush_fire', 'industrial_accident', 'tanker_fire', 'train_derailment', 'vehicle_fire', 'boat_fire', 'aircraft_emergency', 'riot', 'looting']);
+const FIRE_TPL = new Set(['highrise_fire', 'candle_fire', 'kitchen_fire', 'apartment_fire', 'electrical_fire', 'warehouse_smoke', 'house_explosion', 'brush_fire', 'industrial_accident', 'tanker_fire', 'train_derailment', 'vehicle_fire', 'boat_fire', 'aircraft_emergency', 'riot', 'looting']);
 const CRASH_TPL = new Set(['collision_minor', 'collision_injury', 'collision_trapped', 'collision_multi']);
 
 export class World3D {
@@ -175,6 +175,9 @@ export class World3D {
   private spills!: THREE.InstancedMesh;
   private lampHeads!: THREE.InstancedMesh; private lampHeadMat!: THREE.MeshStandardMaterial;
   private fires: Array<{ flames: THREE.Sprite[]; smoke: THREE.Sprite[] }> = [];
+  private barLights: THREE.PointLight[] = [];
+  private clouds: Array<{ caster: THREE.Mesh; tint: THREE.Mesh }> = [];
+  private bolt!: THREE.Line;
   private crashes: THREE.Group[] = [];
   private shadowR = 0;
   private fleet = new VisualFleet();
@@ -220,6 +223,18 @@ export class World3D {
     this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.04;
     this.scene.add(this.sun, this.sun.target, this.hemi);
     for (let i = 0; i < 3; i++) { const l = new THREE.PointLight(0xff8a3a, 0, 38, 1.6); this.fireLights.push(l); this.scene.add(l); }
+    // light bars that light up the street around vehicles running hot at night (a fixed pool, so shaders never recompile)
+    for (let i = 0; i < 4; i++) { const l = new THREE.PointLight(0xff2a2a, 0, 26, 1.8); this.barLights.push(l); this.scene.add(l); }
+    // storm cells: an invisible disc high up that casts the cloud's shadow, and a gloomy tint over the ground below
+    for (let i = 0; i < 2; i++) {
+      const caster = new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }));
+      caster.rotation.x = -Math.PI / 2; caster.castShadow = true; caster.visible = false; this.scene.add(caster);
+      const tint = new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshBasicMaterial({ color: 0x0a1018, transparent: true, opacity: 0.22, depthWrite: false }));
+      tint.rotation.x = -Math.PI / 2; tint.position.y = 0.6; tint.visible = false; tint.renderOrder = 2; this.scene.add(tint);
+      this.clouds.push({ caster, tint });
+    }
+    this.bolt = new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 8 }, () => new THREE.Vector3())), new THREE.LineBasicMaterial({ color: 0xeef2ff, transparent: true, opacity: 0 }));
+    this.bolt.frustumCulled = false; this.scene.add(this.bolt);
 
     patchCity(this.cityMat, false);
     patchCity(this.waterMat, true);
@@ -457,7 +472,10 @@ export class World3D {
 
     // civilian traffic, in proper lanes
     let ti = 0;
-    if (f.showTraffic && f.z > 1.4) {
+    // traffic is placed where you are looking — and where a CCTV feed is looking
+    const cv = performance.now() - this.cctvAt < 1500 ? this.cctvView : null;
+    const inAny = (x: number, y: number) => inView(x, y) || (!!cv && x > cv.x0 && x < cv.x1 && y > cv.y0 && y < cv.y1);
+    if (f.showTraffic && (f.z > 1.4 || cv)) {
       const lanes = getLanes();
       const LANE: Record<string, number[]> = { local: [0.8], arterial: [0.75, 2.15], highway: [0.95, 2.3, 3.65], bridge: [0.75, 2.0] };
       for (let li = 0; li < lanes.length && ti < 880; li++) {
@@ -472,7 +490,7 @@ export class World3D {
           let d = (hash(seed + 2) * l.len + f.tSec * speed) % l.len;
           if (dirS < 0) d = l.len - d;
           const p = laneAt(l, d);
-          if (!inView(p.x, p.y)) continue;
+          if (f.z > 1.4 ? !inAny(p.x, p.y) : !(cv && p.x > cv.x0 && p.x < cv.x1 && p.y > cv.y0 && p.y < cv.y1)) continue;
           const cls = l.cls[p.seg] ?? 'local';
           const lanesFor = LANE[cls] ?? LANE.local;
           const off = lanesFor[Math.floor(hash(seed + 5) * lanesFor.length)];
@@ -530,6 +548,7 @@ export class World3D {
 
     // incidents: fires with flames and smoke, crashes with wrecked cars
     this.renderIncidents(st, f, night);
+    this.renderWeatherFx(st, f, night);
 
     // grade
     const g = this.grade.uniforms;
@@ -542,6 +561,41 @@ export class World3D {
     this.bloom.threshold = 0.92;
     this.bloom.radius = 0.35;
     this.composer.render();
+  }
+
+  /** storm clouds and lightning in the 3D city, and light bars on vehicles running hot */
+  private renderWeatherFx(st: GameState, f: Frame3D, night: number) {
+    const storms = st.storms ?? [];
+    this.clouds.forEach((c, i) => {
+      const cell = storms[i];
+      c.caster.visible = !!cell; c.tint.visible = !!cell;
+      if (!cell) return;
+      c.caster.position.set(cell.x, 140, cell.y); c.caster.scale.setScalar(cell.r * 0.75);
+      c.tint.position.set(cell.x, 0.6, cell.y); c.tint.scale.setScalar(cell.r * 0.85);
+      (c.tint.material as THREE.MeshBasicMaterial).opacity = 0.16 + 0.12 * cell.power;
+    });
+    const strike = st.strikeAt && st.time - st.strikeAt.t < 0.5 ? st.strikeAt : null;
+    const bm = this.bolt.material as THREE.LineBasicMaterial;
+    if (strike) {
+      const pts = this.bolt.geometry.getAttribute('position') as THREE.BufferAttribute;
+      let x = strike.x, z = strike.y;
+      for (let k = 0; k < 8; k++) { const y = 120 - k * (120 / 7); pts.setXYZ(k, x, y, z); x += Math.sin(strike.t * 17 + k * 5) * 5; z += Math.cos(strike.t * 11 + k * 3) * 5; }
+      pts.needsUpdate = true;
+      bm.opacity = 1 - (st.time - strike.t) / 0.5;
+      this.hemi.intensity += 2.2 * bm.opacity;
+    } else bm.opacity = 0;
+    // light bars: the nearest few vehicles running code 3 throw red and blue onto the street
+    const hot = Object.values(st.units).filter((u) => !u.temp && u.code !== 2 && (u.status === 'EN_ROUTE' || u.status === 'ON_SCENE' || u.status === 'TRANSPORTING') && Math.hypot(u.x - f.cx, u.y - f.cy) < 260)
+      .sort((a, b) => Math.hypot(a.x - f.cx, a.y - f.cy) - Math.hypot(b.x - f.cx, b.y - f.cy)).slice(0, this.barLights.length);
+    this.barLights.forEach((L, i) => {
+      const u = hot[i];
+      if (!u || night < 0.2) { L.intensity = 0; return; }
+      const pose = this.layout.get(u.id);
+      L.position.set(pose?.x ?? u.x, (pose?.top ?? 1.4) + 0.4, pose?.y ?? u.y);
+      const phase = Math.floor((f.tSec * 4 + i) % 2);
+      L.color.setHex(u.service === 'fire' ? (phase ? 0xff2a2a : 0xffffff) : u.service === 'medical' ? (phase ? 0xff2a2a : 0x3a7bff) : (phase ? 0xff2a2a : 0x2a5bff));
+      L.intensity = 9 * night;
+    });
   }
 
   private renderIncidents(st: GameState, f: Frame3D, night: number) {
@@ -571,9 +625,12 @@ export class World3D {
       slot.smoke.forEach((s, k) => {
         s.visible = true;
         const ph = (t * 0.09 + k / slot.smoke.length) % 1;
+        // big fires throw a column you can see from across the city; it leans with the wind
+        const column = inc!.severity >= 4 ? 1.9 : inc!.severity >= 3 ? 1.3 : 1;
         const drift = ph * 26 * size;
-        s.position.set(site.x + drift * 0.8 + Math.sin(k * 1.7 + t * 0.3) * 1.5, site.y + 1.5 + ph * 22 * size, site.z - drift * 0.35);
-        const sz = (3 + ph * 14) * size * 0.8;
+        const wd = st.wind?.dir ?? -0.4;
+        s.position.set(site.x + Math.cos(wd) * drift + Math.sin(k * 1.7 + t * 0.3) * 1.5, site.y + 1.5 + ph * 22 * size * column, site.z + Math.sin(wd) * drift);
+        const sz = (3 + ph * 14) * size * 0.8 * (0.8 + column * 0.2);
         s.scale.set(sz, sz, 1);
         s.material.opacity = Math.min(1, ph * 6) * (1 - ph) * (0.7 - 0.3 * night);
         s.material.color.setRGB(0.55 - 0.3 * night, 0.55 - 0.3 * night, 0.58 - 0.3 * night);
@@ -600,12 +657,14 @@ export class World3D {
   private camRT: THREE.WebGLRenderTarget | null = null;
   private camBuf: Uint8Array | null = null;
   private pcam = new THREE.PerspectiveCamera(40, 16 / 9, 0.3, 600);
+  private cctvView: { x0: number; y0: number; x1: number; y1: number } | null = null; private cctvAt = -1e9;
   /**
    * Render the live city from a street camera into a 2D canvas. Returns a projector from map space
    * (x, y, height) to feed pixels, for drawing analytics boxes over what the camera sees.
    */
   renderCctv(o: { x: number; y: number; h: number; heading: number; fov: number; far: number; tilt: number }, ctx: CanvasRenderingContext2D, w: number, h: number): ((x: number, y: number, z: number) => { x: number; y: number; ok: boolean }) | null {
     if (!this.ok) return null;
+    const R = o.far * 0.8; this.cctvView = { x0: o.x - R, y0: o.y - R, x1: o.x + R, y1: o.y + R }; this.cctvAt = performance.now();
     if (!this.camRT || this.camRT.width !== w || this.camRT.height !== h) {
       this.camRT?.dispose();
       this.camRT = new THREE.WebGLRenderTarget(w, h, { colorSpace: THREE.SRGBColorSpace, depthBuffer: true });

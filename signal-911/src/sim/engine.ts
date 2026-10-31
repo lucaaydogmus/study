@@ -12,6 +12,7 @@ import { EVENT_DEFS, WEATHER_SPEED, WEATHER_TRAFFIC, WEATHER_LABEL, nextWeather 
 import { numWord, UNIT_TYPE_BY_ID, makeUnit, isAir, AIR_SPEED } from './fleet';
 import { cameraList, cctvTracking, type Camera } from './cctv';
 import { needsTick } from './radioreq';
+import { airCrowded, applyTrust, askLandingZone, colleagueTick, decideLandingZone, handoverTick, lightningTick, newsHeliTick, plannedEventDirective, trustAfter, windTick } from './more';
 import { matchOption } from './replies';
 import { aidOutTick, cadDown, cadTick, decideAidOut, directiveTick, hoaxTick, learnPremise, maybeText, premiseArrival, pursuitRisk, textSpeak } from './ops';
 import { bookPrisoner, buildingsTick, onReturn, reTone, suppliesFactor, turnoutDelay, useSupplies } from './buildings';
@@ -84,6 +85,8 @@ export const RESOURCES: ResourceDef[] = [
   { id: 'coast_guard', name: 'Coast Guard rescue', short: 'USCG', group: 'Fire & rescue specialists', kind: 'unit', unitType: 'coast_guard', spoken: 'Coast Guard', cost: 3000, eta: [60, 110], icon: 'pin', desc: 'Rescue swimmers and a fast boat for the river and the bay.', arrive: 'Coast Guard on scene, boat in the water.', templates: ['water_rescue', 'boat_fire', 'flooded_basement'] },
   { id: 'federal', name: 'Federal tactical team', short: 'FED', group: 'Federal & military', kind: 'unit', unitType: 'federal_tactical', cost: 9000, eta: [70, 110], icon: 'shield', desc: 'An elite federal hostage-rescue team with a negotiator. Slow to mobilise, decisive on arrival.' },
   { id: 'eod', name: 'National Guard EOD', short: 'EOD', group: 'Federal & military', kind: 'unit', unitType: 'guard_eod', cost: 6000, eta: [55, 95], icon: 'alert', desc: 'Army bomb technicians with a robot: the safe way to deal with a device.' },
+  { id: 'air_ambulance', name: 'Air ambulance', short: 'AIR MED', group: 'Fire & rescue specialists', kind: 'agency', cost: 3500, eta: [90, 150], icon: 'cross', desc: 'A helicopter with a flight paramedic: straight to the trauma centre. It needs a landing zone.', templates: ['collision_trapped', 'collision_multi', 'building_collapse', 'industrial_accident', 'house_explosion', 'train_derailment', 'scaffold_collapse', 'vehicle_ramming', 'trick_or_treat_struck', 'highrise_fire', 'wrong_way_driver'] },
+  { id: 'tfr', name: 'FAA flight restriction', short: 'TFR', group: 'Federal & military', kind: 'agency', cost: 0, eta: [30, 60], icon: 'shield', desc: 'Clears news helicopters out of the airspace over an incident.' },
   { id: 'ma_police', name: 'Mutual aid — police', short: 'MA-PD', group: 'Mutual aid', kind: 'mutual', cap: 'patrol', cost: 4000, eta: [60, 120], icon: 'shield', desc: 'A patrol car from a neighbouring city.' },
   { id: 'ma_fire', name: 'Mutual aid — fire engine', short: 'MA-FD', group: 'Mutual aid', kind: 'mutual', cap: 'fire_suppression', cost: 4000, eta: [60, 120], icon: 'flame', desc: 'An engine company from a neighbouring city.' },
   { id: 'ma_ems', name: 'Mutual aid — ambulance', short: 'MA-EMS', group: 'Mutual aid', kind: 'mutual', cap: 'transport', cost: 4000, eta: [60, 120], icon: 'cross', desc: 'An ambulance from a neighbouring service.' },
@@ -193,7 +196,7 @@ export function createShiftState(config: ShiftConfig, setup: ShiftSetup): GameSt
     version: STATE_VERSION, seed: config.seed, rngState: rng.state, config, time: 0, speed: 1, paused: false, phase: 'running',
     weather: config.weather, weatherIntensity: config.weather === 'clear' ? 0 : 0.7, nextWeatherChange: 150 + rng.range(0, 120), timeOfDay: config.startHour,
     units, stations, personnel, incidents: {}, calls: {}, activeCallId: null, incidentCounter: 0, callCounter: 0,
-    events: [], closedEdges: closed, districtTraffic, radio: [], timeline: [], notifications: [],
+    events: [], closedEdges: closed, districtTraffic, trust: { ...(setup.city.trust ?? {}) }, radio: [], timeline: [], notifications: [],
     stats: emptyStats(), upgrades: { ...setup.upgrades }, rank: setup.rank, reputation: setup.reputation, budget: setup.budget,
     nextSpawnAt: config.script ? Infinity : rng.range(5, 9), spawnedScripted: 0, scriptIndex: 0,
     selected: { kind: null, id: null }, flags: {}, dispatcherLoad: 0, assistantFreeAt: 0, lastCoverage: 0, uniqueNameCounter: 0, endingAt: null,
@@ -463,9 +466,20 @@ export class GameEngine {
     emergencyTick(this);
     patchAskTick(this);
     this.updateStatusChecks();
+    // a frame for the end-of-shift time-lapse every six seconds
+    if (Math.floor(st.time) % 6 === 0 && st.config.mode !== 'tutorial') {
+      const fr = { t: Math.round(st.time), u: Object.values(st.units).filter((u) => !isAir(u)).map((u) => [Math.round(u.x), Math.round(u.y), u.service === 'police' ? 0 : u.service === 'fire' ? 1 : 2, u.status === 'AVAILABLE' ? 0 : 1] as [number, number, number, number]), i: Object.values(st.incidents).filter((i) => !i.hidden && !['RESOLVED', 'CLOSED'].includes(i.status)).map((i) => [i.nodeId, i.severity] as [number, number]) };
+      (st.replay ??= []).push(fr); if (st.replay.length > 400) st.replay.shift();
+    }
     cadTick(this);
     directiveTick(this);
     aidOutTick(this);
+    colleagueTick(this);
+    windTick(this);
+    handoverTick(this);
+    plannedEventDirective(this);
+    lightningTick(this);
+    newsHeliTick(this);
     this.updateAlertCalls();
     this.updateRelapses();
     this.unitQueriesTick();
@@ -847,6 +861,13 @@ export class GameEngine {
     }
     setupThirdParty(inc, archetypeId, tpl.patient);
     if (tpl.id === 'swatting_hoax') { inc.hoax = true; profile.callerIdType = 'voip'; }
+    if (tpl.id === 'highrise_fire') {
+      const fire = Number(src?.truth.fire_floor ?? 6 + (num % 9));
+      inc.truth.fire_floor = fire;
+      const off = 2 + ((num * 7) % 5);
+      inc.vars.fireFloor = String(fire); inc.vars.myFloor = String((num % 2 ? fire + off : Math.max(1, fire - off)));
+    }
+    if (tpl.wrongWay && inc.mover) inc.mover.wrongWay = true;
     // the first stage does not hang about either
     if (tpl.escalate?.length && !src && inc.growth > 0) inc.growth = Math.max(inc.growth, (100 - inc.threat) / 300);
     // nothing real sits for a quarter of an hour: unattended, it goes wrong within about thirteen minutes
@@ -877,6 +898,7 @@ export class GameEngine {
     // link to related open incidents of the same event
     if (inc.eventId) for (const o of Object.values(st.incidents)) if (o.id !== id && o.eventId === inc.eventId && o.district === inc.district && !['RESOLVED', 'CLOSED'].includes(o.status) && inc.relatedIds.length < 3) { inc.relatedIds.push(o.id); o.relatedIds.push(id); }
     const mood = { panic: profile.panicLevel, base: profile.panicLevel, cooperation: profile.cooperationLevel, frustration: Math.round(rng.range(arch.frustration[0], arch.frustration[1])), trust: 50 };
+    applyTrust(st, districtId, mood);
     void opts.noCall;
     const call: Call = {
       id: callId, incidentId: id, state: 'ringing', profile, isCallback: false, callerId: this.callerId(profile),
@@ -2306,7 +2328,7 @@ export class GameEngine {
       // threat grows without adequate response, subsides with it
       inc.threat += inc.growth * this.aidFactor(inc) * (1 - f) * dt - inc.clear * eff * f * f * 0.35 * dt;
       inc.threat = Math.max(0, inc.threat);
-      if (f > 0 && here.length && st.time >= (inc.accessDelayUntil ?? 0)) inc.workProgress += dt * eff * f * f * (AIR_HELPS.has(inc.templateId) && here.some(isAir) ? 1.35 : 1) * (inc.briefedAt != null ? 1.12 : 1);
+      if (f > 0 && here.length && st.time >= (inc.accessDelayUntil ?? 0)) inc.workProgress += dt * eff * f * f * (AIR_HELPS.has(inc.templateId) && here.some(isAir) ? (airCrowded(st, inc.id) ? 1.12 : 1.35) : 1) * (inc.briefedAt != null ? 1.12 : 1);
       if (inc.status === 'ESCALATING' && st.time - (inc.escalatedAt ?? 0) > 10) inc.status = here.length ? 'ON_SCENE' : inc.assignedUnits.length ? 'UNITS_EN_ROUTE' : 'AWAITING_DISPATCH';
       if (inc.threat >= 100) { this.escalate(inc); continue; }
       if (inc.workProgress >= inc.work && f >= 1 && !st.requests.some((r) => r.incidentId === inc.id && r.status === 'open')) {
@@ -2444,6 +2466,7 @@ export class GameEngine {
   private failIncident(inc: Incident) {
     const st = this.state;
     addStress(this, inc, 22 + inc.casualties * 6);
+    trustAfter(st, inc, 'failed');
     if (inc.regular) { const reg = (st.regularLog ?? []).find((r) => r.incId === inc.id); if (reg && !reg.outcome) reg.outcome = regularOutcome(inc, 'failed'); }
     const tpl = TEMPLATE_BY_ID[inc.templateId];
     // a patient with an untreated life threat: say plainly what was (not) done on the phone
@@ -2507,6 +2530,7 @@ export class GameEngine {
     if (inc.regular) { const reg = (st.regularLog ?? []).find((r) => r.incId === inc.id); if (reg && !reg.outcome) reg.outcome = regularOutcome(inc, outcome === 'success' ? 'resolved' : outcome === 'failed' ? 'failed' : 'dismissed'); }
     if (inc.casualties > 0) addStress(this, inc, 8 + inc.casualties * 6);
     learnPremise(st, inc);
+    trustAfter(st, inc, outcome);
     // someone is arrested: a police car (or better, a van) takes them to the station to be booked
     if (outcome === 'success' && inc.truth.suspect === true && !inc.pursuit && inc.category === 'police' && !['traffic_stop', 'protest_march'].includes(inc.templateId) && st.config.mode !== 'tutorial') {
       const pol = this.onScene(inc).filter((x) => x.service === 'police' && !isAir(x) && !x.temp);
@@ -2702,7 +2726,8 @@ export class GameEngine {
   // ── Pursuits ──────────────────────────────────────────────────────────────
   private chooseEscape(m: NonNullable<Incident['mover']>, chasers: Unit[]): number {
     const city = this.city;
-    const opts = city.adj[m.prev].map((eid) => city.edges[eid]).filter((e) => !this.closedMask[e.id] && !(m.foot && e.cls === 'highway'));
+    let opts = city.adj[m.prev].map((eid) => city.edges[eid]).filter((e) => !this.closedMask[e.id] && !(m.foot && e.cls === 'highway'));
+    if (m.wrongWay) { const hw = opts.filter((e) => e.cls === 'highway' || e.cls === 'bridge'); if (hw.length) opts = hw; }
     if (!opts.length) return m.prev;
     let best = -1, bs = -Infinity;
     for (const e of opts) {
@@ -3075,7 +3100,7 @@ export class GameEngine {
     const asked = (call.questionsAsked ??= []);
     const waiting = inc.reportedNode !== null && inc.assignedUnits.length > 0 && !this.onScene(inc).length;
     if (since < 10 || (call.questionCount ?? 0) >= 6 || st.time - (call.lastQuestionAt ?? -99) < (waiting ? 15 : 20) || st.time - call.lastSpontaneous < 3) return;
-    if (this.qrand(call, 1) >= 0.12) return;
+    if (this.qrand(call, 1) >= (inc.templateId === 'highrise_fire' && !asked.includes('highrise') ? 1 : 0.12)) return;
     const t = inc.truth, tid = inc.templateId, m = call.mood;
     const has = (k: string) => !asked.includes(k);
     const conscious = t.conscious !== false;
@@ -3089,6 +3114,14 @@ export class GameEngine {
       call.question = { kind, text: f(text), at: st.time, expiresAt: st.time + 32, lineIdx: call.transcript.length - 1, options: options.map(([id, label, say, reply, effect]) => ({ id, label: f(label), say: f(say), reply: f(reply), effect })), timeout: { effect: timeout.effect, line: f(timeout.line) } };
     };
     // ordered by urgency: the first one that fits is asked
+    if (has('highrise') && tid === 'highrise_fire' && inc.firstArrivalAt === null) {
+      // above the fire, the stairwell is full of smoke; below it, get out
+      const above = Number(inc.vars.myFloor) > Number(inc.vars.fireFloor);
+      return q('highrise', `We're on the {myFloor}th floor and the fire's on {fireFloor} — there's smoke in the hall. Do we take the stairs or stay in the flat?`, [
+        ['stairs', 'Take the stairs down', 'Take the stairs down now. Stay low, close the doors behind you, and do not use the lift.', above ? 'Okay — opening the door now—' : "Okay, we're going down the stairs!", above ? 'harm:smokerun' : 'hrok'],
+        ['stay', 'Stay in the flat and seal the door', 'Stay where you are. Shut the door, put wet towels along the bottom, go to a window and wave something so the crews can see you.', above ? "Okay. Towels on the door. We're at the window." : "We'll stay... it's getting hot in here though.", above ? 'hrok' : 'trappedlow'],
+      ], { effect: above ? 'calm' : 'trappedlow', line: above ? "We're staying put, I suppose. It's so smoky." : 'Nobody told us anything, so we just stayed here.' });
+    }
     if (has('goback') && ['kitchen_fire', 'apartment_fire', 'electrical_fire'].includes(tid) && inc.firstArrivalAt === null) {
       const who = this.qpick(call, ['my dog', 'the cat', 'my neighbour from upstairs']);
       return q('goback', `${who[0].toUpperCase()}${who.slice(1)} — I think ${who.startsWith('my n') ? 'she' : "he"}'s still in there! Should I go back in and get ${who.startsWith('my n') ? 'her' : 'him'}?`, [
@@ -3229,6 +3262,7 @@ export class GameEngine {
     call.question = null;
     st.stats.callerAnswers = (st.stats.callerAnswers ?? 0) + 1;
     this.addTranscript(call, 'DISPATCHER', words?.trim() || opt.say);
+    if (words) call.transcript[call.transcript.length - 1].understood = opt.label;
     const inc = st.incidents[call.incidentId];
     const line = { at: st.time + 1.1 + opt.reply.length * 0.02, text: opt.reply };
     call.pending.push(line);
@@ -3250,6 +3284,14 @@ export class GameEngine {
     const clamp = (v: number) => Math.max(0, Math.min(100, v));
     switch (kind) {
       case 'calm': m.panic = clamp(m.panic - 8); m.base = clamp(m.base - 5); m.trust = clamp(m.trust + 6); break;
+      case 'hrok': m.panic = clamp(m.panic - 8); m.trust = clamp(m.trust + 8); st.stats.highriseRight = (st.stats.highriseRight ?? 0) + 1; break;
+      case 'trappedlow': {
+        const tt = inc.truth;
+        tt.trapped = (typeof tt.trapped === 'number' ? tt.trapped : 0) + 1;
+        inc.work *= 1.12; inc.threat = Math.min(99, inc.threat + 8);
+        this.consequence(inc, 'Residents below the fire stayed in their flat and had to be carried out');
+        break;
+      }
       case 'calmbig': m.panic = clamp(m.panic - 18); m.base = clamp(m.base - 10); m.trust = clamp(m.trust + 12); m.cooperation = clamp(m.cooperation + 6); break;
       case 'firm': m.panic = clamp(m.panic + 4); m.cooperation = clamp(m.cooperation + 8); m.trust = clamp(m.trust - 4); break;
       case 'panic': m.panic = clamp(m.panic + 10); m.trust = clamp(m.trust - 6); break;
@@ -4012,6 +4054,7 @@ export class GameEngine {
       else if (id === 'federal' || id === 'eod') { ok = this.specialistFor(inc) === id; if (!ok) reason = id === 'eod' ? 'No suspected device here' : 'Only for the most serious armed threats'; else recommended = recommended || inc.severity >= 5 || inc.requires.some((r) => r.cap === 'eod'); }
       else if (def.kind === 'mutual') { const cov = matchCoverage(inc.requires, inc.assignedUnits.map((x) => st.units[x]).filter(Boolean)); recommended = cov.missing.some((r) => r.cap === def.cap || (def.cap === 'transport' && r.cap === 'bls')); if (inc.mutualAid >= 2) { ok = false; reason = 'Mutual aid limit reached for this incident'; } }
       else if (id === 'coroner') { ok = inc.casualties > 0; if (!ok) reason = 'No fatalities at this incident'; else recommended = true; }
+      else if (id === 'tfr') { ok = !!st.newsHeli && st.newsHeli.incId === inc.id && !st.newsHeli.tfr; if (!ok) reason = 'No news helicopter over this incident'; else recommended = true; }
       else if (id === 'publicworks') { ok = inc.blockedEdge !== null || !!def.templates?.includes(inc.templateId); if (!ok) reason = 'No road to clear here'; else recommended = recommended || inc.blockedEdge !== null; }
       else { ok = !!def.templates?.includes(inc.templateId); if (!ok) reason = 'Not the right specialists for this incident'; else recommended = true; }
     }
@@ -4037,7 +4080,8 @@ export class GameEngine {
     }
     const night = st.timeOfDay % 24 >= 21 || st.timeOfDay % 24 < 5;
     const eta = Math.round(this.rng.range(def.eta[0], def.eta[1]) * (night ? 1.2 : 1));
-    (inc.resources ??= {})[id] = { at: st.time, arriveAt: st.time + eta, here: false };
+    (inc.resources ??= {})[id] = { at: st.time, arriveAt: id === 'air_ambulance' ? Infinity : st.time + eta, here: false };
+    if (id === 'air_ambulance') askLandingZone(this, inc);
     st.budget -= def.cost; st.stats.costs += def.cost;
     this.radio('DISPATCH', `Units at INC-${String(inc.num).padStart(4, '0')}, ${def.name.toLowerCase()} is on the way, about ${Math.max(1, Math.round(eta / 60))} minute${Math.round(eta / 60) > 1 ? 's' : ''}.`, 'dispatch', undefined, inc.id);
     this.notify(`${def.name} requested${def.cost ? ` (−$${def.cost.toLocaleString()})` : ''}`, 'info', inc.id);
@@ -4084,6 +4128,7 @@ export class GameEngine {
         else if (id === 'transit') { inc.threat = Math.max(0, inc.threat - 15); inc.growth *= 0.7; this.radio('Transit Control', 'All trains through the area are held. Buses diverting.', 'chatter', undefined, inc.id); }
         else if (id === 'redcross') { st.reputation = Math.min(100, st.reputation + 0.6); this.headline('Red Cross opens shelter for families displaced by the fire', 'good'); }
         else if (id === 'coroner') inc.work *= 0.85;
+        else if (id === 'air_ambulance') { inc.threat = Math.max(0, inc.threat - 20); if (inc.survival !== undefined) inc.survival = Math.min(100, inc.survival + 15); if (inc.needsTransport) inc.patientsTransported++; this.radio('Air Med 1', `Air Med 1 is down at ${inc.lz ?? 'the scene'} — patient loaded, lifting for the trauma centre.`, 'chatter', undefined, inc.id); }
       }
     }
   }
@@ -4092,13 +4137,13 @@ export class GameEngine {
     const st = this.state;
     if (st.config.mode === 'tutorial' || inc.resAsked) return;
     const want = RESOURCES.find((r) => r.kind === 'unit' && r.id !== 'federal' && r.id !== 'eod' && r.templates?.includes(inc.templateId) && (inc.severity >= 4 || r.id === 'k9' || r.id === 'transit'))
-      ?? (inc.templateId === 'train_derailment' ? RESOURCE_BY_ID.transit : inc.casualties > 0 ? RESOURCE_BY_ID.coroner : undefined);
+      ?? (inc.severity >= 4 && RESOURCE_BY_ID.air_ambulance.templates!.includes(inc.templateId) ? RESOURCE_BY_ID.air_ambulance : inc.templateId === 'train_derailment' ? RESOURCE_BY_ID.transit : inc.casualties > 0 ? RESOURCE_BY_ID.coroner : undefined);
     if (!want || this.hrand(inc.num, 41) > 0.7) { inc.resAsked = {}; return; }
     inc.resAsked = { [want.id]: st.time };
     const lines: Record<string, string> = {
       k9: 'Can we get a K-9 out here? The dog will find them faster than we will.', negotiator: 'Request the crisis negotiation team — we need someone talking to him.',
       regional_hazmat: 'This is beyond our hazmat unit — request the regional team.', usar: 'We need urban search and rescue. There could be people under this.',
-      coast_guard: 'Get the Coast Guard rolling — we need a boat and swimmers.', transit: 'Get the trains stopped on this line, now!', coroner: "We've got a fatality. We'll need the medical examiner.",
+      coast_guard: 'Get the Coast Guard rolling — we need a boat and swimmers.', air_ambulance: 'This patient needs a trauma centre now — get us an air ambulance.', transit: 'Get the trains stopped on this line, now!', coroner: "We've got a fatality. We'll need the medical examiner.",
     };
     this.radio(u.spoken, `Dispatch, ${u.spoken}. ${lines[want.id] ?? `Request ${want.name.toLowerCase()}.`}`, 'unit', u.id, inc.id);
     this.notify(`${u.callsign} asks for: ${want.name} — answer on the radio (outside line)`, 'warn', inc.id);
@@ -4530,6 +4575,7 @@ export class GameEngine {
     if (d.kind === 'break') return this.decideBreak(d, optionId, auto);
     if (d.kind === 'stress') return decideStress(this, d, optionId);
     if (d.kind === 'aidOut') return decideAidOut(this, d, optionId);
+    if (d.kind === 'lz') return decideLandingZone(this, d, optionId);
     if (d.kind === 'mayday') return this.decideMayday(d, optionId, auto);
     if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) { d.outcome = 'The incident was already over.'; return { ok: true, outcome: d.outcome }; }
     const t = inc.truth;

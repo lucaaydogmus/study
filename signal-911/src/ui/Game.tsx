@@ -21,6 +21,7 @@ import { RecordsDock, RecordsTerminal, threatKnown } from './Ops';
 import { BoloDock, DecisionCards, DirectiveCard, MultiBar, NewsTicker, StatusDock } from './Field';
 import { CctvConsole } from './Cctv';
 import { mostUrgent, nextAction } from './flow';
+import { compass, takeOver } from '../sim/more';
 import { cadDown } from '../sim/ops';
 import { rollCall } from '../sim/radioops';
 import { MapMenu, handleDrop, type MenuState } from './MapMenu';
@@ -99,7 +100,7 @@ export function GameScreen() {
       if (e.key === ' ') { e.preventDefault(); if (!pauseMenu) { eng.togglePause(); bump(); } }
       else if (e.key === '1') { eng.setSpeed(1); bump(); } else if (e.key === '2') { eng.setSpeed(2); bump(); } else if (e.key === '3') { eng.setSpeed(3); bump(); }
       else if (e.key === 'a' || e.key === 'A') { const c = Object.values(s.calls).filter((x) => x.state === 'ringing').sort((x, y) => x.ringStart - y.ringStart)[0]; if (c) { eng.answerCall(c.id); bump(); } }
-      else if (e.key === 'h' || e.key === 'H') { if (s.activeCallId) { eng.holdCall(s.activeCallId); } else { const c = Object.values(s.calls).find((x) => x.state === 'hold'); if (c) eng.answerCall(c.id); } bump(); }
+      else if (e.key === 'h' || e.key === 'H') { if (s.activeCallId) { eng.holdCall(s.activeCallId); } else { const c = Object.values(s.calls).find((x) => x.state === 'hold' && !x.colleague); if (c) eng.answerCall(c.id); } bump(); }
       else if (e.key === 'e' || e.key === 'E') { if (s.activeCallId) { eng.endCall(s.activeCallId); bump(); } }
       else if (e.key === 'm' || e.key === 'M') { const i = LAYERS.findIndex((l) => l.id === layer); setLayer(LAYERS[(i + 1) % LAYERS.length].id); }
       else if (e.key === 'd' || e.key === 'D') { const c = s.activeCallId ? s.calls[s.activeCallId] : null; if (c) { eng.select('incident', c.incidentId); bump(); } }
@@ -257,7 +258,7 @@ function TopBar({ engine, title, onMenu, onHelp }: { engine: GameEngine; title: 
       <div className="stat mono" title="In-game clock"><Icon n="clock" size={13} /> {gameClock(st).slice(0, 5)} <span className="muted small">{fmtTime(remaining)} left</span></div>
       <div className="stat" title="Budget"><Icon n="coins" size={13} /> <span className="mono">{fmtMoneyShort(st.budget)}</span></div>
       <div className="stat" title="Reputation"><Icon n="star" size={13} /> <span className="mono">{Math.round(st.reputation)}</span></div>
-      <div className="stat" title="Weather"><Icon n={weatherIcon(st.weather)} size={13} /> {WEATHER_LABEL[st.weather]}</div>
+      <div className="stat" title={st.wind ? `Wind from the ${compass(st.wind.dir + Math.PI)} at ${Math.round(st.wind.speed)} mph — chemical plumes drift with it` : 'Weather'}><Icon n={weatherIcon(st.weather)} size={13} /> {WEATHER_LABEL[st.weather]}{st.wind && <span className="muted small"> · {Math.round(st.wind.speed)} mph {compass(st.wind.dir + Math.PI).replace('north', 'N').replace('south', 'S').replace('east', 'E').replace('west', 'W').replace('-', '')}</span>}</div>
       <StressMeter engine={engine} />
       <LiveRating engine={engine} />
       <div className="grow" />
@@ -290,20 +291,31 @@ function LeftSidebar({ engine, doFocus }: { engine: GameEngine; doFocus: (x: num
   const recent = Object.values(st.incidents).filter((i) => ['RESOLVED', 'CLOSED'].includes(i.status)).sort((a, b) => (b.resolvedAt ?? 0) - (a.resolvedAt ?? 0)).slice(0, 4);
   return (
     <div className="left-in">
-      <div className="lsec">
+      <div className={`lsec calls ${ringing.length + holding.length > 2 ? 'busy' : ''}`}>
         <h3>INCOMING CALLS {ringing.length > 0 && <span className="tabbadge hot">{ringing.length}</span>}</h3>
         {!ringing.length && !holding.length && <div className="empty small muted">No calls waiting</div>}
         {ringing.map((c) => {
           const left = Math.max(0, c.ringTimeout - (st.time - c.ringStart));
           return (
-            <div className="callcard ringing" key={c.id}>
+            ringing.length + holding.length > 2
+              ? <div className="callcard ringing compact" key={c.id}>
+                  <Icon n="phone" size={13} /><b className="grow">{c.callerId.replace(/^(WIRELESS|LANDLINE|VOIP|PAYPHONE|TEXT) /, (m) => m[0] + ' ')}</b><span className={`mono small ${left < 10 ? 'warn' : ''}`}>{Math.ceil(left)}s</span>
+                  <Btn kind="success" size="sm" onClick={() => { engine.answerCall(c.id); bump(); }}>Answer</Btn>
+                  <div className="cc-bar"><i style={{ width: `${(left / c.ringTimeout) * 100}%` }} /></div>
+                </div>
+              : <div className="callcard ringing" key={c.id}>
               <div className="cc-top"><Icon n="phone" size={15} /><b>{c.callerId}</b>{c.isCallback && <Badge tone="amber">CALLBACK</Badge>}</div>
               <div className="cc-bar"><i style={{ width: `${(left / c.ringTimeout) * 100}%` }} /></div>
               <div className="cc-bot"><span className="mono small">{Math.ceil(left)}s</span><Btn kind="success" size="sm" icon="phone" onClick={() => { engine.answerCall(c.id); bump(); }}>ANSWER</Btn></div>
             </div>
           );
         })}
-        {holding.map((c) => (
+        {holding.map((c) => c.colleague ? (
+          <div className="callcard colleague" key={c.id}>
+            <div className="cc-top"><Icon n="users" size={14} /><b>{c.colleague.name}</b><Badge tone="blue">DESK 2</Badge></div>
+            <div className="cc-bot"><span className="small muted">has {c.callerId} · {fmtTime(st.time - c.colleague.since)}</span><Btn size="sm" onClick={() => { const r = takeOver(engine, c.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }} title="Take the call back and handle it yourself">Take over</Btn></div>
+          </div>
+        ) : (
           <div className={`callcard ${c.state}`} key={c.id}>
             <div className="cc-top"><Icon n={c.state === 'active' ? 'phone' : 'hold'} size={14} /><b>{c.profile.name}</b><Badge tone={c.state === 'active' ? 'green' : 'amber'}>{c.state === 'active' ? 'ACTIVE' : 'ON HOLD'}</Badge></div>
             <div className="cc-bot"><span className="mono small">{fmtTime(st.time - (c.answeredAt ?? st.time))}</span>
@@ -391,14 +403,14 @@ function IncomingBanner({ engine }: { engine: GameEngine }) {
 
 function GoalsCard({ engine }: { engine: GameEngine }) {
   const st = engine.state;
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const contracts = st.config.contracts ?? [];
   const mods = (st.config.modifiers ?? []).map((m) => MODIFIER_BY_ID[m]).filter(Boolean);
   const objs = st.config.objectives;
   if (!contracts.length && !mods.length && !objs.length) return null;
   return (
     <div className={`goals ${open ? '' : 'closed'}`}>
-      <button className="goals-head" onClick={() => setOpen(!open)} aria-expanded={open}><Icon n="trophy" size={13} /> <b>Shift goals</b><span className="grow" /><Icon n={open ? 'chevU' : 'chevD'} size={12} /></button>
+      <button className="goals-head" onClick={() => setOpen(!open)} aria-expanded={open}><Icon n="trophy" size={13} /> <b>Shift goals</b><span className="grow" />{!open && <span className="mono small muted">{contracts.filter((c) => contractProgress(st, c).done).length}/{contracts.length + objs.length}</span>}<Icon n={open ? 'chevU' : 'chevD'} size={12} /></button>
       {open && (
         <div className="goals-body">
           {mods.map((m) => <div key={m.id} className={`mod ${m.tone}`} title={m.desc}><Icon n="alert" size={11} /> {m.name}</div>)}
@@ -417,7 +429,7 @@ function GoalsCard({ engine }: { engine: GameEngine }) {
 export function dispatcherStress(engine: GameEngine): number {
   const st = engine.state;
   const calls = Object.values(st.calls);
-  const ringing = calls.filter((c) => c.state === 'ringing').length, hold = calls.filter((c) => c.state === 'hold').length;
+  const ringing = calls.filter((c) => c.state === 'ringing').length, hold = calls.filter((c) => c.state === 'hold' && !c.colleague).length;
   const open = Object.values(st.incidents).filter((i) => !i.hidden && !['RESOLVED', 'CLOSED'].includes(i.status));
   const esc = open.filter((i) => i.status === 'ESCALATING' || i.stage > 0).length;
   const crit = open.filter((i) => i.severity >= 4 && i.assignedUnits.length === 0).length;

@@ -104,6 +104,7 @@ export function MapView(props: MapProps) {
   const heading = useRef(new Map<string, { x: number; y: number; h: number }>());
   const smoke = useRef(new Map<string, Puff[]>());
   const stationPts = useRef(new Map<string, { x: number; y: number }>());
+  const follow = useRef<string | null>(null);
   const fleet2d = useRef(new VisualFleet());
 
   useEffect(() => {
@@ -119,7 +120,7 @@ export function MapView(props: MapProps) {
     } else cam.current.maxZ = 7;
     const pitchOf = (z: number) => (w3 ? pitchFor(z, cam.current.fit) : 0);
     if (w3) (window as unknown as { __sig911Cam?: unknown }).__sig911Cam = cam.current;
-    let raf = 0, W = 0, H = 0, dpr = 1, lastT = performance.now(), lastMini = 0, lastSnd = 0, ambT = 0;
+    let raf = 0, W = 0, H = 0, dpr = 1, lastT = performance.now(), lastMini = 0, lastSnd = 0, ambT = 0, lastStrikeT = -1;
     // adaptive detail: drop street life and window lights if the close-up view cannot hold ~35 fps
     let frameEma = 16, lowDetail = false;
     const particles = Array.from({ length: 180 }, () => ({ x: Math.random(), y: Math.random(), v: 0.4 + Math.random() * 0.8 }));
@@ -200,7 +201,7 @@ export function MapView(props: MapProps) {
       if (d) {
         const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
         if (Math.abs(dx) + Math.abs(dy) > (d.grab ? 7 : 4)) d.moved = true;
-        if (d.moved && !d.grab) { cam.current.tx = d.cx - dx / cam.current.z; cam.current.ty = d.cy - dy / (cam.current.z * cam.current.gy); cam.current.x = cam.current.tx; cam.current.y = cam.current.ty; }
+        if (d.moved && !d.grab) { follow.current = null; cam.current.tx = d.cx - dx / cam.current.z; cam.current.ty = d.cy - dy / (cam.current.z * cam.current.gy); cam.current.x = cam.current.tx; cam.current.y = cam.current.ty; }
       }
       if (!inside) return;
       const h = hit(mouse.current.x, mouse.current.y);
@@ -268,6 +269,15 @@ export function MapView(props: MapProps) {
     };
     const onLeave = () => { mouse.current.inside = false; hover.current = null; setTip(null); };
     canvas.addEventListener('pointerdown', onDown); window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
+    // double-click a unit: the camera follows it until you drag the map or press Esc
+    const onDbl = (e: MouseEvent) => {
+      const r = canvas.getBoundingClientRect();
+      const h = hit(e.clientX - r.left, e.clientY - r.top);
+      follow.current = h && h.kind === 'unit' ? h.id : null;
+      if (follow.current) { cam.current.tz = Math.max(cam.current.tz, 2.4); useApp.getState().showToast(`Following ${P.current.engine.state.units[follow.current]?.callsign} — drag the map or press Esc to stop`, 'info'); }
+    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') follow.current = null; };
+    canvas.addEventListener('dblclick', onDbl); window.addEventListener('keydown', onEsc);
     canvas.addEventListener('contextmenu', onCtx); canvas.addEventListener('wheel', onWheel, { passive: false }); canvas.addEventListener('pointerleave', onLeave);
 
     // minimap clicks
@@ -288,6 +298,7 @@ export function MapView(props: MapProps) {
       frameEma += (dtMs - frameEma) * 0.05;
       if (!lowDetail && frameEma > 29 && !(window as unknown as { __sig911HQ?: boolean }).__sig911HQ) lowDetail = true; else if (lowDetail && frameEma < 19) lowDetail = false;
       const pr = P.current, eng = pr.engine, st = viewState(eng.state), c = cam.current;
+      if (follow.current) { const fu = st.units[follow.current]; if (fu) { c.tx = fu.x; c.ty = fu.y; } else follow.current = null; }
       const motion = !pr.reduceMotion;
       if (pr.focus && pr.focus.key !== lastFocus.current) { lastFocus.current = pr.focus.key; c.tx = pr.focus.x; c.ty = pr.focus.y; if (pr.focus.zoom) c.tz = Math.max(c.fit, pr.focus.zoom); }
       const ease = motion ? (pr.camEase ?? 0.18) : 1;
@@ -654,15 +665,47 @@ export function MapView(props: MapProps) {
         const lbl = `TRACE ±${Math.max(10, Math.round(tr.radius * 4 / 10) * 10)} m`;
         ctx.strokeText(lbl, p.x, p.y - r - 8); ctx.fillStyle = tr.done ? '#9fd3f5' : '#f0c070'; ctx.fillText(lbl, p.x, p.y - r - 8);
       }
+      // chemical plumes drifting downwind
+      for (const inc of Object.values(st.incidents)) {
+        if (!inc.plume || inc.hidden || ['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
+        const n = city.nodes[inc.nodeId]; const p0 = S(n.x, n.y);
+        const { dir, len } = inc.plume, w = 0.38;
+        ctx.save();
+        const grad = ctx.createRadialGradient(p0.x, p0.y, 4, p0.x, p0.y, len * z);
+        grad.addColorStop(0, 'rgba(214,190,80,0.32)'); grad.addColorStop(1, 'rgba(214,190,80,0)');
+        ctx.fillStyle = grad; ctx.beginPath(); ctx.moveTo(p0.x, p0.y);
+        for (let k = 0; k <= 10; k++) { const a = dir - w + (2 * w * k) / 10; const q = S(n.x + Math.cos(a) * len, n.y + Math.sin(a) * len * 1); ctx.lineTo(q.x, q.y); }
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(214,190,80,0.55)'; ctx.setLineDash([5, 5]); ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
+        const tip = S(n.x + Math.cos(dir) * len * 0.7, n.y + Math.sin(dir) * len * 0.7);
+        ctx.font = '800 9.5px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,18,0.85)'; ctx.strokeText('PLUME', tip.x, tip.y); ctx.fillStyle = '#e8d070'; ctx.fillText('PLUME', tip.x, tip.y);
+        ctx.restore();
+      }
+      // the news helicopter circling a big incident, and air ambulance landing zones
+      if (st.newsHeli) {
+        const p = S(st.newsHeli.x, st.newsHeli.y);
+        ctx.fillStyle = st.newsHeli.tfr ? 'rgba(200,200,210,0.5)' : '#f5d24a'; ctx.beginPath(); ctx.arc(p.x, p.y, 4.5, 0, 7); ctx.fill();
+        ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(p.x - 9, p.y - 5); ctx.lineTo(p.x + 9, p.y - 5); ctx.stroke();
+        ctx.font = '800 9px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,18,0.85)'; ctx.strokeText('NEWS', p.x, p.y + 14); ctx.fillStyle = '#f5d24a'; ctx.fillText('NEWS', p.x, p.y + 14);
+      }
+      for (const inc of Object.values(st.incidents)) {
+        if (!inc.lz || !inc.resources?.air_ambulance || inc.resources.air_ambulance.here || ['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
+        const lm = city.landmarks.find((l) => l.name === inc.lz); const n = lm ? city.nodes[lm.nodeId] : city.nodes[inc.reportedNode ?? inc.nodeId]; const p = S(n.x, n.y);
+        ctx.strokeStyle = '#7fd6a8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, 7); ctx.stroke();
+        ctx.font = '900 12px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#7fd6a8'; ctx.fillText('H', p.x, p.y + 4.5);
+      }
       // weather radar: storm cells drifting across the city, and the streets they have flooded
       if ((st.storms ?? []).length && layer === 'normal') {
         for (const c of st.storms!) {
           const p = S(c.x, c.y), r = c.r * z;
+          // close in (and over the 3D city) the radar steps back so the streets stay readable
+          ctx.globalAlpha = z > 2 ? 0.4 : z > 1.2 ? 0.7 : 1;
           for (const [k, col] of [[1, 'rgba(60,180,90,0.10)'], [0.68, 'rgba(230,200,60,0.13)'], [0.38, 'rgba(220,70,50,0.16)']] as const) {
             ctx.fillStyle = col; ctx.beginPath();
             for (let a = 0; a <= 24; a++) { const t = (a / 24) * Math.PI * 2; const wob = 1 + 0.12 * Math.sin(t * 3 + c.id) + 0.06 * Math.sin(t * 7 + now / 4000); const q = S(c.x + Math.cos(t) * c.r * k * wob, c.y + Math.sin(t) * c.r * k * wob); a ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); }
             ctx.closePath(); ctx.fill();
           }
+          ctx.globalAlpha = 1;
           // heading arrow
           const sp = Math.hypot(c.vx, c.vy) || 1, ax = p.x + (c.vx / sp) * (r + 14), ay = p.y + (c.vy / sp) * (r + 14) * cam.current.gy;
           ctx.strokeStyle = 'rgba(240,210,120,0.8)'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(p.x + (c.vx / sp) * r * 0.7, p.y + (c.vy / sp) * r * 0.7 * cam.current.gy); ctx.lineTo(ax, ay); ctx.stroke(); ctx.setLineDash([]);
@@ -1080,7 +1123,17 @@ export function MapView(props: MapProps) {
       }
 
       // minimap
-      if (pr.minimap && mc && now - lastMini > 200) {
+      // lightning: a flash on the map and a crack of thunder
+      if (st.strikeAt && st.time - st.strikeAt.t < 0.6) {
+        ctx.fillStyle = `rgba(230,236,255,${0.35 * (1 - (st.time - st.strikeAt.t) / 0.6)})`; ctx.fillRect(0, 0, W, H);
+        const sp = S(st.strikeAt.x, st.strikeAt.y);
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sp.x, sp.y - 120); let lx = sp.x;
+        for (let k = 1; k <= 6; k++) { lx += (Math.sin(st.strikeAt.t * 13 + k * 7) * 14); ctx.lineTo(lx, sp.y - 120 + k * 20); } ctx.stroke();
+        if (lastStrikeT !== st.strikeAt.t) { lastStrikeT = st.strikeAt.t; if (pr.sounds) window.setTimeout(() => audio.thunder(1.2), 400); }
+      }
+      // the minimap gets out of the way when the map itself is small
+      if (mc) { const hide = W < 820 || H < 430; if ((mc.style.display === 'none') !== hide) mc.style.display = hide ? 'none' : ''; }
+      if (pr.minimap && mc && now - lastMini > 200 && mc.style.display !== 'none') {
         lastMini = now;
         const m = mc.getContext('2d')!;
         const mw = mc.width, mh = mc.height;
@@ -1101,7 +1154,7 @@ export function MapView(props: MapProps) {
       if (w3 && w3.canvas.parentElement === el) el.removeChild(w3.canvas);
       if (P.current.sounds) { audio.updateSirens([]); audio.stopWorld(); }
       canvas.removeEventListener('pointerdown', onDown); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
-      canvas.removeEventListener('contextmenu', onCtx); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('pointerleave', onLeave);
+      canvas.removeEventListener('contextmenu', onCtx); canvas.removeEventListener('dblclick', onDbl); window.removeEventListener('keydown', onEsc); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('pointerleave', onLeave);
       mc?.removeEventListener('pointerdown', onMini);
     };
   }, [gfx, quality]);

@@ -340,6 +340,7 @@ export function BriefingScreen() {
         <div className="hub-split">
           <div className="hub-map"><MapView engine={engine} layer="coverage" mode="select" selected={{ kind: null, id: null }} onSelect={() => undefined} showIncidents={false} /><div className="maphint">Opening coverage with your starting fleet.</div></div>
           <div className="hub-side">
+            {c.handover && (c.handover.notes.length > 0) && <div className="card handover"><h3>Handover from shift {c.handover.from}</h3><ul>{c.handover.notes.map((n, i) => <li key={i} className="small">{n}</li>)}</ul>{c.handover.carry.length > 0 && <p className="small warn">{c.handover.carry.length} caller{c.handover.carry.length > 1 ? 's' : ''} the last shift never sent anyone to will ring back.</p>}</div>}
             <div className="card brief"><h3>Situation</h3><p>{c.briefing}</p>
               <div className="kv"><span>Mode</span><b>{DIFFICULTY[c.difficulty].label}</b></div><div className="kv"><span>Length</span><b>{Math.round(c.durationSec / 60)} min</b></div>
               <div className="kv"><span>Weather</span><b><Icon n={weatherIcon(c.weather)} size={13} /> {WEATHER_LABEL[c.weather]}</b></div>

@@ -982,3 +982,15 @@ button.hl.loc.bad { color: #8a96a3; text-decoration: line-through; background: n
 .inc-next { color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inc-next i { font-style: normal; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .04em; padding: 0 5px; border-radius: 3px; margin-right: 2px; }
 .inc-next .na-red { color: #fff; background: #b33; } .inc-next .na-amber { color: #1a1a1a; background: #f0c070; } .inc-next .na-blue { color: #cfe6fa; background: #1d3550; } .inc-next .na-green { color: #0d2a1a; background: #7fd6a8; } .inc-next .na-neutral { color: var(--text2); background: #222c37; }
+
+/* ── left column on busy shifts ───────────────────────────────────────── */
+.lsec.calls { flex: none; max-height: 42%; overflow-y: auto; }
+.lsec.grow { min-height: 160px; }
+.callcard.compact { display: grid; grid-template-columns: 14px 1fr auto auto; align-items: center; gap: 6px; padding: 5px 8px; margin-bottom: 4px; font-size: 12px; }
+.callcard.compact .cc-bar { grid-column: 1 / -1; margin: 2px 0 0; height: 3px; }
+.callcard.compact .btn { padding: 2px 9px; font-size: 11.5px; }
+.goals.closed { width: auto; }
+.understood { display: block; font-size: 10.5px; color: #9fd3a8; opacity: .85; margin-top: 2px; font-style: italic; }
+.callcard.colleague { border-color: rgba(124,192,240,.45); background: rgba(29,53,80,.35); }
+.card.handover { border-color: rgba(240,192,112,.45); } .card.handover ul { margin: 4px 0 0; padding-left: 18px; }
+.replay canvas { width: 100%; max-width: 560px; height: auto; border-radius: 8px; border: 1px solid var(--line); display: block; margin-bottom: 6px; }

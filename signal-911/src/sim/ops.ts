@@ -7,6 +7,7 @@ import { isAir } from './fleet';
 import { TEMPLATE_BY_ID } from './content/templates';
 import type { Call, GameState, Incident, Unit } from './types';
 import { reportPosition } from './radioops';
+import { prepostMet } from './more';
 
 const h01 = (a: number, b: number) => { let h = Math.imul(a + 0x9e3779b9, 2654435761) ^ Math.imul(b + 0x7f4a7c15, 0x85ebca6b); h ^= h >>> 15; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 13; return (h >>> 0) / 4294967296; };
 const live = (inc: Incident) => !['RESOLVED', 'CLOSED'].includes(inc.status);
@@ -79,12 +80,13 @@ export function pursuitRisk(e: GameEngine, inc: Incident, contacts: number, dt: 
   const district = e.city.nodes[m.prev]?.district ?? '';
   const busy = ['downtown', 'financial', 'oldtown', 'university'].includes(district);
   const wet = ['rain', 'storm', 'snow', 'fog'].includes(st.weather);
-  if (contacts > 0) m.risk = Math.min(100, (m.risk ?? 0) + dt * (0.55 + (busy ? 0.45 : 0) + (night ? 0.2 : 0) + (wet ? 0.35 : 0) + (m.heliId ? -0.3 : 0)));
+  if (m.wrongWay) m.risk = Math.min(100, (m.risk ?? 0) + dt * (1.1 + (night ? 0.4 : 0) + (wet ? 0.3 : 0)));
+  else if (contacts > 0) m.risk = Math.min(100, (m.risk ?? 0) + dt * (0.55 + (busy ? 0.45 : 0) + (night ? 0.2 : 0) + (wet ? 0.35 : 0) + (m.heliId ? -0.3 : 0)));
   else m.risk = Math.max(0, (m.risk ?? 0) - dt * 0.6);
   if ((m.risk ?? 0) > 70 && h01(inc.num, Math.floor(st.time * 2)) < 0.004 * ((m.risk ?? 0) - 70) / 10) {
     m.risk = 35;
     const crash = e.spawnConnected(inc, 'collision_injury', { noCall: false });
-    e.consequence(inc, 'The pursuit ran on too long through busy streets — the suspect hit an innocent driver');
+    e.consequence(inc, m.wrongWay ? 'The wrong-way driver hit an oncoming car before anyone could stop them' : 'The pursuit ran on too long through busy streets — the suspect hit an innocent driver');
     st.reputation = Math.max(0, st.reputation - 2.5);
     st.stats.pursuitCrashes = (st.stats.pursuitCrashes ?? 0) + 1;
     e.radio('DISPATCH', `All units, the suspect vehicle has collided with a civilian car at ${addressOf(e.city, m.prev)}. Medics responding.`, 'alert', undefined, inc.id);
@@ -187,7 +189,7 @@ export function learnPremise(st: GameState, inc: Incident) {
 }
 
 // ── Supervisor directives ───────────────────────────────────────────────────
-export interface Directive { id: string; kind: 'answer' | 'hold' | 'cover' | 'clear'; text: string; from: number; until: number; district?: string; target: number; progress: number; result?: 'done' | 'failed'; base?: number }
+export interface Directive { id: string; kind: 'answer' | 'hold' | 'cover' | 'clear' | 'prepost'; text: string; from: number; until: number; district?: string; target: number; progress: number; result?: 'done' | 'failed'; base?: number }
 export function directiveTick(e: GameEngine) {
   const st = e.state;
   if (st.config.mode === 'tutorial' || st.config.script) return;
@@ -198,6 +200,7 @@ export function directiveTick(e: GameEngine) {
     if (cur.kind === 'answer' && Object.values(st.calls).some((c) => c.ringStart >= cur.from && ((c.state === 'ringing' && st.time - c.ringStart > cur.target) || (c.answeredAt !== null && c.answeredAt - c.ringStart > cur.target) || c.state === 'missed'))) return fail('A call rang too long.');
     if (cur.kind === 'hold' && Object.values(st.calls).some((c) => c.state === 'hold' && c.holdSince !== null && st.time - c.holdSince > cur.target)) return fail('Someone sat on hold too long.');
     if (cur.kind === 'cover' && cur.district && !Object.values(st.units).some((u) => u.status === 'AVAILABLE' && !isAir(u) && u.capabilities.includes('transport') && e.city.nodes[u.prevNode]?.district === cur.district)) return fail(`${e.city.districtById[cur.district]?.name ?? cur.district} was left without an ambulance.`);
+    if (cur.kind === 'prepost') { if (st.time >= cur.until) { if (prepostMet(e, cur.district!)) { cur.result = 'done'; reward(e, cur); } else fail('Nobody was in place when the event started.'); } return; }
     if (cur.kind === 'clear') { cur.progress = st.stats.resolved - (cur.base ?? 0); if (cur.progress >= cur.target) { cur.result = 'done'; reward(e, cur); return; } }
     if (st.time >= cur.until) { if (cur.kind === 'clear') return fail(`Only ${cur.progress} of ${cur.target} cleared.`); cur.result = 'done'; reward(e, cur); }
     return;

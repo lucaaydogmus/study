@@ -31,7 +31,7 @@ export interface Template {
   /** not a 911 emergency: the right move is to send the caller to the non-emergency line or press office */ nonEmergency?: boolean;
   /** where on the map it happens */ nodeHint?: 'runway' | 'highway' | 'rail' | 'water' | 'pool' | 'stadium' | 'mall' | 'transit' | 'bank';
   /** seconds until something unstoppable happens (an aircraft landing); responders must be in place first */ deadline?: number;
-  /** only happens while this city event is on */ event?: string;
+  /** only happens while this city event is on */ event?: string; /** a car going the wrong way on the motorway */ wrongWay?: boolean;
   /** the caller is driving the patient somewhere */ movingCaller?: boolean; /** a pursuit on foot */ foot?: boolean;
   pursuitSpeed?: number; /** extra callers that will ring about the same event */ dupes?: number;
   /** a major incident: rare in random rotation and never two at once */ major?: boolean;
@@ -1430,6 +1430,32 @@ export const TEMPLATES: Template[] = [
     say: { suspect: ["You don't need my name. I'm the one with the gun.", "I'm in the house. That's all you need."] },
     scene: 'No disturbance. Residents confused. Hoax.', ambience: 'quiet',
     resolved: 'The address was a hoax — nobody was in danger.', failed: 'Armed officers stormed a family home on a hoax call.',
+  }),
+  // ── the motorway and the high-rise ─────────────────────────────────────────
+  base({
+    id: 'wrong_way_driver', category: 'police', label: 'Wrong-way driver', hint: 'crime_progress', cls: 'crime_progress', w: { airport: 0.6, industrial: 0.5, suburb: 0.4, harbor: 0.4 }, nodeHint: 'highway', minRank: 2,
+    sev: [4, 4], pursuit: true, wrongWay: true, pursuitSpeed: 5.2,
+    truth: { vehicles: 1, suspect: true, weapon: false, suspect_desc: 'a dark saloon with its headlights off', people: 1, injured: 0, safe: false, cause: 'a confused or drunk driver heading the wrong way on the motorway' }, reported: ['vehicles'],
+    requires: [R('patrol', 2)], escalate: [{ reqs: [R('patrol', 3), R('als')], text: 'Near-misses — drivers swerving into the barriers', say: ["He nearly hit a lorry head-on! Cars are swerving everywhere!"], sev: 1 }],
+    threat: [34, 0.6, 1.0], work: 10,
+    archetypes: [['witness', 5], ['angry_motorist', 3], ['professional', 1]],
+    open: ["There's a car coming the WRONG WAY on the motorway — no lights — it just missed us!", "Someone's driving against the traffic in the fast lane! Everyone's flashing their lights!"],
+    cause: ['Dark saloon, no headlights, doing about sixty the wrong way.', 'I think the driver is asleep or drunk — he is just drifting between lanes.'],
+    scene: 'Wrong-way vehicle stopped with spike strips. Driver detained.', ambience: 'traffic',
+    resolved: 'The wrong-way driver was stopped before anyone was hurt.', failed: 'The wrong-way driver caused a head-on crash.',
+  }),
+  base({
+    id: 'highrise_fire', category: 'fire', label: 'High-rise fire', hint: 'fire_structure', cls: 'fire_structure', w: { highrise: 1.2, dense: 0.6, financial: 0.8 }, minRank: 3,
+    sev: [4, 5], dupes: 2, transport: true,
+    truth: { fire: true, smoke: true, trapped: 2, people: 30, injured: 1, safe: false, cause: 'a fire in a flat on one of the middle floors' }, reported: ['fire', 'smoke'], unsure: ['trapped'],
+    requires: [R('fire_suppression', 3), R('aerial'), R('rescue'), R('als'), R('transport')],
+    escalate: [{ reqs: [R('fire_suppression', 4), R('transport', 2)], text: 'Smoke is spreading up the stairwell to the floors above', say: ["The smoke's coming under the door now!"], sev: 1, casualties: 1 }],
+    threat: [40, 0.55, 1.6], work: 70,
+    archetypes: [['panicked_parent', 4], ['worried_neighbor', 3], ['calm_serious', 2]],
+    open: ["There's a fire in our tower block — floor {fireFloor} — and the smoke's coming up! We're on {myFloor}!", "Our building's on fire! It's on the {fireFloor}th floor, we're on the {myFloor}th — what do we do?"],
+    cause: ["Someone said it started in a flat on {fireFloor}.", "The alarms went off and then the hallway filled with smoke."],
+    scene: 'Working fire on an upper floor of a residential tower. Command post set; evacuation and search under way.', ambience: 'indoor',
+    resolved: 'The high-rise fire was contained and the residents accounted for.', failed: 'The fire spread through the tower block.',
   }),
 ];
 

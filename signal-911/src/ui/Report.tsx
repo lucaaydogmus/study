@@ -1,10 +1,10 @@
 import { auditCalls } from '../sim/ops';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { gameClock } from '../sim/engine';
 import { averageOf } from '../sim/scoring';
 import { rankDef } from '../sim/progression';
 import { SERVICE_META } from '../sim/fleet';
-import { getCity } from '../sim/city';
+import { getCity, WORLD_H, WORLD_W } from '../sim/city';
 import { CHAPTERS } from '../sim/scenarios';
 import type { Service, TimelineEntry } from '../sim/types';
 import { useApp } from '../store';
@@ -101,6 +101,7 @@ export function ReportScreen() {
           </div>
         </div>
 
+        {(st.replay?.length ?? 0) > 5 && <div className="card"><h3><Icon n="clock" size={14} /> Your shift in 30 seconds</h3><ShiftReplay st={st} /></div>}
         {(() => { const audits = auditCalls(st); return audits.length ? (
           <div className="card audit"><h3><Icon n="note" size={14} /> Supervisor’s call review</h3>
             <p className="small muted">Okafor pulled {audits.length} of your calls and graded them against the protocol.</p>
@@ -141,6 +142,42 @@ export function ReportScreen() {
           <Btn kind="primary" onClick={finish}>{career ? 'Return to headquarters' : session.kind === 'endless' && !endlessOver ? 'Next shift' : 'Continue'}</Btn>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** a time-lapse of the whole shift: every unit and every open incident, frame by frame */
+function ShiftReplay({ st }: { st: import('../sim/types').GameState }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const frames = st.replay ?? [];
+  const [k, setK] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  useEffect(() => {
+    if (!playing) return;
+    const id = window.setInterval(() => setK((x) => (x + 1) % frames.length), Math.max(40, 30000 / Math.max(1, frames.length)));
+    return () => clearInterval(id);
+  }, [playing, frames.length]);
+  useEffect(() => {
+    const c = ref.current; if (!c) return;
+    const ctx = c.getContext('2d')!;
+    const city = getCity();
+    const W = c.width, H = c.height, sx = W / WORLD_W, sy = H / WORLD_H;
+    ctx.fillStyle = '#0b1219'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(120,150,180,0.18)'; ctx.lineWidth = 1;
+    ctx.beginPath(); for (const e of city.edges) { const a = city.nodes[e.a], b = city.nodes[e.b]; ctx.moveTo(a.x * sx, a.y * sy); ctx.lineTo(b.x * sx, b.y * sy); } ctx.stroke();
+    const f = frames[k]; if (!f) return;
+    for (const [node, sev] of f.i) { const n = city.nodes[node]; ctx.fillStyle = `rgba(230,80,70,${0.25 + sev * 0.1})`; ctx.beginPath(); ctx.arc(n.x * sx, n.y * sy, 3 + sev * 1.6, 0, 7); ctx.fill(); }
+    const col = ['#5aa0ff', '#ff6a5a', '#5ad69a'];
+    for (const [x, y, s, busy] of f.u) { ctx.fillStyle = col[s]; ctx.globalAlpha = busy ? 1 : 0.45; ctx.fillRect(x * sx - 1.5, y * sy - 1.5, 3, 3); }
+    ctx.globalAlpha = 1;
+    ctx.font = '600 12px ui-monospace, monospace'; ctx.fillStyle = '#cfe0f0'; ctx.fillText(gameClock(st, f.t).slice(0, 5), 10, 18);
+    ctx.fillText(`${f.i.length} open · ${f.u.filter((u) => u[3]).length} units busy`, 10, H - 10);
+  }, [k, frames]);
+  return (
+    <div className="replay">
+      <canvas ref={ref} width={560} height={340} />
+      <div className="row gap center"><Btn size="sm" onClick={() => setPlaying(!playing)}>{playing ? 'Pause' : 'Play'}</Btn><input type="range" min={0} max={Math.max(0, frames.length - 1)} value={k} onChange={(e) => { setPlaying(false); setK(+e.target.value); }} style={{ flex: 1 }} aria-label="Scrub the replay" /></div>
+      <div className="small muted">Blue police, red fire, green medical — bright when busy. Red circles are open incidents, bigger when more serious.</div>
     </div>
   );
 }

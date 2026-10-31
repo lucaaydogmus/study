@@ -15,6 +15,7 @@ import { AIR_HELPS } from '../sim/engine';
 import { SYSTEMS, repairStation, systemsOf } from '../sim/buildings';
 import { premiseFlags, terminatePursuit, warnPremise } from '../sim/ops';
 import { STEPS, nextAction, stepState } from './flow';
+import { shelterDownwind, trustOf } from '../sim/more';
 
 export interface PanelCtx { setPreview: (p: Preview) => void; engine: GameEngine; pickLocation: (incId: string | null) => void; pickingFor: string | null; repositioning: string | null; startReposition: (unitId: string | null) => void; focus: (x: number, y: number, zoom?: number) => void; openCall: () => void; setBottom: (t: string) => void }
 
@@ -96,6 +97,7 @@ function DistrictPanel({ engine, id }: PanelCtx & { id: string }) {
         <div className="kv"><span>Traffic</span><Bar value={(st.districtTraffic[id] ?? 0) * 100} tone={(st.districtTraffic[id] ?? 0) > 0.6 ? 'red' : (st.districtTraffic[id] ?? 0) > 0.4 ? 'amber' : 'green'} /></div>
         {(['police', 'fire', 'medical'] as Service[]).map((s) => (<div className="kv" key={s}><span>{SERVICE_META[s].label} coverage</span><Bar value={cov(s) * 100} tone={cov(s) > 0.6 ? 'green' : cov(s) > 0.3 ? 'amber' : 'red'} /></div>))}
         <div className="kv"><span>Open incidents</span><b>{inc.length}</b></div>
+        {active && <div className="kv" title="How the district feels about the service. Slow responses and failures lower it; low trust means angrier, less cooperative callers. Carries over your whole career."><span>Community trust</span><Bar value={trustOf(st, id)} tone={trustOf(st, id) < 40 ? 'red' : trustOf(st, id) < 60 ? 'amber' : 'green'} /></div>}
         <div className="chips">{d.tags.map((t) => <Badge key={t}>{t}</Badge>)}</div>
       </Section>
     </div>
@@ -386,6 +388,7 @@ function IncidentHeader({ engine, inc, call, done, openCall, setBottom }: { engi
         {call && (call.state === 'active' || call.state === 'hold') && <Btn size="sm" icon="phone" onClick={openCall} title={`${call.profile.name} · ${call.callerId}`}>Call</Btn>}
         {!done && call && !['active', 'hold', 'ringing'].includes(call.state) && !inc.onView && <Btn size="sm" icon="phone" onClick={() => { const r = engine.redial(inc.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); else openCall(); bump(); }} title="Call the caller back on their number">Call back</Btn>}
         {!done && !inc.truth.outside && <Btn size="sm" icon="map" onClick={() => openCctv()} title="Open the CCTV terminal (K) — you pick the camera">CCTV</Btn>}
+        {!done && inc.plume && inc.plume.district !== inc.district && st.config.districts.includes(inc.plume.district) && <Btn size="sm" kind={inc.plumeAlerted === inc.plume.district ? 'ghost' : 'danger'} disabled={inc.plumeAlerted === inc.plume.district} onClick={() => { const r = shelterDownwind(engine, inc.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }} title="The plume is drifting over another district — tell people there to stay indoors">{inc.plumeAlerted === inc.plume.district ? 'Downwind told' : `Shelter ${engine.city.districtById[inc.plume.district]?.name ?? inc.plume.district}`}</Btn>}
         {!done && <Btn size="sm" icon="radio" onClick={() => { useApp.getState().openResources(inc.id); setBottom?.('radio'); }} title="Outside help — tow, utilities, K-9, specialists, mutual aid — on the radio (Q)">Outside help</Btn>}
         {bolo && <Btn size="sm" icon="search" kind={boloOut ? 'primary' : 'default'} disabled={!bolo.ok} onClick={() => { const r = engine.broadcastBolo(inc.id); if (r.ok) audio.dispatchConfirm(); else useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }} title={bolo.ok ? 'Broadcast the suspect description to every patrol (B)' : bolo.reason}>{boloOut ? 'BOLO out' : 'BOLO'}</Btn>}
       </div>

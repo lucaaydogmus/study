@@ -115,7 +115,7 @@ export function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngi
     timer = window.setTimeout(tick, 4000 + Math.random() * 4000);
     return () => clearTimeout(timer);
   }, [call?.id, call?.state]);
-  const onHold = Object.values(st.calls).filter((c) => c.state === 'hold');
+  const onHold = Object.values(st.calls).filter((c) => c.state === 'hold' && !c.colleague);
   const ringing = Object.values(st.calls).filter((c) => c.state === 'ringing');
   const inc = call ? st.incidents[call.incidentId] : null;
   const assists = assistsOn(st);
@@ -206,6 +206,7 @@ export function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngi
                 <div key={i} className={`bubble ${l.who === 'CALLER' ? 'caller' : 'me'} ${l.who === 'CALLER' && /^\(/.test(l.text) ? 'action' : ''} ${l.garbled ? 'garbled' : ''} ${call.text ? 'sms' : ''}`}>
                   <div className="bmeta">{l.who === 'CALLER' ? first : 'You'} · {l.clock.slice(0, 5)}</div>
                   <div className="btext">{l.who === 'CALLER' && !l.garbled ? <CallerLine engine={engine} call={call} inc={inc} line={l} fresh={i === call.transcript.length - 1 && st.time - l.t < 2} plain={!assists} /> : l.text}</div>
+                  {l.understood && <div className="understood">understood as: {l.understood}</div>}
                   {l.garbled && call.lastGarbled && i === call.transcript.map((x) => !!x.garbled).lastIndexOf(true) && <button className="chip sayagain" onClick={() => { engine.sayAgain(call.id); stick.current = true; bump(); }}><Icon n="phone" size={11} /> Say again?</button>}
                 </div>
               ))}

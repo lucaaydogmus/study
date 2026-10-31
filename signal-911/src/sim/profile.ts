@@ -1,4 +1,5 @@
 // The persistent career profile and the application of a finished shift to it.
+import { writeHandover } from './more';
 import { getCity } from './city';
 import { evaluateObjectives, computeScore, averageOf } from './scoring';
 import { Rng } from './rng';
@@ -45,6 +46,8 @@ export interface Profile {
   regulars?: Record<string, { calls: number; real: number; lastShift: number; log: string[] }>;
   /** dangerous addresses learned over the career */
   premises?: Record<number, string[]>;
+  /** what the last shift left for this one */
+  handover?: import('./more').Handover;
 }
 
 const emptyLifetime = (): Lifetime => ({ shifts: 0, calls: 0, answered: 0, resolved: 0, failed: 0, casualties: 0, livesHelped: 0, falseAlarms: 0, moneyEarned: 0, responseSum: 0, responseN: 0, bestScore: 0, bestGrade: '-', playSeconds: 0, dispatches: 0, merges: 0, pursuits: 0, verifies: 0, gradeA: 0, calmed: 0, bestStreak: 0, contracts: 0 });
@@ -145,7 +148,7 @@ export function careerConfig(p: Profile, over: Partial<ShiftConfig> = {}): Shift
   const cfg = rollStoryline(baseConfig({
     mode: 'career', title: `Shift ${p.counters.shift}`, briefing: `${rankDef(rank).title} — routine shift`, difficulty: p.flags.difficulty, durationSec: p.flags.duration,
     districts: unlockedDistricts(rank), incidentRate: rankRate, startHour: [8, 12, 16, 20, 2][p.counters.shift % 5], weather: (['clear', 'clear', 'rain', 'clear', 'fog', 'heat', 'clear'] as const)[p.counters.shift % 7],
-    seed, modifiers: extras.modifiers, contracts: extras.contracts, regulars: p.regulars ? JSON.parse(JSON.stringify(p.regulars)) : {}, premises: p.premises ? JSON.parse(JSON.stringify(p.premises)) : {},
+    seed, modifiers: extras.modifiers, contracts: extras.contracts, regulars: p.regulars ? JSON.parse(JSON.stringify(p.regulars)) : {}, premises: p.premises ? JSON.parse(JSON.stringify(p.premises)) : {}, handover: p.handover ? JSON.parse(JSON.stringify(p.handover)) : undefined,
     ...over,
   }), rank, seed);
   // chapters are handcrafted; ordinary shifts can go sideways at any moment
@@ -213,6 +216,9 @@ export function applyShift(p: Profile, st: GameState): ShiftResult {
   // the stations' state carries over (repairs in progress finish overnight)
   for (const s of p.stations) { const live = st.stations[s.id]?.systems; if (live) { const sys = { ...live, repairs: [], cells: 0, cellsAt: undefined, darkWarned: false }; for (const r of live.repairs) if (!r.done) sys[r.sys] = 100; s.systems = sys; } }
   for (const [n, ks] of Object.entries(st.premiseLog ?? {})) { const cur = ((p.premises ??= {})[Number(n)] ??= []); for (const k of ks) if (!cur.includes(k)) cur.push(k); }
+  // districts remember; the next dispatcher gets a handover
+  p.city.trust = { ...(p.city.trust ?? {}), ...(st.trust ?? {}) };
+  p.handover = writeHandover(st, p.counters.shift);
   // the regulars' file grows
   for (const r of st.regularLog ?? []) {
     const rec = ((p.regulars ??= {})[r.id] ??= { calls: 0, real: 0, lastShift: 0, log: [] });

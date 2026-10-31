@@ -84,10 +84,43 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 | `Tab` (in the call box) | Say the top suggested reply | `C` | Count compressions with a caller doing CPR |
 | Listen (call controls) | Listen to the background for where the caller is | Calm / Jobs tabs | Keep the caller together and give them something useful to do |
 | `Q` | Outside help on the radio's outside line (tow, utilities, specialists, federal team, Guard EOD, mutual aid) | Hold `V` | Push-to-talk to the caller or the selected crew |
+| Double-click a unit | The camera follows it (drag or Esc to stop) | | |
 | `N` | Jump to whatever needs you most (oldest ringing call, or the incident furthest behind) | Type your answer | Callers and crews ask in the chat or on the radio — answer in your own words |
 | `K` | CCTV terminal: pick a camera, wait for the stream, pan with ← → | Click a camera on the map | Connect to it (while the CCTV terminal is open) |
 
 ## What is in the game
+
+### Remaster 13: a colleague, the weather, the motorway and the tower
+
+- **A colleague at desk 2.** On a busy board your colleague picks up calls you cannot get to and works them
+  themselves: location, classification and units. They are good but not perfect, so sometimes the address is a
+  street out or they send one unit short. Their call shows in your list with a **Take over** button.
+- **Air ambulances need somewhere to land.** For the worst trauma, crews ask for an air ambulance on the outside
+  line. It asks on the radio where to land (a nearby park or school, or the road at the scene), and you answer in
+  your own words. With no police there to secure the landing zone, it circles first.
+- **Chemical plumes drift with the wind.** Wind shifts during the shift and is shown in the top bar. Hazmat
+  spills, tanker fires and similar incidents throw a plume downwind on the map. If it drifts over another
+  district, tell them to shelter, or people there get hurt.
+- **High-rise fires.** Several callers on different floors each ask whether to take the stairs or stay in their
+  flat. Above the fire the stairwell is full of smoke; below it, get out. The right answer depends on their floor.
+- **Wrong-way drivers** on the motorway get more dangerous every second until they are stopped.
+- **Districts remember.** Each district has a community trust level that carries across your career. Slow
+  responses and failures lower it, and low trust means angrier, less cooperative callers.
+- **Shift handover.** The briefing shows what the last shift left open, and callers it never sent anyone to ring
+  back.
+- **Planned events.** Before a marathon, festival or march, your supervisor wants units posted in the area before
+  it starts.
+- **Lightning and the news.** Storm cells throw lightning that starts fires. A news helicopter circles big
+  incidents and crowds your own helicopter until you get the FAA to close the airspace.
+- **Polish.**
+  - Storm clouds cast shadows over the 3D city, lightning bolts flash, and light bars light up the street at
+    night.
+  - Big fires send up smoke columns you can see across the city, leaning with the wind.
+  - Double-click a unit to follow it with the camera.
+  - The dispatch room hums around you, and each radio channel has its own key-up tone.
+  - "Understood as" tags show how your typed answers were read.
+  - Busy call lists go compact, and shift goals start collapsed.
+  - The shift report ends with a 30-second time-lapse of your whole shift.
 
 ### Remaster 12: the radio desk, answering in your own words, and a cleaner dispatch flow
 
