@@ -37,7 +37,7 @@ export function RadioConsole({ engine }: { engine: GameEngine }) {
     audio.radioBlip();
     if (r.ok && r.reply && tts) {
       const speaker = engine.crewOf(unit)[0];
-      window.setTimeout(() => speakLine(r.reply!, { sex: speaker ? sexOfName(speaker.name) : 'M', age: 38, panic: unit.status === 'ON_SCENE' ? 45 : 30, radio: true, seed: unit.id.length * 7 + unit.callsign.charCodeAt(unit.callsign.length - 1) }), 380);
+      window.setTimeout(() => speakLine(r.reply!, { sex: speaker ? sexOfName(speaker.name) : 'M', age: 38, panic: unit.status === 'ON_SCENE' ? 45 : 30, radio: true, seed: unit.id.length * 7 + unit.callsign.charCodeAt(unit.callsign.length - 1) }, `radio:${unit.id}`), 380);
     }
     bump();
   };

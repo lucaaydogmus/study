@@ -303,6 +303,7 @@ export function MapView(props: MapProps) {
       if (w3) {
         ctx.clearRect(0, 0, W, H);
         w3.resize(W, H, dpr);
+        w3.adapt(frameEma, now);
         w3.render({ engine: eng, cx: c.x, cy: c.y, z, W, H, pitch, dpr, hour, night, dusk, tSec: ambT, now, active, motion, showTraffic: pr.layer === 'normal' || pr.layer === 'traffic', parkedAtBase });
       } else { ctx.fillStyle = '#7fbfe3'; ctx.fillRect(0, 0, W, H); }
       ctx.save();

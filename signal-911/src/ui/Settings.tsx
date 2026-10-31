@@ -1,3 +1,4 @@
+import { previewVoice, stopSpeech, voiceReport } from '../audio/speech';
 import { useEffect, useState } from 'react';
 import { aiApi, type AiStatus } from '../ai/aiClient';
 import { audio } from '../audio/audioManager';
@@ -19,6 +20,17 @@ function Toggle({ label, desc, k }: { label: string; desc?: string; k: 'hideInte
   const update = useApp((s) => s.updateSettings);
   return (
     <label className="toggle"><input type="checkbox" checked={v} onChange={(e) => update({ [k]: e.target.checked })} /><span className="tg" /><span><b>{label}</b>{desc && <span className="muted small block">{desc}</span>}</span></label>
+  );
+}
+
+function VoiceCheck() {
+  const [rep, setRep] = useState(() => voiceReport());
+  useEffect(() => { const t = window.setTimeout(() => setRep(voiceReport()), 600); return () => clearTimeout(t); }, []);
+  return (
+    <div className="voicecheck">
+      <div className="btnrow"><Btn size="sm" onClick={() => { audio.unlock(); previewVoice('F'); setRep(voiceReport()); }}>Test a caller (woman)</Btn><Btn size="sm" onClick={() => { audio.unlock(); previewVoice('M', 75); setRep(voiceReport()); }}>Test a caller (man, panicked)</Btn><Btn size="sm" onClick={() => stopSpeech()}>Stop</Btn></div>
+      <p className="muted small">{rep.total ? `${rep.natural} of ${rep.total} English voices on this browser sound natural${rep.best ? ` (best: ${rep.best})` : ''}.` : 'No voices found yet.'} {rep.natural < 2 ? 'For far more natural voices, play in Microsoft Edge (neural "Natural" voices) or Chrome (Google voices).' : 'The game picks the most natural ones automatically.'}</p>
+    </div>
   );
 }
 
@@ -48,6 +60,7 @@ export function SettingsPanel({ compact }: { compact?: boolean }) {
         <Toggle label="Mute everything" k="muted" />
         <Slider label="Master" k="master" /><Slider label="Effects" k="effects" /><Slider label="Radio" k="radio" /><Slider label="Sirens & rotors" k="sirens" /><Slider label="Ambience" k="ambience" /><Slider label="Music" k="music" />
         <Toggle label="Spoken voices" desc="Callers and crews speak their lines aloud with your browser's voices (different voice, pitch and pace per caller)." k="tts" />
+        <VoiceCheck />
         <p className="muted small">All other audio is synthesised in your browser. Push-to-talk (hold V or the mic button) uses your browser's speech recognition to turn what you say into text; nothing is recorded or stored by the game.</p>
       </div>
       <div className="setcol">

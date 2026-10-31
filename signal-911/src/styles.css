@@ -871,3 +871,4 @@ button.hl.loc.bad { color: #8a96a3; text-decoration: line-through; background: n
 .rp-status { font-size: 12px; font-weight: 700; padding: 5px 8px; border-radius: 7px; text-align: center; } .rp-status.here { background: rgba(84,184,137,.18); color: #7ee2ad; } .rp-status.enroute, .rp-status.requested { background: rgba(229,172,77,.14); color: #f0c070; }
 .ressum .small { line-height: 1.35; }
 @media (max-width: 900px) { .rp-body { grid-template-columns: 1fr; } .rp-groups { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); } }
+.voicecheck { margin: 2px 0 10px; } .voicecheck .btnrow { margin-top: 4px; }

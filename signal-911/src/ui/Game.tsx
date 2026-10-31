@@ -1,3 +1,4 @@
+import { stopSpeech } from '../audio/speech';
 import { ResourcesPanel } from './Resources';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { audio } from '../audio/audioManager';
@@ -60,7 +61,7 @@ export function GameScreen() {
 
   // ── simulation loop (decoupled from React rendering) ──
   useEffect(() => {
-    let raf = 0, last = performance.now(), lastBump = 0, wasCalls = '', lastAch = 0, lastBeat = 0;
+    let raf = 0, last = performance.now(), lastBump = 0, wasCalls = '', lastAch = 0, lastBeat = 0, wasPaused = false;
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
       const dt = (now - last) / 1000; last = now;
@@ -70,13 +71,15 @@ export function GameScreen() {
       audio.setRinging(ringing && engine.state.phase === 'running' && !engine.state.paused);
       if (useApp.getState().settings.heartbeat && engine.state.phase === 'running' && !engine.state.paused) { const s = dispatcherStress(engine); if (s >= 62 && now - lastBeat > 60000 / (68 + s * 0.9)) { lastBeat = now; audio.heartbeat(); } }
       if (now - lastAch > 3000) { lastAch = now; useApp.getState().checkLiveAchievements(); }
-      if (now - lastBump > 120) { lastBump = now; useApp.getState().bump(); const key = engine.state.activeCallId ?? ''; if (key !== wasCalls) { wasCalls = key; updateAmbience(engine); } }
+      if (now - lastBump > 120) { lastBump = now; useApp.getState().bump(); const aid = engine.state.activeCallId; const key = `${aid ?? ''}:${aid ? engine.state.calls[aid]?.state ?? '' : ''}`; if (key !== wasCalls) { wasCalls = key; updateAmbience(engine); } }
+      // pausing (or leaving the tab) silences whoever was talking
+      const paused = engine.state.paused || engine.state.phase !== 'running'; if (paused && !wasPaused) stopSpeech(); wasPaused = paused;
     };
     raf = requestAnimationFrame(loop);
     const onVis = () => { if (document.hidden && settings.autoSave) { engine.state.paused = true; bump(); } };
     document.addEventListener('visibilitychange', onVis);
     audio.startOfficeLife();
-    return () => { cancelAnimationFrame(raf); document.removeEventListener('visibilitychange', onVis); audio.setRinging(false); audio.stopOfficeLife(); };
+    return () => { cancelAnimationFrame(raf); document.removeEventListener('visibilitychange', onVis); audio.setRinging(false); audio.stopOfficeLife(); stopSpeech(); };
   }, [engine]);
 
   // answering a call brings the console forward

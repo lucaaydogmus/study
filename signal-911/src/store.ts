@@ -1,7 +1,7 @@
 // Application store: screens, the active profile, the live engine, and glue to audio & persistence.
 import { create } from 'zustand';
 import { audio } from './audio/audioManager';
-import { speakLine, speechSupported, configureSpeech, sexOfName, type VoiceProfile } from './audio/speech';
+import { speakLine, speechSupported, configureSpeech, sexOfName, stopChannel, type VoiceProfile } from './audio/speech';
 import { SaveManager } from './persistence';
 import { GameEngine, type EngineEvent } from './sim/engine';
 import {
@@ -307,7 +307,7 @@ function handleEngineEvent(e: EngineEvent, engine: GameEngine) {
       const call = engine.state.calls[e.callId];
       const line = call?.transcript[call.transcript.length - 1];
       if (call && line?.who === 'CALLER' && engine.state.activeCallId === call.id && !/^\(/.test(line.text)) {
-        if (st.settings.tts !== false && speechSupported() && !st.settings.muted) { audio.lineClick(); speakLine(line.text, voiceProfile(call), call.mood.panic > 80); }
+        if (st.settings.tts !== false && speechSupported() && !st.settings.muted) { audio.lineClick(); speakLine(line.text, voiceProfile(call), `call:${call.id}`); }
         else audio.voice(line.text, callerPitch(call), call.mood.panic > 65);
       }
       break;
@@ -322,7 +322,7 @@ function handleEngineEvent(e: EngineEvent, engine: GameEngine) {
 /** who the caller sounds like: sex from their first name, age and how panicked they are */
 export function voiceProfile(call: import('./sim/types').Call): VoiceProfile {
   let h = 0; for (const ch of call.profile.name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return { sex: sexOfName(call.profile.name), age: call.profile.archetype === 'child_caller' ? 9 : call.profile.age, panic: call.mood.panic, seed: h };
+  return { sex: sexOfName(call.profile.name), age: call.profile.archetype === 'child_caller' ? 9 : call.profile.age, panic: call.mood.panic, seed: h, child: call.profile.archetype === 'child_caller' };
 }
 /** a voice pitch for the caller: children high, older callers a little lower, men lower than women */
 export function callerPitch(call: import('./sim/types').Call): number {
@@ -332,6 +332,8 @@ export function callerPitch(call: import('./sim/types').Call): number {
 }
 export function updateAmbience(engine: GameEngine) {
   const id = engine.state.activeCallId;
+  // a caller you are no longer talking to stops talking in your ear
+  stopChannel('call:', id && engine.state.calls[id]?.state === 'active' ? `call:${id}` : undefined);
   const call = id ? engine.state.calls[id] : null;
   audio.setCallAmbience(call && call.state === 'active' ? (engine.state.weather === 'rain' || engine.state.weather === 'storm' ? 'rain' : call.profile.ambience) : null);
 }

@@ -181,6 +181,19 @@ export class World3D {
   private W = 1; private H = 1; private dpr = 1;
   layout = new Map<string, UnitPose>();
   quality: 'high' | 'medium' | 'low' = 'high';
+  /** dynamic resolution: drops when frames run long, recovers when there is headroom */
+  private scale = 1; private lastAdapt = 0;
+  adapt(frameMs: number, now: number) {
+    if (now - this.lastAdapt < 1200) return;
+    let next = this.scale;
+    if (frameMs > 34) next = Math.max(0.55, this.scale - 0.1);
+    else if (frameMs < 20 && this.scale < 1) next = Math.min(1, this.scale + 0.05);
+    if (next === this.scale) return;
+    this.lastAdapt = now; this.scale = next;
+    const pr = (this.quality === 'low' ? Math.min(1, this.dpr) : Math.min(1.5, this.dpr)) * this.scale;
+    this.renderer.setPixelRatio(pr); this.renderer.setSize(this.W, this.H, false);
+    this.composer.setPixelRatio(pr); this.composer.setSize(this.W, this.H);
+  }
   ok = true;
 
   constructor() {
@@ -369,7 +382,7 @@ export class World3D {
   resize(W: number, H: number, dpr: number) {
     if (W === this.W && H === this.H && dpr === this.dpr) return;
     this.W = W; this.H = H; this.dpr = dpr;
-    const pr = this.quality === 'low' ? Math.min(1, dpr) : Math.min(1.5, dpr);
+    const pr = (this.quality === 'low' ? Math.min(1, dpr) : Math.min(1.5, dpr)) * this.scale;
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(W, H, false);
     this.composer.setPixelRatio(pr);
@@ -428,7 +441,7 @@ export class World3D {
     const tx = Math.round(f.cx / texel) * texel, tz = Math.round(f.cy / texel) * texel;
     this.sun.target.position.set(tx, 0, tz);
     this.sun.position.set(tx + dir.x * 1500, dir.y * 1500, tz + dir.z * 1500);
-    this.sun.castShadow = this.quality !== 'low';
+    this.sun.castShadow = this.quality !== 'low' && this.scale > 0.7;
 
     // locked districts are greyed out
     city.districts.forEach((d, i) => { U.uLocked.value[i + 1] = f.active.has(d.id) ? 0 : 1; });

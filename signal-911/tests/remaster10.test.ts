@@ -147,3 +147,13 @@ describe('remaster 10: the 3D city', () => {
     }
   });
 });
+
+import { speakable } from '../src/audio/speech';
+describe('remaster 10: natural speech', () => {
+  it('cleans lines up so a voice reads them like a person', () => {
+    expect(speakable("(sobbing) I— I can't find him! He's not — he's not breathing!!")).toBe("I, I can't find him! He's not, he's not breathing!");
+    expect(speakable('I SAID he is on the floor... please')).toBe('I said he is on the floor, please');
+    expect(speakable('Say again? [line breaking up]')).toBe('Say again?');
+    expect(speakable('(silence)')).toBe('');
+  });
+});
