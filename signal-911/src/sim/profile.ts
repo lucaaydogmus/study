@@ -127,7 +127,7 @@ export function serviceFleet(p: Profile): boolean {
 
 export function careerConfig(p: Profile, over: Partial<ShiftConfig> = {}): ShiftConfig {
   const rank = p.rank;
-  const rankRate = 0.8 + rank * 0.07;
+  const rankRate = 0.8 + rank * 0.055;
   const seed = (p.counters.seed + p.counters.shift * 7919) % 2 ** 31;
   const extras = rollExtras(seed, rank);
   const cfg = rollStoryline(baseConfig({
@@ -145,7 +145,7 @@ export interface ShiftResult {
   promotedTo?: number; unlocked: string[]; chapterCompleted?: string; log: string[]; newRank: number; objectivesMet: number;
 }
 
-const DIFF_MULT = { casual: 0.85, standard: 1, hard: 1.2, expert: 1.4 };
+const DIFF_MULT = { casual: 0.85, standard: 1, hard: 1.4, expert: 1.5 };
 
 export function computeResult(st: GameState): ShiftResult {
   const score = st.scoreBreakdown ?? computeScore(st);

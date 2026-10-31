@@ -56,6 +56,7 @@ describe('remaster 4', () => {
   it('staged medics hold short of an armed scene until police arrive', () => {
     const e = makeEngine(quiet, { rank: 3 });
     const inc = e.spawnIncident('domestic_disturbance', 'westres', { accuracy: 'exact' });
+    inc.growth = 0.05; // keep it from boiling over while we watch the staging
     answer(e, inc); locate(e, inc);
     const medic = Object.values(e.state.units).find((u) => u.service === 'medical' && u.status === 'AVAILABLE')!;
     e.dispatch(medic.id, inc.id);

@@ -279,7 +279,7 @@ export function FreePlayScreen() {
   const [surprises, setSurprises] = useState(true);
   const city = getCity();
   const toggle = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
-  const evs: Array<[CityEventType, string]> = [['storm', 'Thunderstorm'], ['blackout', 'Blackout'], ['flood', 'Flooding'], ['festival', 'Festival'], ['rush_hour', 'Rush hour'], ['industrial_fire', 'Industrial fire'], ['winter_storm', 'Winter storm'], ['heat_wave', 'Heat wave'], ['protest', 'Mass protest'], ['riot', 'Civil unrest'], ['marathon', 'City marathon'], ['transit_strike', 'Transit strike']];
+  const evs: Array<[CityEventType, string]> = [['storm', 'Thunderstorm'], ['blackout', 'Blackout'], ['flood', 'Flooding'], ['festival', 'Festival'], ['rush_hour', 'Rush hour'], ['industrial_fire', 'Industrial fire'], ['winter_storm', 'Winter storm'], ['heat_wave', 'Heat wave'], ['protest', 'Mass protest'], ['riot', 'Civil unrest'], ['marathon', 'City marathon'], ['transit_strike', 'Transit strike'], ['halloween', 'Halloween night']];
   return (
     <div className="screen">
       <header className="screen-head"><Btn kind="ghost" icon="chevL" onClick={() => go('modes')}>Back</Btn><h1>Free play</h1></header>

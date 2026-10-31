@@ -7,7 +7,7 @@ import { GameEngine, type EngineEvent } from './sim/engine';
 import {
   applyShift, careerConfig, computeResult, newProfile, setupFromProfile, temporarySetup, DEFAULT_SETTINGS, type Profile, type Settings, type ShiftResult,
 } from './sim/profile';
-import { CHAPTERS, SCENARIOS, TUTORIAL_CONFIG, baseConfig, ALL_DISTRICTS, dailyConfig, rollStoryline, rollSurprises, realistic } from './sim/scenarios';
+import { CHAPTERS, SCENARIOS, TUTORIAL_CONFIG, baseConfig, ALL_DISTRICTS, dailyConfig, rollStoryline, rollSurprises, realistic, withHalloween } from './sim/scenarios';
 import { evaluateAchievements, ACHIEVEMENT_BY_ID } from './sim/achievements';
 import { rollExtras } from './sim/extras';
 import { AiManager, aiApi } from './ai/aiClient';
@@ -62,7 +62,7 @@ function startAi(engine: GameEngine) {
 
 export const useApp = create<AppStore>((set, get) => ({
   screen: 'menu', back: [], hubTab: 'overview', profile: null, slot: 'auto', settings: DEFAULT_SETTINGS, saveList: [], hasShiftSnapshot: false,
-  brief: (s) => { realistic(s.config); set({ pending: s }); get().go('briefing'); },
+  brief: (s) => { realistic(s.config); if (s.kind === 'career' || s.kind === 'free' || s.kind === 'endless') withHalloween(s.config); set({ pending: s }); get().go('briefing'); },
   pending: null, setPending: (s) => set({ pending: s }), beginPending: () => { const s = get().pending; if (s) get().startSession(s); },
   newAchievements: [], aiActive: false,
   checkLiveAchievements: () => {

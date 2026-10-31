@@ -84,8 +84,55 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
 | `Tab` (in the call box) | Say the top suggested reply | `C` | Count compressions with a caller doing CPR |
 | Listen (call controls) | Listen to the background for where the caller is | Calm / Jobs tabs | Keep the caller together and give them something useful to do |
 | `Q` | Resources panel (tow, utilities, specialists, federal team, Guard EOD, mutual aid) | Hold `V` | Push-to-talk to the caller or the selected crew |
+| `K` | CCTV terminal: pick a camera, wait for the stream, pan with ← → | Click a camera on the map | Connect to it (while the CCTV terminal is open) |
 
 ## What is in the game
+
+### Remaster 11: one realistic mode, a camera network, and callers who are not simple
+
+- **One mode: Realistic.** There is no difficulty picker any more. Every shift except the tutorial has fewer
+  cooperative callers, more wrong addresses, shorter ring times, and no assists. That means no response plans,
+  no auto-classification, no suggested replies and no one-click locations.
+- **Faster escalation.** Once an incident has escalated, the next stage comes within about three minutes, and
+  usually sooner. The first stage comes within about five minutes. Nothing left unattended sits for more than
+  about thirteen minutes before it goes wrong. The old seven- and eight-minute waits between stages are gone.
+- **The CCTV terminal (`K`).** The city has about 90 cameras on poles. Fixed cameras look one way; dome cameras
+  (PTZ) pan and zoom. Some see in the dark (IR), others are nearly blind at night. Some are simply broken today,
+  and you only find out by trying them. Nothing is automatic:
+  1. Pick a camera by district and street, or click one on the map.
+  2. Wait a few seconds for the stream to connect.
+  3. Aim and zoom the camera.
+  4. Work out what you are looking at and click it to report it against an incident.
+
+  In 3D mode the feed is rendered live from the camera's position in the city, with sensor noise, IR, fog and
+  rain on the lens. The analytics only box moving people and vehicles. Smoke, wrecks and crowds you have to spot
+  yourself. Report the wrong scene and the incident points somewhere it isn't.
+- **Regular callers.** Doris, Mr Kroll, Tee, Rosa and Gerald ring about nothing most of the time. The CAD shows
+  their file, and it grows across your career. Now and then it is real. Send a regular to the non-emergency line
+  on the day it is real and it goes on the record.
+- **Third-party callers.** A child calling about a parent, or a neighbour at a locked door, cannot tell you if
+  the patient is breathing. Get them closer: a spare key, a look through the window, or "take the phone to
+  Mummy". Sometimes the parent is awake and takes over the call.
+- **Callers on the move.** A caller driving a sick passenger to hospital keeps moving. They report landmarks a
+  few seconds late ("we just went past Linden Park"). Tell them to pull over, or have the ambulance flag them
+  down.
+- **Thieves on foot.** Bag-snatch chases on foot. A runner is hard to see from a patrol car and easy to lose.
+  Sightings from passers-by come in late and rough, and a city camera that keeps him in frame keeps his
+  position live.
+- **Scene command.** Big structure fires with several companies on scene need an incident commander and
+  companies assigned to sectors: fire attack, ventilation, search, water supply and exposures. Leave sectors
+  empty or give a job to the wrong company and the whole fireground slows down.
+- **Storm cells.** In bad weather, storm cells form upwind and drift across the radar. Districts get a warning
+  before a cell arrives. Streets under a cell flood (routes adapt) and drain once it has passed.
+- **Crew stress.** Bad calls stay with the crews who were there, and the stress carries over between shifts.
+  Stressed crews work slower and fumble dispatches, and they ask to stand down. You can give them time out of
+  service, rotate in off-duty staff (overtime), or keep them working and live with the mistakes.
+- **Relayed calls.** A car's crash detection rings in through an operator with the exact location and nothing
+  else. An alarm company relays a fire alarm with no keyholder; usually it is dust in a detector, sometimes it
+  is not.
+- **Halloween night.** Shifts played on 31 October run on Halloween night: trick-or-treaters in dark costumes,
+  candles in paper decorations, a "man with a rifle" who turns out to be in costume, and eggings. You can also
+  pick it in free play.
 
 ### Remaster 10: a cinematic 3D city, crews you can talk to, and a city that works
 
@@ -265,7 +312,7 @@ Requires Node 18+. Best on a desktop browser at 1440×900 or larger (usable down
   colleagues on other calls, distant phones), and there are all-units attention tones, a MAYDAY alarm and a
   major-incident stinger.
 - **Escalation forecast** on every incident: whether it is getting worse, when the next stage hits, and what happens.
-- **Hard and expert mode** switch the assists off: no response plans, auto-classification, suggested replies, clickable
+- **Realistic mode** (formerly hard/expert) switches the assists off: no response plans, auto-classification, suggested replies, clickable
   addresses or one-click locations. You classify, pick units and type addresses yourself.
 
 ### Remaster 7: calls that talk back

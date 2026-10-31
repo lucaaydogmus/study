@@ -166,6 +166,8 @@ export interface Call {
   env?: string[]; listenedAt?: number; heardSounds?: string[];
   /** weak mobile signal: lines can break up */ badLine?: boolean;
   /** the last line that broke up, kept so 'say again' can repeat it */ lastGarbled?: import('./types').PendingLine | null;
+  /** relayed by a third party: a car's crash-detection service or an alarm company */
+  relay?: 'acn' | 'alarm';
 }
 export interface UnitFit { chassis: string; kits: string[]; livery: string; eff?: number; grip?: number; nickname?: string }
 /** a job the dispatcher gave the caller: it keeps them busy (and calmer) and helps the crews */
@@ -331,7 +333,7 @@ export interface OfficerRequest {
 }
 
 // ── City events / weather / config ──────────────────────────────────────────
-export type CityEventType = 'storm' | 'blackout' | 'flood' | 'festival' | 'rush_hour' | 'industrial_fire' | 'winter_storm' | 'heat_wave' | 'protest' | 'riot' | 'marathon' | 'transit_strike';
+export type CityEventType = 'storm' | 'blackout' | 'flood' | 'festival' | 'rush_hour' | 'industrial_fire' | 'winter_storm' | 'heat_wave' | 'protest' | 'riot' | 'marathon' | 'transit_strike' | 'halloween';
 export interface CityEvent {
   id: string; type: CityEventType; name: string; start: number; end: number; districts: string[];
   trafficMult: number; incidentMult: number; categoryBias: Partial<Record<Category, number>>;
@@ -438,6 +440,8 @@ export interface GameState {
   /** the CCTV terminal: which camera is streaming, and which cameras turned out to be dead */
   /** storm cells crossing the map, and when the next stressed crew may ask to stand down */
   storms?: import('./field').StormCell[]; nextStressAt?: number; floodEdges?: number[];
+  /** times of relayed calls (crash telematics, alarm companies) */
+  relayLog?: number[];
   /** regular callers who rang this shift */
   regularLog?: Array<{ id: string; real: boolean; at: number; incId: string; outcome?: string }>;
   cctv?: { link: import('./cctv').CctvLink | null; tried: Record<string, 'ok' | 'offline'>; tags: number; wrong: number };

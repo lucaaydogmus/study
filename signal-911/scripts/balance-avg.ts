@@ -3,6 +3,7 @@ import { TEMPLATE_BY_ID } from '../src/sim/content/templates';
 import { GameEngine, DT, recommendFor } from '../src/sim/engine';
 import { careerConfig, newProfile, setupFromProfile, computeResult } from '../src/sim/profile';
 import { rankForXp } from '../src/sim/progression';
+import { assignSector, sectorFit, setCommander } from '../src/sim/field';
 
 function play(rank: number, seed: number) {
   const p = newProfile('Bot', seed);
@@ -19,6 +20,8 @@ function play(rank: number, seed: number) {
         const inc = st.incidents[c.incidentId];
         const since = st.time - (c.answeredAt ?? st.time);
         if (c.lastGarbled && c.pending.length === 0) e.sayAgain(c.id);
+        if (inc.thirdParty && !inc.thirdParty.near && inc.thirdParty.tried === 0 && since > 4) e.getCloser(c.id);
+        if (inc.mover?.caller && !inc.mover.stopped && since > 12) e.pullOver(c.id);
         if (c.pending.length === 0 && c.transcript.length) {
           const order = ['address', 'landmark', 'injuries', 'fire', 'trapped', 'suspect', 'conscious', 'breathing', 'safe', 'promise'];
           const next = order.find((k) => !c.asked[k] && !(k === 'landmark' && inc.reportedNode !== null));
@@ -53,6 +56,19 @@ function play(rank: number, seed: number) {
       }
     }
     for (const u of e.overdueChecks()) if (st.time - u.checkDue! > 6) e.statusCheck(u.id);
+    // a fire officer takes command and gives the companies jobs
+    for (const inc of Object.values(st.incidents)) {
+      if (!inc.command || ['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
+      const here = e.onScene(inc).filter((u) => u.service === 'fire');
+      const used = new Set(Object.values(inc.command.sectors));
+      for (const s of ['attack', 'vent', 'search', 'water'] as const) {
+        if (inc.command.sectors[s] && here.some((u) => u.id === inc.command!.sectors[s])) continue;
+        const pick = here.filter((u) => !used.has(u.id) && u.id !== inc.command.ic).sort((a, b) => sectorFit(s, b) - sectorFit(s, a))[0];
+        if (pick) { assignSector(e, inc.id, s, pick.id); used.add(pick.id); }
+      }
+      if (!inc.command.ic && here.length) setCommander(e, inc.id, (here.find((u) => !used.has(u.id)) ?? here[0]).id);
+    }
+    for (const d of st.decisions ?? []) if (!d.chosen && d.kind === 'stress' && st.time - d.at > 3) e.decide(d.id, d.options.some((o) => o.id === 'rotate') ? 'rotate' : 'rest');
     // non-emergency callers get sent to the non-emergency line once it is clear what they want
     for (const c of Object.values(st.calls)) if (c.state === 'active' && st.time - (c.answeredAt ?? st.time) > 8 && TEMPLATE_BY_ID[st.incidents[c.incidentId].templateId]?.nonEmergency) e.redirectCall(c.id);
     // crews asking for information get the caller's answer when there is one

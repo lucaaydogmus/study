@@ -33,7 +33,9 @@ export function commandTick(e: GameEngine, inc: Incident) {
   const big = inc.severity >= 4 || (inc.severity >= 3 && inc.templateId !== 'kitchen_fire');
   const crews = fireCrews(e, inc);
   if (!big || crews.length < 2) return;
-  inc.command = { ic: null, sectors: {}, at: e.state.time };
+  // the first-in engine has already stretched a line: that much is done for you
+  const first = crews.find((x) => sectorFit('attack', x) >= 0.9);
+  inc.command = { ic: null, sectors: first ? { attack: first.id } : {}, at: e.state.time };
   const u = crews[0];
   e.radio(u.spoken, `Dispatch, ${u.spoken}. Working fire, ${addressOf(e.city, inc.nodeId)}. Multiple companies on scene — we need command established and crews assigned.`, 'alert', u.id, inc.id);
   e.notify(`Scene command needed at ${inc.label}: name an incident commander and give crews their jobs`, 'warn', inc.id);
@@ -81,7 +83,7 @@ export function assignSector(e: GameEngine, incId: string, sector: Sector, unitI
 }
 
 // ── Storm cells ─────────────────────────────────────────────────────────────
-export interface StormCell { id: number; x: number; y: number; vx: number; vy: number; r: number; until: number; power: number; flooded: number[]; warned: string[] }
+export interface StormCell { id: number; x: number; y: number; vx: number; vy: number; r: number; until: number; power: number; flooded: number[]; warned: string[]; spawned?: number }
 /** heavy weather comes in cells that drift across the map, flooding low streets under them */
 export function stormTick(e: GameEngine) {
   const st = e.state, city = e.city;
@@ -117,10 +119,10 @@ export function stormTick(e: GameEngine) {
     const before = new Set(c.flooded);
     if (now.size !== before.size || [...now].some((x) => !before.has(x))) { c.flooded = [...now]; changed = true; }
     // the odd flooded basement or stranded car under the cell
-    if (hash(Math.floor(st.time / 6), c.id) < 0.03 * c.power && st.time < st.config.durationSec - 60) {
+    if ((c.spawned ?? 0) < 2 && hash(Math.floor(st.time / 6), c.id) < 0.012 * c.power && st.time < st.config.durationSec - 60) {
       const n = city.nearestNode(c.x, c.y);
       const dist = city.nodes[n].district;
-      if (st.config.districts.includes(dist) && Math.hypot(city.nodes[n].x - c.x, city.nodes[n].y - c.y) < c.r * 0.6) e.spawnIncident(hash(st.time, 3) < 0.5 ? 'flooded_basement' : 'power_line_down', dist, { nodeId: n });
+      if (st.config.districts.includes(dist) && Math.hypot(city.nodes[n].x - c.x, city.nodes[n].y - c.y) < c.r * 0.6 && (c.spawned = (c.spawned ?? 0) + 1)) e.spawnIncident(hash(st.time, 3) < 0.5 ? 'flooded_basement' : 'power_line_down', dist, { nodeId: n });
     }
   }
   const gone = cells.filter((c) => st.time >= c.until || c.x > 2600 || c.y < -400 || c.y > 2600);

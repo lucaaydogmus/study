@@ -243,3 +243,40 @@ export function pullOver(e: GameEngine, callId: string): { ok: boolean; reason?:
   stopCar(e, inc, 'told');
   return { ok: true };
 }
+
+// ── Relayed calls: the car that rings for its driver, the alarm company ────
+/** automated crash notifications and alarm-company operators: exact locations, almost no detail */
+export function relaysTick(e: GameEngine) {
+  const st = e.state;
+  if (st.config.mode === 'tutorial' || st.config.script || st.time < 120 || st.time > st.config.durationSec - 90) return;
+  const n = (st.relayLog ??= []);
+  if (n.length >= 3 || (n.length && st.time - n[n.length - 1] < 200)) return;
+  if (hash(Math.floor(st.time / 20), (st.seed % 7919) + 5) > 0.035) return;
+  const dists = st.config.districts;
+  const district = dists[Math.floor(hash(Math.floor(st.time), 21) * dists.length)];
+  n.push(st.time);
+  if (hash(Math.floor(st.time), 22) < 0.5) {
+    // a car's telematics box detected a crash and an operator relays it
+    const inc = e.spawnIncident('collision_injury', district, { archetype: 'professional', accuracy: 'exact' });
+    const where = addressOf(e.city, inc.nodeId);
+    inc.openOverride = [`This is an automated crash notification relayed by the Velora Connect operations centre. One of our vehicles reported a severe frontal impact at ${where} forty seconds ago. Airbags deployed. Our operator spoke into the cabin and got no reply.`];
+    inc.callerName = 'Velora Connect (ACN)'; inc.callerProfile.name = inc.callerName;
+    const call = inc.callId ? st.calls[inc.callId] : null;
+    if (call) { call.profile.name = inc.callerName; call.relay = 'acn'; }
+  } else {
+    const real = hash(Math.floor(st.time), 23) < 0.25;
+    const inc = e.spawnIncident(real ? 'electrical_fire' : 'alarm_relay', district, { archetype: 'professional', accuracy: 'exact' });
+    const where = addressOf(e.city, inc.nodeId);
+    inc.openOverride = [real ? `Sentinel Alarms central station, operator 4471. We have a fire alarm at ${where} — two zones now, smoke and heat. Keyholder is not answering.` : `Sentinel Alarms central station, operator 4471. Fire alarm activation at ${where}, one zone, smoke detector. Keyholder is not answering. Can you send someone to check?`];
+    inc.callerName = 'Sentinel Alarms'; inc.callerProfile.name = inc.callerName;
+    const call = inc.callId ? st.calls[inc.callId] : null;
+    if (call) { call.profile.name = inc.callerName; call.relay = 'alarm'; }
+  }
+}
+/** an operator relaying a machine's signal knows the address and nothing else */
+export function relayBlock(call: Call, intent: Intent): string | null {
+  if (!call.relay || ['address', 'landmark', 'callback', 'name', 'district', 'thanks', 'repeat', 'calm', 'stay', 'promise'].includes(intent)) return null;
+  return call.relay === 'acn'
+    ? ["I only have what the vehicle reports — frontal impact, airbags out, one occupant registered. I can't see them.", "No reply from the cabin. I can try the cabin microphone again, but that's all I've got.", "The car doesn't tell us that, I'm afraid. Just the impact data and the location."][Object.keys(call.asked).length % 3]
+    : ["All I have is the panel signal, I'm afraid. Nobody's on site.", "No keyholder yet. We're still trying the numbers on the account.", "The panel shows the zone, that's all. Zone 3, ground floor."][Object.keys(call.asked).length % 3];
+}

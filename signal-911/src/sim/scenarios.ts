@@ -17,6 +17,14 @@ export function baseConfig(p: Partial2): ShiftConfig {
 /** the game has one mode: realistic. Only the tutorial is gentler. */
 export const REALISTIC: Difficulty = 'hard';
 export function realistic(cfg: ShiftConfig): ShiftConfig { if (cfg.mode !== 'tutorial') cfg.difficulty = REALISTIC; return cfg; }
+/** it is Halloween today: the evening shift gets trick-or-treaters, candles and costumes */
+export const isHalloween = (d = new Date()) => d.getMonth() === 9 && d.getDate() === 31;
+export function withHalloween(cfg: ShiftConfig): ShiftConfig {
+  if (!isHalloween() || cfg.mode === 'tutorial' || cfg.events.some((e) => e.type === 'halloween')) return cfg;
+  cfg.events = [...cfg.events, { type: 'halloween', at: 20, duration: Math.max(240, cfg.durationSec - 60) }];
+  if (cfg.mode === 'career') cfg.startHour = 18.5;
+  return cfg;
+}
 const obj = (id: string, text: string, kind: string, target: number, optional = false): Objective => ({ id, text, kind, target, optional });
 
 export interface Chapter {

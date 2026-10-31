@@ -12,7 +12,7 @@ import { EVENT_DEFS, WEATHER_SPEED, WEATHER_TRAFFIC, WEATHER_LABEL, nextWeather 
 import { numWord, UNIT_TYPE_BY_ID, makeUnit, isAir, AIR_SPEED } from './fleet';
 import { cameraList, cctvTracking, type Camera } from './cctv';
 import { addStress, commandFactor, commandTick, decideStress, stormTick, stressFactor, stressTick } from './field';
-import { getCloser, landmarkNear, pullOver, regularOnAnswer, regularOutcome, regularsTick, setupThirdParty, thirdPartyBlock, thirdPartyTick, updateMovingCaller } from './callers';
+import { getCloser, landmarkNear, pullOver, relayBlock, relaysTick, regularOnAnswer, regularOutcome, regularsTick, setupThirdParty, thirdPartyBlock, thirdPartyTick, updateMovingCaller } from './callers';
 import { applyFit, KIT_BY_ID } from './garage';
 import { makeRequest, requestText, replyText, returnText, searchRecords, CHECK_LABEL, DANGEROUS, type RecordQuery } from './records';
 import { speak } from './voices';
@@ -443,6 +443,7 @@ export class GameEngine {
     this.stationWalkIns();
     this.hospitalCalls();
     regularsTick(this);
+    relaysTick(this);
     stormTick(this);
     stressTick(this);
     this.updateStatusChecks();
@@ -735,6 +736,7 @@ export class GameEngine {
         if (cfg.hideIntense && tpl.intense) continue;
         if (tpl.id === 'wrong_jurisdiction' && st.rank < 1) continue;
         if (tpl.spawnOnly) continue;
+        if (tpl.event && !st.events.some((ev) => ev.active && ev.type === tpl.event)) continue;
         if (tpl.major && (majorOpen || cfg.forced?.length)) continue;
         let w = 0;
         for (const tag of d.tags) w += tpl.w[tag] ?? 0;
@@ -821,9 +823,14 @@ export class GameEngine {
       // a caller driving their patient to hospital: aim for one well across town
       const n = this.city.nodes[nodeId];
       const hs = this.city.landmarks.filter((l) => l.kind === 'hospital').map((l) => l.nodeId).sort((a, b) => Math.hypot(this.city.nodes[b].x - n.x, this.city.nodes[b].y - n.y) - Math.hypot(this.city.nodes[a].x - n.x, this.city.nodes[a].y - n.y));
+      profile.callerIdType = 'mobile';
       inc.mover = { x: n.x, y: n.y, prev: nodeId, next: -1, came: -1, speed: 4.2, tracked: false, trail: [], startAt: st.time + 2, lastUpdate: st.time, lastSighting: st.time, contact: 0, heading: 0, caller: true, dest: hs[Math.min(1, hs.length - 1)] ?? nodeId };
     }
     setupThirdParty(inc, archetypeId, tpl.patient);
+    // the first stage does not hang about either
+    if (tpl.escalate?.length && !src && inc.growth > 0) inc.growth = Math.max(inc.growth, (100 - inc.threat) / 300);
+    // nothing real sits for a quarter of an hour: unattended, it goes wrong within about thirteen minutes
+    else if (!src && inc.growth > 0 && tpl.requires.length && !tpl.nonEmergency && tpl.threat[1] >= 0.05) inc.growth = Math.max(inc.growth, (100 - inc.threat) / 780);
     // big incidents draw more than one caller
     const dupable = !src && !opts.tutorial && !tpl.pursuit && !tpl.outside && sev >= 3 && (tpl.category === 'fire' || tpl.id.startsWith('collision') || ['robbery', 'public_disturbance', 'domestic_disturbance', 'water_rescue', 'industrial_accident'].includes(tpl.id));
     if (tpl.dupes && !src && !opts.tutorial) {
@@ -1147,7 +1154,7 @@ export class GameEngine {
     if (!input.intent && /\b(say (that )?again|repeat (that|yourself)|breaking up|didn'?t (catch|get) (that|you)|come again|you('re| are) cutting out|bad line)\b/i.test(text)) { this.sayAgain(callId, text); return; }
     const intent: Intent = input.intent ?? classifyIntent(text);
     this.addTranscript(call, 'DISPATCHER', text);
-    const blocked = thirdPartyBlock(inc, intent);
+    const blocked = thirdPartyBlock(inc, intent) ?? relayBlock(call, intent);
     if (blocked) { call.asked[intent] = (call.asked[intent] ?? 0) + 1; call.pending.push({ at: Math.max(st.time, ...call.pending.map((p) => p.at)) + 1.6, text: blocked }); return; }
     const env = this.env(call);
     const r = replyTo(env, intent, text);

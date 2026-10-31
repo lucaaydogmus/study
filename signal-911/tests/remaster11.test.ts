@@ -182,3 +182,30 @@ describe('remaster 11: the fireground, the weather and the crews', () => {
     }
   });
 });
+
+import { relaysTick } from '../src/sim/callers';
+import { EVENT_DEFS } from '../src/sim/events';
+describe('remaster 11: relayed calls and Halloween', () => {
+  it('a car rings in its own crash: exact location, no detail', () => {
+    const e = makeEngine({ ...quiet, seed: 77, durationSec: 4000 });
+    e.state.config.script = undefined; e.state.config.incidentRate = 0;
+    for (let t = 120; t < 3800 && !(e.state.relayLog ?? []).length; t += 1) { e.state.time = t; relaysTick(e); }
+    expect((e.state.relayLog ?? []).length).toBe(1);
+    const call = Object.values(e.state.calls).find((c) => c.relay)!;
+    e.answerCall(call.id); run(e, 4);
+    expect(call.transcript.some((l) => l.who === 'CALLER' && /Velora|Sentinel/.test(l.text))).toBe(true);
+    e.ask(call.id, { intent: 'breathing' }); run(e, 4);
+    expect(call.transcript.filter((l) => l.who === 'CALLER').pop()!.text).toMatch(/vehicle|panel|car|keyholder|cabin/i);
+  });
+  it('Halloween night brings its own calls', () => {
+    expect(EVENT_DEFS.halloween.name).toMatch(/Halloween/);
+    const e = makeEngine({ ...quiet, incidentRate: 1, events: [{ type: 'halloween', at: 1, duration: 600 }] });
+    e.state.config.script = undefined;
+    run(e, 3);
+    const seen = new Set<string>();
+    for (let k = 0; k < 400; k++) { const c = e.pickIncident(); if (c) seen.add(c.tpl.id); }
+    expect(['trick_or_treat_struck', 'costume_weapon', 'candle_fire', 'egging_prank'].some((id) => seen.has(id))).toBe(true);
+    const plain = makeEngine({ ...quiet, incidentRate: 1 });
+    for (let k = 0; k < 400; k++) { const c = plain.pickIncident(); expect(c?.tpl.event).toBeUndefined(); }
+  });
+});

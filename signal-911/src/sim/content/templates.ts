@@ -31,6 +31,7 @@ export interface Template {
   /** not a 911 emergency: the right move is to send the caller to the non-emergency line or press office */ nonEmergency?: boolean;
   /** where on the map it happens */ nodeHint?: 'runway' | 'highway' | 'rail' | 'water' | 'pool' | 'stadium' | 'mall' | 'transit' | 'bank';
   /** seconds until something unstoppable happens (an aircraft landing); responders must be in place first */ deadline?: number;
+  /** only happens while this city event is on */ event?: string;
   /** the caller is driving the patient somewhere */ movingCaller?: boolean; /** a pursuit on foot */ foot?: boolean;
   pursuitSpeed?: number; /** extra callers that will ring about the same event */ dupes?: number;
   /** a major incident: rare in random rotation and never two at once */ major?: boolean;
@@ -1357,6 +1358,65 @@ export const TEMPLATES: Template[] = [
     say: { suspect: ['Grey hoodie, black trackies, young, quick. Red handbag under his arm.', 'Skinny bloke, grey hood up. He had the red bag.'] },
     scene: 'Suspect on foot — officers searching.', ambience: 'crowd',
     resolved: 'Suspect caught and the bag returned.', failed: 'The thief got away.',
+  }),
+  // ── Halloween night ───────────────────────────────────────────────────────
+  base({
+    id: 'trick_or_treat_struck', category: 'medical', label: 'Child struck by car', hint: 'medical_critical', cls: 'medical_critical', w: { residential: 1, suburb: 1.2 }, event: 'halloween',
+    intense: true, sev: [3, 4], patient: 'child', transport: true, lethal: true,
+    truth: { injured: 1, conscious: true, breathing: true, safe: false, people: 1, vehicles: 1, cause: 'a child in a dark costume stepped out between parked cars' }, reported: ['injured', 'vehicles'],
+    requires: [R('als'), R('transport'), R('patrol')], threat: [32, 0.5, 1.6], work: 34,
+    escalate: [{ reqs: [], text: 'The child stops responding', say: ["{He}'s gone all floppy — {he}'s not crying any more!"], sev: 1 }],
+    archetypes: [['panicked_parent', 6], ['witness', 3]],
+    open: ["A car just hit a little kid — {he}'s dressed as a bat, all in black, the driver never saw {him}!", "My son! A car hit my son — we were trick-or-treating — please!"],
+    cause: ["{He} ran out between two parked cars to get to the next house.", "The costume was all black. The driver just didn't see {him}."],
+    scene: 'Paediatric pedestrian, conscious, leg injury. Packaging for transport.', ambience: 'traffic',
+    resolved: 'The child was treated and taken to the children’s hospital.', failed: 'The child’s injuries were too severe.',
+  }),
+  base({
+    id: 'costume_weapon', category: 'police', label: 'Man with a gun (?)', hint: 'crime_progress', cls: 'crime_progress', w: { commercial: 1, dense: 1.2, campus: 1.4 }, event: 'halloween',
+    sev: [3, 3],
+    truth: { suspect: true, weapon: 'a realistic toy rifle — part of a costume', suspect_desc: 'a man in camouflage and a skull mask carrying a rifle', people: 1, injured: 0, safe: true, cause: 'a partygoer dressed as a soldier' }, reported: ['weapon', 'suspect'], unsure: ['weapon'],
+    requires: [R('patrol', 2)], threat: [24, 0.35, 1.3], work: 12,
+    archetypes: [['witness', 5], ['shopkeeper', 2], ['calm_serious', 1]],
+    open: ["There's a man outside the store with a gun — a rifle — and a skull mask! He's just walking down the street with it!", "Someone in a mask with an assault rifle just went into the bar on the corner!"],
+    cause: ["He's not pointing it at anyone. He's just... carrying it. With a mask on.", "I didn't hear any shots. People are laughing? I don't know!"],
+    scene: 'Subject detained at gunpoint — the rifle is a plastic costume prop. Words of advice given.', ambience: 'crowd',
+    resolved: 'The “rifle” was a costume prop. Nobody hurt.', failed: 'A scared crowd stampeded before officers arrived.',
+  }),
+  base({
+    id: 'candle_fire', category: 'fire', label: 'Decorations on fire', hint: 'fire_structure', cls: 'fire_structure', w: { residential: 1.2, suburb: 1.2, historic: 1 }, event: 'halloween',
+    sev: [2, 3],
+    truth: { fire: true, smoke: true, trapped: 0, people: 3, injured: 0, safe: false, cause: 'a pumpkin candle set paper decorations on the porch alight' }, reported: ['fire'],
+    requires: [R('fire_suppression')], threat: [26, 0.5, 1.5], work: 30,
+    escalate: [{ reqs: [R('fire_suppression', 2)], text: 'Fire spreads from the porch into the house', say: ["It's in the front room now — the curtains are going up!"], sev: 1 }],
+    archetypes: [['panicked_parent', 3], ['worried_neighbor', 3], ['witness', 2]],
+    open: ["The pumpkin's set the porch on fire — the cobweb stuff went up like paper!", "Our Halloween decorations are on fire, it's spreading up the porch roof!"],
+    cause: ["A candle in the jack-o'-lantern. The fake cobwebs caught.", "Someone knocked a candle into the hay bales by the door."],
+    scene: 'Porch fire, extending to the eaves. Attack line in place.', ambience: 'wind',
+    resolved: 'The porch fire was put out before it took the house.', failed: 'The fire spread into the house.',
+  }),
+  base({
+    id: 'egging_prank', category: 'unusual', label: 'Kids throwing eggs', hint: 'no_response', cls: 'no_response', w: { residential: 1, suburb: 1.3 }, event: 'halloween',
+    sev: [1, 1], nonEmergency: true,
+    truth: { people: 4, injured: 0, safe: true, weapon: false, suspect: true, false_alarm: true, cause: 'teenagers egging houses' }, reported: [],
+    requires: [], threat: [1, 0.01, 1.0], work: 10,
+    archetypes: [['angry_motorist', 3], ['confused_elderly', 2], ['worried_neighbor', 2]],
+    open: ["There's a gang of kids throwing eggs at my house! And toilet paper in my tree! I want someone here NOW.", "Teenagers in masks keep ringing my bell and running off. Third time! It's harassment!"],
+    cause: ["Nobody's hurt. My car's covered in egg though.", "They're just laughing. Little monsters."],
+    scene: 'Egg on windows. Kids long gone.', ambience: 'outdoor',
+    resolved: 'The caller was given the non-emergency number.', failed: 'An egging tied up the 911 line on Halloween.',
+  }),
+  // ── relayed calls: an alarm company operator ───────────────────────────────
+  base({
+    id: 'alarm_relay', category: 'fire', label: 'Fire alarm activation', hint: 'fire_structure', cls: 'fire_structure', w: {}, spawnOnly: true,
+    sev: [1, 2],
+    truth: { fire: false, smoke: false, people: 0, injured: 0, safe: true, false_alarm: true, cause: 'a detector head in the server room tripped — dust' }, reported: [],
+    requires: [], threat: [1, 0.01, 1.0], work: 10,
+    archetypes: [['professional', 1]],
+    open: ['This is Sentinel Alarms central station.'],
+    cause: ["We've only got the panel signal. No keyholder answering yet.", "Zone 3, smoke detector. No secondary activation."],
+    scene: 'Alarm panel reset — dust in a detector head. No fire.', ambience: 'quiet',
+    resolved: 'False alarm — the panel was reset.', failed: 'Nobody checked the alarm.',
   }),
 ];
 
