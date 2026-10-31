@@ -41,6 +41,8 @@ export interface Profile {
   flags: { tutorialDone: boolean; difficulty: ShiftConfig['difficulty']; duration: number };
   achievements: Record<string, number>;
   daily: Record<string, { score: number; grade: string }>;
+  /** regular callers this centre knows, and what happened every time they rang */
+  regulars?: Record<string, { calls: number; real: number; lastShift: number; log: string[] }>;
 }
 
 const emptyLifetime = (): Lifetime => ({ shifts: 0, calls: 0, answered: 0, resolved: 0, failed: 0, casualties: 0, livesHelped: 0, falseAlarms: 0, moneyEarned: 0, responseSum: 0, responseN: 0, bestScore: 0, bestGrade: '-', playSeconds: 0, dispatches: 0, merges: 0, pursuits: 0, verifies: 0, gradeA: 0, calmed: 0, bestStreak: 0, contracts: 0 });
@@ -131,7 +133,7 @@ export function careerConfig(p: Profile, over: Partial<ShiftConfig> = {}): Shift
   const cfg = rollStoryline(baseConfig({
     mode: 'career', title: `Shift ${p.counters.shift}`, briefing: `${rankDef(rank).title} — routine shift`, difficulty: p.flags.difficulty, durationSec: p.flags.duration,
     districts: unlockedDistricts(rank), incidentRate: rankRate, startHour: [8, 12, 16, 20, 2][p.counters.shift % 5], weather: (['clear', 'clear', 'rain', 'clear', 'fog', 'heat', 'clear'] as const)[p.counters.shift % 7],
-    seed, modifiers: extras.modifiers, contracts: extras.contracts,
+    seed, modifiers: extras.modifiers, contracts: extras.contracts, regulars: p.regulars ? JSON.parse(JSON.stringify(p.regulars)) : {},
     ...over,
   }), rank, seed);
   // chapters are handcrafted; ordinary shifts can go sideways at any moment
@@ -196,6 +198,12 @@ export function applyShift(p: Profile, st: GameState): ShiftResult {
   p.xp += res.xp;
   // wear and tear carries over to the next shift
   for (const u of p.units) { const live = st.units[u.id]; if (live && live.condition !== undefined) u.condition = Math.round(live.condition); }
+  // the regulars' file grows
+  for (const r of st.regularLog ?? []) {
+    const rec = ((p.regulars ??= {})[r.id] ??= { calls: 0, real: 0, lastShift: 0, log: [] });
+    rec.calls++; if (r.real) rec.real++; rec.lastShift = p.counters.shift;
+    rec.log.push(`shift ${p.counters.shift}: ${r.outcome ?? (r.real ? 'a real emergency' : 'nothing to it')}`); rec.log = rec.log.slice(-6);
+  }
   p.reputation = Math.max(0, Math.min(100, p.reputation + res.repDelta));
   p.rank = rankForXp(p.xp);
   res.newRank = p.rank;

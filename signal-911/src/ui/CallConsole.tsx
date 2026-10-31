@@ -241,6 +241,7 @@ export function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngi
             ))}</div>
           )}
         </div>
+        <SpecialCall engine={engine} call={call} inc={inc} />
         <div className="callctl">
           <Btn size="sm" kind="danger" icon="phoneoff" onClick={() => { engine.endCall(call.id); bump(); }} title="End call (E)">End</Btn>
           <Btn size="sm" icon="hold" onClick={() => { engine.holdCall(call.id); bump(); }} title="Hold call (H)">Hold</Btn>
@@ -254,6 +255,24 @@ export function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngi
         </div>
         {onHold.length > 0 && <div className="small muted">On hold: {onHold.map((c) => c.profile.name).join(', ')}</div>}
       </div>
+    </div>
+  );
+}
+
+/** callers who need handling differently: a regular on file, someone calling for another person, a driver on the move */
+function SpecialCall({ engine, call, inc }: { engine: GameEngine; call: Call; inc: Incident }) {
+  const bump = useApp((s) => s.bump);
+  const tp = inc.thirdParty, mv = inc.mover?.caller ? inc.mover : null;
+  const reg = inc.regular ? engine.state.config.regulars?.[inc.regular.id] : null;
+  if (!inc.regular && !tp && !mv) return null;
+  const act = (r: { ok: boolean; reason?: string }) => { if (!r.ok) { audio.error(); useApp.getState().showToast(r.reason ?? 'Not possible', 'warn'); } else audio.click(); bump(); };
+  return (
+    <div className="specialcall">
+      {inc.regular && <div className="sc-row"><span className="sc-tag">KNOWN CALLER</span><span>{inc.callerName}{reg ? ` · ${reg.calls} previous call${reg.calls === 1 ? '' : 's'}${reg.real ? ` (${reg.real} real)` : ''}` : ' · on file'} — <i>don't assume</i></span></div>}
+      {tp && <div className="sc-row"><span className="sc-tag warn">THIRD PARTY</span><span>{tp.near ? (tp.kind === 'door' ? 'Caller is now with the patient.' : `The child is with ${tp.rel}.`) : tp.kind === 'door' ? (tp.window ? 'Can see the patient through a window — the door is still locked.' : 'Caller is outside a locked door and cannot see the patient.') : `A child calling about ${tp.rel}. They are not with them.`}</span>
+        {!tp.near && <Btn size="sm" kind="primary" disabled={tp.tried >= 2} onClick={() => act(engine.getCloser(call.id))}>{tp.kind === 'door' ? 'Can they get in?' : `Take the phone to ${tp.rel}`}</Btn>}</div>}
+      {mv && <div className="sc-row"><span className="sc-tag bad">ON THE MOVE</span><span>{mv.stopped ? 'The car has stopped — confirm where.' : 'The caller is driving. Every location they give you is already behind them.'}</span>
+        {!mv.stopped && <Btn size="sm" kind="primary" onClick={() => act(engine.pullOver(call.id))}>Tell them to pull over</Btn>}</div>}
     </div>
   );
 }

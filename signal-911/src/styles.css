@@ -884,3 +884,9 @@ button.hl.loc.bad { color: #8a96a3; text-decoration: line-through; background: n
 .ressum .small { line-height: 1.35; }
 @media (max-width: 900px) { .rp-body { grid-template-columns: 1fr; } .rp-groups { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); } }
 .voicecheck { margin: 2px 0 10px; } .voicecheck .btnrow { margin-top: 4px; }
+
+.specialcall { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; margin: 4px 0; border: 1px solid #2c3846; border-radius: 8px; background: #0f151c; font-size: 12px; }
+.specialcall .sc-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.specialcall .sc-row > span:nth-child(2) { flex: 1; min-width: 160px; color: var(--text2); }
+.sc-tag { font-size: 9.5px; font-weight: 800; letter-spacing: .06em; padding: 1px 6px; border-radius: 4px; background: #16283a; color: #9fc7ea; }
+.sc-tag.warn { background: #3a2c12; color: #f0c070; } .sc-tag.bad { background: #3a1616; color: #ffb0b0; }

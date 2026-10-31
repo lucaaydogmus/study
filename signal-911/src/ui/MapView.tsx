@@ -685,11 +685,17 @@ export function MapView(props: MapProps) {
           for (let i = 1; i < m.trail.length; i++) { const a = S(m.trail[i - 1].x, m.trail[i - 1].y), b = S(m.trail[i].x, m.trail[i].y); ctx.strokeStyle = `rgba(240,160,70,${(i / m.trail.length) * 0.6})`; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
         }
         const p = S(m.x, m.y);
-        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(m.heading);
-        ctx.fillStyle = 'rgba(0,0,0,0.5)'; roundRect(ctx, -7, -2.5, 15, 8, 2); ctx.fill();
-        ctx.fillStyle = '#b8bcc4'; roundRect(ctx, -7.5, -4, 15, 8, 2.5); ctx.fill();
-        ctx.fillStyle = '#2a3038'; ctx.fillRect(-1.5, -3, 5, 6);
-        ctx.restore();
+        if (m.foot) {
+          // a running figure
+          ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.beginPath(); ctx.ellipse(p.x + 1, p.y + 3, 4, 2, 0, 0, 7); ctx.fill();
+          ctx.fillStyle = '#9aa3ad'; ctx.fillRect(p.x - 2, p.y - 6, 4, 7); ctx.beginPath(); ctx.arc(p.x, p.y - 8, 2.3, 0, 7); ctx.fill();
+        } else {
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(m.heading);
+          ctx.fillStyle = 'rgba(0,0,0,0.5)'; roundRect(ctx, -7, -2.5, 15, 8, 2); ctx.fill();
+          ctx.fillStyle = '#b8bcc4'; roundRect(ctx, -7.5, -4, 15, 8, 2.5); ctx.fill();
+          ctx.fillStyle = '#2a3038'; ctx.fillRect(-1.5, -3, 5, 6);
+          ctx.restore();
+        }
         const blink = motion ? (Math.floor(now / 260) % 2 === 0) : true;
         ctx.strokeStyle = blink ? '#f0a046' : 'rgba(240,160,70,0.4)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, 13, 0, 7); ctx.stroke();
         ctx.font = '800 9px Inter, system-ui, sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,18,0.85)'; ctx.strokeText('SUSPECT', p.x, p.y - 20); ctx.fillStyle = '#f0b060'; ctx.fillText('SUSPECT', p.x, p.y - 20);

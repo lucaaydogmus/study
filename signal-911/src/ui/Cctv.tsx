@@ -103,15 +103,15 @@ export function CctvConsole({ engine, onClose }: { engine: GameEngine; onClose: 
             </select>
             {link && <Btn size="sm" kind="ghost" onClick={() => { cctvDisconnect(engine); tick((x) => x + 1); }}>Drop</Btn>}
           </div>
-          <div className={`cctvc-msg ${msg.tone}`}>{msg.text}</div>
-          <div className="muted small cctvc-hint">Click something in the picture to report it. Fixed cameras only look one way; domes (PTZ) pan and zoom. Cameras without IR are nearly blind after dark.</div>
+          <div className={`cctvc-msg ${v?.state === 'nosignal' ? 'warn' : msg.tone}`}>{v?.state === 'connecting' ? `Connecting to ${v.cam.id}…` : v?.state === 'nosignal' ? `No signal from ${v.cam.id}. It is down today — try another camera.` : msg.text}</div>
+          <div className="muted small cctvc-hint">Click what you see in the picture to report it — smoke, a wreck, a crowd, a person running. Fixed cameras only look one way; domes (PTZ) pan and zoom. Cameras without IR are nearly blind after dark.</div>
         </div>
       </div>
     </div>
   );
 }
 
-const SIZE: Record<string, [number, number]> = { incident: [3.2, 3.2], unit: [1.6, 1.2], vehicle: [1.4, 1.0], suspect: [0.35, 0.95], street: [0.8, 0.9] };
+const SIZE: Record<string, [number, number]> = { incident: [4.5, 6], unit: [1.6, 1.2], vehicle: [1.4, 1.0], suspect: [0.35, 0.95], street: [0.8, 0.9] };
 /** paint one frame of the feed; returns the analytics boxes for clicks */
 function drawFeed(ctx: CanvasRenderingContext2D, engine: GameEngine, v: CctvView | null, now: number, use3d: boolean): Box[] {
   const st = engine.state;
@@ -161,28 +161,55 @@ function drawFeed(ctx: CanvasRenderingContext2D, engine: GameEngine, v: CctvView
   const vg = ctx.createRadialGradient(FW / 2, FH / 2, FH * 0.3, FW / 2, FH / 2, FW * 0.62); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.55)');
   ctx.fillStyle = vg; ctx.fillRect(0, 0, FW, FH);
   ctx.fillStyle = 'rgba(0,0,0,0.12)'; for (let y = 0; y < FH; y += 3) ctx.fillRect(0, y, FW, 1);
-  // analytics boxes over moving objects and anything that stands out
+  // the scene itself: smoke and wrecks are in the 3D city; crowds and anything else are drawn in
+  if (v.state === 'live') for (const det of v.detections) {
+    if (det.kind !== 'incident') continue;
+    const a = proj(det.x, det.y, 0), t = proj(det.x, det.y, 1);
+    if (!a.ok) continue;
+    const s = Math.max(2, Math.abs(a.y - t.y));
+    const fire = /Smoke|haze|burning/i.test(det.label);
+    if (!use3d || !w3 || !fire && !/Vehicles/.test(det.label)) sceneGlyph(ctx, a.x, a.y, s, det.label, now, v.ir || v.night);
+  }
+  // camera analytics: only boxes things that move (people and vehicles); everything else you have to spot yourself
   if (v.state === 'live') for (const det of v.detections) {
     const [sw, sh] = SIZE[det.kind] ?? [1, 1];
     const a = proj(det.x, det.y, 0), t = proj(det.x, det.y, sh);
     if (!a.ok) continue;
-    const h = Math.max(6, Math.abs(a.y - t.y)), w = Math.max(6, h * (sw / sh));
+    const h = Math.max(8, Math.abs(a.y - t.y)), w = Math.max(8, h * (sw / sh));
     const clear = det.clarity >= 0.28;
-    const b = { key: det.key, x: a.x - w / 2, y: a.y - h, w, h, label: clear ? det.label : '?', clear };
+    const moving = det.kind === 'suspect' || det.kind === 'vehicle' || det.kind === 'unit' || det.kind === 'street';
+    const tag = !clear ? 'MOTION' : det.kind === 'suspect' || det.kind === 'street' && !/Car|van|Taxi/i.test(det.label) ? 'PERSON' : 'VEHICLE';
+    const b = { key: det.key, x: a.x - w / 2, y: a.y - h, w, h, label: tag, clear };
     if (b.x > FW || b.y > FH || b.x + b.w < 0 || b.y + b.h < 0) continue;
     out.push(b);
-    ctx.strokeStyle = clear ? (det.kind === 'incident' || det.kind === 'suspect' || det.kind === 'vehicle' ? 'rgba(255,214,102,0.95)' : 'rgba(150,220,255,0.85)') : 'rgba(200,200,200,0.55)';
-    ctx.lineWidth = 1.2; ctx.setLineDash(clear ? [] : [3, 3]); ctx.strokeRect(b.x, b.y, b.w, b.h); ctx.setLineDash([]);
-    ctx.font = '600 10px ui-monospace, monospace'; ctx.textAlign = 'left';
+    if (!moving) continue;
+    ctx.strokeStyle = clear ? 'rgba(150,220,255,0.85)' : 'rgba(200,200,200,0.5)';
+    ctx.lineWidth = 1; ctx.setLineDash(clear ? [] : [3, 3]); ctx.strokeRect(b.x, b.y, b.w, b.h); ctx.setLineDash([]);
+    ctx.font = '600 9px ui-monospace, monospace'; ctx.textAlign = 'left';
     const tw = ctx.measureText(b.label).width + 6;
-    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(b.x, b.y - 13, tw, 12);
-    ctx.fillStyle = clear ? '#ffe6a0' : '#cfcfcf'; ctx.fillText(b.label, b.x + 3, b.y - 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(b.x, b.y - 11, tw, 10);
+    ctx.fillStyle = clear ? '#bfe6ff' : '#cfcfcf'; ctx.fillText(b.label, b.x + 3, b.y - 3);
   }
   if (v.state === 'moving') { ctx.font = '700 12px ui-monospace, monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText('◦ MOVING ◦', FW / 2, FH / 2); }
   overlay(ctx, v, st, now);
   return out;
 }
 
+/** what a scene looks like from a camera when the 3D city has no model for it */
+function sceneGlyph(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, label: string, now: number, mono: boolean) {
+  ctx.save();
+  if (/Smoke|haze|burning/i.test(label)) {
+    for (let k = 0; k < 6; k++) { const a = ((now / 1800 + k / 6) % 1); ctx.fillStyle = `rgba(${mono ? 170 : 90},${mono ? 170 : 88},${mono ? 170 : 92},${0.55 * (1 - a)})`; ctx.beginPath(); ctx.arc(x + a * s * 2 + k, y - s * 1.5 - a * s * 6, s * (0.6 + a * 1.6), 0, 7); ctx.fill(); }
+    if (!/haze/.test(label)) { ctx.fillStyle = mono ? 'rgba(255,255,255,0.9)' : 'rgba(255,160,60,0.9)'; ctx.beginPath(); ctx.ellipse(x, y - s * 0.6, s * 0.7, s * (0.9 + Math.sin(now / 90) * 0.15), 0, 0, 7); ctx.fill(); }
+  } else if (/Vehicles/.test(label)) {
+    ctx.fillStyle = mono ? '#bbb' : '#5a6470'; ctx.fillRect(x - s * 1.6, y - s * 0.7, s * 1.5, s * 0.7); ctx.save(); ctx.translate(x + s * 0.6, y - s * 0.4); ctx.rotate(0.5); ctx.fillStyle = mono ? '#ddd' : '#8a3a30'; ctx.fillRect(-s * 0.7, -s * 0.35, s * 1.4, s * 0.7); ctx.restore();
+  } else {
+    // a knot of people
+    for (let k = 0; k < 7; k++) { const px = x + Math.cos(k * 2.1) * s * (0.4 + (k % 3) * 0.35), py = y + Math.sin(k * 1.3) * s * 0.25; const bob = Math.sin(now / (300 + k * 40) + k) * s * 0.06; ctx.fillStyle = mono ? '#e0e0e0' : ['#2b2f36', '#5b4636', '#334a66', '#6b2f2f'][k % 4]; ctx.fillRect(px - s * 0.12, py - s * 0.85 + bob, s * 0.24, s * 0.62); ctx.beginPath(); ctx.arc(px, py - s * 0.95 + bob, s * 0.13, 0, 7); ctx.fill(); }
+    if (/someone/.test(label)) { ctx.fillStyle = mono ? '#fff' : '#3a3f48'; ctx.fillRect(x - s * 0.45, y - s * 0.12, s * 0.9, s * 0.18); }
+  }
+  ctx.restore();
+}
 function overlay(ctx: CanvasRenderingContext2D, v: CctvView, st: GameEngine['state'], now: number) {
   ctx.font = '600 11px ui-monospace, monospace'; ctx.fillStyle = 'rgba(235,240,245,0.92)'; ctx.textAlign = 'left';
   ctx.fillText(`${v.cam.id}  ${v.cam.street.toUpperCase()} / ${v.cam.cross.toUpperCase()}`, 10, 18);

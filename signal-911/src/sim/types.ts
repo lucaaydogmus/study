@@ -213,6 +213,8 @@ export interface Mover {
   foot?: boolean;
   /** the caller is the one moving (driving someone to hospital); stops when told to pull over */
   caller?: boolean; stopped?: boolean; dest?: number;
+  /** the route a driving caller is taking */
+  path?: number[];
   /** picked up on a city camera: stays tracked while the camera keeps it in frame */
   camTag?: { cam: string; at: number } | null;
 }
@@ -255,6 +257,12 @@ export interface Incident {
   /** officer-initiated (on-view) incident */
   onView?: boolean; hospitalNode?: number | null;
   cctvAt?: number; decided?: boolean; spread?: boolean; storyline?: string;
+  /** a regular caller (and whether today it is real) */
+  regular?: { id: string; real: boolean } | null;
+  /** what the caller opens with, instead of the template's lines */
+  openOverride?: string[];
+  /** calling for someone they cannot see: a child for a parent, a neighbour at a locked door */
+  thirdParty?: { kind: 'child' | 'door'; near: boolean; tried: number; rel: string; nearAt?: number; handedAt?: number; window?: boolean } | null;
   /** crews asked for access details (flat number, gate code) on the way in */
   accessNeeded?: { at: number; relayed: boolean } | null; accessDelayUntil?: number;
   /** how well the receiving hospital matched the patient */
@@ -356,6 +364,8 @@ export interface ShiftConfig {
   threatLevel?: 'low' | 'guarded' | 'elevated' | 'severe';
   /** random major incidents and city events may be rolled for this shift */
   surprises?: boolean;
+  /** what this career knows about its regular callers */
+  regulars?: Record<string, { calls: number; real: number; lastShift: number; log: string[] }>;
 }
 
 export interface TimelineEntry {
@@ -420,6 +430,8 @@ export interface GameState {
   hospitals?: Record<string, HospitalState>;
   lastChatter?: number; lastHospitalCall?: number; lastWalkIn?: number;
   /** the CCTV terminal: which camera is streaming, and which cameras turned out to be dead */
+  /** regular callers who rang this shift */
+  regularLog?: Array<{ id: string; real: boolean; at: number; incId: string; outcome?: string }>;
   cctv?: { link: import('./cctv').CctvLink | null; tried: Record<string, 'ok' | 'offline'>; tags: number; wrong: number };
 }
 

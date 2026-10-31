@@ -31,6 +31,7 @@ export interface Template {
   /** not a 911 emergency: the right move is to send the caller to the non-emergency line or press office */ nonEmergency?: boolean;
   /** where on the map it happens */ nodeHint?: 'runway' | 'highway' | 'rail' | 'water' | 'pool' | 'stadium' | 'mall' | 'transit' | 'bank';
   /** seconds until something unstoppable happens (an aircraft landing); responders must be in place first */ deadline?: number;
+  /** the caller is driving the patient somewhere */ movingCaller?: boolean; /** a pursuit on foot */ foot?: boolean;
   pursuitSpeed?: number; /** extra callers that will ring about the same event */ dupes?: number;
   /** a major incident: rare in random rotation and never two at once */ major?: boolean;
   /** news ticker line when a major incident breaks */ headline?: string;
@@ -1319,6 +1320,43 @@ export const TEMPLATES: Template[] = [
     cause: ["We're past the city line. The sign said Ashbury.", "I think this isn't Ravenport. It's the next town over."],
     scene: '', ambience: 'wind',
     resolved: 'The call was transferred to the correct agency.', failed: 'The caller was not connected to the right agency.',
+  }),
+  // ── callers who are not simple ────────────────────────────────────────────
+  base({
+    id: 'regular_caller', category: 'unusual', label: 'Frequent caller', hint: 'no_response', cls: 'no_response', w: {}, spawnOnly: true,
+    sev: [1, 1], nonEmergency: true,
+    truth: { people: 1, injured: 0, safe: true, weapon: false, suspect: false, false_alarm: true, cause: 'nothing has actually happened' }, reported: [],
+    requires: [], threat: [1, 0.01, 1.0], work: 10,
+    archetypes: [['worried_neighbor', 1]],
+    open: ['Hello, it\'s me again.'],
+    cause: ["Nothing's happened exactly. I just... wanted someone to know.", "Well, it's not an emergency as such. But somebody ought to do something."],
+    scene: 'Nothing found.', ambience: 'indoor',
+    resolved: 'The caller was pointed to the right service.', failed: 'A regular tied up the 911 line.',
+  }),
+  base({
+    id: 'driving_patient', category: 'medical', label: 'Patient in a moving car', hint: 'medical_critical', cls: 'medical_critical', w: { residential: 0.35, suburb: 0.45, commercial: 0.3, dense: 0.2 },
+    sev: [3, 4], patient: 'adult', transport: true, lethal: true, movingCaller: true,
+    truth: { injured: 1, conscious: true, breathing: true, safe: false, people: 2, vehicles: 1, cause: 'crushing chest pain; the caller is driving him to hospital' }, reported: ['injured'],
+    requires: [R('als'), R('transport')], escalate: [{ reqs: [], text: 'The patient collapses in the passenger seat', say: ["He's slumped against the window — he's not answering me!"], sev: 1, casualties: 0 }],
+    threat: [30, 0.45, 1.6], work: 34,
+    archetypes: [['panicked_parent', 4], ['witness', 2], ['calm_serious', 1]],
+    open: ["My husband's got chest pains — I'm driving him to the hospital but I don't know the way and he's going grey!", "I'm in the car, my dad's next to me clutching his chest — I'm driving, I'm trying to get to the hospital, where do I go?"],
+    cause: ["It came on twenty minutes ago. Crushing, he says. Down his left arm.", "He was fine at dinner, then he went white and started sweating."],
+    scene: 'Patient in a stopped car, chest pain. Twelve-lead under way.', ambience: 'traffic',
+    resolved: 'Patient met by the ambulance and taken to the cath lab.', failed: 'The patient arrested in the car before help reached them.',
+  }),
+  base({
+    id: 'foot_suspect', category: 'police', label: 'Suspect fleeing on foot', hint: 'crime_progress', cls: 'crime_progress', w: { dense: 1.1, commercial: 1.2, historic: 0.8, campus: 0.7, river: 0.5 },
+    sev: [2, 3], pursuit: true, foot: true, pursuitSpeed: 1.9,
+    truth: { suspect: true, weapon: false, suspect_desc: 'a man in a grey hoodie and black tracksuit bottoms, carrying a red handbag', people: 1, injured: 0, safe: true, cause: 'a handbag snatch; the thief ran off' }, reported: ['suspect'], unsure: ['weapon'],
+    requires: [R('patrol', 2)], escalate: [{ reqs: [R('patrol', 3)], text: 'The suspect shoves through a crowd and knocks someone down', say: ["He just knocked an old man flying — he's still running!"], sev: 1 }],
+    threat: [14, 0.4, 1.0], work: 10,
+    archetypes: [['witness', 4], ['angry_motorist', 1], ['shopkeeper', 2]],
+    open: ["A guy just ripped a woman's handbag off her and legged it — he went down the side street!", "Someone's just snatched a bag outside my shop — he's running, grey hoodie, he's getting away!"],
+    cause: ["Came up behind her, grabbed the bag, gone. She's on the pavement crying.", "He was hanging around for ten minutes, then he just grabbed it and ran."],
+    say: { suspect: ['Grey hoodie, black trackies, young, quick. Red handbag under his arm.', 'Skinny bloke, grey hood up. He had the red bag.'] },
+    scene: 'Suspect on foot — officers searching.', ambience: 'crowd',
+    resolved: 'Suspect caught and the bag returned.', failed: 'The thief got away.',
   }),
 ];
 

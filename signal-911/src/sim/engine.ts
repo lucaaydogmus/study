@@ -11,6 +11,7 @@ import { aidVerdict, lifeThreatOf, FIRE_LIKE, TOPIC_FACTS, aliLookup, classifyIn
 import { EVENT_DEFS, WEATHER_SPEED, WEATHER_TRAFFIC, WEATHER_LABEL, nextWeather } from './events';
 import { numWord, UNIT_TYPE_BY_ID, makeUnit, isAir, AIR_SPEED } from './fleet';
 import { cameraList, cctvTracking, type Camera } from './cctv';
+import { getCloser, landmarkNear, pullOver, regularOnAnswer, regularOutcome, regularsTick, setupThirdParty, thirdPartyBlock, thirdPartyTick, updateMovingCaller } from './callers';
 import { applyFit, KIT_BY_ID } from './garage';
 import { makeRequest, requestText, replyText, returnText, searchRecords, CHECK_LABEL, DANGEROUS, type RecordQuery } from './records';
 import { speak } from './voices';
@@ -440,6 +441,7 @@ export class GameEngine {
     this.updateResources();
     this.stationWalkIns();
     this.hospitalCalls();
+    regularsTick(this);
     this.updateStatusChecks();
     this.updateAlertCalls();
     this.updateRelapses();
@@ -811,8 +813,14 @@ export class GameEngine {
     if (src) { inc.label = src.label; inc.maxStage = 0; inc.growth = 0; inc.threat = 0; inc.district = src.district; inc.blockedEdge = null; }
     if (inc.pursuit) {
       const n = this.city.nodes[nodeId];
-      inc.mover = { x: n.x, y: n.y, prev: nodeId, next: -1, came: -1, speed: tpl.pursuitSpeed ?? 5.6, tracked: true, trail: [], startAt: st.time + (opts.noCall ? 3 : 10), lastUpdate: st.time, lastSighting: st.time, contact: 0, heading: 0 };
+      inc.mover = { x: n.x, y: n.y, prev: nodeId, next: -1, came: -1, speed: tpl.pursuitSpeed ?? 5.6, tracked: true, trail: [], startAt: st.time + (opts.noCall ? 3 : 10), lastUpdate: st.time, lastSighting: st.time, contact: 0, heading: 0, foot: !!tpl.foot };
+    } else if (tpl.movingCaller && !src) {
+      // a caller driving their patient to hospital: aim for one well across town
+      const n = this.city.nodes[nodeId];
+      const hs = this.city.landmarks.filter((l) => l.kind === 'hospital').map((l) => l.nodeId).sort((a, b) => Math.hypot(this.city.nodes[b].x - n.x, this.city.nodes[b].y - n.y) - Math.hypot(this.city.nodes[a].x - n.x, this.city.nodes[a].y - n.y));
+      inc.mover = { x: n.x, y: n.y, prev: nodeId, next: -1, came: -1, speed: 4.2, tracked: false, trail: [], startAt: st.time + 2, lastUpdate: st.time, lastSighting: st.time, contact: 0, heading: 0, caller: true, dest: hs[Math.min(1, hs.length - 1)] ?? nodeId };
     }
+    setupThirdParty(inc, archetypeId, tpl.patient);
     // big incidents draw more than one caller
     const dupable = !src && !opts.tutorial && !tpl.pursuit && !tpl.outside && sev >= 3 && (tpl.category === 'fire' || tpl.id.startsWith('collision') || ['robbery', 'public_disturbance', 'domestic_disturbance', 'water_rescue', 'industrial_accident'].includes(tpl.id));
     if (tpl.dupes && !src && !opts.tutorial) {
@@ -1006,7 +1014,7 @@ export class GameEngine {
     this.log('failed', `${inc.label}: unhandled (${reason})`, { incidentId: inc.id, good: false });
   }
 
-  private addTranscript(call: Call, who: 'CALLER' | 'DISPATCHER' | 'SYSTEM', text: string, garbled = false) {
+  addTranscript(call: Call, who: 'CALLER' | 'DISPATCHER' | 'SYSTEM', text: string, garbled = false) {
     call.transcript.push({ t: this.state.time, clock: gameClock(this.state), who, text, ...(garbled ? { garbled: true } : {}) });
     if (who === 'DISPATCHER') call.lastDispatcherAt = this.state.time;
   }
@@ -1097,6 +1105,7 @@ export class GameEngine {
       if (inc.status === 'REPORTED') inc.status = 'AWAITING_INFORMATION';
       this.addTranscript(call, 'SYSTEM', `Call connected — ${call.callerId}`);
       this.log('call', `Call answered — ${call.callerId}`, { incidentId: inc.id });
+      if (inc.regular && !call.isCallback) regularOnAnswer(this, call, inc);
       if (call.isCallback) {
         for (const p of call.pending) if (p.at < 0) p.at = st.time + 1.4;
       } else {
@@ -1135,6 +1144,8 @@ export class GameEngine {
     if (!input.intent && /\b(say (that )?again|repeat (that|yourself)|breaking up|didn'?t (catch|get) (that|you)|come again|you('re| are) cutting out|bad line)\b/i.test(text)) { this.sayAgain(callId, text); return; }
     const intent: Intent = input.intent ?? classifyIntent(text);
     this.addTranscript(call, 'DISPATCHER', text);
+    const blocked = thirdPartyBlock(inc, intent);
+    if (blocked) { call.asked[intent] = (call.asked[intent] ?? 0) + 1; call.pending.push({ at: Math.max(st.time, ...call.pending.map((p) => p.at)) + 1.6, text: blocked }); return; }
     const env = this.env(call);
     const r = replyTo(env, intent, text);
     call.asked[intent] = (call.asked[intent] ?? 0) + 1;
@@ -1250,7 +1261,7 @@ export class GameEngine {
     this.harm(inc, call, aid.kind);
   }
 
-  private consequence(inc: Incident, text: string) {
+  consequence(inc: Incident, text: string) {
     (inc.consequences ??= []).push(text);
     this.log('failed', `${inc.label}: ${text}`, { incidentId: inc.id, good: false });
   }
@@ -1805,7 +1816,7 @@ export class GameEngine {
     return { ok: true };
   }
 
-  private callFor(inc: Incident): Call | undefined {
+  callFor(inc: Incident): Call | undefined {
     return Object.values(this.state.calls).find((c) => c.incidentId === inc.id && (c.state === 'active' || c.state === 'hold' || c.state === 'ringing'));
   }
 
@@ -2214,6 +2225,8 @@ export class GameEngine {
       if (inc.truth.outside) continue;
       if (inc.duplicateOf) { this.updateDuplicate(inc); continue; }
       if (inc.pursuit && inc.mover) { this.updatePursuit(inc, dt); continue; }
+      if (inc.mover?.caller && !inc.mover.stopped && updateMovingCaller(this, inc, dt)) continue;
+      if (inc.thirdParty && !inc.thirdParty.near) thirdPartyTick(this, inc);
       const here = this.onScene(inc);
       // scene size-up report
       if (here.length && inc.sceneAt !== null && st.time >= inc.sceneAt && !inc.sceneSeen) this.sceneReport(inc, here[0]);
@@ -2318,7 +2331,7 @@ export class GameEngine {
     for (const x of inc.facts) if (x.confidence === 'unconfirmed' && inc.truth[x.key] === x.value) x.confidence = 'confirmed';
   }
 
-  private escalate(inc: Incident) {
+  escalate(inc: Incident) {
     const st = this.state;
     if (inc.stage >= inc.maxStage) { this.failIncident(inc); return; }
     const tpl = TEMPLATE_BY_ID[inc.templateId];
@@ -2383,6 +2396,7 @@ export class GameEngine {
 
   private failIncident(inc: Incident) {
     const st = this.state;
+    if (inc.regular) { const reg = (st.regularLog ?? []).find((r) => r.incId === inc.id); if (reg && !reg.outcome) reg.outcome = regularOutcome(inc, 'failed'); }
     const tpl = TEMPLATE_BY_ID[inc.templateId];
     // a patient with an untreated life threat: say plainly what was (not) done on the phone
     if (inc.lifeThreat && inc.careAt == null && inc.survival !== undefined) { this.patientDied(inc, inc.lifeThreat); return; }
@@ -2439,9 +2453,10 @@ export class GameEngine {
     if (!silent) this.radio(u.spoken, `Dispatch, ${u.spoken}. Clear of the scene, returning to service.`, 'unit', u.id, inc.id);
   }
 
-  private resolveIncident(inc: Incident, outcome: Outcome) {
+  resolveIncident(inc: Incident, outcome: Outcome) {
     const st = this.state;
     const tpl = TEMPLATE_BY_ID[inc.templateId];
+    if (inc.regular) { const reg = (st.regularLog ?? []).find((r) => r.incId === inc.id); if (reg && !reg.outcome) reg.outcome = regularOutcome(inc, outcome === 'success' ? 'resolved' : outcome === 'failed' ? 'failed' : 'dismissed'); }
     // someone is arrested: a police car (or better, a van) takes them to the station to be booked
     if (outcome === 'success' && inc.truth.suspect === true && !inc.pursuit && inc.category === 'police' && !['traffic_stop', 'protest_march'].includes(inc.templateId) && st.config.mode !== 'tutorial') {
       const pol = this.onScene(inc).filter((x) => x.service === 'police' && !isAir(x) && !x.temp);
@@ -2637,7 +2652,7 @@ export class GameEngine {
   // ── Pursuits ──────────────────────────────────────────────────────────────
   private chooseEscape(m: NonNullable<Incident['mover']>, chasers: Unit[]): number {
     const city = this.city;
-    const opts = city.adj[m.prev].map((eid) => city.edges[eid]).filter((e) => !this.closedMask[e.id]);
+    const opts = city.adj[m.prev].map((eid) => city.edges[eid]).filter((e) => !this.closedMask[e.id] && !(m.foot && e.cls === 'highway'));
     if (!opts.length) return m.prev;
     let best = -1, bs = -Infinity;
     for (const e of opts) {
@@ -2656,12 +2671,14 @@ export class GameEngine {
     const all = inc.assignedUnits.map((id) => st.units[id]).filter((u): u is Unit => !!u);
     const assigned = all.filter((u) => !isAir(u));
     const evading = st.time < (m.evadeUntil ?? 0);
-    const contacts = assigned.filter((u) => (u.status === 'ON_SCENE' && u.note === 'In pursuit') || (!evading && u.status === 'EN_ROUTE' && Math.hypot(u.x - m.x, u.y - m.y) < 42));
+    // someone on foot is far harder to pick out than a car: crews have to be close (officers on foot or bikes see more)
+    const sight = (u: Unit) => (m.foot ? (['foot', 'bicycle'].includes(u.type) ? 34 : 24) : 42);
+    const contacts = assigned.filter((u) => (u.status === 'ON_SCENE' && u.note === 'In pursuit') || (!evading && u.status === 'EN_ROUTE' && Math.hypot(u.x - m.x, u.y - m.y) < sight(u)));
     // air support: the camera picks the vehicle up from far further away than a crew in a car
     const air = all.filter((u) => isAir(u) && (u.status === 'ON_SCENE' || u.status === 'EN_ROUTE'));
     if (m.heliId && !air.some((u) => u.id === m.heliId)) m.heliId = null;
     if (!m.heliId) {
-      const spot = air.find((u) => Math.hypot(u.x - m.x, u.y - m.y) < (st.weather === 'fog' ? 105 : 150));
+      const spot = air.find((u) => Math.hypot(u.x - m.x, u.y - m.y) < (st.weather === 'fog' ? 105 : 150) * (m.foot ? 0.7 : 1));
       if (spot) {
         m.heliId = spot.id; m.heliSince = st.time; m.lastHeliReport = st.time;
         spot.status = 'ON_SCENE'; spot.note = 'Eyes on suspect';
@@ -2678,7 +2695,7 @@ export class GameEngine {
     }
     if (contacts.length && m.contact === 0) {
       const u = contacts[0];
-      this.radio(u.spoken, `Dispatch, ${u.spoken}. Suspect vehicle in sight — in pursuit!`, 'alert', u.id, inc.id);
+      this.radio(u.spoken, m.foot ? `Dispatch, ${u.spoken}. Eyes on — he's running, we're out on foot after him!` : `Dispatch, ${u.spoken}. Suspect vehicle in sight — in pursuit!`, 'alert', u.id, inc.id);
       inc.sceneSeen = true; inc.sceneReported = true; inc.knownReqs = inc.requires.map((r) => ({ ...r }));
       if (inc.firstArrivalAt === null) { inc.firstArrivalAt = st.time; const rt = st.time - (inc.answeredAt ?? inc.createdAt); st.stats.responseTimes.push(rt); st.stats.serviceResponse.police.push(rt); }
       if (inc.status !== 'ESCALATING') inc.status = 'ON_SCENE';
@@ -2688,7 +2705,7 @@ export class GameEngine {
     if (contacts.length === 1 && !m.heliId && st.time >= m.startAt) {
       const night = st.timeOfDay % 24 >= 21 || st.timeOfDay % 24 < 5;
       const wx = ({ fog: 1.6, rain: 1.25, storm: 1.5, snow: 1.3 } as Record<string, number>)[st.weather] ?? 1;
-      if (this.rng.chance(0.009 * wx * (night ? 1.25 : 1))) {
+      if (this.hrand(inc.num, 91) < (m.foot ? 0.022 : 0.009) * wx * (night ? 1.25 : 1)) {
         const u = contacts[0];
         const w = this.moverWhere(m);
         u.status = 'EN_ROUTE'; u.note = 'Lost visual'; this.routeUnit(u, m.prev, true);
@@ -2734,7 +2751,16 @@ export class GameEngine {
       if (m.tracked && st.time - m.lastUpdate >= 2.5) { m.lastUpdate = st.time; inc.reportedNode = inc.nodeId; }
       else if (!m.tracked && st.time - m.lastSighting > 22) {
         m.lastSighting = st.time;
-        if (this.rng.chance(0.6)) {
+        if (m.foot) {
+          // people on the street ring in when a running man goes past — late, and only roughly where
+          if (this.hrand(inc.num, 92) < 0.4) {
+            const lm = landmarkNear(this, m.x, m.y, 120);
+            const node = lm ? lm.nodeId : city.nearestNode(m.x, m.y);
+            inc.reportedNode = node;
+            this.radio('DISPATCH', `All units, caller reports a man matching the description running past ${lm ? lm.name : addressOf(city, node)}, about a minute ago.`, 'dispatch', undefined, inc.id);
+            this.notify(`Sighting (a minute old): suspect on foot near ${lm ? lm.name : addressOf(city, node)}`, 'warn', inc.id);
+          }
+        } else if (this.rng.chance(0.6)) {
           inc.reportedNode = inc.nodeId;
           this.radio('DISPATCH', `All units, suspect vehicle sighted near ${addressOf(city, inc.nodeId)}.`, 'dispatch', undefined, inc.id);
           this.notify(`Sighting: suspect vehicle near ${addressOf(city, inc.nodeId)}`, 'warn', inc.id);
@@ -2753,7 +2779,7 @@ export class GameEngine {
       const eff = contacts.reduce((s, u) => s + this.unitEffectiveness(u), 0) / contacts.length;
       inc.workProgress += dt * eff * (contacts.length >= 2 ? 3 : 1) * (m.heliId ? 1.5 : 1);
       if (inc.workProgress >= inc.work) {
-        this.radio(contacts[0].spoken, `Dispatch, ${contacts[0].spoken}. Suspect vehicle stopped, driver in custody.`, 'unit', contacts[0].id, inc.id);
+        this.radio(contacts[0].spoken, m.foot ? `Dispatch, ${contacts[0].spoken}. One detained after a foot chase. Property recovered.` : `Dispatch, ${contacts[0].spoken}. Suspect vehicle stopped, driver in custody.`, 'unit', contacts[0].id, inc.id);
         st.stats.pursuitsCaught++;
         this.headline(`Police end ${inc.label.toLowerCase()} — suspect in custody`, 'good');
         this.fx('good', inc.nodeId, 'Suspect detained');
@@ -3511,6 +3537,9 @@ export class GameEngine {
     const hiddenTwist = !!inc.twist && !inc.twistRevealed;
     const nonEm = !!tpl.nonEmergency || (inc.requires.length === 0 && inc.truth.false_alarm === true && !hiddenTwist);
     this.addTranscript(call, 'DISPATCHER', inc.templateId === 'press_call' ? "I can't give out any details on this line. Please contact the city press office — they'll be issuing a statement." : "This line is for emergencies — I'm putting you through to the non-emergency line, they'll help you with this.");
+    const reg = inc.regular ? (st.regularLog ?? []).find((r) => r.incId === inc.id) : null;
+    if (reg) reg.outcome = regularOutcome(inc, 'redirected');
+    if (inc.regular?.real) this.consequence(inc, `${inc.callerName} has called a hundred times about nothing — this time it was real, and they were sent to the non-emergency line`);
     if (nonEm) {
       st.stats.redirectsOk = (st.stats.redirectsOk ?? 0) + 1;
       const b = 80; st.stats.bonus += b; st.budget += b;
@@ -4376,6 +4405,10 @@ export class GameEngine {
     return { ok: true };
   }
 
+  /** callers who are not with the patient: get them closer (see callers.ts) */
+  getCloser(callId: string) { return getCloser(this, callId); }
+  /** a caller driving their patient: tell them to stop and wait */
+  pullOver(callId: string) { return pullOver(this, callId); }
   /** city CCTV network (see cctv.ts) */
   cameras(): Camera[] { return cameraList(this.city); }
   /** a location lead from outside the call (CCTV, sightings): goes on the call's list of places heard */

@@ -301,7 +301,7 @@ export interface Reply { lines: PendingLine[]; mood: { panic?: number; base?: nu
 export function openingLines(env: DialogueEnv): PendingLine[] {
   const { inc, call, tpl, rng } = env;
   const v = inc.vars;
-  const pool = v.self === '1' && tpl.selfOpen && tpl.selfOpen.length ? tpl.selfOpen : tpl.open;
+  const pool = inc.openOverride?.length ? inc.openOverride : v.self === '1' && tpl.selfOpen && tpl.selfOpen.length ? tpl.selfOpen : tpl.open;
   const base = fill(pickVariant(call, 'open', pool, rng), v);
   const facts: Record<string, FactVal> = {};
   for (const k of tpl.reported) if (k in inc.truth && !inc.knows.includes('~') ) facts[k] = inc.truth[k];
