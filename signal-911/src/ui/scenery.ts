@@ -13,10 +13,10 @@ export type ModelKind = 'hospital' | 'cathedral' | 'clocktower' | 'cityhall' | '
 export interface Model { kind: ModelKind; x: number; y: number; rot: number; s: number; seed: number; pts?: Vec[] }
 export interface Scenery { lots: Lot[]; trees: Tree[]; features: Feature[]; lights: Vec[]; windows: Array<{ x: number; y: number; s: number; h: number; v: number }>; ground: Array<{ pts: Vec[]; color: string }>; models: Model[] }
 
-const lerp = (a: Vec, b: Vec, t: number): Vec => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+export const lerp = (a: Vec, b: Vec, t: number): Vec => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
 /** point inside a quad [tl, tr, br, bl] from (u, v) in 0..1 */
-const quadPt = (q: Vec[], u: number, v: number): Vec => lerp(lerp(q[0], q[1], u), lerp(q[3], q[2], u), v);
-const subQuad = (q: Vec[], u0: number, v0: number, u1: number, v1: number): Vec[] => [quadPt(q, u0, v0), quadPt(q, u1, v0), quadPt(q, u1, v1), quadPt(q, u0, v1)];
+export const quadPt = (q: Vec[], u: number, v: number): Vec => lerp(lerp(q[0], q[1], u), lerp(q[3], q[2], u), v);
+export const subQuad = (q: Vec[], u0: number, v0: number, u1: number, v1: number): Vec[] => [quadPt(q, u0, v0), quadPt(q, u1, v0), quadPt(q, u1, v1), quadPt(q, u0, v1)];
 
 const shadeMemo = new Map<string, string>();
 function shade(hex: string, f: number): string {
@@ -454,7 +454,7 @@ export function drawNightLights(ctx: CanvasRenderingContext2D, view: View | null
   }
 }
 
-function centroid(p: Vec[]): Vec { return { x: p.reduce((s, q) => s + q.x, 0) / p.length, y: p.reduce((s, q) => s + q.y, 0) / p.length }; }
+export function centroid(p: Vec[]): Vec { return { x: p.reduce((s, q) => s + q.x, 0) / p.length, y: p.reduce((s, q) => s + q.y, 0) / p.length }; }
 function tintFor(tag: string): string {
   return ({ commercial: '#4A9CD6', dense: '#4A9CD6', industrial: '#E5AC4D', residential: '#c9b79c', forest: '#54B889', harbor: '#3ec1c9', airport: '#9a8cd6', campus: '#c58bd6', suburb: '#7fa889', historic: '#d69a53', highrise: '#4A9CD6', river: '#4A9CD6', rail: '#98A6B5' } as Record<string, string>)[tag] ?? '#98A6B5';
 }
@@ -857,10 +857,10 @@ function planeSprite(ctx: CanvasRenderingContext2D, x: number, y: number, rot: n
 }
 
 // ── street life: parked cars and ambient traffic ─────────────────────────────
-const CAR_COLORS = ['#c9ced6', '#8a929c', '#3d4450', '#e6e8eb', '#7a2f2f', '#2f4f7a', '#2f5a3f', '#8a6a2e', '#1c2026', '#5d4a7a'];
-interface Lane { pts: Vec[]; cum: number[]; len: number; district: string }
+export const CAR_COLORS = ['#c9ced6', '#8a929c', '#3d4450', '#e6e8eb', '#7a2f2f', '#2f4f7a', '#2f5a3f', '#8a6a2e', '#1c2026', '#5d4a7a'];
+export interface Lane { pts: Vec[]; cum: number[]; len: number; district: string; cls: string[] }
 let lanes: Lane[] | null = null;
-function getLanes(): Lane[] {
+export function getLanes(): Lane[] {
   if (lanes) return lanes;
   const city = getCity();
   const out: Lane[] = [];
@@ -869,7 +869,8 @@ function getLanes(): Lane[] {
     if (ids.length < 4) return;
     const pts = ids.map((n) => ({ x: city.nodes[n].x, y: city.nodes[n].y }));
     const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
-    out.push({ pts, cum, len: cum[cum.length - 1], district: city.nodes[ids[Math.floor(ids.length / 2)]].district });
+    const cls = ids.slice(1).map((n, k) => { const eid = city.edgeBetween.get(ids[k] * 100000 + n); return eid !== undefined ? city.edges[eid].cls : 'local'; });
+    out.push({ pts, cum, len: cum[cum.length - 1], district: city.nodes[ids[Math.floor(ids.length / 2)]].district, cls });
   };
   // continuous runs along lattice rows and columns
   for (let j = 0; j < ROWS; j++) { let run: number[] = []; for (let i = 0; i < COLS; i++) { const n = city.nodeAt(i, j); if (run.length && !city.edgeBetween.has(run[run.length - 1] * 100000 + n)) { push(run); run = []; } run.push(n); } push(run); }
@@ -877,13 +878,13 @@ function getLanes(): Lane[] {
   lanes = out;
   return out;
 }
-function laneAt(l: Lane, d: number): { x: number; y: number; h: number } {
+export function laneAt(l: Lane, d: number): { x: number; y: number; h: number; seg: number } {
   let i = 1; while (i < l.cum.length - 1 && l.cum[i] < d) i++;
   const a = l.pts[i - 1], b = l.pts[i];
   const t = (d - l.cum[i - 1]) / Math.max(1e-6, l.cum[i] - l.cum[i - 1]);
-  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, h: Math.atan2(b.y - a.y, b.x - a.x) };
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, h: Math.atan2(b.y - a.y, b.x - a.x), seg: i - 1 };
 }
-const hash = (n: number) => { let x = n | 0; x = Math.imul(x ^ (x >>> 16), 0x45d9f3b); x = Math.imul(x ^ (x >>> 16), 0x45d9f3b); return ((x ^ (x >>> 16)) >>> 0) / 4294967296; };
+export const hash = (n: number) => { let x = n | 0; x = Math.imul(x ^ (x >>> 16), 0x45d9f3b); x = Math.imul(x ^ (x >>> 16), 0x45d9f3b); return ((x ^ (x >>> 16)) >>> 0) / 4294967296; };
 
 /** cosmetic civilian traffic: deterministic in time, denser where the simulation says traffic is heavy */
 export function drawTraffic(ctx: CanvasRenderingContext2D, view: View, tSec: number, traffic: Record<string, number>, night: number, scale: number, active: Set<string>) {

@@ -72,7 +72,7 @@ export function DemoMap({ dim = true, engine: given, cinematic = false, sounds =
   }, [engine, cinematic]);
   return (
     <div className={`demo ${dim ? 'dim' : ''}`} aria-hidden="true">
-      <MapView engine={engine} layer="normal" mode="select" selected={{ kind: null, id: null }} onSelect={() => undefined} reduceMotion={false} lockedLabel={false} focus={focus} camEase={cinematic ? 0.008 : undefined} sounds={sounds} showIncidents />
+      <MapView world3d engine={engine} layer="normal" mode="select" selected={{ kind: null, id: null }} onSelect={() => undefined} reduceMotion={false} lockedLabel={false} focus={focus} camEase={cinematic ? 0.008 : undefined} sounds={sounds} showIncidents />
     </div>
   );
 }

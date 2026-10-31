@@ -180,7 +180,7 @@ export function GameScreen() {
         </aside>
         {!collapsed.l && <div className="vresizer" onPointerDown={startDrag('l')} role="separator" aria-orientation="vertical" aria-label="Resize call queue" />}
         <div className="center">
-          <MapView engine={engine} layer={layer} mode={target ? 'pickLocation' : 'select'} selected={st.selected}
+          <MapView world3d engine={engine} layer={layer} mode={target ? 'pickLocation' : 'select'} selected={st.selected}
             onSelect={(k, id) => { engine.select(k, id); setMulti([]); setCollapsed((c) => ({ ...c, r: false })); bump(); }}
             multi={multi} onBoxSelect={(ids) => { setMulti(ids); if (ids.length) { audio.click(); useApp.getState().showToast(`${ids.length} unit${ids.length > 1 ? 's' : ''} selected — right-click an incident to send them`, 'info'); } }}
             onPickNode={onPickNode} onContext={onContext} onDrop={(src, t, node) => handleDrop(engine, src, t, node)} heard={heardForMap}

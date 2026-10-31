@@ -93,7 +93,7 @@ function Overview({ p }: { p: Profile }) {
   return (
     <div className="hub-split">
       <div className="hub-map">
-        <MapView engine={engine} layer={layer} mode="select" selected={sel} onSelect={(k, id) => { engine.select(k, id); bump(); }} onContext={onContext} showIncidents={false} />
+        <MapView world3d engine={engine} layer={layer} mode="select" selected={sel} onSelect={(k, id) => { engine.select(k, id); bump(); }} onContext={onContext} showIncidents={false} />
         <div className="maptools"><div className="seg wrap">{LAYERS.filter((l) => l.id !== 'incidents').map((l) => <button key={l.id} className={layer === l.id ? 'on' : ''} onClick={() => setLayer(l.id)}>{l.label}</button>)}</div></div>
         <div className="legend"><b>RESPONSE TIME</b>{[['#54B889', '< 45 s'], ['#8fbf6a', '< 85 s'], ['#E5AC4D', '< 125 s'], ['#D68a4d', '< 175 s'], ['#D65353', 'Uncovered']].map(([c, l]) => <span key={l}><i className="lg" style={{ background: c }} /> {l}</span>)}</div>
         <div className="maphint">Select a unit, then right-click the map to change where it waits.</div>
@@ -186,7 +186,7 @@ function Prep({ p }: { p: Profile }) {
         </div>
         {pane === 'map' ? (
           <>
-            <MapView engine={engine} layer={layer} mode="select" selected={st.selected} onSelect={(k, id) => { engine.select(k, id); bump(); }} onContext={onContext} showIncidents={false} />
+            <MapView world3d engine={engine} layer={layer} mode="select" selected={st.selected} onSelect={(k, id) => { engine.select(k, id); bump(); }} onContext={onContext} showIncidents={false} />
             <div className="maptools"><div className="seg wrap">{(['coverage', 'police', 'fire', 'medical', 'traffic', 'weather', 'normal'] as LayerId[]).map((l) => <button key={l} className={layer === l ? 'on' : ''} onClick={() => setLayer(l)}>{LAYERS.find((x) => x.id === l)!.label}</button>)}</div>
               <div className="seg"><button onClick={() => deploy('stations')} title="Every vehicle starts at its station">All at stations</button><button onClick={() => deploy('spread')} title="Spread vehicles across your districts for faster first response">Spread out</button></div></div>
             <div className="maphint">Reposition: select a unit, then right-click the map.</div>

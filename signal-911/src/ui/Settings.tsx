@@ -22,6 +22,22 @@ function Toggle({ label, desc, k }: { label: string; desc?: string; k: 'hideInte
   );
 }
 
+function GraphicsSettings() {
+  const st = useApp((s) => s.settings);
+  const update = useApp((s) => s.updateSettings);
+  const g = st.graphics ?? '3d', q = st.quality ?? 'high';
+  return (
+    <>
+      <div className="field"><label>City view</label><div className="seg">
+        <button className={g === '3d' ? 'on' : ''} onClick={() => update({ graphics: '3d' })}>Cinematic 3D</button>
+        <button className={g === '2d' ? 'on' : ''} onClick={() => update({ graphics: '2d' })}>Classic 2D</button></div></div>
+      {g === '3d' && <div className="field"><label>3D quality</label><div className="seg">
+        {(['high', 'medium', 'low'] as const).map((x) => <button key={x} className={q === x ? 'on' : ''} onClick={() => update({ quality: x })}>{x === 'high' ? 'High (4K shadows, MSAA)' : x === 'medium' ? 'Medium' : 'Low (no shadows)'}</button>)}</div></div>}
+      <p className="muted small">The 3D city is rendered with real lighting, sun shadows, bloom and colour grading, with every vehicle modelled at true scale. Use Classic 2D or Low on older laptops.</p>
+    </>
+  );
+}
+
 export function SettingsPanel({ compact }: { compact?: boolean }) {
   const speed = useApp((s) => s.settings.defaultSpeed);
   const update = useApp((s) => s.updateSettings);
@@ -39,6 +55,8 @@ export function SettingsPanel({ compact }: { compact?: boolean }) {
           <select value={speed} aria-label="Default game speed" onChange={(e) => update({ defaultSpeed: parseInt(e.target.value, 10) })}><option value={1}>1×</option><option value={2}>2×</option><option value={3}>3×</option></select><span /></label>
         <Toggle label="Heartbeat under pressure" desc="A heartbeat sound when your stress meter runs high." k="heartbeat" />
         <Toggle label="Autosave" desc="Save the career automatically after shifts and purchases." k="autoSave" />
+        <h3>Graphics</h3>
+        <GraphicsSettings />
         <h3>Comfort & accessibility</h3>
         <Toggle label="Reduce distressing scenarios" desc="Removes the most intense calls (collapsed children, domestic violence, armed robbery, mass-casualty crashes)." k="hideIntense" />
         <Toggle label="Reduce motion" desc="Stops pulsing markers and flashing lights." k="reduceMotion" />

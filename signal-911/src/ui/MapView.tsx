@@ -3,6 +3,8 @@ import { getCity, addressOf, WORLD_H, WORLD_W } from '../sim/city';
 import { SERVICE_META, isAir } from '../sim/fleet';
 import { AGENCY } from '../sim/engine';
 import { barOffset, vehicleSprite } from './vehicles';
+import { getWorld3D, pitchFor } from './world3d/World3D';
+import { useApp } from '../store';
 import { audio, type SirenVoice } from '../audio/audioManager';
 import { WEATHER_LABEL, WEATHER_SPEED } from '../sim/events';
 import type { GameEngine } from '../sim/engine';
@@ -25,6 +27,7 @@ export interface MapProps {
   onDrop?: (src: { kind: 'unit' | 'station' | 'incident'; id: string }, target: { kind: string; id: string } | null, node: number) => void;
   heard?: HeardLocation[]; onPickHeard?: (h: HeardLocation) => void; focus?: { x: number; y: number; zoom?: number; key: number } | null;
   showIncidents?: boolean; reduceMotion?: boolean; lockedLabel?: boolean; minimap?: boolean; ambient?: boolean;
+  /** draw the city with the cinematic 3D renderer (one map at a time) */ world3d?: boolean;
   preview?: { unitId: string; path: number[] } | null;
   /** play positional sirens and rotor noise for what is on screen */
   sounds?: boolean;
@@ -85,7 +88,9 @@ export function MapView(props: MapProps) {
   const mini = useRef<HTMLCanvasElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const P = useRef(props); P.current = props;
-  const cam = useRef({ x: WORLD_W / 2, y: WORLD_H / 2, z: 0.5, tx: WORLD_W / 2, ty: WORLD_H / 2, tz: 0.5, fit: 0.5, init: false, W: 1, H: 1 });
+  const cam = useRef({ x: WORLD_W / 2, y: WORLD_H / 2, z: 0.5, tx: WORLD_W / 2, ty: WORLD_H / 2, tz: 0.5, fit: 0.5, init: false, W: 1, H: 1, gy: 1, sp: 0, maxZ: 7 });
+  const gfx = useApp((s) => s.settings.graphics ?? '3d');
+  const quality = useApp((s) => s.settings.quality ?? 'high');
   const drag = useRef<{ sx: number; sy: number; cx: number; cy: number; moved: boolean; grab?: { kind: 'unit' | 'station' | 'incident'; id: string } } | null>(null);
   const hover = useRef<{ kind: string; id: string; label: string } | null>(null);
   const box = useRef<{ sx: number; sy: number; x: number; y: number } | null>(null);
@@ -100,6 +105,15 @@ export function MapView(props: MapProps) {
     const canvas = ref.current!, el = wrap.current!;
     const city = getCity();
     getScenery();
+    const w3 = P.current.world3d && gfx !== '2d' ? getWorld3D() : null;
+    if (w3) {
+      w3.quality = quality;
+      Object.assign(w3.canvas.style, { position: 'absolute', left: '0', top: '0', zIndex: '0', pointerEvents: 'none' });
+      Object.assign(canvas.style, { position: 'relative', zIndex: '1' });
+      el.insertBefore(w3.canvas, el.firstChild); cam.current.maxZ = 30;
+    } else cam.current.maxZ = 7;
+    const pitchOf = (z: number) => (w3 ? pitchFor(z, cam.current.fit) : 0);
+    if (w3) (window as unknown as { __sig911Cam?: unknown }).__sig911Cam = cam.current;
     let raf = 0, W = 0, H = 0, dpr = 1, lastT = performance.now(), lastMini = 0, lastSnd = 0, ambT = 0;
     // adaptive detail: drop street life and window lights if the close-up view cannot hold ~35 fps
     let frameEma = 16, lowDetail = false;
@@ -119,8 +133,8 @@ export function MapView(props: MapProps) {
     resize();
     const ro = new ResizeObserver(resize); ro.observe(el);
 
-    const toWorld = (sx: number, sy: number) => ({ x: (sx - W / 2) / cam.current.z + cam.current.x, y: (sy - H / 2) / cam.current.z + cam.current.y });
-    const toScreen = (x: number, y: number) => ({ x: (x - cam.current.x) * cam.current.z + W / 2, y: (y - cam.current.y) * cam.current.z + H / 2 });
+    const toWorld = (sx: number, sy: number) => ({ x: (sx - W / 2) / cam.current.z + cam.current.x, y: (sy - H / 2) / (cam.current.z * cam.current.gy) + cam.current.y });
+    const toScreen = (x: number, y: number) => ({ x: (x - cam.current.x) * cam.current.z + W / 2, y: (y - cam.current.y) * cam.current.z * cam.current.gy + H / 2 });
     const pinPos = (inc: Incident) => { const n = city.nodes[inc.reportedNode!]; return toScreen(n.x, n.y); };
 
     const hit = (sx: number, sy: number): { kind: 'incident' | 'unit' | 'station' | 'heard' | 'hospital'; id: string; label: string } | null => {
@@ -176,7 +190,7 @@ export function MapView(props: MapProps) {
       if (d) {
         const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
         if (Math.abs(dx) + Math.abs(dy) > (d.grab ? 7 : 4)) d.moved = true;
-        if (d.moved && !d.grab) { cam.current.tx = d.cx - dx / cam.current.z; cam.current.ty = d.cy - dy / cam.current.z; cam.current.x = cam.current.tx; cam.current.y = cam.current.ty; }
+        if (d.moved && !d.grab) { cam.current.tx = d.cx - dx / cam.current.z; cam.current.ty = d.cy - dy / (cam.current.z * cam.current.gy); cam.current.x = cam.current.tx; cam.current.y = cam.current.ty; }
       }
       if (!inside) return;
       const h = hit(mouse.current.x, mouse.current.y);
@@ -235,9 +249,11 @@ export function MapView(props: MapProps) {
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const c = cam.current; const r = canvas.getBoundingClientRect(); const sx = e.clientX - r.left, sy = e.clientY - r.top;
-      const before = { x: (sx - W / 2) / c.tz + c.tx, y: (sy - H / 2) / c.tz + c.ty };
-      c.tz = Math.max(c.fit * 0.95, Math.min(7, c.tz * Math.exp(-e.deltaY * 0.0015)));
-      c.tx = before.x - (sx - W / 2) / c.tz; c.ty = before.y - (sy - H / 2) / c.tz;
+      const gy0 = Math.cos(pitchOf(c.tz));
+      const before = { x: (sx - W / 2) / c.tz + c.tx, y: (sy - H / 2) / (c.tz * gy0) + c.ty };
+      c.tz = Math.max(c.fit * 0.95, Math.min(c.maxZ, c.tz * Math.exp(-e.deltaY * 0.0015)));
+      const gy1 = Math.cos(pitchOf(c.tz));
+      c.tx = before.x - (sx - W / 2) / c.tz; c.ty = before.y - (sy - H / 2) / (c.tz * gy1);
     };
     const onLeave = () => { mouse.current.inside = false; hover.current = null; setTip(null); };
     canvas.addEventListener('pointerdown', onDown); window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
@@ -269,7 +285,9 @@ export function MapView(props: MapProps) {
       const active = new Set(st.config.districts);
       const activeKey = [...active].sort().join(',');
       const z = c.z, eff = z * dpr;
-      const view = { x0: c.x - W / 2 / z, y0: c.y - H / 2 / z, x1: c.x + W / 2 / z, y1: c.y + H / 2 / z };
+      const pitch = pitchOf(z); c.gy = Math.cos(pitch); c.sp = Math.sin(pitch);
+      const gy = c.gy;
+      const view = { x0: c.x - W / 2 / z, y0: c.y - H / 2 / (z * gy), x1: c.x + W / 2 / z, y1: c.y + H / 2 / (z * gy) };
       const hour = ((st.timeOfDay % 24) + 24) % 24;
       const night = hour >= 21 || hour < 5 ? 1 : hour >= 19 ? (hour - 19) / 2 : hour < 7 ? (7 - hour) / 2 : 0;
       // golden hour around sunrise and sunset
@@ -278,21 +296,26 @@ export function MapView(props: MapProps) {
 
       // ── world layer ──
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.fillStyle = '#7fbfe3'; ctx.fillRect(0, 0, W, H);
+      if (w3) {
+        ctx.clearRect(0, 0, W, H);
+        w3.resize(W, H, dpr);
+        w3.render({ engine: eng, cx: c.x, cy: c.y, z, W, H, pitch, dpr, hour, night, dusk, tSec: ambT, now, active, motion, showTraffic: pr.layer === 'normal' || pr.layer === 'traffic', parkedAtBase });
+      } else { ctx.fillStyle = '#7fbfe3'; ctx.fillRect(0, 0, W, H); }
       ctx.save();
-      ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-c.x, -c.y);
+      ctx.translate(W / 2, H / 2); ctx.scale(z, z * gy); ctx.translate(-c.x, -c.y);
       // zooming in tilts the camera: buildings rise into 2.5D and the streets come alive
       const tilt = BASE_TILT + (1 - BASE_TILT) * Math.max(0, Math.min(1, (z - 1.7) / 1.6));
       const live3d = tilt > BASE_TILT + 0.001;
       const liveView = { x0: view.x0 - 10, y0: view.y0 - 10, x1: view.x1 + 10, y1: view.y1 + 60 };
       if (!st.paused && st.phase === 'running') ambT += (dtMs / 1000) * Math.max(1, st.speed);
-      if (!live3d && eff <= 1.15) ctx.drawImage(cityCanvas(1, active, activeKey), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
+      if (w3) { /* the 3D renderer draws the city */ }
+      else if (!live3d && eff <= 1.15) ctx.drawImage(cityCanvas(1, active, activeKey), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
       else if (!live3d && eff <= 2.6) ctx.drawImage(cityCanvas(2, active, activeKey), -PAD, -PAD, WORLD_W + PAD * 2, WORLD_H + PAD * 2);
       else drawCity(ctx, 2, liveView, active, z, { skipRoofs: true, tilt });
-      if (z > 2.1 && pr.layer === 'normal' && !lowDetail) drawParked(ctx, view, active);
-      if (z > 1.2 && motion && !lowDetail && (pr.layer === 'normal' || pr.layer === 'traffic')) drawTraffic(ctx, view, ambT, st.districtTraffic, night, z, active);
+      if (!w3 && z > 2.1 && pr.layer === 'normal' && !lowDetail) drawParked(ctx, view, active);
+      if (!w3 && z > 1.2 && motion && !lowDetail && (pr.layer === 'normal' || pr.layer === 'traffic')) drawTraffic(ctx, view, ambT, st.districtTraffic, night, z, active);
       // water glints
-      if (motion) {
+      if (motion && !w3) {
         ctx.strokeStyle = `rgba(255,255,255,${0.45 - 0.3 * night})`; ctx.lineWidth = 1.2; ctx.beginPath();
         const rl = city.riverline;
         for (let k = 0; k < 40; k++) {
@@ -312,7 +335,7 @@ export function MapView(props: MapProps) {
         ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = `rgba(8,14,34,${nightA})`; ctx.fillRect(vr.x, vr.y, vr.w, vr.h);
       };
       // the live close-up darkens the ground first and draws night-graded buildings over it, so lit windows glow
-      const liveCity = live3d || eff > 2.6;
+      const liveCity = !w3 && (live3d || eff > 2.6);
       if (liveCity) {
         darken();
         // street lights pool on the ground, under the buildings that rise in front of them
@@ -320,22 +343,22 @@ export function MapView(props: MapProps) {
         drawBuildings3D(ctx, liveView, tilt, night, z, !lowDetail, nightA * 0.92); drawModels(ctx, liveView, tilt, night, z, nightA * 0.92);
       }
       // broad daylight falls from the north-west: a warm lift on one side of the city, a cool falloff on the other
-      if (night < 0.9 && pr.layer === 'normal') {
+      if (!w3 && night < 0.9 && pr.layer === 'normal') {
         const sun = ctx.createLinearGradient(0, 0, WORLD_W, WORLD_H);
         sun.addColorStop(0, `rgba(255,244,214,${0.1 * (1 - night)})`); sun.addColorStop(0.5, 'rgba(255,255,255,0)'); sun.addColorStop(1, `rgba(24,40,78,${0.1 * (1 - night)})`);
         ctx.fillStyle = sun; ctx.fillRect(vr.x, vr.y, vr.w, vr.h);
       }
       // locked districts are greyed out
       const lockedFill = liveCity ? `rgba(${Math.round(64 - 56 * nightA)},${Math.round(70 - 56 * nightA)},${Math.round(82 - 48 * nightA)},0.45)` : 'rgba(64,70,82,0.45)';
-      for (const d of city.districts) {
+      if (!w3) for (const d of city.districts) {
         if (active.has(d.id)) continue;
         ctx.fillStyle = lockedFill; ctx.beginPath(); ctx.moveTo(d.poly[0].x, d.poly[0].y); for (const p of d.poly) ctx.lineTo(p.x, p.y); ctx.closePath(); ctx.fill();
       }
       // golden hour around sunrise and sunset
-      if (dusk > 0.01 && night < 0.95) {
+      if (!w3 && dusk > 0.01 && night < 0.95) {
         ctx.fillStyle = `rgba(255,150,70,${0.13 * dusk * (1 - night)})`; ctx.fillRect(vr.x, vr.y, vr.w, vr.h);
       }
-      if (night > 0) {
+      if (night > 0 && !w3) {
         if (!liveCity) darken();
         if (!liveCity) {
           ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.85 * night;
@@ -344,7 +367,7 @@ export function MapView(props: MapProps) {
         }
       }
       // cloud shadows drifting slowly over the city on a bright day
-      if (night < 0.6 && motion && !lowDetail && pr.layer === 'normal') {
+      if (!w3 && night < 0.6 && motion && !lowDetail && pr.layer === 'normal') {
         const a = 0.09 * (1 - night / 0.6);
         for (let k = 0; k < 5; k++) {
           const span = WORLD_W + 900, cx = ((k * 613 + tSec * (5 + k)) % span) - 450, cy = (k * 389) % WORLD_H + 80 * Math.sin(tSec / 40 + k);
@@ -408,7 +431,9 @@ export function MapView(props: MapProps) {
       ctx.restore();
 
       // ── screen-space overlays ──
-      const S = (x: number, y: number) => ({ x: (x - c.x) * z + W / 2, y: (y - c.y) * z + H / 2 });
+      const S = (x: number, y: number) => ({ x: (x - c.x) * z + W / 2, y: (y - c.y) * z * gy + H / 2 });
+      /** a point at height h above the ground, on screen */
+      const S3 = (x: number, y: number, h: number) => ({ x: (x - c.x) * z + W / 2, y: ((y - c.y) * gy - h * c.sp) * z + H / 2 });
       if (layer === 'incidents') { ctx.fillStyle = 'rgba(8,12,18,0.5)'; ctx.fillRect(0, 0, W, H); }
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
 
@@ -438,10 +463,10 @@ export function MapView(props: MapProps) {
           const a = city.nodes[e.a], b = city.nodes[e.b];
           const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
           if (mx < view.x0 || mx > view.x1 || my < view.y0 || my > view.y1) continue;
-          const len = Math.hypot(b.x - a.x, b.y - a.y) * z;
+          const len = Math.hypot(b.x - a.x, (b.y - a.y) * gy) * z;
           const tw = ctx.measureText(e.name).width;
           if (tw > len - 30) continue;
-          let ang = Math.atan2(b.y - a.y, b.x - a.x); if (ang > Math.PI / 2) ang -= Math.PI; if (ang < -Math.PI / 2) ang += Math.PI;
+          let ang = Math.atan2((b.y - a.y) * gy, b.x - a.x); if (ang > Math.PI / 2) ang -= Math.PI; if (ang < -Math.PI / 2) ang += Math.PI;
           const p = S(mx, my);
           ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ang);
           ctx.lineWidth = 3; ctx.strokeStyle = dark ? 'rgba(10,14,22,0.85)' : 'rgba(255,255,255,0.92)'; ctx.strokeText(e.name, 0, 0);
@@ -633,7 +658,7 @@ export function MapView(props: MapProps) {
         const col = sevColor(inc.severity);
         const big = layer === 'incidents' ? 1.25 : 1;
         // ground effects
-        if (inc.category === 'fire' && !inc.duplicateOf && inc.requires.length) {
+        if (!w3 && inc.category === 'fire' && !inc.duplicateOf && inc.requires.length) {
           const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, (26 + inc.stage * 12) * Math.max(0.7, Math.min(1.6, z)));
           const fl = motion ? 0.55 + Math.sin(now / 90) * 0.12 + Math.sin(now / 37) * 0.08 : 0.6;
           g.addColorStop(0, `rgba(255,150,60,${fl})`); g.addColorStop(0.5, 'rgba(230,90,40,0.18)'); g.addColorStop(1, 'rgba(230,90,40,0)');
@@ -693,13 +718,15 @@ export function MapView(props: MapProps) {
       // units (stacked parked units fan out so each stays clickable)
       const dimUnits = layer === 'incidents' ? 0.55 : 1;
       const groups = new Map<string, Unit[]>();
-      for (const u of Object.values(st.units)) { if (u.speed > 0.05 || parkedAtBase(st, u)) continue; const k = `${Math.round(u.x / 6)},${Math.round(u.y / 6)}`; const g = groups.get(k); if (g) g.push(u); else groups.set(k, [u]); }
+      const markers = w3 ? z < 3.2 : z < 1.15;
+      if (!w3 || markers) for (const u of Object.values(st.units)) { if (u.speed > 0.05 || parkedAtBase(st, u)) continue; const k = `${Math.round(u.x / 6)},${Math.round(u.y / 6)}`; const g = groups.get(k); if (g) g.push(u); else groups.set(k, [u]); }
       offs.current.clear();
-      const markers = z < 1.15;
+      // in 3D the vehicles park themselves neatly; labels follow the models
+      if (w3 && !markers) for (const u of Object.values(st.units)) { const pose = w3.layout.get(u.id); if (!pose) continue; const a = S(u.x, u.y), b = S3(pose.x, pose.y, pose.top); offs.current.set(u.id, { dx: b.x - a.x, dy: b.y - a.y }); }
       const vs = Math.max(0.75, Math.min(1.8, 0.6 + z * 0.42));
       // crews sharing a scene line up nose-first under the pin in a tidy bay, with one caption for the group
       const bays: Array<{ x: number; y: number; w: number; h: number; units: Unit[] }> = [];
-      for (const g of groups.values()) {
+      if (!w3 || markers) for (const g of groups.values()) {
         if (g.length < 2) continue;
         g.sort((a, b) => a.id.localeCompare(b.id));
         const perRow = markers ? 4 : 5;
@@ -728,7 +755,7 @@ export function MapView(props: MapProps) {
           let diff = target - hd.h; while (diff > Math.PI) diff -= Math.PI * 2; while (diff < -Math.PI) diff += Math.PI * 2;
           hd.h += diff * Math.min(1, dtMs / 90); hd.x = u.x; hd.y = u.y;
         }
-        const grouped = offs.current.has(u.id);
+        const grouped = offs.current.has(u.id) && !(w3 && !markers);
         if (grouped && !markers) { let diff = -Math.PI / 2 - hd.h; while (diff > Math.PI) diff -= Math.PI * 2; while (diff < -Math.PI) diff += Math.PI * 2; hd.h += diff * Math.min(1, dtMs / 220); }
         heading.current.set(u.id, hd);
         const responding = (['EN_ROUTE', 'DISPATCHED'].includes(u.status) && u.code !== 2) || u.status === 'TRANSPORTING' || (u.status === 'ON_SCENE' && !!u.assignedIncidentId);
@@ -746,6 +773,8 @@ export function MapView(props: MapProps) {
           ctx.fillStyle = '#fff'; ctx.font = '800 8px Inter, system-ui, sans-serif'; ctx.fillText(SERVICE_META[u.service].glyph, p.x, p.y + 0.5);
           if (responding && motion) { const ph = Math.floor(now / 200) % 2; ctx.strokeStyle = ph ? v.bar[0] : v.bar[1]; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, r + 3.5, 0, 7); ctx.stroke(); }
           else if (eng.onPatrol(u)) { ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1; ctx.setLineDash([2, 2]); ctx.beginPath(); ctx.arc(p.x, p.y, r + 3, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+        } else if (w3) {
+          // the 3D model is the vehicle; the overlay only carries its badge and rings
         } else if (isAir(u)) {
           drawHeli(ctx, st, u, p, hd.h, vs, now, motion, night, S);
         } else {
@@ -968,14 +997,15 @@ export function MapView(props: MapProps) {
     const warm = window.setTimeout(() => { const st = P.current.engine.state; const a = new Set(st.config.districts); cityCanvas(2, a, [...a].sort().join(',')); lightsCanvas(); }, 400);
     return () => {
       cancelAnimationFrame(raf); ro.disconnect(); clearTimeout(warm);
+      if (w3 && w3.canvas.parentElement === el) el.removeChild(w3.canvas);
       if (P.current.sounds) audio.updateSirens([]);
       canvas.removeEventListener('pointerdown', onDown); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
       canvas.removeEventListener('contextmenu', onCtx); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('pointerleave', onLeave);
       mc?.removeEventListener('pointerdown', onMini);
     };
-  }, []);
+  }, [gfx, quality]);
 
-  const zoomBy = (f: number) => { const c = cam.current; c.tz = Math.max(c.fit * 0.95, Math.min(7, c.tz * f)); };
+  const zoomBy = (f: number) => { const c = cam.current; c.tz = Math.max(c.fit * 0.95, Math.min(c.maxZ, c.tz * f)); };
   const recenter = () => { const c = cam.current; c.tx = WORLD_W / 2; c.ty = WORLD_H / 2 - 30; c.tz = c.fit; };
   return (
     <div className="mapwrap" ref={wrap} style={{ cursor: props.mode === 'pickLocation' ? 'crosshair' : 'grab' }}>

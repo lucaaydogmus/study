@@ -16,8 +16,11 @@ export interface Settings {
   master: number; effects: number; radio: number; music: number; ambience: number; muted: boolean;
   hideIntense: boolean; reduceMotion: boolean; highContrast: boolean; autoSave: boolean; showHints: boolean; defaultSpeed: number;
   aiCallers: boolean; aiMaxLines: number; heartbeat: boolean; sirens: number;
+  /** cinematic 3D city or the classic 2D map */ graphics?: '3d' | '2d';
+  /** 3D quality: shadows, anti-aliasing and resolution */ quality?: 'high' | 'medium' | 'low';
+  /** caller voices read aloud with the browser's speech engine */ tts?: boolean;
 }
-export const DEFAULT_SETTINGS: Settings = { master: 0.8, effects: 0.8, radio: 0.7, music: 0.0, ambience: 0.5, muted: false, hideIntense: false, reduceMotion: false, highContrast: false, autoSave: true, showHints: true, defaultSpeed: 1, aiCallers: true, aiMaxLines: 150, heartbeat: true, sirens: 0.75 };
+export const DEFAULT_SETTINGS: Settings = { master: 0.8, effects: 0.8, radio: 0.7, music: 0.0, ambience: 0.5, muted: false, hideIntense: false, reduceMotion: false, highContrast: false, autoSave: true, showHints: true, defaultSpeed: 1, aiCallers: true, aiMaxLines: 150, heartbeat: true, sirens: 0.75, graphics: '3d', quality: 'high', tts: true };
 
 export interface Lifetime {
   shifts: number; calls: number; answered: number; resolved: number; failed: number; casualties: number; livesHelped: number; falseAlarms: number;
