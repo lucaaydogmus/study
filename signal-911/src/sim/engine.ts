@@ -435,6 +435,8 @@ export class GameEngine {
     this.breakRequests();
     this.updateAgencies();
     this.updateResources();
+    this.stationWalkIns();
+    this.hospitalCalls();
     this.updateStatusChecks();
     this.updateAlertCalls();
     this.updateRelapses();
@@ -580,7 +582,8 @@ export class GameEngine {
     const fat = crew.length ? crew.reduce((s, p) => s + p.fatigue, 0) / crew.length : 0;
     const w = WEATHER_SPEED[this.state.weather];
     const grip = u.fit?.grip ? (w + (1 - w) * u.fit.grip) / w : 1;
-    return u.speedModifier * grip * Math.max(0.86, Math.min(1.14, drive / 68)) * (1 - Math.max(0, fat - 60) / 400);
+    const worn = (u.condition ?? 100) < 35 ? 0.92 : (u.condition ?? 100) < 55 ? 0.97 : 1;
+    return u.speedModifier * grip * worn * Math.max(0.86, Math.min(1.14, drive / 68)) * (1 - Math.max(0, fat - 60) / 400);
   }
   unitEffectiveness(u: Unit): number {
     if (u.type === 'federal_tactical' || u.type === 'guard_eod') return 1.7;
@@ -1981,14 +1984,14 @@ export class GameEngine {
           const inc = u.assignedIncidentId ? st.incidents[u.assignedIncidentId] : undefined;
           if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) {
             if (u.temp) { delete st.units[u.id]; break; }
-            u.assignedIncidentId = undefined; u.status = 'RETURNING'; this.routeUnit(u, u.postNode, false);
+            u.assignedIncidentId = undefined; u.status = 'RETURNING'; this.routeUnit(u, u.prisoner ? this.nearestStationNode(u, 'police') : u.postNode, false);
           } else if (!inc.pursuit && !(inc.search && !inc.search.found) && inc.reportedNode !== null && !this.unitAtScene(u, inc) && Math.hypot(this.city.nodes[inc.reportedNode].x - u.x, this.city.nodes[inc.reportedNode].y - u.y) > 90) {
             u.status = 'EN_ROUTE'; this.routeUnit(u, inc.reportedNode, true);
           }
           break;
         }
         case 'OUT_OF_SERVICE': {
-          if (u.timer > 0) { u.timer -= dt; if (u.timer <= 0) { u.status = 'AVAILABLE'; u.note = undefined; } }
+          if (u.timer > 0) { u.timer -= dt; if (u.timer <= 0) { if (u.note === 'In the workshop' || u.note === 'Mechanical fault') { u.condition = u.note === 'In the workshop' ? 100 : Math.max(u.condition ?? 100, 70); } u.status = 'AVAILABLE'; u.note = undefined; } }
           break;
         }
         default: break;
@@ -2019,7 +2022,8 @@ export class GameEngine {
     for (const u of pool) {
       const crew = this.crewOf(u);
       const rel = crew.length ? crew.reduce((s, p) => s + p.reliability, 0) / crew.length : 70;
-      if (this.rng.chance((1.6 - rel / 100) / (900 * Math.max(6, pool.length)))) {
+      const wear = (u.condition ?? 100) < 35 ? 4 : (u.condition ?? 100) < 55 ? 2 : 1;
+      if (this.rng.chance((1.6 - rel / 100) * wear / (900 * Math.max(6, pool.length)))) {
         u.status = 'OUT_OF_SERVICE'; u.note = 'Mechanical fault'; u.timer = 150 + this.rng.range(0, 90);
         st.stats.breakdowns++;
         this.radio(u.spoken, `Dispatch, ${u.spoken}. We have a mechanical fault — out of service until the mechanic clears us.`, 'unit', u.id);
@@ -2030,6 +2034,11 @@ export class GameEngine {
   }
 
   private advance(u: Unit, dt: number, cruise = 1) {
+    const x0 = u.x, y0 = u.y;
+    this.advanceInner(u, dt, cruise);
+    if (!u.temp && !isAir(u)) u.condition = Math.max(0, (u.condition ?? 100) - Math.hypot(u.x - x0, u.y - y0) * (u.status === 'EN_ROUTE' && u.code !== 2 ? 0.0065 : 0.004));
+  }
+  private advanceInner(u: Unit, dt: number, cruise = 1) {
     const city = this.city;
     let remaining = dt;
     if (u.stoppedUntil && this.state.time < u.stoppedUntil) { u.speed = 0; return; }
@@ -2058,6 +2067,20 @@ export class GameEngine {
     u.eta = 0; u.route = [];
     if (u.status === 'RETURNING') {
       if (u.temp) { delete st.units[u.id]; return; }
+      if (u.prisoner) {
+        u.prisoner = false; u.status = 'BUSY'; u.timer = 30; u.note = 'Booking prisoner';
+        st.stats.arrests = (st.stats.arrests ?? 0) + 1;
+        this.radio(u.spoken, `Dispatch, ${u.spoken}. At ${this.stationAt(u.prevNode)?.name ?? 'the station'} with one in custody — booking now.`, 'unit', u.id);
+        this.emit({ type: 'status', unitId: u.id });
+        return;
+      }
+      if (u.workshop) {
+        u.workshop = false; u.status = 'OUT_OF_SERVICE'; u.timer = 70; u.note = 'In the workshop';
+        st.stats.services = (st.stats.services ?? 0) + 1;
+        this.radio(u.spoken, `${u.spoken}, in the workshop. Mechanic says about a minute.`, 'unit', u.id);
+        this.emit({ type: 'status', unitId: u.id });
+        return;
+      }
       u.status = 'AVAILABLE'; u.assignedIncidentId = undefined; u.destNode = null;
       this.emit({ type: 'status', unitId: u.id });
       return;
@@ -2210,6 +2233,7 @@ export class GameEngine {
       if (['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
       if (inc.sceneSeen && !inc.checkRolled) this.rollOfficerCheck(inc, here);
       if (inc.sceneSeen && !inc.decided && here.length && st.time - (inc.sceneAt ?? st.time) > 4) this.rollDecision(inc, here);
+      if (inc.sceneSeen && !inc.mciAsked && st.time - (inc.sceneAt ?? st.time) > 12) this.mciCheck(inc, here);
       if (inc.accessNeeded === undefined && inc.assignedUnits.length) this.checkAccess(inc);
       if (inc.search && !inc.search.found) { this.updateSearch(inc, here, dt); continue; }
       const cov = matchCoverage(inc.requires, here);
@@ -2403,6 +2427,12 @@ export class GameEngine {
   private resolveIncident(inc: Incident, outcome: Outcome) {
     const st = this.state;
     const tpl = TEMPLATE_BY_ID[inc.templateId];
+    // someone is arrested: a police car (or better, a van) takes them to the station to be booked
+    if (outcome === 'success' && inc.truth.suspect === true && !inc.pursuit && inc.category === 'police' && !['traffic_stop', 'protest_march'].includes(inc.templateId) && st.config.mode !== 'tutorial') {
+      const pol = this.onScene(inc).filter((x) => x.service === 'police' && !isAir(x) && !x.temp);
+      const taker = pol.find((x) => x.capabilities.includes('prisoner_transport')) ?? pol[0];
+      if (taker) { taker.prisoner = true; this.radio(taker.spoken, `Dispatch, ${taker.spoken}. One in custody — transporting to the station for booking.`, 'unit', taker.id, inc.id); }
+    }
     // surplus units
     const here = inc.everAssigned.map((id) => st.units[id]).filter((u) => u && u.assignedIncidentId === inc.id && ['ON_SCENE', 'EN_ROUTE', 'DISPATCHED'].includes(u.status));
     const assigned = inc.everAssigned.map((id) => st.units[id]).filter((u): u is Unit => !!u && !isAir(u));
@@ -3779,6 +3809,86 @@ export class GameEngine {
     this.emit({ type: 'alert', text: 'Specialist requested' });
     return { ok: true, eta };
   }
+  // ── Stations: prisoners, the workshop and walk-ins ───────────────────────
+  stationAt(node: number): Station | undefined { return Object.values(this.state.stations).find((s) => Math.hypot(this.city.nodes[s.nodeId].x - this.city.nodes[node].x, this.city.nodes[s.nodeId].y - this.city.nodes[node].y) < 6); }
+  nearestStationNode(u: Unit, service: Unit['service']): number {
+    let best = u.postNode, bd = Infinity;
+    for (const s of Object.values(this.state.stations)) { if (s.service !== service) continue; const n = this.city.nodes[s.nodeId]; const d = Math.hypot(n.x - u.x, n.y - u.y); if (d < bd) { bd = d; best = s.nodeId; } }
+    return best;
+  }
+  /** send an idle unit back to quarters for servicing: out for about a minute, comes back like new */
+  serviceUnit(unitId: string): { ok: boolean; reason?: string } {
+    const u = this.state.units[unitId];
+    if (!u || u.temp || isAir(u)) return { ok: false, reason: 'Not one of our vehicles' };
+    if (u.status !== 'AVAILABLE') return { ok: false, reason: 'Only an available unit can go to the workshop' };
+    if ((u.condition ?? 100) > 85) return { ok: false, reason: 'This vehicle does not need servicing yet' };
+    const stn = this.state.stations[u.stationId];
+    u.workshop = true; u.status = 'RETURNING'; u.patrol = false;
+    this.routeUnit(u, stn ? stn.nodeId : u.postNode, false);
+    this.radio('DISPATCH', `${u.spoken}, return to quarters for servicing.`, 'dispatch', u.id);
+    this.radio(u.spoken, 'Copy, heading in to the workshop.', 'unit', u.id);
+    if (!u.route.length) this.arrive(u);
+    return { ok: true };
+  }
+  /** now and then someone walks into a station needing help, and the crew on duty takes it */
+  private stationWalkIns() {
+    const st = this.state;
+    if (st.config.mode === 'tutorial' || st.config.script || st.time < 120 || st.time - (st.lastWalkIn ?? -999) < 360 || this.hrand(Math.floor(st.time * 2), 61) > 0.0016) return;
+    const home = Object.values(st.units).filter((u) => u.status === 'AVAILABLE' && !u.temp && !isAir(u) && (u.capabilities.includes('bls') || u.capabilities.includes('first_aid') || u.service === 'fire') && Math.hypot(u.x - this.city.nodes[st.stations[u.stationId]?.nodeId ?? u.postNode].x, u.y - this.city.nodes[st.stations[u.stationId]?.nodeId ?? u.postNode].y) < 6);
+    if (!home.length) return;
+    const u = home[Math.floor(this.hrand(st.incidentCounter, 62) * home.length)];
+    const stn = st.stations[u.stationId];
+    if (!stn) return;
+    const tpl = ['workplace_injury', 'sports_injury', 'fall_elderly', 'heat_exhaustion'][Math.floor(this.hrand(st.incidentCounter, 63) * 4)];
+    st.lastWalkIn = st.time;
+    const inc = this.spawnIncident(tpl, stn.district, { noCall: true, nodeId: stn.nodeId, severity: 2 });
+    st.stats.walkIns = (st.stats.walkIns ?? 0) + 1;
+    this.radio(u.spoken, `Dispatch, ${u.spoken} at quarters — we've had a walk-in: ${inc.label.toLowerCase()}. We're on it.`, 'unit', u.id, inc.id);
+    this.notify(`Walk-in at ${stn.name}: ${inc.label}`, 'info', inc.id);
+    this.dispatch(u.id, inc.id, { code: 2, self: true });
+  }
+
+  // ── Hospitals calling in, diversions and mass casualties ─────────────────
+  private hospitalCalls() {
+    const st = this.state;
+    if (st.config.mode === 'tutorial' || st.config.script || !st.hospitals || st.time < 90) return;
+    if (st.rank < 2 || this.hrand(Math.floor(st.time / 30), 71) > 0.03 || st.time - (st.lastHospitalCall ?? -999) < 600 || (st.stats.hospitalCalls ?? 0) >= Math.max(1, Math.floor(st.config.durationSec / 700))) return;
+    const hs = Object.values(st.hospitals).filter((h) => st.config.districts.includes(this.city.nodes[h.node].district));
+    if (!hs.length) return;
+    const h = hs[Math.floor(this.hrand(st.incidentCounter, 72) * hs.length)];
+    const tpl = ['ift_transfer', 'ift_transfer', 'blood_run', 'er_violent'][Math.floor(this.hrand(st.incidentCounter, 73) * 4)];
+    st.lastHospitalCall = st.time;
+    st.stats.hospitalCalls = (st.stats.hospitalCalls ?? 0) + 1;
+    this.spawnIncident(tpl, this.city.nodes[h.node].district, { nodeId: h.node, archetype: 'professional', accuracy: 'exact' });
+  }
+  /** ask a hospital on diversion to take one more patient anyway */
+  askHospitalToAccept(node: number): { ok: boolean; reason?: string; accepted?: boolean } {
+    const st = this.state;
+    const h = st.hospitals?.[node];
+    if (!h) return { ok: false, reason: 'No such hospital' };
+    if (st.time - (h.lastPlea ?? -999) < 90) return { ok: false, reason: `${h.name} just told you — try again in a minute` };
+    h.lastPlea = st.time;
+    const accepted = h.er < h.erCap + 1 && this.hrand(node, Math.floor(st.time)) < (h.er < h.erCap ? 0.85 : 0.45);
+    this.radio('DISPATCH', `${h.name}, dispatch — can you take one more? Our other hospitals are further out.`, 'dispatch');
+    this.radio(h.name, accepted ? `${h.name}: okay, dispatch. We'll make room — bring them in.` : `${h.name}: negative, we are full to the corridors. Divert.`, 'hospital');
+    if (accepted) { h.er = Math.max(0, h.er - 1); if (h.known) { h.known.diversion = false; h.known.er = h.er; h.known.at = st.time; } }
+    return { ok: true, accepted };
+  }
+  /** big incidents: decide where the casualties go before the ambulances start loading */
+  private mciCheck(inc: Incident, here: Unit[]) {
+    const st = this.state;
+    if (inc.mciAsked || !st.hospitals || !['active_shooter', 'vehicle_ramming', 'crowd_crush', 'train_derailment', 'house_explosion', 'riot', 'collision_multi', 'building_collapse'].includes(inc.templateId)) return;
+    const medic = here.find((u) => u.service === 'medical' || u.capabilities.includes('als'));
+    if (!medic) return;
+    inc.mciAsked = true;
+    const opt = (o: string, label: string, hint: string) => ({ id: o, label, hint });
+    (st.decisions ??= []).push({ id: `d${st.decisions.length + 1}-m${Math.floor(st.time)}`, incId: inc.id, unitId: medic.id, at: st.time, expiresAt: st.time + 30, kind: 'mci',
+      prompt: `${medic.spoken}: mass casualty — multiple patients. How do you want them distributed?`,
+      options: [opt('spread', 'Spread across hospitals', 'Longer drives, nobody overwhelmed'), opt('trauma', 'Criticals to the trauma centre', 'Best care, if it has room'), opt('nearest', 'Nearest hospital', 'Fastest — may overwhelm the ER')], defaultId: 'spread' });
+    this.radio(medic.spoken, 'Dispatch, we have a mass casualty incident. Need a decision on patient distribution.', 'alert', medic.id, inc.id);
+    this.emit({ type: 'alert', text: 'Decision needed' });
+  }
+
   // ── The resources panel ────────────────────────────────────────────────────
   /** can this resource help here, has it been asked for, and where is it */
   resourceInfo(incId: string, id: string): { ok: boolean; reason?: string; recommended: boolean; asked: boolean; status: 'none' | 'requested' | 'enroute' | 'here'; eta?: number } {
@@ -4365,6 +4475,24 @@ export class GameEngine {
         } else if (optionId === 'withdraw') { inc.threat = Math.min(99, inc.threat + 25); inc.work *= 1.25; this.consequence(inc, 'Officers pulled back and the crowd ran riot'); out = 'Officers pulled back — the crowd is smashing up the street.'; }
         else if (optionId === 'talk') { inc.work *= 1.15; inc.growth *= 0.6; out = this.rng.chance(0.85) ? 'The organisers agreed a new route — the march is moving again.' : 'Talks stalled; the hard core are pushing at the line.'; if (out.startsWith('Talks')) inc.threat += 15; }
         else { inc.workProgress += inc.work * 0.4; if (this.rng.chance(pou ? 0.2 : 0.4)) { inc.threat = Math.min(99, inc.threat + 30); this.consequence(inc, 'Clearing the road by force inflamed the march'); out = 'Clearing the road by force has inflamed the crowd.'; } else out = 'The road was cleared without serious trouble.'; }
+        break;
+      }
+      case 'mci': {
+        st.stats.mciPlans = (st.stats.mciPlans ?? 0) + 1;
+        const hs = Object.values(st.hospitals ?? {}).filter((h) => !st.closedHospitals.includes(h.node));
+        const n = inc.reportedNode ?? inc.nodeId, nd = this.city.nodes[n];
+        const dist = (h: HospitalState) => Math.hypot(this.city.nodes[h.node].x - nd.x, this.city.nodes[h.node].y - nd.y);
+        const nearest = [...hs].sort((a, b) => dist(a) - dist(b))[0];
+        const trauma = hs.find((h) => h.has.includes('trauma') && !(h.down.trauma && st.time < (h.down.trauma ?? 0)));
+        if (optionId === 'spread') { inc.work *= 1.1; for (const h of hs.slice(0, 3)) h.er = Math.min(h.erCap + 1, h.er + 1); if (inc.survival !== undefined) inc.survival = Math.min(100, inc.survival + 6); out = 'Patients spread across the hospitals — nobody overwhelmed.'; }
+        else if (optionId === 'trauma') {
+          if (trauma && trauma.er <= trauma.erCap - 2) { trauma.er += 2; if (inc.survival !== undefined) inc.survival = Math.min(100, inc.survival + 10); inc.work *= 0.95; out = `Criticals going to ${trauma.name} — the trauma team is ready.`; }
+          else { inc.casualties += 1; st.stats.casualties += 1; this.consequence(inc, 'The trauma centre was already overwhelmed'); out = 'The trauma centre was already full — patients waited in the corridor.'; }
+        } else if (nearest) {
+          nearest.er += 4; inc.work *= 0.85;
+          if (nearest.er > nearest.erCap) { if (inc.survival !== undefined) inc.survival = Math.max(0, inc.survival - 8); this.consequence(inc, `${nearest.name} was swamped by the casualties`); out = `${nearest.name} is swamped — it has gone on diversion.`; }
+          else out = `Everyone to ${nearest.name} — fast turnaround.`;
+        }
         break;
       }
       case 'package': {

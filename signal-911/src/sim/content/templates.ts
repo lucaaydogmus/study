@@ -624,6 +624,42 @@ export const TEMPLATES: Template[] = [
     build: (rnd, t) => rnd() < 0.25 ? { ...t, truth: { ...t.truth, false_alarm: false, weapon: 'handgun', suspect: true, injured: 1, suspect_desc: 'two men running toward the river' }, requires: [R('patrol', 2), R('als'), R('transport')], twist: { ...t.twist!, say: ["Someone's screaming — there's a man on the ground by the bins. He's bleeding. Those weren't fireworks."], facts: { injured: 1, weapon: true }, requires: null, hint: 'crime_progress', label: 'Shooting', severity: 4, scene: 'Gunshot victim on scene, suspects fled. Securing.' }, threat: [28, 0.42, 1.4], lethal: true, transport: true, intense: true } : t,
   }),
 
+  // ───────────────────────── HOSPITALS CALLING IN ─────────────────────────
+  base({
+    id: 'ift_transfer', category: 'medical', label: 'Urgent hospital transfer', hint: 'medical_critical', cls: 'medical_critical', w: {}, spawnOnly: true,
+    sev: [3, 4], patient: 'any', transport: true,
+    truth: { injured: 1, conscious: true, breathing: true, safe: true, people: 1, cause: 'a patient needs a specialist unit this hospital does not have' }, reported: ['injured', 'conscious'],
+    requires: [R('als'), R('transport')], threat: [12, 0.16, 1.4], work: 30,
+    archetypes: [['professional', 1]],
+    open: ["Ravenport dispatch, this is the charge nurse in our ER. We have a {age}-year-old who needs to go to a specialist unit right now — can you send a paramedic crew?", "Hi, it's the duty doctor. I've got a patient deteriorating who needs transfer for specialist care. We need an advanced crew, urgently."],
+    cause: ["We've stabilised {him} as far as we can here. {He} needs a team we don't have.", "{He} came in with what looked minor. It isn't."],
+    scene: 'Patient packaged with the ER team. Transferring now.', ambience: 'indoor',
+    resolved: 'The patient reached the specialist unit in time.', failed: 'The transfer came too late for the patient.',
+  }),
+  base({
+    id: 'blood_run', category: 'police', label: 'Blood run — police escort', hint: 'crime_report', cls: 'crime_report', w: {}, spawnOnly: true,
+    sev: [3, 3],
+    truth: { injured: 0, safe: true, people: 2, vehicles: 1, cause: 'a cooler of rare blood products has to cross the city to an operating theatre in minutes' }, reported: ['vehicles'],
+    requires: [R('patrol')], threat: [14, 0.32, 1.6], work: 40,
+    archetypes: [['professional', 1]],
+    open: ["Dispatch, it's the blood bank at the hospital. We have O-negative that has to get across town to a patient bleeding out on the table — can you give our courier a police escort?", "This is theatre coordination. We've got an organ in a cooler and the traffic is solid. We need an escort, now."],
+    cause: ["They've got minutes, not an hour.", "The surgeon is already scrubbed in."],
+    scene: 'Courier with us. Escorting, lights and sirens.', ambience: 'traffic',
+    resolved: 'The escort got the cooler to theatre in time — the patient made it.', failed: 'The delivery was too late.',
+  }),
+  base({
+    id: 'er_violent', category: 'police', label: 'Violent patient in the ER', hint: 'disturbance', cls: 'disturbance', w: {}, spawnOnly: true,
+    sev: [3, 3],
+    truth: { people: 12, weapon: false, injured: 1, suspect: true, suspect_desc: 'an agitated man in a hospital gown throwing equipment', safe: false, cause: 'a confused, aggressive patient is attacking staff' }, reported: ['suspect'], unsure: ['weapon'],
+    requires: [R('patrol', 2)], escalate: [{ reqs: [R('patrol', 3)], text: 'He has picked up a pair of scissors', sev: 1 }],
+    threat: [22, 0.35, 1.3], work: 40,
+    archetypes: [['professional', 3], ['worried_neighbor', 1]],
+    open: ["Dispatch, this is security at the ER — we have a patient who's turned violent, he's hurting staff and we can't hold him!", "(alarm in the background) We need police in our emergency department, a man is throwing things at nurses!"],
+    cause: ["He came in intoxicated and just exploded.", "Nobody knows what set him off. He's strong."],
+    scene: 'Patient restrained with hospital security. One nurse with minor injuries.', ambience: 'indoor',
+    resolved: 'Officers helped staff restrain the patient safely.', failed: 'Staff were badly hurt before police arrived.',
+  }),
+
   // ───────────────────────── PUBLIC ORDER & SPECIAL THREATS ─────────────────────────
   base({
     id: 'protest_march', category: 'police', label: 'Protest blocking roads', hint: 'disturbance', cls: 'disturbance', w: { commercial: 0.35, historic: 0.3, campus: 0.4, highrise: 0.3 },

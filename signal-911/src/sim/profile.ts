@@ -114,6 +114,15 @@ export function temporarySetup(opts: { units?: number; budget?: number; rank?: n
   return { rank: opts.rank ?? 7, reputation: 50, budget: opts.budget ?? 200000, stations, units, personnel, upgrades: { ali: 2, console: 1 }, city: { closedRoads: [], districtTraffic: {}, damagedStations: {}, log: [] } };
 }
 
+/** a full service for every worn vehicle, between shifts */
+export function serviceCost(p: Profile): number { return p.units.reduce((s, u) => s + Math.round(Math.max(0, 100 - (u.condition ?? 100)) * 60), 0); }
+export function serviceFleet(p: Profile): boolean {
+  const c = serviceCost(p);
+  if (!c || c > p.money) return false;
+  p.money -= c; for (const u of p.units) u.condition = 100;
+  return true;
+}
+
 export function careerConfig(p: Profile, over: Partial<ShiftConfig> = {}): ShiftConfig {
   const rank = p.rank;
   const rankRate = 0.8 + rank * 0.07;
@@ -185,6 +194,8 @@ export function applyShift(p: Profile, st: GameState): ShiftResult {
   const oldRank = p.rank;
   p.money += res.money;
   p.xp += res.xp;
+  // wear and tear carries over to the next shift
+  for (const u of p.units) { const live = st.units[u.id]; if (live && live.condition !== undefined) u.condition = Math.round(live.condition); }
   p.reputation = Math.max(0, Math.min(100, p.reputation + res.repDelta));
   p.rank = rankForXp(p.xp);
   res.newRank = p.rank;

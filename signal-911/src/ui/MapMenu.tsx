@@ -193,6 +193,7 @@ export function MapMenu({ engine, menu, onClose, focus, startReposition, openTab
         {policeCar && engine.onPatrol(u) && <Item icon="shield" onClick={run(() => feedback(engine.orderStop(u.id)))}>Make a traffic stop</Item>}
         {policeCar && ['AVAILABLE', 'RETURNING'].includes(u.status) && <Item icon={u.patrol === false ? 'car' : 'hosp'} onClick={run(() => { engine.setPatrol(u.id, u.patrol === false); audio.click(); useApp.getState().bump(); })}>{u.patrol === false ? 'Resume patrol' : 'Hold at station'}</Item>}
         {['AVAILABLE', 'RETURNING'].includes(u.status) && !isAir(u) && <Item icon="pin" onClick={run(() => startReposition(u.id))}>Move to cover…</Item>}
+        {!u.temp && u.status === 'AVAILABLE' && (u.condition ?? 100) <= 85 && <Item icon="wrench" sub={`${Math.round(u.condition ?? 100)}%`} onClick={run(() => feedback(engine.serviceUnit(u.id), `${u.callsign} heading to the workshop`))}>Send to the workshop</Item>}
         {(inc || u.status === 'ON_SCENE') && <Item icon="x" onClick={run(() => feedback(engine.recall(u.id), `${u.callsign} returning to service`))}>Recall to station</Item>}
         <div className="mm-sep" />
         <Item icon="info" onClick={run(() => { engine.select('unit', u.id); useApp.getState().bump(); })}>Open unit card</Item>

@@ -142,6 +142,8 @@ export function Garage({ p }: { p: Profile }) {
             <Meter label="Speed" value={next.speed} was={now.speed} unit={`${Math.round(preview.speedModifier * 100)}%`} />
             <Meter label="Space" value={next.space} was={now.space} unit={`${slots} slot${slots === 1 ? '' : 's'}`} />
             <Meter label="Capability" value={next.capability} was={now.capability} unit={`${preview.capabilities.length}`} />
+            <Meter label="Condition" value={Math.round(u.condition ?? 100)} unit={`${Math.round(u.condition ?? 100)}%`} />
+            {(u.condition ?? 100) < 95 && <div className="small"><Btn size="sm" icon="wrench" disabled={p.money < Math.round((100 - (u.condition ?? 100)) * 60)} onClick={() => mutate((pp) => { const uu = pp.units.find((x) => x.id === u.id); if (!uu) return; pp.money -= Math.round((100 - (uu.condition ?? 100)) * 60); uu.condition = 100; })}>Full service · {fmtMoney(Math.round((100 - (u.condition ?? 100)) * 60))}</Btn> <span className="muted">Worn vehicles are slower and break down more often.</span></div>}
             {(preview.fit?.grip ?? 0) > 0 && <div className="small good"><Icon n="snow" size={11} /> Keeps {Math.round((preview.fit?.grip ?? 0) * 100)}% of its speed in bad weather</div>}
             {(preview.fit?.eff ?? 1) !== 1 && <div className={`small ${(preview.fit?.eff ?? 1) > 1 ? 'good' : 'bad'}`}>Crew effectiveness {(preview.fit?.eff ?? 1) > 1 ? '+' : ''}{Math.round(((preview.fit?.eff ?? 1) - 1) * 100)}% on scene</div>}
             <div className="chips">{preview.capabilities.map((c) => <Badge key={c} tone={newCaps.includes(c) ? 'green' : undefined}>{CAP_LABEL[c]}</Badge>)}</div>

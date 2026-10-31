@@ -82,6 +82,9 @@ export interface Unit {
   /** garage fit chosen in shift prep: chassis, equipment kits and livery */
   fit?: UnitFit;
   /** last time dispatch thanked the crew (game time) */ thankedAt?: number;
+  /** mechanical condition 0..100 (persists across career shifts) */ condition?: number;
+  /** carrying someone under arrest to the police station */ prisoner?: boolean;
+  /** driving back to quarters for servicing */ workshop?: boolean;
 }
 
 export interface Station {
@@ -171,6 +174,7 @@ export interface HospitalState {
   /** what the dispatcher's bed board shows (it goes stale until refreshed) */
   known: { at: number; er: number; down: Dept[]; diversion: boolean } | null;
   prealerts: string[];
+  /** last time dispatch begged them to take a patient on diversion */ lastPlea?: number;
 }
 export interface Decision {
   id: string; incId: string; unitId: string; at: number; expiresAt: number; kind: string; prompt: string;
@@ -269,6 +273,7 @@ export interface Incident {
   resources?: Record<string, { at: number; arriveAt: number; here: boolean; unitId?: string }>;
   /** crews on scene asked for these resources (game time) */
   resAsked?: Record<string, number>;
+  /** the mass-casualty distribution question was asked */ mciAsked?: boolean;
   /** a major incident's breaking-news moment (game time) */
   breakAt?: number;
 }
@@ -369,7 +374,7 @@ export interface ShiftStats {
   boloHits?: number; stingerHits?: number; breaksGiven?: number;
   callerAnswers?: number; cprPaced?: number; handoffs?: number; calmActions?: number; calmGood?: number; tasksDone?: number; callerBreakdowns?: number; redirectsOk?: number; redirectsBad?: number; listens?: number; unitQueries?: number; unitQueriesOk?: number; unitQueriesMissed?: number; maydays?: number; maydaySaved?: number; refusals?: number;
   specialistCalls?: number; specialistWasted?: number; majorsHandled?: number;
-  crewTalks?: number; sayAgains?: number; resourceCalls?: number;
+  crewTalks?: number; sayAgains?: number; resourceCalls?: number; arrests?: number; services?: number; hospitalCalls?: number; mciPlans?: number; walkIns?: number;
   agencyCalls?: number; agencyLate?: number; statusChecks?: number; statusSaves?: number; statusMissed?: number; alertsRight?: number; alertsWrong?: number; searchFinds?: number;
 }
 
@@ -405,7 +410,7 @@ export interface GameState {
   news?: Array<{ t: number; text: string; tone: 'good' | 'bad' | 'info' }>;
   /** hospital departments, beds and diversions, keyed by hospital node */
   hospitals?: Record<string, HospitalState>;
-  lastChatter?: number;
+  lastChatter?: number; lastHospitalCall?: number; lastWalkIn?: number;
 }
 
 export interface ShiftScore {

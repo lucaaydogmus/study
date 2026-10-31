@@ -63,10 +63,11 @@ function play(rank: number, seed: number) {
   }
   const majors = Object.values(st.incidents).filter((i) => TEMPLATE_BY_ID[i.templateId]?.major).map((i) => i.templateId);
   if (process.env.VERBOSE) console.log(`  seed ${seed}: threat ${st.config.threatLevel} events [${st.config.events.map((x) => x.type).join(',')}] majors [${majors.join(',')}] spec ${st.stats.specialistCalls ?? 0} res ${st.stats.resourceCalls ?? 0} costs ${Math.round(st.stats.costs)} cas ${st.stats.casualties} say ${st.stats.sayAgains ?? 0} score ${st.scoreBreakdown!.total}`);
+  if (process.env.CAS) { const m: Record<string, number> = {}; for (const i of Object.values(st.incidents)) if (i.casualties) m[i.templateId] = (m[i.templateId] ?? 0) + i.casualties; const fails: Record<string, number> = {}; for (const i of Object.values(st.incidents)) if (i.outcome === 'failed') fails[i.templateId] = (fails[i.templateId] ?? 0) + 1; console.log('  cas', JSON.stringify(m), 'fails', JSON.stringify(fails), 'mci', st.stats.mciPlans ?? 0, 'walkins', st.stats.walkIns ?? 0, 'hosp', st.stats.hospitalCalls ?? 0, 'arrests', st.stats.arrests ?? 0); }
   return { score: st.scoreBreakdown!.total, cas: st.stats.casualties, money: computeResult(st).money, calls: st.stats.callsReceived };
 }
-for (const rank of [1, 3, 5]) {
-  const rows = Array.from({ length: 10 }, (_, i) => play(rank, 1000 + i * 37));
+for (const rank of (process.env.RANKS ?? '1,3,5').split(',').map(Number)) {
+  const rows = Array.from({ length: Number(process.env.N ?? 10) }, (_, i) => play(rank, 1000 + i * 37));
   const avg = (k: 'score' | 'cas' | 'money' | 'calls') => Math.round(rows.reduce((s, r) => s + r[k], 0) / rows.length * 10) / 10;
   console.log(`rank ${rank}: score ${avg('score')} cas ${avg('cas')} money ${avg('money')} calls ${avg('calls')}`);
 }

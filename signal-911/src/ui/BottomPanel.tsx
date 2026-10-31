@@ -94,7 +94,7 @@ function HospitalBoard({ engine }: { engine: GameEngine }) {
               <div className="hr-name"><b>{h.name}</b><span className="small muted">{addressOf(engine.city, h.node)}</span></div>
               <div className="depts">{h.has.length ? h.has.map((d) => <i key={d} className={`dept ${k?.down.includes(d) ? 'down' : 'up'}`}>{d}</i>) : <i className="dept none">minor injuries only</i>}</div>
               <div className="hr-er"><span className="small">ER</span><Bar value={k?.er ?? 0} max={h.erCap} tone={(k?.er ?? 0) >= h.erCap ? 'red' : (k?.er ?? 0) >= h.erCap * 0.75 ? 'amber' : 'green'} label="ER load" /><span className="mono small">{k ? `${k.er}/${h.erCap}` : '?'}</span></div>
-              <div className="hr-in small">{k?.diversion ? <Badge tone="red">ON DIVERSION</Badge> : null}{ins.length ? <span>{ins.map((u) => `${u.callsign}${h.prealerts.includes(u.assignedIncidentId ?? '') ? ' ✓' : ''}`).join(', ')} inbound</span> : <span className="muted">no ambulances inbound</span>}</div>
+              <div className="hr-in small">{k?.diversion ? <><Badge tone="red">ON DIVERSION</Badge> <Btn size="sm" onClick={() => { const r = engine.askHospitalToAccept(h.node); useApp.getState().showToast(r.ok ? (r.accepted ? `${h.name} will take one more` : `${h.name} refused — divert`) : r.reason ?? '', r.accepted ? 'good' : 'warn'); bump(); }}>Ask them to take one</Btn></> : null}{ins.length ? <span>{ins.map((u) => `${u.callsign}${h.prealerts.includes(u.assignedIncidentId ?? '') ? ' ✓' : ''}`).join(', ')} inbound</span> : <span className="muted">no ambulances inbound</span>}</div>
             </div>
           );
         })}

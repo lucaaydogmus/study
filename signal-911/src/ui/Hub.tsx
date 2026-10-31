@@ -6,7 +6,7 @@ import { GameEngine, DIFFICULTY } from '../sim/engine';
 import { BUILD_STATION_COST, SERVICE_META, UNIT_TYPES, UNIT_TYPE_BY_ID, UPGRADES, hireCost } from '../sim/fleet';
 import { WEATHER_LABEL } from '../sim/events';
 import {
-  assignPersonnel, buildStation, buyUnit, buyUpgrade, candidatePool, careerConfig, dismissPersonnel, hirePersonnel, sellUnit, setupFromProfile, stationCapacity, stationUnitCount, trainPersonnel, type Profile,
+  assignPersonnel, buildStation, buyUnit, serviceCost, serviceFleet, buyUpgrade, candidatePool, careerConfig, dismissPersonnel, hirePersonnel, sellUnit, setupFromProfile, stationCapacity, stationUnitCount, trainPersonnel, type Profile,
 } from '../sim/profile';
 import { nextRankXp, RANKS, rankDef } from '../sim/progression';
 import { CHAPTERS, SCENARIOS } from '../sim/scenarios';
@@ -213,6 +213,7 @@ function Prep({ p }: { p: Profile }) {
           </div>
           <h4>Readiness check</h4>
           {(['police', 'fire', 'medical'] as Service[]).map((s) => <div className="kv" key={s}><span style={{ color: SERVICE_META[s].color }}><Icon n={SERVICE_ICON[s]} size={12} /> {SERVICE_META[s].label}: {Object.values(st.units).filter((u) => u.service === s && u.status !== 'OUT_OF_SERVICE').length} units</span><Bar value={cov(s) * 100} tone={cov(s) > 0.6 ? 'green' : cov(s) > 0.35 ? 'amber' : 'red'} /><span className="mono small">{Math.round(cov(s) * 100)}%</span></div>)}
+          {(() => { const worn = p.units.filter((u) => (u.condition ?? 100) < 70); const cost = serviceCost(p); return worn.length ? <div className="note-line warn"><Icon n="wrench" size={12} /> {worn.length} vehicle{worn.length > 1 ? 's are' : ' is'} worn ({worn.map((u) => `${u.callsign} ${Math.round(u.condition ?? 100)}%`).slice(0, 4).join(', ')}{worn.length > 4 ? '…' : ''}) <Btn size="sm" disabled={cost > p.money} onClick={() => mutate((pp) => { serviceFleet(pp); })}>Service fleet · {fmtMoney(cost)}</Btn></div> : null; })()}
           {under.length > 0 && <div className="note-line warn"><Icon n="alert" size={12} /> {under.length} unit(s) out of service: {under.map((u) => `${u.callsign} (${u.note ?? 'unavailable'})`).join(', ')}</div>}
           <div className="btnrow col">
             <Btn kind="primary" size="lg" icon="play" onClick={() => startShift()}>BEGIN SHIFT</Btn>
