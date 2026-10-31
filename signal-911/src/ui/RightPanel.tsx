@@ -12,6 +12,8 @@ import { DispatchConsole, type Preview } from './DispatchConsole';
 import { AirSupport, Consequences, DeadlineBanner, LifeMeter } from './Ops';
 import { CrewBriefing, FieldOps, SceneCommand, UnitCommands, openCctv } from './Field';
 import { AIR_HELPS } from '../sim/engine';
+import { SYSTEMS, repairStation, systemsOf } from '../sim/buildings';
+import { premiseFlags, terminatePursuit, warnPremise } from '../sim/ops';
 
 export interface PanelCtx { setPreview: (p: Preview) => void; engine: GameEngine; pickLocation: (incId: string | null) => void; pickingFor: string | null; repositioning: string | null; startReposition: (unitId: string | null) => void; focus: (x: number, y: number, zoom?: number) => void; openCall: () => void; setBottom: (t: string) => void }
 
@@ -112,6 +114,7 @@ function StationPanel({ engine, id }: PanelCtx & { id: string }) {
         <div className="kv"><span>Based here</span><b>{units.length} / {s.capacity + (engine.state.upgrades.garage ?? 0)}</b></div>
         {units.map((u) => (<button key={u.id} className="rowbtn" onClick={() => { engine.select('unit', u.id); select().bump(); }}><span className="mono">{u.callsign}</span><StatusBadge s={u.status} /></button>))}
       </Section>
+      <StationUpkeep engine={engine} id={id} />
     </div>
   );
 }
@@ -224,6 +227,9 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
           <AirSupport engine={engine} inc={inc} />
           <div className="kv"><span>Box-in</span><Bar value={inc.workProgress} max={inc.work} tone="green" label="Box-in progress" /></div>
           <div className="kv"><span>Public risk</span><Bar value={inc.threat} tone={inc.threat > 70 ? 'red' : inc.threat > 40 ? 'amber' : 'blue'} label="Public risk" /></div>
+          {!inc.mover.foot && <div className="kv"><span>Chase danger</span><Bar value={inc.mover.risk ?? 0} tone={(inc.mover.risk ?? 0) > 70 ? 'red' : (inc.mover.risk ?? 0) > 40 ? 'amber' : 'green'} label="How dangerous the chase has become" /></div>}
+          {!inc.mover.foot && !inc.mover.terminated && <div className="btnrow"><Btn size="sm" kind={(inc.mover.risk ?? 0) > 65 ? 'danger' : 'ghost'} onClick={() => { const r = terminatePursuit(engine, inc.id); useApp.getState().showToast(r.ok ? r.text ?? 'Pursuit terminated' : r.reason ?? '', r.ok ? 'info' : 'warn'); bump(); }} title="Call it off: no crash, but without the helicopter he gets away">Terminate pursuit</Btn>{(inc.mover.risk ?? 0) > 65 && <span className="small warn">Busy streets — a crash is getting likely</span>}</div>}
+          {inc.mover.terminated && <div className="note-line"><Icon n="radio" size={12} /> Pursuit called off — Air One is still watching him from high up.</div>}
           {inc.reportedNode === null && <div className="note-line warn"><Icon n="pin" size={12} /> Set an initial location from the caller to start tracking.</div>}
         </Section>
       )}
@@ -245,6 +251,12 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
       {!inc.truth.outside && (
         <Section title="Location" id="loc" right={inc.reportedNode !== null ? <Badge tone={inc.locationConfirmed ? 'green' : 'amber'}>{inc.locationConfirmed ? 'VERIFIED' : 'UNVERIFIED'}</Badge> : <Badge tone="red">NOT SET</Badge>}>
           <div className="bigline">{inc.reportedNode !== null ? <><Icon n="pin" size={14} /> {fullAddress(city, inc.reportedNode)}</> : <span className="muted">Ask for the address, then choose below.</span>}</div>
+          {inc.reportedNode !== null && !done && (() => { const flags = premiseFlags(engine, inc.reportedNode!); return flags.length ? (
+            <div className={`premise ${inc.premiseWarned ? 'warned' : ''}`}>
+              <div className="sub">PREMISE HISTORY</div>
+              {flags.map((f) => <div key={f.kind} className="pf"><Icon n="alert" size={11} /> {f.text}{f.learned && <span className="muted small"> · from a previous shift</span>}</div>)}
+              <Btn size="sm" kind={inc.premiseWarned ? 'ghost' : 'primary'} disabled={!!inc.premiseWarned} onClick={() => { const r = warnPremise(engine, inc.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); else audio.radioBlip(); bump(); }}>{inc.premiseWarned ? 'Crews warned' : 'Warn responding crews'}</Btn>
+            </div>) : null; })()}
           {inc.reportedNode !== null && <div className="btnrow"><Btn size="sm" icon="map" onClick={() => { const n = city.nodes[inc.reportedNode!]; focus(n.x, n.y, 2.2); }}>Show on map</Btn>{liveCall && !done && <Btn size="sm" icon="check" onClick={() => { engine.verifyLocation(liveCall.id, inc.reportedNode!); bump(); }}>Read back to caller</Btn>}</div>}
           {!done && (
             <>
@@ -327,5 +339,32 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
       )}
       {done && <div className="note-line"><Icon n="clock" size={12} /> Resolved at {gameClock(st, inc.resolvedAt ?? st.time)}</div>}
     </div>
+  );
+}
+
+/** the building: systems that wear out and break, and what fixing them costs */
+function StationUpkeep({ engine, id }: { engine: GameEngine; id: string }) {
+  const st = engine.state;
+  const s = st.stations[id];
+  const bump = useApp((x) => x.bump);
+  const sys = systemsOf(st, s);
+  const act = (r: { ok: boolean; reason?: string }) => { if (!r.ok) { audio.error(); useApp.getState().showToast(r.reason ?? 'Not possible', 'warn'); } else audio.click(); bump(); };
+  const worst = Math.min(...SYSTEMS.filter((x) => !(x.id === 'supplies' && s.service === 'police')).map((x) => sys[x.id]));
+  return (
+    <Section title="Building" id="upkeep" right={<Badge tone={worst < 30 ? 'red' : worst < 55 ? 'amber' : 'green'}>{worst < 30 ? 'FAULT' : worst < 55 ? 'WORN' : 'GOOD'}</Badge>}>
+      {SYSTEMS.filter((x) => !(x.id === 'supplies' && s.service === 'police')).map((x) => {
+        const v = Math.round(sys[x.id]);
+        const fixing = sys.repairs.find((r) => r.sys === x.id && !r.done && r.until > st.time);
+        return (
+          <div key={x.id} className="upkeep" title={x.hint}>
+            <span className="uk-l">{x.label}</span><Bar value={v} tone={v < 30 ? 'red' : v < 55 ? 'amber' : 'green'} />
+            {fixing ? <span className="small muted mono">fixing · {fmtTime(fixing.until - st.time)}</span>
+              : <Btn size="sm" kind={v < 35 ? 'primary' : 'ghost'} disabled={v > 92} onClick={() => act(repairStation(engine, id, x.id))} title={`${x.fix} — $${x.cost.toLocaleString()}`}>{x.id === 'fuel' ? 'Order fuel' : x.id === 'supplies' ? 'Restock' : 'Repair'} · ${(x.cost / 1000).toFixed(1)}k</Btn>}
+          </div>
+        );
+      })}
+      {s.service === 'police' && <div className="upkeep"><span className="uk-l">Holding cells</span><Bar value={(sys.cells ?? 0) * 100 / 6} tone={(sys.cells ?? 0) > 5 ? 'red' : (sys.cells ?? 0) > 3 ? 'amber' : 'green'} /><Btn size="sm" kind="ghost" disabled={!sys.cells} onClick={() => act(repairStation(engine, id, 'cells'))} title="Send the prisoners to county jail">{sys.cells ?? 0}/6 · to county</Btn></div>}
+      <p className="small muted">Worn doors jam on turnout, a failing alerting system means crews miss the tones, a dead generator leaves the station dark in a blackout, an empty tank sends crews to the city yard, and empty stores slow crews down on scene.</p>
+    </Section>
   );
 }

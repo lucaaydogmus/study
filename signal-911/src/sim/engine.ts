@@ -11,6 +11,10 @@ import { aidVerdict, lifeThreatOf, FIRE_LIKE, TOPIC_FACTS, aliLookup, classifyIn
 import { EVENT_DEFS, WEATHER_SPEED, WEATHER_TRAFFIC, WEATHER_LABEL, nextWeather } from './events';
 import { numWord, UNIT_TYPE_BY_ID, makeUnit, isAir, AIR_SPEED } from './fleet';
 import { cameraList, cctvTracking, type Camera } from './cctv';
+import { needsTick } from './radioreq';
+import { aidOutTick, cadDown, cadTick, decideAidOut, directiveTick, hoaxTick, learnPremise, maybeText, premiseArrival, pursuitRisk, textSpeak } from './ops';
+import { bookPrisoner, buildingsTick, onReturn, reTone, suppliesFactor, turnoutDelay, useSupplies } from './buildings';
+import { emergencyActivation, emergencyTick, heldTick, isHeld, maybeBreak, patchAskTick, radioQueueTick, reportPosition, talkgroupOf } from './radioops';
 import { addStress, commandFactor, commandTick, decideStress, stormTick, stressFactor, stressTick } from './field';
 import { getCloser, landmarkNear, pullOver, relayBlock, relaysTick, regularOnAnswer, regularOutcome, regularsTick, setupThirdParty, thirdPartyBlock, thirdPartyTick, updateMovingCaller } from './callers';
 import { applyFit, KIT_BY_ID } from './garage';
@@ -347,7 +351,12 @@ export class GameEngine {
   }
   radio(from: string, text: string, kind: import('./types').RadioMsg['kind'] = 'unit', unitId?: string, incidentId?: string) {
     const st = this.state;
-    st.radio.push({ id: `r${st.radio.length}-${Math.floor(st.time * 10)}`, t: st.time, clock: gameClock(st), from, text, unitId, incidentId, kind });
+    const msg: import('./types').RadioMsg = { id: `r${st.radio.length}-${Math.floor(st.time * 10)}-${(st.lineCounter = (st.lineCounter ?? 0) + 1)}`, t: st.time, clock: gameClock(st), from, text, unitId, incidentId, kind };
+    // routine chatter waits while a talkgroup is on emergency traffic only
+    if (kind === 'chatter' && isHeld(st, talkgroupOf(st, msg))) return;
+    st.radio.push(msg);
+    maybeBreak(this, msg);
+    if (unitId && cadDown(st) && st.units[unitId]) reportPosition(st, st.units[unitId]);
     if (st.radio.length > 250) st.radio.shift();
     this.emit({ type: 'radio', unitId });
   }
@@ -446,7 +455,16 @@ export class GameEngine {
     relaysTick(this);
     stormTick(this);
     stressTick(this);
+    needsTick(this);
+    buildingsTick(this);
+    heldTick(this);
+    radioQueueTick(this);
+    emergencyTick(this);
+    patchAskTick(this);
     this.updateStatusChecks();
+    cadTick(this);
+    directiveTick(this);
+    aidOutTick(this);
     this.updateAlertCalls();
     this.updateRelapses();
     this.unitQueriesTick();
@@ -606,7 +624,7 @@ export class GameEngine {
     const up = this.state.upgrades;
     const equip = 1 + 0.12 * (u.service === 'medical' ? up.medkit ?? 0 : u.service === 'fire' ? up.firegear ?? 0 : up.policegear ?? 0);
     const seatFactor = Math.sqrt(Math.min(1, crew.length / u.crewSeats));
-    return Math.max(0.35, Math.min(2.2, eff * fatigue * morale * equip * seatFactor * stressFactor(crew) * (u.fit?.eff ?? 1) * modProduct(this.state.config, 'eff')));
+    return Math.max(0.35, Math.min(2.2, eff * fatigue * morale * equip * seatFactor * stressFactor(crew) * suppliesFactor(this.state, u) * (u.fit?.eff ?? 1) * modProduct(this.state.config, 'eff')));
   }
   /** the right tool for the job: specialist vehicles and fitted kit work some scenes faster */
   sceneFit(inc: Incident, u: Unit): number {
@@ -827,6 +845,7 @@ export class GameEngine {
       inc.mover = { x: n.x, y: n.y, prev: nodeId, next: -1, came: -1, speed: 4.2, tracked: false, trail: [], startAt: st.time + 2, lastUpdate: st.time, lastSighting: st.time, contact: 0, heading: 0, caller: true, dest: hs[Math.min(1, hs.length - 1)] ?? nodeId };
     }
     setupThirdParty(inc, archetypeId, tpl.patient);
+    if (tpl.id === 'swatting_hoax') { inc.hoax = true; profile.callerIdType = 'voip'; }
     // the first stage does not hang about either
     if (tpl.escalate?.length && !src && inc.growth > 0) inc.growth = Math.max(inc.growth, (100 - inc.threat) / 300);
     // nothing real sits for a quarter of an hour: unattended, it goes wrong within about thirteen minutes
@@ -863,6 +882,7 @@ export class GameEngine {
       ringStart: st.time, ringTimeout: diff.ring + (st.rank <= 1 ? 8 : 0), answeredAt: null, endedAt: null, transcript: [], badLine: profile.callerIdType === 'mobile' && !opts.tutorial && st.rank >= 1 && ((num * 2654435761) >>> 0) % 100 < 11, mood, asked: {}, promises: [], promiseAt: null, complained: 0,
       heard: [], usedLines: {}, pending: [], holdSince: null, holdTotal: 0, aliUsed: false, verifyAsked: [], locPlan, typing: false, spokeFirst: false, misunderstood: 0, lastSpontaneous: st.time, stateNote: '',
     };
+    maybeText(inc, call);
     st.calls[callId] = call;
     st.stats.callsReceived++;
     this.log('call', `Incoming call — ${call.callerId}`, { incidentId: id });
@@ -900,7 +920,7 @@ export class GameEngine {
   }
 
   /** a new incident that breaks out of an existing one: a getaway van, a victim fleeing a shooting */
-  private spawnConnected(parent: Incident, templateId: string, opts: { noCall?: boolean } = {}): Incident | null {
+  spawnConnected(parent: Incident, templateId: string, opts: { noCall?: boolean } = {}): Incident | null {
     const tpl = TEMPLATE_BY_ID[templateId];
     if (!tpl) return null;
     const st = this.state;
@@ -1025,6 +1045,7 @@ export class GameEngine {
   }
 
   addTranscript(call: Call, who: 'CALLER' | 'DISPATCHER' | 'SYSTEM', text: string, garbled = false) {
+    if (who === 'CALLER' && call.text) text = textSpeak(text) || '…';
     call.transcript.push({ t: this.state.time, clock: gameClock(this.state), who, text, ...(garbled ? { garbled: true } : {}) });
     if (who === 'DISPATCHER') call.lastDispatcherAt = this.state.time;
   }
@@ -1175,7 +1196,7 @@ export class GameEngine {
     const added: import('./types').PendingLine[] = [];
     for (const l of r.lines) {
       const len = l.text.length;
-      const pace = (arch.slow ? 1.5 : 1) * (m.panic > 70 ? 0.7 : 1) * (call.profile.archetype === 'terse' ? 1.2 : 1);
+      const pace = (arch.slow ? 1.5 : 1) * (m.panic > 70 ? 0.7 : 1) * (call.profile.archetype === 'terse' ? 1.2 : 1) * (call.text ? 2.2 : 1);
       at += Math.min(4.5, (0.9 + len * 0.028) * pace);
       const line = { ...l, at };
       call.pending.push(line);
@@ -1801,7 +1822,8 @@ export class GameEngine {
       const fat = crew.length ? crew.reduce((s, p) => s + p.fatigue, 0) / crew.length : 0;
       if (this.rng.chance(0.012 * wx * (1 + fat / 120))) u.crashAt = st.time + u.timer + this.rng.range(8, 40);
     }
-    u.timer = isAir(u) ? 14 : rolling ? 2.5 : this.mobilizationTime(u);
+    u.missedTones = false;
+    u.timer = isAir(u) ? 14 : rolling ? 2.5 : this.mobilizationTime(u) + turnoutDelay(this, u);
     u.staging = false; u.stagedAt = null;
     u.deployments++;
     u.note = undefined;
@@ -1831,7 +1853,7 @@ export class GameEngine {
   }
 
   /** remove the unit from its incident (does not change the unit's own status) */
-  private detach(u: Unit, silent = false) {
+  detach(u: Unit, silent = false) {
     const st = this.state;
     const inc = u.assignedIncidentId ? st.incidents[u.assignedIncidentId] : undefined;
     if (inc) {
@@ -2092,7 +2114,7 @@ export class GameEngine {
     if (u.status === 'RETURNING') {
       if (u.temp) { delete st.units[u.id]; return; }
       if (u.prisoner) {
-        u.prisoner = false; u.status = 'BUSY'; u.timer = 30; u.note = 'Booking prisoner';
+        u.prisoner = false; u.status = 'BUSY'; u.timer = bookPrisoner(this, u); u.note = 'Booking prisoner';
         st.stats.arrests = (st.stats.arrests ?? 0) + 1;
         this.radio(u.spoken, `Dispatch, ${u.spoken}. At ${this.stationAt(u.prevNode)?.name ?? 'the station'} with one in custody — booking now.`, 'unit', u.id);
         this.emit({ type: 'status', unitId: u.id });
@@ -2105,7 +2127,8 @@ export class GameEngine {
         this.emit({ type: 'status', unitId: u.id });
         return;
       }
-      u.status = 'AVAILABLE'; u.assignedIncidentId = undefined; u.destNode = null;
+      u.assignedIncidentId = undefined; u.destNode = null;
+      if (!onReturn(this, u)) u.status = 'AVAILABLE';
       this.emit({ type: 'status', unitId: u.id });
       return;
     }
@@ -2125,9 +2148,10 @@ export class GameEngine {
         h.er = Math.min(h.erCap + 2, h.er + 1);
         if (!suits) { u.timer += 45; this.consequence(inc, `${h.name} could not treat a ${need} patient — a secondary transfer was needed`); this.radio(h.name, `${h.name} to ${u.spoken}: we can't manage this patient here, arranging a transfer.`, 'hospital', u.id, inc.id); }
         else if (pre) { u.timer = 6; }
-        if (full) { u.timer += 40; u.note = 'Held at the ER door'; this.radio(u.spoken, `Dispatch, ${u.spoken}. ER is full at ${h.name}, we're stuck holding the patient in the corridor.`, 'unit', u.id, inc.id); }
+        if (full) { u.heldExtra = 40; u.note = 'Held at the ER door'; this.radio(u.spoken, `Dispatch, ${u.spoken}. ER is full at ${h.name}, we're stuck holding the patient in the corridor.`, 'unit', u.id, inc.id); }
       }
-      u.patients = 0; u.status = 'BUSY'; u.timer = 12;
+      u.patients = 0; u.status = 'BUSY'; u.timer = 12 + (u.heldExtra ?? 0); u.heldExtra = 0;
+      useSupplies(this, u, 6);
       if (inc) {
         inc.patientsTransported++;
         const needed = this.transportsNeeded(inc);
@@ -2142,6 +2166,8 @@ export class GameEngine {
       if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) { u.status = 'RETURNING'; u.assignedIncidentId = undefined; this.routeUnit(u, u.postNode, false); return; }
       if (inc.pursuit) { u.note = 'Searching area'; u.speed = 0; return; }
       u.status = 'ON_SCENE';
+      if (u.service !== 'police') useSupplies(this, u, 3);
+      premiseArrival(this, inc, u);
       this.emit({ type: 'arrive', unitId: u.id });
       if (inc.search && !inc.search.found) {
         const sec = u.searchSector != null ? inc.search.sectors[u.searchSector] : null;
@@ -2264,8 +2290,9 @@ export class GameEngine {
       if (inc.search && !inc.search.found) { this.updateSearch(inc, here, dt); continue; }
       const cov = matchCoverage(inc.requires, here);
       const usedUnits = here.filter((u) => cov.used.has(u.id));
+      if (inc.hoax) { hoaxTick(this, inc, here); if (['RESOLVED', 'CLOSED'].includes(inc.status)) continue; }
       if (inc.sceneSeen && !inc.command) commandTick(this, inc);
-      const eff = (usedUnits.length ? usedUnits.reduce((s, u) => s + this.unitEffectiveness(u) * this.sceneFit(inc, u), 0) / usedUnits.length : 1) * (inc.command ? commandFactor(this, inc).f : 1);
+      const eff = (usedUnits.length ? usedUnits.reduce((s, u) => s + this.unitEffectiveness(u) * this.sceneFit(inc, u), 0) / usedUnits.length : 1) * (inc.command ? commandFactor(this, inc).f : 1) * (inc.patched ? 1.08 : inc.patchAsked && st.time - inc.patchAsked > 60 ? 0.95 : 1);
       const f = cov.f;
       // threat grows without adequate response, subsides with it
       inc.threat += inc.growth * this.aidFactor(inc) * (1 - f) * dt - inc.clear * eff * f * f * 0.35 * dt;
@@ -2470,6 +2497,7 @@ export class GameEngine {
     const tpl = TEMPLATE_BY_ID[inc.templateId];
     if (inc.regular) { const reg = (st.regularLog ?? []).find((r) => r.incId === inc.id); if (reg && !reg.outcome) reg.outcome = regularOutcome(inc, outcome === 'success' ? 'resolved' : outcome === 'failed' ? 'failed' : 'dismissed'); }
     if (inc.casualties > 0) addStress(this, inc, 8 + inc.casualties * 6);
+    learnPremise(st, inc);
     // someone is arrested: a police car (or better, a van) takes them to the station to be booked
     if (outcome === 'success' && inc.truth.suspect === true && !inc.pursuit && inc.category === 'police' && !['traffic_stop', 'protest_march'].includes(inc.templateId) && st.config.mode !== 'tutorial') {
       const pol = this.onScene(inc).filter((x) => x.service === 'police' && !isAir(x) && !x.temp);
@@ -2515,7 +2543,7 @@ export class GameEngine {
     this.emit({ type: 'resolved', incidentId: inc.id });
   }
 
-  private closeIncident(inc: Incident, outcome: Outcome, quiet = false) {
+  closeIncident(inc: Incident, outcome: Outcome, quiet = false) {
     const st = this.state;
     for (const uid of [...inc.assignedUnits]) {
       const u = st.units[uid];
@@ -2714,6 +2742,8 @@ export class GameEngine {
       if (inc.status !== 'ESCALATING') inc.status = 'ON_SCENE';
     }
     m.contact = contacts.length;
+    pursuitRisk(this, inc, contacts.length, dt);
+    if (['RESOLVED', 'CLOSED'].includes(inc.status)) return;
     // a lone car can lose the suspect in traffic; with the helicopter overhead there is nowhere to hide
     if (contacts.length === 1 && !m.heliId && st.time >= m.startAt) {
       const night = st.timeOfDay % 24 >= 21 || st.timeOfDay % 24 < 5;
@@ -3605,6 +3635,7 @@ export class GameEngine {
     const st = this.state;
     const call = st.calls[callId];
     if (!call || call.state !== 'active') return { ok: false, reason: 'No active call' };
+    if (call.text) return { ok: false, reason: 'This is a text session — there is nothing to hear' };
     if (st.time - (call.listenedAt ?? -99) < 12) return { ok: false, reason: 'Give it a moment — keep listening' };
     call.listenedAt = st.time;
     st.stats.listens = (st.stats.listens ?? 0) + 1;
@@ -3828,7 +3859,7 @@ export class GameEngine {
     if (!needEod && !needFed) return;
     (inc.specialistAsked ??= {})[kind] = st.time;
     this.radio(u.spoken, `Dispatch, ${u.spoken}. ${this.rng.pick(SPECIALIST[kind].ask)}`, 'alert', u.id, inc.id);
-    this.notify(`${u.callsign}: ${kind === 'eod' ? 'bomb technicians needed' : 'recommends the federal tactical team'} — request from the incident card`, 'warn', inc.id);
+    this.notify(`${u.callsign}: ${kind === 'eod' ? 'bomb technicians needed' : 'recommends the federal tactical team'} — request it on the radio`, 'warn', inc.id);
   }
   /** call in the federal team or National Guard bomb technicians; they mobilise, then drive in from the city limits */
   requestSpecialist(incId: string, kind: SpecialistKind): { ok: boolean; reason?: string; eta?: number } {
@@ -4050,7 +4081,7 @@ export class GameEngine {
     if (st.config.mode === 'tutorial' || inc.resAsked) return;
     const want = RESOURCES.find((r) => r.kind === 'unit' && r.id !== 'federal' && r.id !== 'eod' && r.templates?.includes(inc.templateId) && (inc.severity >= 4 || r.id === 'k9' || r.id === 'transit'))
       ?? (inc.templateId === 'train_derailment' ? RESOURCE_BY_ID.transit : inc.casualties > 0 ? RESOURCE_BY_ID.coroner : undefined);
-    if (!want || this.hrand(inc.num, 41) > 0.45) { inc.resAsked = {}; return; }
+    if (!want || this.hrand(inc.num, 41) > 0.7) { inc.resAsked = {}; return; }
     inc.resAsked = { [want.id]: st.time };
     const lines: Record<string, string> = {
       k9: 'Can we get a K-9 out here? The dog will find them faster than we will.', negotiator: 'Request the crisis negotiation team — we need someone talking to him.',
@@ -4058,7 +4089,7 @@ export class GameEngine {
       coast_guard: 'Get the Coast Guard rolling — we need a boat and swimmers.', transit: 'Get the trains stopped on this line, now!', coroner: "We've got a fatality. We'll need the medical examiner.",
     };
     this.radio(u.spoken, `Dispatch, ${u.spoken}. ${lines[want.id] ?? `Request ${want.name.toLowerCase()}.`}`, 'unit', u.id, inc.id);
-    this.notify(`${u.callsign} asks for: ${want.name} — open Resources (Q)`, 'warn', inc.id);
+    this.notify(`${u.callsign} asks for: ${want.name} — answer on the radio (outside line)`, 'warn', inc.id);
   }
   /** a specialist team reached the scene */
   private specialistArrived(inc: Incident, u: Unit) {
@@ -4123,6 +4154,19 @@ export class GameEngine {
     this.radio(u.spoken, text, 'unit', u.id, inc?.id);
     return { ok: true, text };
   }
+  /** an officer is hurt: they come off the board and an officer-down incident opens */
+  officerDown(u: Unit, inc: Incident, why: string) {
+    const st = this.state;
+    this.radio(u.spoken, `10-33! ${u.spoken} — officer down!`, 'alert', u.id, inc.id);
+    this.consequence(inc, why);
+    st.reputation = Math.max(0, st.reputation - 2);
+    const down = this.spawnConnected(inc, 'officer_down', { noCall: true });
+    this.detach(u, true); u.status = 'OUT_OF_SERVICE'; u.note = 'Officer injured'; u.timer = 300; u.route = []; u.destNode = null; u.checkDue = null;
+    for (const p of this.crewOf(u)) p.stress = Math.min(100, (p.stress ?? 0) + 25);
+    if (down) this.notify(`OFFICER DOWN — ${why.toLowerCase()}`, 'bad', down.id);
+  }
+  /** side-system randomness for modules outside the engine */
+  hrandPublic(id: number, salt: number): number { return this.hrand(id, salt); }
   /** officers whose status check is overdue */
   overdueChecks(): Unit[] { const t = this.state.time; return Object.values(this.state.units).filter((u) => u.checkDue != null && t >= u.checkDue).sort((a, b) => a.checkDue! - b.checkDue!); }
   private updateStatusChecks() {
@@ -4141,13 +4185,11 @@ export class GameEngine {
         inc.requires = mergeReqs(inc.requires, [{ cap: 'patrol', n: 2 }]); inc.knownReqs = inc.requires.map((x) => ({ ...x }));
         inc.threat = Math.min(95, inc.threat + 20);
         this.notify(`${u.callsign} is calling for backup`, 'warn', inc.id);
+      } else if (this.hrand(inc.num, 88) < 0.6) {
+        // the orange button: you get a few seconds to answer it
+        emergencyActivation(this, u, inc.id);
       } else if (this.rng.chance(0.55)) {
-        this.radio(u.spoken, `10-33! ${u.spoken} — officer down! I haven't been able to get on the radio!`, 'alert', u.id, inc.id);
-        this.consequence(inc, `Nobody had checked on ${u.callsign} — the officer was hurt before anyone knew there was trouble`);
-        st.reputation = Math.max(0, st.reputation - 2);
-        const down = this.spawnConnected(inc, 'officer_down', { noCall: true });
-        this.detach(u, true); u.status = 'OUT_OF_SERVICE'; u.note = 'Officer injured'; u.timer = 300; u.route = []; u.destNode = null; u.checkDue = null;
-        if (down) this.notify('OFFICER DOWN — a status check was overdue', 'bad', down.id);
+        this.officerDown(u, inc, `Nobody had checked on ${u.callsign} — the officer was hurt before anyone knew there was trouble`);
       } else {
         this.radio(u.spoken, `Dispatch, ${u.spoken}... had a struggle here, I'm okay. Subject's in cuffs. Could've used a check-in.`, 'unit', u.id, inc.id);
         this.consequence(inc, `${u.callsign} fought a subject alone while the status check was overdue`);
@@ -4428,6 +4470,8 @@ export class GameEngine {
     this.closedMask = makeClosedMask(this.city, st.closedEdges);
     this.rerouteAll(true);
   }
+  /** the crew missed the station tones: send them again (see buildings.ts) */
+  reTone(unitId: string) { return reTone(this, unitId); }
   /** callers who are not with the patient: get them closer (see callers.ts) */
   getCloser(callId: string) { return getCloser(this, callId); }
   /** a caller driving their patient: tell them to stop and wait */
@@ -4473,6 +4517,7 @@ export class GameEngine {
     d.chosen = optionId; d.auto = auto;
     if (d.kind === 'break') return this.decideBreak(d, optionId, auto);
     if (d.kind === 'stress') return decideStress(this, d, optionId);
+    if (d.kind === 'aidOut') return decideAidOut(this, d, optionId);
     if (d.kind === 'mayday') return this.decideMayday(d, optionId, auto);
     if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) { d.outcome = 'The incident was already over.'; return { ok: true, outcome: d.outcome }; }
     const t = inc.truth;

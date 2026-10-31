@@ -3,6 +3,7 @@ import { getCity, addressOf, WORLD_H, WORLD_W } from '../sim/city';
 import { SERVICE_META, isAir } from '../sim/fleet';
 import { AGENCY } from '../sim/engine';
 import { cctvConnect } from '../sim/cctv';
+import { viewState } from '../sim/ops';
 import { barOffset, vehicleSprite } from './vehicles';
 import { getWorld3D, pitchFor } from './world3d/World3D';
 import { useApp } from '../store';
@@ -142,7 +143,7 @@ export function MapView(props: MapProps) {
     const pinPos = (inc: Incident) => { const n = city.nodes[inc.reportedNode!]; return toScreen(n.x, n.y); };
 
     const hit = (sx: number, sy: number): { kind: 'incident' | 'unit' | 'station' | 'heard' | 'hospital' | 'camera'; id: string; label: string } | null => {
-      const st = P.current.engine.state;
+      const st = viewState(P.current.engine.state);
       if (P.current.showIncidents !== false) for (const inc of Object.values(st.incidents)) {
         if (inc.reportedNode === null || inc.hidden || ['RESOLVED', 'CLOSED'].includes(inc.status)) continue;
         const p = pinPos(inc);
@@ -286,7 +287,7 @@ export function MapView(props: MapProps) {
       const dtMs = Math.min(100, now - lastT); lastT = now;
       frameEma += (dtMs - frameEma) * 0.05;
       if (!lowDetail && frameEma > 29 && !(window as unknown as { __sig911HQ?: boolean }).__sig911HQ) lowDetail = true; else if (lowDetail && frameEma < 19) lowDetail = false;
-      const pr = P.current, eng = pr.engine, st = eng.state, c = cam.current;
+      const pr = P.current, eng = pr.engine, st = viewState(eng.state), c = cam.current;
       const motion = !pr.reduceMotion;
       if (pr.focus && pr.focus.key !== lastFocus.current) { lastFocus.current = pr.focus.key; c.tx = pr.focus.x; c.ty = pr.focus.y; if (pr.focus.zoom) c.tz = Math.max(c.fit, pr.focus.zoom); }
       const ease = motion ? (pr.camEase ?? 0.18) : 1;
@@ -310,7 +311,7 @@ export function MapView(props: MapProps) {
         ctx.clearRect(0, 0, W, H);
         w3.resize(W, H, dpr);
         w3.adapt(frameEma, now);
-        w3.render({ engine: eng, cx: c.x, cy: c.y, z, W, H, pitch, dpr, hour, night, dusk, tSec: ambT, now, active, motion, showTraffic: pr.layer === 'normal' || pr.layer === 'traffic', parkedAtBase });
+        w3.render({ engine: (st === eng.state ? eng : { state: st }) as GameEngine, cx: c.x, cy: c.y, z, W, H, pitch, dpr, hour, night, dusk, tSec: ambT, now, active, motion, showTraffic: pr.layer === 'normal' || pr.layer === 'traffic', parkedAtBase });
       } else { ctx.fillStyle = '#7fbfe3'; ctx.fillRect(0, 0, W, H); }
       ctx.save();
       ctx.translate(W / 2, H / 2); ctx.scale(z, z * gy); ctx.translate(-c.x, -c.y);

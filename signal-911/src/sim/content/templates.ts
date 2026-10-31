@@ -1418,6 +1418,19 @@ export const TEMPLATES: Template[] = [
     scene: 'Alarm panel reset — dust in a detector head. No fire.', ambience: 'quiet',
     resolved: 'False alarm — the panel was reset.', failed: 'Nobody checked the alarm.',
   }),
+  // ── swatting: a hoax built to send armed officers into a stranger's home ──
+  base({
+    id: 'swatting_hoax', category: 'police', label: 'Hostage situation (?)', hint: 'crime_progress', cls: 'crime_progress', w: { residential: 0.18, suburb: 0.22 }, minRank: 2,
+    sev: [5, 5],
+    truth: { suspect: true, weapon: 'claims to have a rifle', people: 4, injured: 0, safe: false, false_alarm: true, cause: 'claims to have shot his father and taken his family hostage' }, reported: ['weapon', 'suspect'], unsure: ['weapon', 'people'],
+    requires: [R('patrol', 3)], threat: [30, 0.0, 1.4], work: 20,
+    archetypes: [['calm_serious', 1]],
+    open: ["I just shot my father. I've got my mother and my little sister tied up in the basement. I've got a rifle. Any cop that comes through the door, I'll shoot.", "Listen carefully. I'm holding four people at gunpoint. I've poured petrol everywhere. If I see police I set the house on fire."],
+    cause: ["I'm not going to explain myself to you. Just do what I say.", "Doesn't matter why. I want twenty thousand dollars or someone dies."],
+    say: { suspect: ["You don't need my name. I'm the one with the gun.", "I'm in the house. That's all you need."] },
+    scene: 'No disturbance. Residents confused. Hoax.', ambience: 'quiet',
+    resolved: 'The address was a hoax — nobody was in danger.', failed: 'Armed officers stormed a family home on a hoax call.',
+  }),
 ];
 
 export const TEMPLATE_BY_ID: Record<string, Template> = Object.fromEntries(TEMPLATES.map((t) => [t.id, t]));

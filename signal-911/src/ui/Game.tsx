@@ -1,5 +1,4 @@
 import { stopSpeech } from '../audio/speech';
-import { ResourcesPanel } from './Resources';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { audio } from '../audio/audioManager';
 import { addressOf } from '../sim/city';
@@ -19,8 +18,10 @@ import { computeScore } from '../sim/scoring';
 import { contractProgress, MODIFIER_BY_ID } from '../sim/extras';
 import { GRADE_COLOR } from './common';
 import { RecordsDock, RecordsTerminal, threatKnown } from './Ops';
-import { BoloDock, DecisionCards, MultiBar, NewsTicker, StatusDock } from './Field';
+import { BoloDock, DecisionCards, DirectiveCard, MultiBar, NewsTicker, StatusDock } from './Field';
 import { CctvConsole } from './Cctv';
+import { cadDown } from '../sim/ops';
+import { rollCall } from '../sim/radioops';
 import { MapMenu, handleDrop, type MenuState } from './MapMenu';
 import { Cinematics } from './Cinematic';
 
@@ -40,6 +41,8 @@ export function GameScreen() {
   const pauseMenu = useApp((s) => s.pauseMenu);
   useApp((s) => s.rev);
   const resPanel = useApp((s) => s.resPanel);
+  // outside help is requested on the radio: Q (or any "request" button) opens the outside line
+  useEffect(() => { if (resPanel) { setTab('radio'); setCollapsed((c) => ({ ...c, b: false })); } }, [resPanel]);
   const bump = useApp((s) => s.bump);
   const [sizes, setSizes] = useSizes();
   const [layer, setLayer] = useState<LayerId>('normal');
@@ -109,7 +112,7 @@ export function GameScreen() {
         const at = sel.kind === 'unit' && sel.id && s.units[sel.id] ? { x: s.units[sel.id].x, y: s.units[sel.id].y } : sel.kind === 'incident' && sel.id && s.incidents[sel.id]?.reportedNode != null ? eng.city.nodes[s.incidents[sel.id].reportedNode!] : sel.kind === 'station' && sel.id && s.stations[sel.id] ? eng.city.nodes[s.stations[sel.id].nodeId] : null;
         if (at) doFocus(at.x, at.y, 2.6);
       }
-      else if (e.key === 'q' || e.key === 'Q') { const id = s.selected.kind === 'incident' ? s.selected.id : s.activeCallId ? s.calls[s.activeCallId]?.incidentId ?? null : null; const ap = useApp.getState(); if (ap.resPanel) ap.closeResources(); else ap.openResources(id); }
+      else if (e.key === 'q' || e.key === 'Q') { const id = s.selected.kind === 'incident' ? s.selected.id : s.activeCallId ? s.calls[s.activeCallId]?.incidentId ?? null : null; useApp.getState().openResources(id); }
       else if (e.key === 'b' || e.key === 'B') {
         const id = s.selected.kind === 'incident' ? s.selected.id : s.activeCallId ? s.calls[s.activeCallId]?.incidentId : null;
         if (id) { const r = eng.broadcastBolo(id); if (r.ok) { audio.dispatchConfirm(); useApp.getState().showToast('BOLO broadcast to all units', 'info'); } else { audio.error(); useApp.getState().showToast(r.reason ?? '', 'warn'); } bump(); }
@@ -200,13 +203,14 @@ export function GameScreen() {
             </div>
             {target && <div className="banner"><Icon n="pin" size={14} /> {target.kind === 'loc' ? 'Click the map to set the incident location' : 'Click the map to reposition the unit'} <button className="linkish" onClick={() => setTarget(null)}>Cancel (Esc)</button></div>}
           </div>
+          {cadDown(engine.state) && <div className="cadbanner" role="alert"><b>CAD OFFLINE</b><span>AVL is down — the map shows where units last told you they were ({fmtTime(Math.max(0, engine.state.cad!.downUntil - engine.state.time))} until restored).</span><button onClick={() => { rollCall(engine, 'police'); bump(); }}>Roll call OPS-1</button><button onClick={() => { rollCall(engine, 'fire'); bump(); }}>Roll call FIRE-2</button></div>}
+          <DirectiveCard engine={engine} />
           <IncomingBanner engine={engine} />
           <div className="dockrow"><RecordsDock engine={engine} onOpen={() => setTerminal(true)} /><StatusDock engine={engine} /></div>
           <MultiBar engine={engine} ids={multi} onClear={() => setMulti([])} />
           <BoloDock engine={engine} />
           <DecisionCards engine={engine} />
           <Cinematics engine={engine} />
-          {resPanel && <ResourcesPanel engine={engine} incId={resPanel.incId} onClose={() => useApp.getState().closeResources()} />}
           <NewsTicker engine={engine} />
           {menu && <MapMenu engine={engine} menu={menu} onClose={closeMenu} focus={doFocus} startReposition={(id) => setTarget({ kind: 'repos', id })} openTab={(t) => { setTab(t as BottomTab); setCollapsed((c) => ({ ...c, b: false })); }} />}
           {cctvOpen && <CctvConsole engine={engine} onClose={() => useApp.getState().setCctvOpen(false)} />}

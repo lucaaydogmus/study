@@ -149,7 +149,7 @@ export function MapMenu({ engine, menu, onClose, focus, startReposition, openTab
         <div className="mm-sep" />
         {assigned.length > 0 && <Item icon="radio" onClick={run(() => feedback(engine.briefUnits(inc.id), 'Crews briefed'))}>Brief responding crews</Item>}
         {!inc.truth.outside && <Item icon="map" onClick={run(() => openCctv())}>Open CCTV terminal (K)</Item>}
-        {live(inc) && <Item icon="phone" tone={RESOURCES.some((r) => engine.resourceInfo(inc.id, r.id).asked) ? 'primary' : undefined} sub="Q" onClick={run(() => useApp.getState().openResources(inc.id))}>Request resources…{RESOURCES.some((r) => engine.resourceInfo(inc.id, r.id).asked) ? ' — crew is asking' : ''}</Item>}
+        {live(inc) && <Item icon="phone" tone={RESOURCES.some((r) => engine.resourceInfo(inc.id, r.id).asked) ? 'primary' : undefined} sub="Q" onClick={run(() => useApp.getState().openResources(inc.id))}>Request on the radio…{RESOURCES.some((r) => engine.resourceInfo(inc.id, r.id).asked) ? ' — crew is asking' : ''}</Item>}
         {engine.alertInfo(inc.id).ok && (sub === 'alert' ? (
           <>
             <Item icon="alert" tone="danger" onClick={run(() => feedback(engine.issueAlert(inc.id, 'evacuate'), 'Evacuation order sent'))}>Order evacuation of the district</Item>

@@ -1,3 +1,4 @@
+import { auditCalls } from '../sim/ops';
 import { useMemo, useState } from 'react';
 import { gameClock } from '../sim/engine';
 import { averageOf } from '../sim/scoring';
@@ -100,6 +101,16 @@ export function ReportScreen() {
           </div>
         </div>
 
+        {(() => { const audits = auditCalls(st); return audits.length ? (
+          <div className="card audit"><h3><Icon n="note" size={14} /> Supervisor’s call review</h3>
+            <p className="small muted">Okafor pulled {audits.length} of your calls and graded them against the protocol.</p>
+            <div className="auditgrid">{audits.map((a) => (
+              <div className="auditcall" key={a.incId}>
+                <div className="ac-head"><b>{a.label}</b><span className="muted small">· {a.caller}</span><span className={`ac-score ${a.score >= 80 ? 'good' : a.score >= 55 ? 'mid' : 'bad'}`}>{a.score}%</span></div>
+                {a.items.map((i, k) => <div key={k} className={`ac-item ${i.ok ? 'ok' : 'no'}`}><Icon n={i.ok ? 'check' : 'x'} size={11} /> {i.text}</div>)}
+              </div>))}</div>
+            <div className="small muted">{[st.stats.hoaxesCaught ? `${st.stats.hoaxesCaught} hoax${st.stats.hoaxesCaught > 1 ? 'es' : ''} caught` : '', st.stats.emergenciesHandled ? `${st.stats.emergenciesHandled} emergency activation${st.stats.emergenciesHandled > 1 ? 's' : ''} handled` : '', st.stats.needsMissed ? `${st.stats.needsMissed} crew request${st.stats.needsMissed > 1 ? 's' : ''} never answered` : '', st.stats.directivesDone ? `${st.stats.directivesDone} supervisor directive${st.stats.directivesDone > 1 ? 's' : ''} met` : '', st.stats.pursuitCrashes ? `${st.stats.pursuitCrashes} pursuit crash${st.stats.pursuitCrashes > 1 ? 'es' : ''}` : ''].filter(Boolean).join(' · ')}</div>
+          </div>) : null; })()}
         {career && <div className="card"><h3>Budget</h3><div className="moneytable">{result.moneyBreakdown.map(([k, v]) => <div className="kv" key={k}><span>{k}</span><b className={v >= 0 ? 'green' : 'red'}>{fmtMoney(v)}</b></div>)}<div className="kv total"><span>Net</span><b className={result.money >= 0 ? 'green' : 'red'}>{fmtMoney(result.money)}</b></div></div>
           <h4>XP breakdown</h4>{result.xpBreakdown.map(([k, v]) => <div className="kv" key={k}><span>{k}</span><b>+{v}</b></div>)}</div>}
 

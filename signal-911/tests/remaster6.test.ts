@@ -75,6 +75,8 @@ describe('remaster 6', () => {
     u.checkDue = e.state.time - 30; u.trouble = e.state.time;
     const orig = e.rng.chance; e.rng.chance = () => true;
     run(e, 1.5); e.rng.chance = orig;
+    // either straight away, or after an emergency activation nobody answered
+    run(e, 26);
     expect(u.status).toBe('OUT_OF_SERVICE');
     expect(Object.values(e.state.incidents).some((i) => i.templateId === 'officer_down' && i.parentId === inc.id)).toBe(true);
     expect(e.overdueChecks().some((x) => x.id === u.id)).toBe(false);

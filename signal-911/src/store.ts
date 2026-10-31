@@ -304,11 +304,11 @@ function handleEngineEvent(e: EngineEvent, engine: GameEngine) {
       break;
     }
     case 'arrive': audio.notify(); break;
-    case 'alert': if (e.text === 'MAYDAY') audio.mayday(); else if (e.text === 'BOLO' || e.text === 'BOLO hit — pursuit') audio.attention(); else if (e.text === 'breaking') audio.stinger(); else audio.alert(); break;
+    case 'alert': if (e.text === 'MAYDAY' || e.text === 'Emergency activation') audio.mayday(); else if (e.text === 'BOLO' || e.text === 'BOLO hit — pursuit') audio.attention(); else if (e.text === 'breaking') audio.stinger(); else audio.alert(); break;
     case 'caller_line': {
       const call = engine.state.calls[e.callId];
       const line = call?.transcript[call.transcript.length - 1];
-      if (call && line?.who === 'CALLER' && engine.state.activeCallId === call.id && !/^\(/.test(line.text)) {
+      if (call && !call.text && line?.who === 'CALLER' && engine.state.activeCallId === call.id && !/^\(/.test(line.text)) {
         if (st.settings.tts !== false && speechSupported() && !st.settings.muted) { audio.lineClick(); speakLine(line.text, voiceProfile(call), `call:${call.id}`); }
         else audio.voice(line.text, callerPitch(call), call.mood.panic > 65);
       }

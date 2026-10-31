@@ -1,3 +1,4 @@
+import { expediteOffload } from '../sim/buildings';
 import { RadioConsole } from './RadioConsole';
 import { useEffect, useRef, useState } from 'react';
 import { addressOf } from '../sim/city';
@@ -98,6 +99,9 @@ function HospitalBoard({ engine }: { engine: GameEngine }) {
             </div>
           );
         })}
+        {Object.values(st.units).filter((u) => u.note === 'Held at the ER door').map((u) => (
+          <div className="ramp" key={u.id}><Badge tone="amber">RAMPED</Badge><b>{u.callsign}</b><span className="small muted">stuck at the ER door with a patient — {fmtTime(Math.max(0, u.timer))}</span><div className="grow" /><Btn size="sm" kind="primary" onClick={() => { const r = expediteOffload(engine, u.id); useApp.getState().showToast(r.ok ? `${u.callsign} released by the charge nurse` : r.reason ?? '', r.ok ? 'good' : 'warn'); bump(); }}>Call the charge nurse</Btn></div>
+        ))}
         <p className="muted small pad">Departments go down and ERs fill up during the shift — the board only shows what you knew at the last refresh. Pre-alert the hospital from a transporting ambulance so the team is waiting.</p>
       </div>
     </div>

@@ -10,6 +10,7 @@ import { audio } from '../audio/audioManager';
 import { useApp } from '../store';
 import { Badge, Btn, Icon, fmtTime } from './common';
 import { DeadlineBanner, LifeMeter } from './Ops';
+import { callPremises } from '../sim/ops';
 import { TraceStatus } from './Field';
 import { CallerAvatar, CallerLine, CallerQuestionPrompt, CprCoach, SuggestedReplies, suggestFor } from './CallExtras';
 
@@ -157,7 +158,7 @@ export function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngi
         <div className="callhead v2">
           <CallerAvatar call={call} speaking={speaking} />
           <div className="ch-id">
-            <div><b>{call.profile.name}</b>{call.isCallback && <Badge tone="amber">CALLBACK</Badge>}{aiActive && <span className="aibadge" title="This caller's lines are improvised by Claude">AI</span>}</div>
+            <div><b>{call.profile.name}</b>{call.isCallback && <Badge tone="amber">CALLBACK</Badge>}{call.text && <Badge tone="blue">TEXT 911</Badge>}{aiActive && <span className="aibadge" title="This caller's lines are improvised by Claude">AI</span>}</div>
             <div className="small muted">{call.callerId} · <span className="mono">{fmtTime(elapsed)}</span>{waiting && <span className={`ch-wait ${silence > 14 ? 'quiet' : ''}`}> · {silence > 14 ? `silent ${Math.round(silence)}s — they're waiting on you` : 'help on the way'}</span>}</div>
           </div>
           <Badge tone={call.mood.panic > 72 ? 'red' : call.mood.frustration > 55 || call.mood.panic > 45 ? 'amber' : 'green'}>{call.profile.emotionalState.toUpperCase()}</Badge>
@@ -174,7 +175,7 @@ export function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngi
             {call.transcript.map((l, i) => l.who === 'SYSTEM'
               ? <div key={i} className="sysmsg"><span>{l.text}</span></div>
               : (
-                <div key={i} className={`bubble ${l.who === 'CALLER' ? 'caller' : 'me'} ${l.who === 'CALLER' && /^\(/.test(l.text) ? 'action' : ''} ${l.garbled ? 'garbled' : ''}`}>
+                <div key={i} className={`bubble ${l.who === 'CALLER' ? 'caller' : 'me'} ${l.who === 'CALLER' && /^\(/.test(l.text) ? 'action' : ''} ${l.garbled ? 'garbled' : ''} ${call.text ? 'sms' : ''}`}>
                   <div className="bmeta">{l.who === 'CALLER' ? first : 'You'} · {l.clock.slice(0, 5)}</div>
                   <div className="btext">{l.who === 'CALLER' && !l.garbled ? <CallerLine engine={engine} call={call} inc={inc} line={l} fresh={i === call.transcript.length - 1 && st.time - l.t < 2} plain={!assists} /> : l.text}</div>
                   {l.garbled && call.lastGarbled && i === call.transcript.map((x) => !!x.garbled).lastIndexOf(true) && <button className="chip sayagain" onClick={() => { engine.sayAgain(call.id); stick.current = true; bump(); }}><Icon n="phone" size={11} /> Say again?</button>}
@@ -248,6 +249,7 @@ export function CallConsole({ engine, setTab, openDispatch }: { engine: GameEngi
           <Btn size="sm" icon="transfer" onClick={() => { const m = engine.transferCall(call.id); useApp.getState().showToast(m, 'info'); bump(); }} title={inc.truth.outside ? 'Hand the caller to the neighbouring agency' : 'Hand the call to a dispatch assistant'}>{inc.truth.outside ? 'To county' : 'Transfer'}</Btn>
           <Btn size="sm" icon="send" onClick={() => { const r = engine.redirectCall(call.id); if (r.ok) { if (r.good) { audio.good(); useApp.getState().showToast('Sent to the non-emergency line — line freed', 'good'); } else { audio.error(); useApp.getState().showToast('That was a real emergency!', 'bad'); } } bump(); }} title="Not an emergency? Send them to the non-emergency line (or a reporter to the press office). Get it wrong and a real emergency goes unanswered.">Non-emergency</Btn>
           <Btn size="sm" icon="radio" onClick={() => { const r = engine.listen(call.id); if (!r.ok) { useApp.getState().showToast(r.reason ?? '', 'warn'); return; } r.kinds!.forEach((k, i) => window.setTimeout(() => audio.playClue(k, 1.1), i * 3000)); stick.current = true; bump(); }} title="Listen hard to what's behind the caller — trains, gulls, bells, crowds give away where they are">Listen</Btn>
+          <Btn size="sm" icon="phone" disabled={!!inc.premisesCalled || inc.reportedNode === null} onClick={() => { const r = callPremises(engine, inc.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }} title="Ring the landline listed at the address — the quickest way to catch a hoax, and it tells you something about real calls">{inc.premisesCalled ? 'Address rung' : 'Ring address'}</Btn>
           <Btn size="sm" icon="pin" disabled={!!call.trace} onClick={() => { const r = engine.startTrace(call.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }} title="Ask the carrier for the caller's location">{call.trace ? (call.trace.done ? 'Traced' : 'Tracing…') : 'Trace'}</Btn>
           {call.profile.language && <Btn size="sm" kind={call.interpreter ? 'default' : 'primary'} icon="users" disabled={!!call.interpreter} onClick={() => { const r = engine.requestInterpreter(call.id); if (!r.ok) useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }}>{call.interpreter === 'on' ? 'Interpreter on' : call.interpreter ? 'Connecting…' : `${call.profile.language} interpreter`}</Btn>}
           <Btn size="sm" icon="map" onClick={openDispatch} title="Open the incident and dispatch panel">Dispatch</Btn>

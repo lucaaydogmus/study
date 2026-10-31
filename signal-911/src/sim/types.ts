@@ -89,10 +89,21 @@ export interface Unit {
   /** driving back to quarters for servicing */ workshop?: boolean;
   /** a stressed crew already fumbled this dispatch */
   slipped?: boolean;
+  /** the station alerting failed: the crew never heard the dispatch */
+  missedTones?: boolean;
+  /** extra time held at the ER door before the crew can clear */
+  heldExtra?: number;
 }
 
 export interface Station {
   id: string; name: string; service: Service; nodeId: number; district: string; capacity: number; disabledShifts: number;
+  /** the building itself: wears out, breaks, gets fixed (persists across a career) */
+  systems?: StationSystems;
+}
+export interface StationSystems {
+  doors: number; alerting: number; generator: number; fuel: number; supplies: number;
+  /** prisoners in the cells (police stations) */ cells?: number; cellsAt?: number; darkWarned?: boolean;
+  repairs: Array<{ sys: 'doors' | 'alerting' | 'generator' | 'fuel' | 'supplies'; until: number; done?: boolean }>;
 }
 
 export interface UpgradeLevels { [id: string]: number }
@@ -168,6 +179,8 @@ export interface Call {
   /** the last line that broke up, kept so 'say again' can repeat it */ lastGarbled?: import('./types').PendingLine | null;
   /** relayed by a third party: a car's crash-detection service or an alarm company */
   relay?: 'acn' | 'alarm';
+  /** a text-to-911 session instead of a voice call */
+  text?: boolean;
 }
 export interface UnitFit { chassis: string; kits: string[]; livery: string; eff?: number; grip?: number; nickname?: string }
 /** a job the dispatcher gave the caller: it keeps them busy (and calmer) and helps the crews */
@@ -180,7 +193,7 @@ export interface HospitalState {
   /** what the dispatcher's bed board shows (it goes stale until refreshed) */
   known: { at: number; er: number; down: Dept[]; diversion: boolean } | null;
   prealerts: string[];
-  /** last time dispatch begged them to take a patient on diversion */ lastPlea?: number;
+  /** last time dispatch begged them to take a patient on diversion */ lastPlea?: number; lastNurse?: number;
 }
 export interface Decision {
   id: string; incId: string; unitId: string; at: number; expiresAt: number; kind: string; prompt: string;
@@ -223,6 +236,8 @@ export interface Mover {
   path?: number[];
   /** picked up on a city camera: stays tracked while the camera keeps it in frame */
   camTag?: { cam: string; at: number } | null;
+  /** how dangerous the chase has become (0..100), and whether it was called off */
+  risk?: number; terminated?: boolean;
 }
 
 export interface Fx { id: number; t: number; kind: 'good' | 'bad' | 'warn' | 'info'; x: number; y: number; text: string }
@@ -263,6 +278,14 @@ export interface Incident {
   /** officer-initiated (on-view) incident */
   onView?: boolean; hospitalNode?: number | null;
   cctvAt?: number; decided?: boolean; spread?: boolean; storyline?: string;
+  /** how many times crews have chased something they asked for, and what dispatch said no to */
+  needNag?: Record<string, number>; declined?: Record<string, number>;
+  /** swatting: a hoax, checked by ringing the address */
+  hoax?: boolean; verified?: boolean; hoaxDone?: boolean; premisesCalled?: number;
+  /** address hazard flags: crews warned, and whether the first crew has met them */
+  premiseWarned?: boolean; premiseChecked?: boolean;
+  /** police and fire talkgroups patched together for this incident */
+  patched?: boolean; patchAsked?: number;
   /** incident command at a big fire: who is in charge and which company works which sector */
   command?: { ic: string | null; sectors: Partial<Record<import('./field').Sector, string>>; at: number } | null;
   /** a regular caller (and whether today it is real) */
@@ -372,6 +395,8 @@ export interface ShiftConfig {
   threatLevel?: 'low' | 'guarded' | 'elevated' | 'severe';
   /** random major incidents and city events may be rolled for this shift */
   surprises?: boolean;
+  /** addresses this career has learned are dangerous */
+  premises?: Record<number, string[]>;
   /** what this career knows about its regular callers */
   regulars?: Record<string, { calls: number; real: number; lastShift: number; log: string[] }>;
 }
@@ -381,7 +406,7 @@ export interface TimelineEntry {
   text: string; incidentId?: string; unitId?: string; good?: boolean | null;
 }
 
-export interface RadioMsg { id: string; t: number; clock: string; from: string; text: string; unitId?: string; incidentId?: string; kind: 'unit' | 'dispatch' | 'alert' | 'hospital' | 'chatter'; to?: string }
+export interface RadioMsg { id: string; t: number; clock: string; from: string; text: string; unitId?: string; incidentId?: string; kind: 'unit' | 'dispatch' | 'alert' | 'hospital' | 'chatter'; to?: string; /** talkgroup: outside line, fireground, emergency */ chan?: string; /** garbled: two units keyed up at once, or a dead spot */ broken?: boolean; brokenWhy?: 'stepped' | 'dead'; repeated?: boolean }
 
 export interface Notification { id: string; t: number; text: string; level: 'info' | 'good' | 'warn' | 'bad'; incidentId?: string }
 
@@ -399,7 +424,7 @@ export interface ShiftStats {
   boloHits?: number; stingerHits?: number; breaksGiven?: number;
   callerAnswers?: number; cprPaced?: number; handoffs?: number; calmActions?: number; calmGood?: number; tasksDone?: number; callerBreakdowns?: number; redirectsOk?: number; redirectsBad?: number; listens?: number; unitQueries?: number; unitQueriesOk?: number; unitQueriesMissed?: number; maydays?: number; maydaySaved?: number; refusals?: number;
   specialistCalls?: number; specialistWasted?: number; majorsHandled?: number;
-  cctvTags?: number; stressCalls?: number; commandSet?: number;
+  cctvTags?: number; stressCalls?: number; commandSet?: number; needsMissed?: number; radioRequests?: number; radioHeldLong?: number; rollCalls?: number; emergenciesHandled?: number; patches?: number; doorJams?: number; missedTones?: number; stationRepairs?: number; offloadsExpedited?: number; hoaxesCaught?: number; pursuitCrashes?: number; pursuitsTerminated?: number; cadOutages?: number; premiseWarnings?: number; directivesDone?: number;
   crewTalks?: number; sayAgains?: number; resourceCalls?: number; arrests?: number; services?: number; hospitalCalls?: number; mciPlans?: number; walkIns?: number;
   agencyCalls?: number; agencyLate?: number; statusChecks?: number; statusSaves?: number; statusMissed?: number; alertsRight?: number; alertsWrong?: number; searchFinds?: number;
 }
@@ -442,6 +467,12 @@ export interface GameState {
   storms?: import('./field').StormCell[]; nextStressAt?: number; floodEdges?: number[];
   /** times of relayed calls (crash telematics, alarm companies) */
   relayLog?: number[];
+  /** the radio desk: held talkgroups, queued transmissions, emergency activations */
+  radioCtl?: { held: Partial<Record<'police' | 'fire', number>>; queue: Array<{ at: number; from: string; text: string; unitId?: string; incId?: string; roll?: string }>; emergencies: Array<{ id: string; unitId: string; incId: string; at: number; until: number; acked: boolean; done: boolean }>; repeats: number };
+  /** CAD outage: the map only knows what units last reported */
+  nextStationFault?: number;
+  premiseLog?: Record<number, string[]>; directives?: import('./ops').Directive[]; nextDirectiveAt?: number; aidOutAsked?: boolean;
+  cad?: { downUntil: number; snap: Record<string, { x: number; y: number; status: string; t: number }>; nextAt?: number };
   /** regular callers who rang this shift */
   regularLog?: Array<{ id: string; real: boolean; at: number; incId: string; outcome?: string }>;
   cctv?: { link: import('./cctv').CctvLink | null; tried: Record<string, 'ok' | 'offline'>; tags: number; wrong: number };

@@ -211,7 +211,7 @@ function ResourceSummary({ engine, inc }: { engine: GameEngine; inc: Incident })
         <b>Outside resources</b>
         <div className="small muted">{rows.length ? rows.map((x) => `${x.r.short} ${x.i.status === 'here' ? '✓ on scene' : x.i.status === 'none' ? (x.i.asked ? '— crew asked' : '— suggested') : `· ${fmtTime(Math.max(0, x.i.eta ?? 0))}`}`).join('  ·  ') : 'Tow, utilities, K-9, negotiators, hazmat, USAR, Coast Guard, federal team, Guard EOD, mutual aid'}</div>
       </div>
-      <Btn size="sm" kind={asked.length ? 'primary' : 'default'} onClick={() => open(inc.id)}>Resources (Q)</Btn>
+      <Btn size="sm" kind={asked.length ? 'primary' : 'default'} icon="radio" onClick={() => open(inc.id)}>Request on radio (Q)</Btn>
     </div>
   );
 }
@@ -320,6 +320,21 @@ export function SceneCommand({ engine, inc }: { engine: GameEngine; inc: Inciden
         );
       })}
       {notes.length > 0 && <ul className="sc-notes">{notes.map((n) => <li key={n}>{n}</li>)}</ul>}
+    </div>
+  );
+}
+
+/** the shift supervisor's current ask, and how you are doing on it */
+export function DirectiveCard({ engine }: { engine: GameEngine }) {
+  const st = engine.state;
+  const d = (st.directives ?? []).filter((x) => !x.result || st.time - x.until < 6).slice(-1)[0];
+  if (!d) return null;
+  const left = Math.max(0, d.until - st.time);
+  return (
+    <div className={`directive ${d.result ?? ''}`}>
+      <span className="dv-tag">SUPERVISOR</span>
+      <span className="dv-text">{d.text}</span>
+      <span className="mono small">{d.result === 'done' ? 'MET ✓' : d.result === 'failed' ? 'FAILED' : d.kind === 'clear' ? `${d.progress}/${d.target} · ${fmtTime(left)}` : fmtTime(left)}</span>
     </div>
   );
 }

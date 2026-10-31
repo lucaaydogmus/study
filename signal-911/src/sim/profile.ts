@@ -43,6 +43,8 @@ export interface Profile {
   daily: Record<string, { score: number; grade: string }>;
   /** regular callers this centre knows, and what happened every time they rang */
   regulars?: Record<string, { calls: number; real: number; lastShift: number; log: string[] }>;
+  /** dangerous addresses learned over the career */
+  premises?: Record<number, string[]>;
 }
 
 const emptyLifetime = (): Lifetime => ({ shifts: 0, calls: 0, answered: 0, resolved: 0, failed: 0, casualties: 0, livesHelped: 0, falseAlarms: 0, moneyEarned: 0, responseSum: 0, responseN: 0, bestScore: 0, bestGrade: '-', playSeconds: 0, dispatches: 0, merges: 0, pursuits: 0, verifies: 0, gradeA: 0, calmed: 0, bestStreak: 0, contracts: 0 });
@@ -117,6 +119,16 @@ export function temporarySetup(opts: { units?: number; budget?: number; rank?: n
 }
 
 /** a full service for every worn vehicle, between shifts */
+const SYS_KEYS = ['doors', 'alerting', 'generator', 'fuel', 'supplies'] as const;
+/** what it costs to put every station's building systems back to new between shifts */
+export function stationUpkeepCost(p: Profile): number { return p.stations.reduce((s, st) => s + (st.systems ? SYS_KEYS.reduce((a, k) => a + Math.round(Math.max(0, 85 - st.systems![k]) * 22), 0) : 0), 0); }
+export function stationUpkeep(p: Profile): boolean {
+  const c = stationUpkeepCost(p);
+  if (!c || c > p.money) return false;
+  p.money -= c;
+  for (const st of p.stations) if (st.systems) for (const k of SYS_KEYS) st.systems[k] = Math.max(st.systems[k], 100);
+  return true;
+}
 export function serviceCost(p: Profile): number { return p.units.reduce((s, u) => s + Math.round(Math.max(0, 100 - (u.condition ?? 100)) * 60), 0); }
 export function serviceFleet(p: Profile): boolean {
   const c = serviceCost(p);
@@ -133,7 +145,7 @@ export function careerConfig(p: Profile, over: Partial<ShiftConfig> = {}): Shift
   const cfg = rollStoryline(baseConfig({
     mode: 'career', title: `Shift ${p.counters.shift}`, briefing: `${rankDef(rank).title} — routine shift`, difficulty: p.flags.difficulty, durationSec: p.flags.duration,
     districts: unlockedDistricts(rank), incidentRate: rankRate, startHour: [8, 12, 16, 20, 2][p.counters.shift % 5], weather: (['clear', 'clear', 'rain', 'clear', 'fog', 'heat', 'clear'] as const)[p.counters.shift % 7],
-    seed, modifiers: extras.modifiers, contracts: extras.contracts, regulars: p.regulars ? JSON.parse(JSON.stringify(p.regulars)) : {},
+    seed, modifiers: extras.modifiers, contracts: extras.contracts, regulars: p.regulars ? JSON.parse(JSON.stringify(p.regulars)) : {}, premises: p.premises ? JSON.parse(JSON.stringify(p.premises)) : {},
     ...over,
   }), rank, seed);
   // chapters are handcrafted; ordinary shifts can go sideways at any moment
@@ -198,6 +210,9 @@ export function applyShift(p: Profile, st: GameState): ShiftResult {
   p.xp += res.xp;
   // wear and tear carries over to the next shift
   for (const u of p.units) { const live = st.units[u.id]; if (live && live.condition !== undefined) u.condition = Math.round(live.condition); }
+  // the stations' state carries over (repairs in progress finish overnight)
+  for (const s of p.stations) { const live = st.stations[s.id]?.systems; if (live) { const sys = { ...live, repairs: [], cells: 0, cellsAt: undefined, darkWarned: false }; for (const r of live.repairs) if (!r.done) sys[r.sys] = 100; s.systems = sys; } }
+  for (const [n, ks] of Object.entries(st.premiseLog ?? {})) { const cur = ((p.premises ??= {})[Number(n)] ??= []); for (const k of ks) if (!cur.includes(k)) cur.push(k); }
   // the regulars' file grows
   for (const r of st.regularLog ?? []) {
     const rec = ((p.regulars ??= {})[r.id] ??= { calls: 0, real: 0, lastShift: 0, log: [] });
