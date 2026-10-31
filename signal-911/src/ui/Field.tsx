@@ -7,6 +7,7 @@ import { isAir } from '../sim/fleet';
 import type { Call, Incident, Unit } from '../sim/types';
 import { audio } from '../audio/audioManager';
 import { useApp } from '../store';
+import { SECTORS, assignSector, commandFactor, sectorFit, setCommander, type Sector } from '../sim/field';
 import { Badge, Btn, Icon, fmtEta, fmtTime } from './common';
 
 const toast = (r: { ok: boolean; reason?: string } | boolean, okText?: string) => {
@@ -286,6 +287,39 @@ export function MultiBar({ engine, ids, onClear }: { engine: GameEngine; ids: st
       <span className="small muted">{units.slice(0, 4).map((u) => u.callsign).join(', ')}{units.length > 4 ? '…' : ''} — right-click an incident to send them all</span>
       <Btn size="sm" onClick={() => { let n = 0; for (const u of units) if (engine.recall(u.id)) n++; toast(n > 0, `${n} unit${n === 1 ? '' : 's'} recalled`); onClear(); bump(); }}>Recall all</Btn>
       <Btn size="sm" kind="ghost" onClick={onClear}>Clear</Btn>
+    </div>
+  );
+}
+
+/** incident command at a big fire: name a commander and give each company a job */
+export function SceneCommand({ engine, inc }: { engine: GameEngine; inc: Incident }) {
+  const bump = useApp((s) => s.bump);
+  const c = inc.command!;
+  const crews = engine.onScene(inc).filter((u) => u.service === 'fire' && !isAir(u));
+  const { f, notes } = commandFactor(engine, inc);
+  const act = (r: { ok: boolean; reason?: string }) => { toast(r); bump(); };
+  return (
+    <div className="card scenecmd">
+      <div className="sc-head"><Icon n="flame" size={13} /><b>Scene command</b><span className="grow" /><Badge tone={f >= 0.95 ? 'green' : f >= 0.8 ? 'amber' : 'red'}>Fireground {Math.round(f * 100)}%</Badge></div>
+      <div className="sc-line"><label>Incident commander</label>
+        <select value={c.ic ?? ''} onChange={(e) => act(setCommander(engine, inc.id, e.target.value || null))}>
+          <option value="">— nobody —</option>
+          {crews.map((u) => <option key={u.id} value={u.id}>{u.callsign} · {u.typeLabel}</option>)}
+        </select></div>
+      {SECTORS.map((s) => {
+        const cur = c.sectors[s.id as Sector];
+        const u = cur ? engine.state.units[cur] : null;
+        return (
+          <div className="sc-line" key={s.id} title={s.hint}><label>{s.label}</label>
+            <select value={cur ?? ''} onChange={(e) => act(assignSector(engine, inc.id, s.id as Sector, e.target.value || null))}>
+              <option value="">— unassigned —</option>
+              {crews.map((x) => <option key={x.id} value={x.id}>{x.callsign} · {x.typeLabel}{x.id === c.ic ? ' (IC)' : ''}</option>)}
+            </select>
+            {u && <span className={`fit ${sectorFit(s.id as Sector, u) >= 0.9 ? 'ok' : sectorFit(s.id as Sector, u) >= 0.6 ? 'meh' : 'bad'}`}>{sectorFit(s.id as Sector, u) >= 0.9 ? 'right crew' : sectorFit(s.id as Sector, u) >= 0.6 ? 'can do it' : 'wrong crew'}</span>}
+          </div>
+        );
+      })}
+      {notes.length > 0 && <ul className="sc-notes">{notes.map((n) => <li key={n}>{n}</li>)}</ul>}
     </div>
   );
 }

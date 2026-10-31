@@ -890,3 +890,11 @@ button.hl.loc.bad { color: #8a96a3; text-decoration: line-through; background: n
 .specialcall .sc-row > span:nth-child(2) { flex: 1; min-width: 160px; color: var(--text2); }
 .sc-tag { font-size: 9.5px; font-weight: 800; letter-spacing: .06em; padding: 1px 6px; border-radius: 4px; background: #16283a; color: #9fc7ea; }
 .sc-tag.warn { background: #3a2c12; color: #f0c070; } .sc-tag.bad { background: #3a1616; color: #ffb0b0; }
+
+.scenecmd { display: flex; flex-direction: column; gap: 5px; }
+.scenecmd .sc-head { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+.scenecmd .sc-line { display: grid; grid-template-columns: 120px 1fr auto; align-items: center; gap: 6px; font-size: 12px; }
+.scenecmd .sc-line label { color: var(--text2); }
+.scenecmd select { background: #131a22; color: var(--text); border: 1px solid #2c3846; border-radius: 6px; padding: 3px 6px; font-size: 12px; min-width: 0; }
+.scenecmd .fit { font-size: 10.5px; font-weight: 700; } .scenecmd .fit.ok { color: #7fd6a8; } .scenecmd .fit.meh { color: #f0c070; } .scenecmd .fit.bad { color: #ff9a9a; }
+.scenecmd .sc-notes { margin: 2px 0 0; padding-left: 16px; font-size: 11.5px; color: #f0c070; }

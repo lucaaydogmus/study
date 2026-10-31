@@ -11,6 +11,7 @@ import { aidVerdict, lifeThreatOf, FIRE_LIKE, TOPIC_FACTS, aliLookup, classifyIn
 import { EVENT_DEFS, WEATHER_SPEED, WEATHER_TRAFFIC, WEATHER_LABEL, nextWeather } from './events';
 import { numWord, UNIT_TYPE_BY_ID, makeUnit, isAir, AIR_SPEED } from './fleet';
 import { cameraList, cctvTracking, type Camera } from './cctv';
+import { addStress, commandFactor, commandTick, decideStress, stormTick, stressFactor, stressTick } from './field';
 import { getCloser, landmarkNear, pullOver, regularOnAnswer, regularOutcome, regularsTick, setupThirdParty, thirdPartyBlock, thirdPartyTick, updateMovingCaller } from './callers';
 import { applyFit, KIT_BY_ID } from './garage';
 import { makeRequest, requestText, replyText, returnText, searchRecords, CHECK_LABEL, DANGEROUS, type RecordQuery } from './records';
@@ -442,6 +443,8 @@ export class GameEngine {
     this.stationWalkIns();
     this.hospitalCalls();
     regularsTick(this);
+    stormTick(this);
+    stressTick(this);
     this.updateStatusChecks();
     this.updateAlertCalls();
     this.updateRelapses();
@@ -602,7 +605,7 @@ export class GameEngine {
     const up = this.state.upgrades;
     const equip = 1 + 0.12 * (u.service === 'medical' ? up.medkit ?? 0 : u.service === 'fire' ? up.firegear ?? 0 : up.policegear ?? 0);
     const seatFactor = Math.sqrt(Math.min(1, crew.length / u.crewSeats));
-    return Math.max(0.35, Math.min(2.2, eff * fatigue * morale * equip * seatFactor * (u.fit?.eff ?? 1) * modProduct(this.state.config, 'eff')));
+    return Math.max(0.35, Math.min(2.2, eff * fatigue * morale * equip * seatFactor * stressFactor(crew) * (u.fit?.eff ?? 1) * modProduct(this.state.config, 'eff')));
   }
   /** the right tool for the job: specialist vehicles and fitted kit work some scenes faster */
   sceneFit(inc: Incident, u: Unit): number {
@@ -2254,7 +2257,8 @@ export class GameEngine {
       if (inc.search && !inc.search.found) { this.updateSearch(inc, here, dt); continue; }
       const cov = matchCoverage(inc.requires, here);
       const usedUnits = here.filter((u) => cov.used.has(u.id));
-      const eff = usedUnits.length ? usedUnits.reduce((s, u) => s + this.unitEffectiveness(u) * this.sceneFit(inc, u), 0) / usedUnits.length : 1;
+      if (inc.sceneSeen && !inc.command) commandTick(this, inc);
+      const eff = (usedUnits.length ? usedUnits.reduce((s, u) => s + this.unitEffectiveness(u) * this.sceneFit(inc, u), 0) / usedUnits.length : 1) * (inc.command ? commandFactor(this, inc).f : 1);
       const f = cov.f;
       // threat grows without adequate response, subsides with it
       inc.threat += inc.growth * this.aidFactor(inc) * (1 - f) * dt - inc.clear * eff * f * f * 0.35 * dt;
@@ -2396,6 +2400,7 @@ export class GameEngine {
 
   private failIncident(inc: Incident) {
     const st = this.state;
+    addStress(this, inc, 22 + inc.casualties * 6);
     if (inc.regular) { const reg = (st.regularLog ?? []).find((r) => r.incId === inc.id); if (reg && !reg.outcome) reg.outcome = regularOutcome(inc, 'failed'); }
     const tpl = TEMPLATE_BY_ID[inc.templateId];
     // a patient with an untreated life threat: say plainly what was (not) done on the phone
@@ -2457,6 +2462,7 @@ export class GameEngine {
     const st = this.state;
     const tpl = TEMPLATE_BY_ID[inc.templateId];
     if (inc.regular) { const reg = (st.regularLog ?? []).find((r) => r.incId === inc.id); if (reg && !reg.outcome) reg.outcome = regularOutcome(inc, outcome === 'success' ? 'resolved' : outcome === 'failed' ? 'failed' : 'dismissed'); }
+    if (inc.casualties > 0) addStress(this, inc, 8 + inc.casualties * 6);
     // someone is arrested: a police car (or better, a van) takes them to the station to be booked
     if (outcome === 'success' && inc.truth.suspect === true && !inc.pursuit && inc.category === 'police' && !['traffic_stop', 'protest_march'].includes(inc.templateId) && st.config.mode !== 'tutorial') {
       const pol = this.onScene(inc).filter((x) => x.service === 'police' && !isAir(x) && !x.temp);
@@ -4405,6 +4411,16 @@ export class GameEngine {
     return { ok: true };
   }
 
+  /** storm flooding: these streets are under water until the cell passes */
+  setFloodEdges(edges: number[]) {
+    const st = this.state;
+    const prev = new Set(st.floodEdges ?? []);
+    st.closedEdges = st.closedEdges.filter((e) => !prev.has(e) || edges.includes(e));
+    for (const e of edges) if (!st.closedEdges.includes(e)) st.closedEdges.push(e);
+    st.floodEdges = edges;
+    this.closedMask = makeClosedMask(this.city, st.closedEdges);
+    this.rerouteAll(true);
+  }
   /** callers who are not with the patient: get them closer (see callers.ts) */
   getCloser(callId: string) { return getCloser(this, callId); }
   /** a caller driving their patient: tell them to stop and wait */
@@ -4449,6 +4465,7 @@ export class GameEngine {
     const u = st.units[d.unitId];
     d.chosen = optionId; d.auto = auto;
     if (d.kind === 'break') return this.decideBreak(d, optionId, auto);
+    if (d.kind === 'stress') return decideStress(this, d, optionId);
     if (d.kind === 'mayday') return this.decideMayday(d, optionId, auto);
     if (!inc || ['RESOLVED', 'CLOSED'].includes(inc.status)) { d.outcome = 'The incident was already over.'; return { ok: true, outcome: d.outcome }; }
     const t = inc.truth;

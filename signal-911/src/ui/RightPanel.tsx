@@ -10,7 +10,7 @@ import { useApp } from '../store';
 import { averageOf } from '../sim/scoring';
 import { DispatchConsole, type Preview } from './DispatchConsole';
 import { AirSupport, Consequences, DeadlineBanner, LifeMeter } from './Ops';
-import { CrewBriefing, FieldOps, UnitCommands, openCctv } from './Field';
+import { CrewBriefing, FieldOps, SceneCommand, UnitCommands, openCctv } from './Field';
 import { AIR_HELPS } from '../sim/engine';
 
 export interface PanelCtx { setPreview: (p: Preview) => void; engine: GameEngine; pickLocation: (incId: string | null) => void; pickingFor: string | null; repositioning: string | null; startReposition: (unitId: string | null) => void; focus: (x: number, y: number, zoom?: number) => void; openCall: () => void; setBottom: (t: string) => void }
@@ -154,6 +154,7 @@ function UnitPanel({ engine, unit, startReposition, repositioning, focus, setBot
             <div className="mini"><span>Skill</span><Bar value={p.service === 'medical' ? p.medical : p.service === 'fire' ? p.fire : p.policing} tone="blue" /></div>
             <div className="mini"><span>Fatigue</span><Bar value={p.fatigue} tone={p.fatigue > 70 ? 'red' : p.fatigue > 45 ? 'amber' : 'green'} /></div>
             <div className="mini"><span>Morale</span><Bar value={p.morale} tone="green" /></div>
+            {(p.stress ?? 0) > 5 && <div className="mini" title="What the bad calls have left behind. High stress means mistakes; a stand-down or a crew rotation helps."><span>Stress</span><Bar value={p.stress ?? 0} tone={(p.stress ?? 0) > 70 ? 'red' : (p.stress ?? 0) > 45 ? 'amber' : 'green'} /></div>}
           </div>
         ))}
         {!crew.length && <p className="muted">No crew assigned.</p>}
@@ -210,6 +211,7 @@ function IncidentPanel({ engine, inc, pickLocation, pickingFor, focus, openCall,
           {inc.category === 'police' && inc.status !== 'CLOSED' && (() => { const b = engine.boloInfo(inc.id); const out = (st.bolos ?? []).find((x) => x.incId === inc.id && x.status === 'active'); return <Btn size="sm" icon="search" kind={out ? 'primary' : 'default'} disabled={!b.ok} onClick={() => { const r = engine.broadcastBolo(inc.id); if (r.ok) audio.dispatchConfirm(); else useApp.getState().showToast(r.reason ?? '', 'warn'); bump(); }} title={b.ok ? 'Broadcast the suspect description to every patrol (B)' : b.reason}>{out ? 'BOLO out' : 'BOLO'}</Btn>; })()}
         </div>
         {inc.truth.outside && <div className="note-line warn"><Icon n="alert" size={12} /> Caller is outside Ravenport. Use <b>TRANSFER</b> to hand them to the neighbouring agency.</div>}
+        {!done && inc.command && <SceneCommand engine={engine} inc={inc} />}
         {!done && <FieldOps engine={engine} inc={inc} />}
         {inc.parentId && st.incidents[inc.parentId] && <div className="note-line"><Icon n="layers" size={12} /> Broke out of INC-{String(st.incidents[inc.parentId].num).padStart(4, '0')} {st.incidents[inc.parentId].label} — crews there can be sent straight here.</div>}
         <DeadlineBanner engine={engine} inc={inc} />

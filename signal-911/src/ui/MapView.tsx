@@ -653,6 +653,23 @@ export function MapView(props: MapProps) {
         const lbl = `TRACE ±${Math.max(10, Math.round(tr.radius * 4 / 10) * 10)} m`;
         ctx.strokeText(lbl, p.x, p.y - r - 8); ctx.fillStyle = tr.done ? '#9fd3f5' : '#f0c070'; ctx.fillText(lbl, p.x, p.y - r - 8);
       }
+      // weather radar: storm cells drifting across the city, and the streets they have flooded
+      if ((st.storms ?? []).length && layer === 'normal') {
+        for (const c of st.storms!) {
+          const p = S(c.x, c.y), r = c.r * z;
+          for (const [k, col] of [[1, 'rgba(60,180,90,0.10)'], [0.68, 'rgba(230,200,60,0.13)'], [0.38, 'rgba(220,70,50,0.16)']] as const) {
+            ctx.fillStyle = col; ctx.beginPath();
+            for (let a = 0; a <= 24; a++) { const t = (a / 24) * Math.PI * 2; const wob = 1 + 0.12 * Math.sin(t * 3 + c.id) + 0.06 * Math.sin(t * 7 + now / 4000); const q = S(c.x + Math.cos(t) * c.r * k * wob, c.y + Math.sin(t) * c.r * k * wob); a ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); }
+            ctx.closePath(); ctx.fill();
+          }
+          // heading arrow
+          const sp = Math.hypot(c.vx, c.vy) || 1, ax = p.x + (c.vx / sp) * (r + 14), ay = p.y + (c.vy / sp) * (r + 14) * cam.current.gy;
+          ctx.strokeStyle = 'rgba(240,210,120,0.8)'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(p.x + (c.vx / sp) * r * 0.7, p.y + (c.vy / sp) * r * 0.7 * cam.current.gy); ctx.lineTo(ax, ay); ctx.stroke(); ctx.setLineDash([]);
+          ctx.font = '800 10px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,18,0.85)'; ctx.strokeText('STORM CELL', p.x, p.y - r * 0.4); ctx.fillStyle = '#f0d070'; ctx.fillText('STORM CELL', p.x, p.y - r * 0.4);
+        }
+        ctx.strokeStyle = 'rgba(70,150,230,0.85)'; ctx.lineWidth = Math.max(3, 2.2 * z); ctx.lineCap = 'round';
+        for (const eid of st.floodEdges ?? []) { const ed = city.edges[eid]; const a = S(city.nodes[ed.a].x, city.nodes[ed.a].y), b = S(city.nodes[ed.b].x, city.nodes[ed.b].y); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+      }
       // city cameras: shown while the CCTV terminal is open (click one to pull its stream)
       if (useApp.getState().cctvOpen && layer === 'normal' && z > 0.7) {
         const link = st.cctv?.link ?? null, tried = st.cctv?.tried ?? {};

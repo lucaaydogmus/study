@@ -52,6 +52,8 @@ export interface Personnel {
   id: string; name: string; service: Service;
   experience: number; training: number; medical: number; fire: number; driving: number; policing: number;
   fatigue: number; morale: number; reliability: number;
+  /** what the bad calls have left behind (0..100); carries over between shifts */
+  stress?: number;
   salary: number; unitId: string | null; specialty: string;
 }
 
@@ -85,6 +87,8 @@ export interface Unit {
   /** mechanical condition 0..100 (persists across career shifts) */ condition?: number;
   /** carrying someone under arrest to the police station */ prisoner?: boolean;
   /** driving back to quarters for servicing */ workshop?: boolean;
+  /** a stressed crew already fumbled this dispatch */
+  slipped?: boolean;
 }
 
 export interface Station {
@@ -257,6 +261,8 @@ export interface Incident {
   /** officer-initiated (on-view) incident */
   onView?: boolean; hospitalNode?: number | null;
   cctvAt?: number; decided?: boolean; spread?: boolean; storyline?: string;
+  /** incident command at a big fire: who is in charge and which company works which sector */
+  command?: { ic: string | null; sectors: Partial<Record<import('./field').Sector, string>>; at: number } | null;
   /** a regular caller (and whether today it is real) */
   regular?: { id: string; real: boolean } | null;
   /** what the caller opens with, instead of the template's lines */
@@ -391,7 +397,7 @@ export interface ShiftStats {
   boloHits?: number; stingerHits?: number; breaksGiven?: number;
   callerAnswers?: number; cprPaced?: number; handoffs?: number; calmActions?: number; calmGood?: number; tasksDone?: number; callerBreakdowns?: number; redirectsOk?: number; redirectsBad?: number; listens?: number; unitQueries?: number; unitQueriesOk?: number; unitQueriesMissed?: number; maydays?: number; maydaySaved?: number; refusals?: number;
   specialistCalls?: number; specialistWasted?: number; majorsHandled?: number;
-  cctvTags?: number;
+  cctvTags?: number; stressCalls?: number; commandSet?: number;
   crewTalks?: number; sayAgains?: number; resourceCalls?: number; arrests?: number; services?: number; hospitalCalls?: number; mciPlans?: number; walkIns?: number;
   agencyCalls?: number; agencyLate?: number; statusChecks?: number; statusSaves?: number; statusMissed?: number; alertsRight?: number; alertsWrong?: number; searchFinds?: number;
 }
@@ -430,6 +436,8 @@ export interface GameState {
   hospitals?: Record<string, HospitalState>;
   lastChatter?: number; lastHospitalCall?: number; lastWalkIn?: number;
   /** the CCTV terminal: which camera is streaming, and which cameras turned out to be dead */
+  /** storm cells crossing the map, and when the next stressed crew may ask to stand down */
+  storms?: import('./field').StormCell[]; nextStressAt?: number; floodEdges?: number[];
   /** regular callers who rang this shift */
   regularLog?: Array<{ id: string; real: boolean; at: number; incId: string; outcome?: string }>;
   cctv?: { link: import('./cctv').CctvLink | null; tried: Record<string, 'ok' | 'offline'>; tags: number; wrong: number };

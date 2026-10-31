@@ -228,6 +228,8 @@ export function applyShift(p: Profile, st: GameState): ShiftResult {
     const sim = st.personnel[per.id];
     if (!sim) continue;
     per.fatigue = Math.max(0, sim.fatigue * 0.35);
+    // a night off helps; it does not wipe the slate
+    per.stress = Math.max(0, (sim.stress ?? 0) - 30);
     const work = Object.values(st.units).find((u) => u.id === per.unitId)?.deployments ?? 0;
     const gain = (0.5 + work * 0.35) * (1 + 0.4 * academy);
     per.experience = Math.min(99, per.experience + gain);
